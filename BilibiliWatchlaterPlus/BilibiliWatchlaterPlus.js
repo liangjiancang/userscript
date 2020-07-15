@@ -22,6 +22,8 @@
 // ==/UserScript==
 
 (function() {
+  // 顶栏入口的默认行为
+  var defaultHeaderButtonOperation = 'op_openListInNew'
   // 移除历史的默认保存次数
   var defaultRemoveHistorySaves = 8
   // 移除历史保存次数的下限和上限
@@ -31,32 +33,45 @@
   // 用户配置读取
   var init = GM_getValue('gm395456')
   var configUpdate = 20200715
+  // 默认值
   var headerButton = true
+  var headerButtonOperation = defaultHeaderButtonOperation
   var videoButton = true
   var redirect = false
   var openInNew = false
   var removeHistory = true
   var removeHistorySaves = defaultRemoveHistorySaves
   var removeHistoryData = null
+  var reloadAfterSetting = true
   if (init >= configUpdate) {
-    headerButton = GM_getValue('gm395456_headerButton')
-    videoButton = GM_getValue('gm395456_videoButton')
-    redirect = GM_getValue('gm395456_redirect')
-    openInNew = GM_getValue('gm395456_openInNew')
-    removeHistory = GM_getValue('gm395456_removeHistory')
-    removeHistorySaves = GM_getValue('gm395456_removeHistorySaves')
-    removeHistoryData = GM_getValue('gm395456_removeHistoryData')
-    Object.setPrototypeOf(removeHistoryData, PushQueue.prototype) // 还原类型信息
+    // 一般情况下，读取用户配置；如果配置出错，则沿用默认值
+    headerButton = validate(GM_getValue('gm395456_headerButton'), 'boolean', headerButton)
+    headerButtonOperation = validate(GM_getValue('gm395456_headerButtonOperation'), 'string', headerButtonOperation)
+    videoButton = validate(GM_getValue('gm395456_videoButton'), 'boolean', videoButton)
+    redirect = validate(GM_getValue('gm395456_redirect'), 'boolean', redirect)
+    openInNew = validate(GM_getValue('gm395456_openInNew'), 'boolean', openInNew)
+    removeHistory = validate(GM_getValue('gm395456_removeHistory'), 'boolean', removeHistory)
+    removeHistorySaves = validate(GM_getValue('gm395456_removeHistorySaves'), 'number', removeHistorySaves)
+    removeHistoryData = validate(GM_getValue('gm395456_removeHistoryData'), 'object', null)
+    if (!removeHistoryData) {
+      removeHistoryData = new PushQueue(defaultRemoveHistorySaves, rhsMax)
+    } else {
+      Object.setPrototypeOf(removeHistoryData, PushQueue.prototype) // 还原类型信息
+    }
+    reloadAfterSetting = validate(GM_getValue('gm395456_reloadAfterSetting'), 'boolean', reloadAfterSetting)
   } else {
+    // 初始化
     init = false
     removeHistoryData = new PushQueue(defaultRemoveHistorySaves, rhsMax)
     GM_setValue('gm395456_headerButton', headerButton)
+    GM_setValue('gm395456_headerButtonOperation', headerButtonOperation)
     GM_setValue('gm395456_videoButton', videoButton)
     GM_setValue('gm395456_redirect', redirect)
     GM_setValue('gm395456_openInNew', openInNew)
     GM_setValue('gm395456_removeHistory', removeHistory)
     GM_setValue('gm395456_removeHistorySaves', removeHistorySaves)
     GM_setValue('gm395456_removeHistoryData', removeHistoryData)
+    GM_setValue('gm395456_reloadAfterSetting', reloadAfterSetting)
   }
 
   // 重定向，document-start 就执行，尽可能快地将原页面掩盖过去
@@ -100,7 +115,7 @@
     background-color: #ffffff;
     border-radius: 10px;
     z-index: 65535;
-    min-width: 32em;
+    min-width: 36em;
 }
 #gm395456 .gm_setting #gm_maintitle {
     cursor: pointer;
@@ -110,7 +125,7 @@
 }
 #gm395456 .gm_setting .gm_items {
     margin: 0 2.2em;
-    font-size: 1.1em;
+    font-size: 1.2em;
 }
 #gm395456 .gm_setting .gm_item {
     display: block;
@@ -142,6 +157,9 @@
     width: 2em;
     text-align: right;
     padding: 0 0.2em;
+}
+#gm395456 .gm_setting select {
+    border-width: 0 0 1px 0;
 }
 #gm395456 .gm_setting .gm_bottom {
     margin: 0.8em 2em 1.8em 2em;
@@ -363,8 +381,22 @@
         <div class="gm_subtitle">V${GM_info.script.version} by ${GM_info.script.author}</div>
     </div>
     <div class="gm_items">
-        <label class="gm_item" title="在顶栏“动态”和“收藏”之间加入稍后再看入口，支持弹出式列表菜单">
-            <span>【所有页面】在顶栏中加入稍后再看入口</span><input id="gm_headerButton" type="checkbox"></label>
+        <div class="gm_item">
+            <label title="在顶栏“动态”和“收藏”之间加入稍后再看入口，鼠标移至上方时弹出列表菜单，支持点击功能设置">
+                <span>【所有页面】在顶栏中加入稍后再看入口</span><input id="gm_headerButton" type="checkbox"></label>
+            <label class="gm_subitem" title="选择点击入口后执行的操作">
+                <span>点击入口时</span>
+                <select id="gm_headerButtonOperation">
+                    <option value="op_openListInCurrent">在当前页面打开列表页面</option>
+                    <option value="op_openListInNew">在新标签页打开列表页面</option>
+                    <option value="op_playAllInCurrent">在当前页面播放全部</option>
+                    <option value="op_playAllInNew">在新标签页播放全部</option>
+                    <option value="op_openUserSetting">打开用户设置</option>
+                    <option value="op_openRemoveHistory">打开稍后再看移除记录</option>
+                    <option value="op_noOperation">不执行操作</option>
+                </select>
+            </label>
+        </div>
         <label class="gm_item" title="在常规播放页面中加入能将视频快速切换添加或移除出稍后再看列表的按钮">
             <span>【播放页面】加入快速添加或移除的按钮</span><input id="gm_videoButton" type="checkbox"></label>
         <label class="gm_item" title="是否自动从【www.bilibili.com/medialist/play/watchlater/p*】页面切换至【www.bilibili.com/video/BV*】页面播放">
@@ -377,6 +409,8 @@
             <div class="gm_subitem" title="范围：${rhsMin}~${rhsMax}。请不要设置过大的数值，否则会带来较大的开销。而且移除记录并非按移除时间排序，设置过大的历史范围反而会给误删视频的定位造成麻烦。该项修改后，会立即对过时记录进行清理，重新修改为原来的值无法还原被清除的记录！">
                 <span>根据最近几次加载数据生成</span><input id="gm_removeHistorySaves" type="text"></div>
         </div>
+        <label class="gm_item" title="用户设置完成后，某些选项需重新加载页面以生效，是否立即重新加载页面">
+            <span>【用户设置】设置完成后重新加载页面</span><input id="gm_reloadAfterSetting" type="checkbox"></label>
     </div>
     <div class="gm_bottom">
         <button id="gm_save">保存</button><button id="gm_cancel">取消</button>
@@ -389,12 +423,23 @@
         el_reset.onclick = resetScript
 
         var el_headerButton = el_setting.querySelector('#gm_headerButton')
+        var el_headerButtonOperation = el_setting.querySelector('#gm_headerButtonOperation')
         var el_videoButton = el_setting.querySelector('#gm_videoButton')
         var el_redirect = el_setting.querySelector('#gm_redirect')
         var el_openInNew = el_setting.querySelector('#gm_openInNew')
         var el_removeHistory = el_setting.querySelector('#gm_removeHistory')
         var el_removeHistorySaves = el_setting.querySelector('#gm_removeHistorySaves')
+        var el_reloadAfterSetting = el_setting.querySelector('#gm_reloadAfterSetting')
 
+        el_headerButton.onchange = function() {
+          var parent = el_headerButtonOperation.parentElement
+          if (this.checked) {
+            parent.removeAttribute('disabled')
+          } else {
+            parent.setAttribute('disabled', 'disabled')
+          }
+          el_headerButtonOperation.disabled = !this.checked
+        }
         el_removeHistory.onchange = function() {
           var parent = el_removeHistorySaves.parentElement
           if (this.checked) {
@@ -430,6 +475,8 @@
         el_save.onclick = () => {
           headerButton = el_headerButton.checked
           GM_setValue('gm395456_headerButton', headerButton)
+          headerButtonOperation = el_headerButtonOperation.value
+          GM_setValue('gm395456_headerButtonOperation', headerButtonOperation)
 
           videoButton = el_videoButton.checked
           GM_setValue('gm395456_videoButton', videoButton)
@@ -461,6 +508,9 @@
             GM_setValue('gm395456_removeHistoryData', removeHistoryData)
           }
 
+          reloadAfterSetting = el_reloadAfterSetting.checked
+          GM_setValue('gm395456_reloadAfterSetting', reloadAfterSetting)
+
           closeMenuItem('setting')
           if (initial) {
             init = configUpdate
@@ -471,15 +521,22 @@
               el_shadow.removeAttribute('disabled')
             }, fadeTime)
           }
+
+          if (reloadAfterSetting) {
+            location.reload()
+          }
         }
         var openHandler = () => {
           el_headerButton.checked = headerButton
+          el_headerButtonOperation.value = headerButtonOperation
+          el_headerButton.onchange()
           el_videoButton.checked = videoButton
           el_redirect.checked = redirect
           el_openInNew.checked = openInNew
           el_removeHistory.checked = removeHistory
           el_removeHistorySaves.value = isNaN(removeHistorySaves) ? defaultRemoveHistorySaves : removeHistorySaves
           el_removeHistory.onchange()
+          el_reloadAfterSetting.checked = reloadAfterSetting
         }
         menus.setting.openHandler = openHandler
         el_cancel.onclick = () => {
@@ -496,7 +553,6 @@
           el_cancel.disabled = true
           el_shadow.setAttribute('disabled', 'disabled')
         }
-
       }
       openMenuItem('setting')
     }
@@ -640,7 +696,37 @@
         var collect = header.children[4]
         var watchlater = header.children[6].cloneNode(true)
         var link = watchlater.firstChild
-        link.href = 'https://www.bilibili.com/watchlater/#/list'
+        switch (headerButtonOperation) {
+          case 'op_openListInCurrent':
+            link.href = 'https://www.bilibili.com/watchlater/#/list'
+            link.target = '_self'
+            break
+          case 'op_openListInNew':
+            link.href = 'https://www.bilibili.com/watchlater/#/list'
+            link.target = '_blank'
+            break
+          case 'op_playAllInCurrent':
+            link.href = 'https://www.bilibili.com/medialist/play/watchlater/p1'
+            link.target = '_self'
+            break
+          case 'op_playAllInNew':
+            link.href = 'https://www.bilibili.com/medialist/play/watchlater/p1'
+            link.target = '_blank'
+            break
+          case 'op_openUserSetting':
+            link.href = 'javascript:void(0)'
+            link.target = '_self'
+            link.onclick = () => openUserSetting()
+            break
+          case 'op_openRemoveHistory':
+            link.href = 'javascript:void(0)'
+            link.target = '_self'
+            link.onclick = () => openRemoveHistory()
+          case 'noOperation':
+          default:
+            link.href = 'javascript:void(0)'
+            link.target = '_self'
+        }
         var text = link.firstChild
         text.innerText = '稍后再看'
         header.insertBefore(watchlater, collect)
@@ -914,6 +1000,18 @@
       })
     }
   })
+
+  /**
+   * 检验数据是否符合类型定义，符合时返回原值，不符合时返回默认值
+   * 
+   * @param {object} value 待检验数据
+   * @param {string} type 给定的数据类型
+   * @param {object} defaultValue 默认值
+   * @return {object} 符合定义时返回原值，否则返回默认值
+   */
+  function validate(value, type, defaultValue) {
+    return typeof value == type ? value : defaultValue
+  }
 })()
 
 /**
