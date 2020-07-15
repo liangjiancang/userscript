@@ -1,7 +1,7 @@
 // ==UserScript==
 // @id             BilibiliWatchlaterPlus@Laster2800
 // @name           B站稍后再看功能增强
-// @version        2.3.2.20200715
+// @version        2.3.3.20200716
 // @namespace      laster2800
 // @author         Laster2800
 // @description    B站稍后再看功能增强，目前功能包括UI增强、重定向至常规播放页、稍后再看移除记录等，支持功能设置
@@ -127,7 +127,7 @@
     background-color: #ffffff;
     border-radius: 10px;
     z-index: 65535;
-    min-width: 36em;
+    min-width: 38em;
 }
 #gm395456 .gm_setting #gm_maintitle {
     cursor: pointer;
@@ -412,16 +412,16 @@
             </label>
         </div>
         <label class="gm_item" title="在常规播放页面中加入能将视频快速切换添加或移除出稍后再看列表的按钮">
-            <span>【播放页面】加入快速添加或移除的按钮</span><input id="gm_videoButton" type="checkbox"></label>
+            <span>【播放页面】加入快速切换视频稍后再看状态的按钮</span><input id="gm_videoButton" type="checkbox"></label>
         <label class="gm_item" title="是否自动从【www.bilibili.com/medialist/play/watchlater/p*】页面切换至【www.bilibili.com/video/BV*】页面播放">
-            <span>【播放页面】是否重定向至常规播放页面</span><input id="gm_redirect" type="checkbox"></label>
+            <span>【播放页面】从稍后再看模式切换到普通模式播放</span><input id="gm_redirect" type="checkbox"></label>
         <label class="gm_item" title="在【www.bilibili.com/watchlater/#/list】页面点击时，是否在新标签页打开视频">
-            <span>【列表页面】是否在新标签页中打开视频</span><input id="gm_openInNew" type="checkbox"></label>
+            <span>【列表页面】在新标签页中打开视频</span><input id="gm_openInNew" type="checkbox"></label>
         <div class="gm_item">
             <label title="保留最近几次打开【www.bilibili.com/watchlater/#/list】页面时稍后再看列表的记录，以查找出这段时间内将哪些视频移除出稍后再看，用于防止误删操作">
-                <span>【列表页面】是否开启稍后再看移除记录</span><input id="gm_removeHistory" type="checkbox"></label>
+                <span>【列表页面】开启稍后再看移除记录（防误删）</span><input id="gm_removeHistory" type="checkbox"></label>
             <div class="gm_subitem" title="范围：${rhsMin}~${rhsMax}。请不要设置过大的数值，否则会带来较大的开销。而且移除记录并非按移除时间排序，设置过大的历史范围反而会给误删视频的定位造成麻烦。该项修改后，会立即对过时记录进行清理，重新修改为原来的值无法还原被清除的记录！">
-                <span>根据最近几次加载数据生成</span><input id="gm_removeHistorySaves" type="text"></div>
+                <span>根据最近多少次列表页面数据生成</span><input id="gm_removeHistorySaves" type="text"></div>
         </div>
         <label class="gm_item" title="用户设置完成后，某些选项需重新加载页面以生效，是否立即重新加载页面">
             <span>【用户设置】设置完成后重新加载页面</span><input id="gm_reloadAfterSetting" type="checkbox"></label>
