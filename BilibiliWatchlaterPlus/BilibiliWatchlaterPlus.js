@@ -1,7 +1,7 @@
 // ==UserScript==
 // @id             BilibiliWatchlaterPlus@Laster2800
 // @name           B站稍后再看功能增强
-// @version        2.3.0.20200715
+// @version        2.3.1.20200715
 // @namespace      laster2800
 // @author         Laster2800
 // @description    B站稍后再看功能增强，目前功能包括UI增强、重定向至常规播放页、稍后再看移除记录等，支持功能设置
@@ -11,6 +11,7 @@
 // @include        *://search.bilibili.com/*
 // @include        *://space.bilibili.com/*
 // @include        *://t.bilibili.com/*
+// @include        *://account.bilibili.com/*
 // @exclude        *://message.bilibili.com/pages/*
 // @grant          GM_addStyle
 // @grant          GM_xmlhttpRequest
@@ -76,6 +77,7 @@
 
   // 重定向，document-start 就执行，尽可能快地将原页面掩盖过去
   if (redirect && /bilibili.com\/medialist\/play\/watchlater\//.test(location.href)) {
+    window.stop() // 停止原页面的加载
     GM_xmlhttpRequest({
       method: 'GET',
       url: `https://api.bilibili.com/x/v2/history/toview/web?jsonp=jsonp`,
@@ -283,7 +285,7 @@
 
     // 脚本菜单
     // 用户配置设置
-    GM_registerMenuCommand('设置', openUserSetting)
+    GM_registerMenuCommand('用户设置', openUserSetting)
     if (!init) {
       openUserSetting(true)
     }
