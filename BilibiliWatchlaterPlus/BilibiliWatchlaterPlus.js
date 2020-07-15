@@ -1,7 +1,7 @@
 // ==UserScript==
 // @id             BilibiliWatchlaterPlus@Laster2800
 // @name           B站稍后再看功能增强
-// @version        2.3.3.20200716
+// @version        2.3.4.20200716
 // @namespace      laster2800
 // @author         Laster2800
 // @description    B站稍后再看功能增强，目前功能包括UI增强、重定向至常规播放页、稍后再看移除记录等，支持功能设置
@@ -77,7 +77,7 @@
   }
 
   // 重定向，document-start 就执行，尽可能快地将原页面掩盖过去
-  if (redirect && /bilibili.com\/medialist\/play\/watchlater\//.test(location.href)) {
+  if (redirect && /bilibili.com\/medialist\/play\/watchlater(?=\/|$)/.test(location.href)) {
     window.stop() // 停止原页面的加载
     GM_xmlhttpRequest({
       method: 'GET',
@@ -85,7 +85,10 @@
       onload: function(response) {
         if (response && response.responseText) {
           try {
-            var part = parseInt(location.href.match(/(?<=\/watchlater\/p)\d+(?=\/?)/)[0])
+            var part = 1
+            if (/watchlater\/p\d+/.test(location.href)) {
+              part = parseInt(location.href.match(/(?<=\/watchlater\/p)\d+(?=\/?)/)[0])
+            } // 如果匹配不上，就是以 watchlater/ 直接结尾，等同于 watchlater/p1
             var json = JSON.parse(response.responseText)
             var watchList = json.data.list
             location.replace('https://www.bilibili.com/video/' + watchList[part - 1].bvid)
@@ -94,7 +97,7 @@
             console.error(errorInfo)
             console.error(e)
 
-            var rc = confirm(errorInfo + '\n是否暂时关闭重定向功能？')
+            var rc = confirm(errorInfo + '\n\n是否暂时关闭重定向功能？')
             if (rc) {
               redirect = false
               GM_setValue('gm395456_redirect', redirect)
