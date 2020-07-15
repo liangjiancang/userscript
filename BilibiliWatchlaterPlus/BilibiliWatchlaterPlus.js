@@ -30,14 +30,14 @@
 
   // 用户配置读取
   var init = GM_getValue('gm395456')
-  var configUpdate = 20200714
+  var configUpdate = 20200715
   var headerButton = true
   var videoButton = true
   var redirect = false
   var openInNew = false
   var removeHistory = true
   var removeHistorySaves = defaultRemoveHistorySaves
-  var removeHistoryData = new PushQueue(defaultRemoveHistorySaves, rhsMax)
+  var removeHistoryData = null
   if (init >= configUpdate) {
     headerButton = GM_getValue('gm395456_headerButton')
     videoButton = GM_getValue('gm395456_videoButton')
@@ -49,6 +49,7 @@
     Object.setPrototypeOf(removeHistoryData, PushQueue.prototype) // 还原类型信息
   } else {
     init = false
+    removeHistoryData = new PushQueue(defaultRemoveHistorySaves, rhsMax)
     GM_setValue('gm395456_headerButton', headerButton)
     GM_setValue('gm395456_videoButton', videoButton)
     GM_setValue('gm395456_redirect', redirect)
@@ -90,7 +91,7 @@
     position: fixed;
     z-index: 10000;
 }
-#gm395456 .gm_setting .gm_settingPage {
+#gm395456 .gm_setting .gm_setting_page {
     position: fixed;
     top: 50%;
     left: 50%;
@@ -160,7 +161,7 @@
     position: fixed;
     z-index: 10000;
 }
-#gm395456 .gm_history .gm_historyPage {
+#gm395456 .gm_history .gm_history_page {
     position: fixed;
     top: 50%;
     left: 50%;
@@ -191,6 +192,11 @@
 }
 #gm395456 .gm_history .gm_content::-webkit-scrollbar {
     display: none;
+}
+.gm_comment span {
+    padding: 0 0.2em;
+    font-weight: bold;
+    color: #666666;
 }
 
 #gm395456 #gm_reset {
@@ -230,9 +236,7 @@
     cursor: pointer;
 }
 
-#gm395456 [disabled] {
-  cursor: not-allowed;
-}
+#gm395456 [disabled],
 #gm395456 [disabled] input {
   cursor: not-allowed;
 }
@@ -346,7 +350,7 @@
         menus.setting.el = el_setting
         el_setting.className = 'gm_setting'
         el_setting.innerHTML = `
-<div class="gm_settingPage">
+<div class="gm_setting_page">
     <div class="gm_title">
         <div id="gm_maintitle" onclick="window.open('${GM_info.script.homepage}')" title="${GM_info.script.homepage}">B站稍后再看功能增强</div>
         <div class="gm_subtitle">V${GM_info.script.version} by ${GM_info.script.author}</div>
@@ -430,6 +434,7 @@
           GM_setValue('gm395456_openInNew', openInNew)
           switchOpenInNew()
 
+          var resetMaxSize = removeHistory != el_removeHistory.checked
           removeHistory = el_removeHistory.checked
           GM_setValue('gm395456_removeHistory', removeHistory)
           if (removeHistory) {
@@ -440,9 +445,13 @@
               removeHistorySaves = rhsV
               GM_setValue('gm395456_removeHistorySaves', removeHistorySaves)
               GM_setValue('gm395456_removeHistoryData', removeHistoryData)
+            } else if (resetMaxSize) {
+              removeHistoryData.setMaxSize(rhsV)
+              GM_setValue('gm395456_removeHistoryData', removeHistoryData)
             }
-          } else {
+          } else if (resetMaxSize) {
             removeHistoryData.setMaxSize(0)
+            GM_setValue('gm395456_removeHistoryData', removeHistoryData)
           }
 
           closeMenuItem('setting')
@@ -492,16 +501,18 @@
         menus.history.el = el_history
         el_history.className = 'gm_history'
         el_history.innerHTML = `
-<div class="gm_historyPage">
+<div class="gm_history_page">
     <div class="gm_title">稍后再看移除记录</div>
-    <div class="gm_comment">根据最近${removeHistoryData.size}次打开列表页面时获取的数据生成。排序为加入到稍后再看的顺序，而非移除的顺序。如果处理时间较长，或记录太多难以定位误删的视频，请设置较小的历史范围。鼠标移动到内容区域可向下滚动翻页，点击对话框以外的位置退出。</div>
+    <div class="gm_comment">根据最近<span id="gm_save_times">X</span>次打开列表页面时获取到的<span id="gm_record_num">X</span>条记录生成，共筛选出<span id="gm_remove_num">X</span>条移除记录。排序为加入到稍后再看的顺序，而非移除的顺序。如果处理时间较长，或记录太多难以定位误删的视频，请设置较小的历史范围。鼠标移动到内容区域可向下滚动翻页，点击对话框以外的位置退出。</div>
     <div class="gm_content"></div>
 </div>
 <div class="gm_shadow"></div>
 `
-        var el_historyPage = el_history.querySelector('.gm_historyPage')
         var el_comment = el_history.querySelector('.gm_comment')
         var el_content = el_history.querySelector('.gm_content')
+        var el_saveTimes = el_history.querySelector('#gm_save_times')
+        var el_recordNum = el_history.querySelector('#gm_record_num')
+        var el_removeNum = el_history.querySelector('#gm_remove_num') 
 
         var setContentTop = () => {
           el_content.style.top = el_comment.offsetTop + el_comment.offsetHeight + 'px'
@@ -509,8 +520,8 @@
         window.addEventListener('resize', setContentTop)
 
         var openHandler = () => {
-          el_historyPage.scrollTop = 0
-          setContentTop()
+          el_content.scrollTop = 0
+          el_content.innerHTML = ''
           GM_xmlhttpRequest({
             method: 'GET',
             url: `https://api.bilibili.com/x/v2/history/toview/web?jsonp=jsonp`,
@@ -525,11 +536,13 @@
                   }
                   var map = new Map()
                   var removeData = removeHistoryData.toArray()
+                  el_saveTimes.innerText = removeData.length
                   for (var i = removeData.length - 1; i >= 0; i--) { // 后面的数据较旧，从后往前遍历
                     for (var record of removeData[i]) {
                       map.set(record.bvid, record)
                     }
                   }
+                  el_recordNum.innerText = map.size
                   for (var id of bvid) {
                     map.delete(id)
                   }
@@ -537,6 +550,9 @@
                   for (var rm of map.values()) {
                     result.push(`<span>${rm.title}</span><br><a href="https://www.bilibili.com/video/${rm.bvid}" target="_blank">${rm.bvid}</a>`)
                   }
+                  el_removeNum.innerText = result.length
+
+                  setContentTop() // 在设置内容前设置好 top，这样看不出修改的痕迹
                   el_content.innerHTML = result.join('<br><br>')
                 } catch (e) {
                   console.error('网络连接错误，请联系脚本作者( https://greasyfork.org/zh-CN/scripts/383441/feedback )：\n' + e)
@@ -964,6 +980,6 @@ PushQueue.prototype.gc = function() {
       }
     }
   } else {
-    this.data = []
+    this.data = new Array(this.capacity)
   }
 }
