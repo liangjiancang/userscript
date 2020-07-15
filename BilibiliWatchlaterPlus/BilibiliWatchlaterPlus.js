@@ -1,11 +1,12 @@
 // ==UserScript==
 // @id             BilibiliWatchlaterPlus@Laster2800
 // @name           B站稍后再看功能增强
-// @version        2.3.1.20200715
+// @version        2.3.2.20200715
 // @namespace      laster2800
 // @author         Laster2800
 // @description    B站稍后再看功能增强，目前功能包括UI增强、重定向至常规播放页、稍后再看移除记录等，支持功能设置
 // @homepage       https://greasyfork.org/zh-CN/scripts/395456
+// @supportURL     https://greasyfork.org/zh-CN/scripts/395456/feedback
 // @include        *://www.bilibili.com/*
 // @include        *://message.bilibili.com/*
 // @include        *://search.bilibili.com/*
@@ -89,7 +90,16 @@
             var watchList = json.data.list
             location.replace('https://www.bilibili.com/video/' + watchList[part - 1].bvid)
           } catch (e) {
-            console.error('重定向错误，请联系脚本作者( https://greasyfork.org/zh-CN/scripts/383441/feedback )：\n' + e)
+            var errorInfo = `重定向错误，重置脚本数据也许能解决问题。无法解决请联系脚本作者：${GM_info.script.supportURL}`
+            console.error(errorInfo)
+            console.error(e)
+
+            var rc = confirm(errorInfo + '\n是否暂时关闭重定向功能？')
+            if (rc) {
+              redirect = false
+              GM_setValue('gm395456_redirect', redirect)
+            }
+            location.reload()
           }
         }
       }
@@ -162,6 +172,7 @@
 }
 #gm395456 .gm_setting select {
     border-width: 0 0 1px 0;
+    cursor: pointer;
 }
 #gm395456 .gm_setting .gm_bottom {
     margin: 0.8em 2em 1.8em 2em;
@@ -350,7 +361,8 @@
                 removeHistoryData.push(current)
                 GM_setValue('gm395456_removeHistoryData', removeHistoryData)
               } catch (e) {
-                console.error('保存稍后再看列表错误，重置脚本数据也许能解决问题。无法解决请联系脚本作者( https://greasyfork.org/zh-CN/scripts/383441/feedback )：\n' + e)
+                console.error(`保存稍后再看列表错误，重置脚本数据也许能解决问题。无法解决请联系脚本作者：${GM_info.script.supportURL}`)
+                console.error(e)
               }
             }
           }
@@ -417,7 +429,7 @@
     <div class="gm_bottom">
         <button id="gm_save">保存</button><button id="gm_cancel">取消</button>
     </div>
-    <div id="gm_reset" title="重置脚本设置及内部数据，在脚本运行错误时也许能解决问题。无法解决请联系脚本作者( https://greasyfork.org/zh-CN/scripts/383441/feedback )">重置脚本数据</div>
+    <div id="gm_reset" title="重置脚本设置及内部数据，也许能解决脚本运行错误的问题。无法解决请联系脚本作者：${GM_info.script.supportURL}">重置脚本数据</div>
 </div>
 <div class="gm_shadow"></div>
 `
@@ -668,7 +680,12 @@
                   el_content.innerHTML = result.join('<br><br>')
                   el_content.style.opacity = '1'
                 } catch (e) {
-                  console.error('网络连接错误，请联系脚本作者( https://greasyfork.org/zh-CN/scripts/383441/feedback )：\n' + e)
+                  var errorInfo = `网络连接错误，重置脚本数据也许能解决问题。无法解决请联系脚本作者：${GM_info.script.supportURL}`
+                  setContentTop() // 在设置内容前设置好 top，这样看不出修改的痕迹
+                  el_content.innerHTML = errorInfo
+                  el_content.style.opacity = '1'
+                  console.error(errorInfo)
+                  console.error(e)
                 }
               }
             }
