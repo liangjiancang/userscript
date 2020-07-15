@@ -1,7 +1,7 @@
 // ==UserScript==
 // @id             BilibiliWatchlaterPlus@Laster2800
 // @name           B站稍后再看功能增强
-// @version        2.2.0.20200715
+// @version        2.3.0.20200715
 // @namespace      laster2800
 // @author         Laster2800
 // @description    B站稍后再看功能增强，目前功能包括UI增强、重定向至常规播放页、稍后再看移除记录等，支持功能设置
@@ -82,10 +82,11 @@
   // 脚本的其他部分推迟至 DOMContentLoaded 执行
   document.addEventListener('DOMContentLoaded', () => {
     var fadeTime = 400
+    var textFadeTime = 100
     GM_addStyle(`
 #gm395456 .gm_setting {
     font-size: 12px;
-    transition: opacity ${fadeTime / 1000}s ease-in-out;
+    transition: opacity ${fadeTime}ms ease-in-out;
     opacity: 0;
     display: none;
     position: fixed;
@@ -97,7 +98,6 @@
     left: 50%;
     transform: translate(-50%, -50%);
     background-color: #ffffff;
-    border: 1px solid #ccd0d7;
     border-radius: 10px;
     z-index: 65535;
     min-width: 32em;
@@ -155,7 +155,7 @@
 }
 
 #gm395456 .gm_history {
-    transition: opacity ${fadeTime / 1000}s ease-in-out;
+    transition: opacity ${fadeTime}ms ease-in-out;
     opacity: 0;
     display: none;
     position: fixed;
@@ -167,7 +167,6 @@
     left: 50%;
     transform: translate(-50%, -50%);
     background-color: #ffffff;
-    border: 1px solid #ccd0d7;
     border-radius: 10px;
     z-index: 65535;
     height: 75%;
@@ -175,11 +174,22 @@
 }
 #gm395456 .gm_history .gm_comment {
     margin: 0 2em;
-    text-align: center;
     color: gray;
+    text-indent: 2em;
+}
+#gm395456 .gm_history .gm_comment span,
+#gm395456 .gm_history .gm_comment input {
+    padding: 0 0.2em;
+    font-weight: bold;
+    color: #666666;
+}
+#gm395456 .gm_history .gm_comment input{
+    text-align: center;
+    width: 3em;
+    border-width: 0 0 1px 0;
 }
 #gm395456 .gm_history .gm_content {
-    margin: 1.5em;
+    margin: 1.6em 2em 2em 2em;
     font-size: 1.2em;
     text-align: center;
     line-height: 1.6em;
@@ -188,15 +198,12 @@
     top: 8em;
     bottom: 0;
     left: 0;
-    right: 0
+    right: 0;
+    opacity: 0;
+    transition: opacity ${textFadeTime}ms ease-in-out;
 }
 #gm395456 .gm_history .gm_content::-webkit-scrollbar {
     display: none;
-}
-.gm_comment span {
-    padding: 0 0.2em;
-    font-weight: bold;
-    color: #666666;
 }
 
 #gm395456 #gm_reset {
@@ -367,7 +374,7 @@
         <div class="gm_item">
             <label title="保留最近几次打开【www.bilibili.com/watchlater/#/list】页面时稍后再看列表的记录，以查找出这段时间内将哪些视频移除出稍后再看，用于防止误删操作">
                 <span>【列表页面】是否开启稍后再看移除记录</span><input id="gm_removeHistory" type="checkbox"></label>
-            <div class="gm_subitem" title="范围：${rhsMin}~${rhsMax}。请不要设置过大的数值，否则会带来较大的开销。而且移除记录并非按移除时间排序，设置过大的历史范围反而会给误删视频的定位造成麻烦。该项修改后，会立即对过时记录进行清理，重新修改为较大的值无法还原被清除的记录，慎重！">
+            <div class="gm_subitem" title="范围：${rhsMin}~${rhsMax}。请不要设置过大的数值，否则会带来较大的开销。而且移除记录并非按移除时间排序，设置过大的历史范围反而会给误删视频的定位造成麻烦。该项修改后，会立即对过时记录进行清理，重新修改为原来的值无法还原被清除的记录！">
                 <span>根据最近几次加载数据生成</span><input id="gm_removeHistorySaves" type="text"></div>
         </div>
     </div>
@@ -503,25 +510,72 @@
         el_history.innerHTML = `
 <div class="gm_history_page">
     <div class="gm_title">稍后再看移除记录</div>
-    <div class="gm_comment">根据最近<span id="gm_save_times">X</span>次打开列表页面时获取到的<span id="gm_record_num">X</span>条记录生成，共筛选出<span id="gm_remove_num">X</span>条移除记录。排序为加入到稍后再看的顺序，而非移除的顺序。如果处理时间较长，或记录太多难以定位误删的视频，请设置较小的历史范围。鼠标移动到内容区域可向下滚动翻页，点击对话框以外的位置退出。</div>
-    <div class="gm_content"></div>
+    <div class="gm_comment">
+        <div>根据最近<span id="gm_save_times">X</span>次打开列表页面时获取到的<span id="gm_record_num">X</span>条记录生成，共筛选出<span id="gm_remove_num">X</span>条移除记录。排序由首次加入到稍后再看的顺序决定，与移除出稍后再看的时间无关。如果记录太多难以定位被误删的视频，请在下方设置减少最大搜寻次数；如果第一次进入时处理时间过长，请设置较小的历史范围。鼠标移动到内容区域可向下滚动翻页，点击对话框以外的位置退出。</div>
+        <div style="text-align:right;font-weight:bold;margin-right:1em" title="最大搜寻次数，以便于定位被误删的视频。按下回车键或输入框失去焦点时刷新数据。">最大搜寻次数：<input type="text" id="gm_search_times" value="${removeHistoryData.maxSize}"></div>
+    </div>
 </div>
 <div class="gm_shadow"></div>
 `
+        var el_historyPage = el_history.querySelector('.gm_history_page')
         var el_comment = el_history.querySelector('.gm_comment')
-        var el_content = el_history.querySelector('.gm_content')
+        var el_content = null
         var el_saveTimes = el_history.querySelector('#gm_save_times')
         var el_recordNum = el_history.querySelector('#gm_record_num')
-        var el_removeNum = el_history.querySelector('#gm_remove_num') 
+        var el_removeNum = el_history.querySelector('#gm_remove_num')
+        var el_searchTimes = el_history.querySelector('#gm_search_times')
+
+        var currentSearTimes = removeHistoryData.size
+        var stMax = removeHistoryData.size
+        var stMin = 1
+        el_searchTimes.oninput = function() {
+          var v0 = this.value.replace(/[^\d]/g, '')
+          if (v0 === '') {
+            this.value = ''
+          } else {
+            var value = parseInt(v0)
+            if (value > stMax) {
+              value = stMax
+            } else if (value < stMin) {
+              value = stMin
+            }
+            this.value = value
+          }
+        }
+        el_searchTimes.onblur = function() {
+          if (this.value === '') {
+            this.value = stMax
+          }
+          if (this.value != currentSearTimes) {
+            currentSearTimes = this.value
+            menus.history.openHandler()
+          }
+        }
+        el_searchTimes.onkeyup = function(e) {
+          if (e.keyCode == 13) {
+            this.onblur()
+          }
+        }
 
         var setContentTop = () => {
-          el_content.style.top = el_comment.offsetTop + el_comment.offsetHeight + 'px'
+          if (el_content) {
+            el_content.style.top = el_comment.offsetTop + el_comment.offsetHeight + 'px'
+          }
         }
         window.addEventListener('resize', setContentTop)
 
         var openHandler = () => {
-          el_content.scrollTop = 0
-          el_content.innerHTML = ''
+          if (el_content) {
+            var oldContent = el_content
+            oldContent.style.opacity = '0'
+            setTimeout(() => {
+              oldContent.remove()
+            }, textFadeTime)
+            firstTime = false
+          }
+          el_content = el_historyPage.appendChild(document.createElement('div'))
+          el_content.className = 'gm_content'
+
           GM_xmlhttpRequest({
             method: 'GET',
             url: `https://api.bilibili.com/x/v2/history/toview/web?jsonp=jsonp`,
@@ -535,7 +589,7 @@
                     bvid.push(e.bvid)
                   }
                   var map = new Map()
-                  var removeData = removeHistoryData.toArray()
+                  var removeData = removeHistoryData.toArray(currentSearTimes)
                   el_saveTimes.innerText = removeData.length
                   for (var i = removeData.length - 1; i >= 0; i--) { // 后面的数据较旧，从后往前遍历
                     for (var record of removeData[i]) {
@@ -554,6 +608,7 @@
 
                   setContentTop() // 在设置内容前设置好 top，这样看不出修改的痕迹
                   el_content.innerHTML = result.join('<br><br>')
+                  el_content.style.opacity = '1'
                 } catch (e) {
                   console.error('网络连接错误，请联系脚本作者( https://greasyfork.org/zh-CN/scripts/383441/feedback )：\n' + e)
                 }
@@ -939,11 +994,18 @@ PushQueue.prototype.pop = function() {
 /**
  * 将推入队列以数组的形式返回
  *
+ * @param {number} [maxLength=size] 读取的最大长度
  * @return {Array} 队列数据的数组形式
  */
-PushQueue.prototype.toArray = function() {
+PushQueue.prototype.toArray = function(maxLength) {
+  if (typeof maxLength != 'number') {
+    maxLength = parseInt(maxLength)
+  }
+  if (isNaN(maxLength) || maxLength > this.size || maxLength < 0) {
+    maxLength = this.size
+  }
   var ar = []
-  var end = this.index - this.size
+  var end = this.index - maxLength
   var i = 0
   for (i = this.index - 1; i >= end && i >= 0; i--) {
     ar.push(this.data[i])
