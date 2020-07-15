@@ -1,7 +1,7 @@
 // ==UserScript==
 // @id             BilibiliWatchlaterPlus@Laster2800
 // @name           B站稍后再看功能增强
-// @version        2.3.4.20200716
+// @version        2.3.5.20200716
 // @namespace      laster2800
 // @author         Laster2800
 // @description    B站稍后再看功能增强，目前功能包括UI增强、重定向至常规播放页、稍后再看移除记录等，支持功能设置
@@ -97,12 +97,14 @@
             console.error(errorInfo)
             console.error(e)
 
-            var rc = confirm(errorInfo + '\n\n是否暂时关闭重定向功能？')
+            var rc = confirm(errorInfo + '\n\n是否暂时关闭模式切换功能？')
             if (rc) {
               redirect = false
               GM_setValue('gm395456_redirect', redirect)
+              location.reload()
+            } else {
+              location.replace('https://www.bilibili.com/watchlater/#/list')
             }
-            location.reload()
           }
         }
       }
