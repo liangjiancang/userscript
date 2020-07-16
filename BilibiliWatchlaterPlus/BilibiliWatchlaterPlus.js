@@ -1,7 +1,7 @@
 // ==UserScript==
 // @id             BilibiliWatchlaterPlus@Laster2800
 // @name           B站稍后再看功能增强
-// @version        2.3.5.20200716
+// @version        2.4.0.20200716
 // @namespace      laster2800
 // @author         Laster2800
 // @description    B站稍后再看功能增强，目前功能包括UI增强、重定向至常规播放页、稍后再看移除记录等，支持功能设置
@@ -116,7 +116,7 @@
     var fadeTime = 400
     var textFadeTime = 100
     GM_addStyle(`
-#gm395456 .gm_setting {
+#gm395456 .gm-setting {
     font-size: 12px;
     transition: opacity ${fadeTime}ms ease-in-out;
     opacity: 0;
@@ -124,7 +124,7 @@
     position: fixed;
     z-index: 10000;
 }
-#gm395456 .gm_setting .gm_setting_page {
+#gm395456 .gm-setting .gm-setting-page {
     position: fixed;
     top: 50%;
     left: 50%;
@@ -134,70 +134,69 @@
     z-index: 65535;
     min-width: 38em;
 }
-#gm395456 .gm_setting #gm_maintitle {
+#gm395456 .gm-setting #gm-maintitle {
     cursor: pointer;
 }
-#gm395456 .gm_setting #gm_maintitle:hover {
+#gm395456 .gm-setting #gm-maintitle:hover {
     color: #0075FF;
 }
-#gm395456 .gm_setting .gm_items {
+#gm395456 .gm-setting .gm-items {
     margin: 0 2.2em;
     font-size: 1.2em;
 }
-#gm395456 .gm_setting .gm_item {
+#gm395456 .gm-setting .gm-item {
     display: block;
     padding: 0.4em;
-
 }
-#gm395456 .gm_setting .gm_subitem {
+#gm395456 .gm-setting .gm-subitem {
     display: block;
     margin-left: 6em;
     margin-top: 0.3em;
 }
-#gm395456 .gm_setting .gm_item:hover {
+#gm395456 .gm-setting .gm-item:hover {
     color: #0075FF;
 }
-#gm395456 .gm_setting .gm_subitem[disabled] {
+#gm395456 .gm-setting .gm-subitem[disabled] {
     color: gray;
 }
-#gm395456 .gm_setting .gm_subitem:hover:not([disabled]) {
+#gm395456 .gm-setting .gm-subitem:hover:not([disabled]) {
     color: #0075FF;
 }
-#gm395456 .gm_setting input[type=checkbox] {
+#gm395456 .gm-setting input[type=checkbox] {
     vertical-align: middle;
     margin: 3px 0 0 10px;
     float: right;
 }
-#gm395456 .gm_setting input[type=text] {
+#gm395456 .gm-setting input[type=text] {
     float: right;
     border-width: 0 0 1px 0;
     width: 2em;
     text-align: right;
     padding: 0 0.2em;
 }
-#gm395456 .gm_setting select {
+#gm395456 .gm-setting select {
     border-width: 0 0 1px 0;
     cursor: pointer;
 }
-#gm395456 .gm_setting .gm_bottom {
+#gm395456 .gm-setting .gm-bottom {
     margin: 0.8em 2em 1.8em 2em;
     text-align: center;
 }
-#gm395456 .gm_setting .gm_bottom button {
+#gm395456 .gm-setting .gm-bottom button {
     font-size: 1em;
     padding: 0.2em 0.8em;
     margin: 0 0.6em;
     cursor: pointer;
 }
 
-#gm395456 .gm_history {
+#gm395456 .gm-history {
     transition: opacity ${fadeTime}ms ease-in-out;
     opacity: 0;
     display: none;
     position: fixed;
     z-index: 10000;
 }
-#gm395456 .gm_history .gm_history_page {
+#gm395456 .gm-history .gm-history-page {
     position: fixed;
     top: 50%;
     left: 50%;
@@ -208,23 +207,23 @@
     height: 75%;
     width: 60%;
 }
-#gm395456 .gm_history .gm_comment {
+#gm395456 .gm-history .gm-comment {
     margin: 0 2em;
     color: gray;
     text-indent: 2em;
 }
-#gm395456 .gm_history .gm_comment span,
-#gm395456 .gm_history .gm_comment input {
+#gm395456 .gm-history .gm-comment span,
+#gm395456 .gm-history .gm-comment input {
     padding: 0 0.2em;
     font-weight: bold;
     color: #666666;
 }
-#gm395456 .gm_history .gm_comment input{
+#gm395456 .gm-history .gm-comment input{
     text-align: center;
     width: 3em;
     border-width: 0 0 1px 0;
 }
-#gm395456 .gm_history .gm_content {
+#gm395456 .gm-history .gm-content {
     margin: 1.6em 2em 2em 2em;
     font-size: 1.2em;
     text-align: center;
@@ -238,11 +237,11 @@
     opacity: 0;
     transition: opacity ${textFadeTime}ms ease-in-out;
 }
-#gm395456 .gm_history .gm_content::-webkit-scrollbar {
+#gm395456 .gm-history .gm-content::-webkit-scrollbar {
     display: none;
 }
 
-#gm395456 #gm_reset {
+#gm395456 #gm-reset {
     position: absolute;
     right: 0;
     bottom: 0;
@@ -250,22 +249,22 @@
     color: #b4b4b4;
     cursor: pointer;
 }
-#gm395456 #gm_reset:hover {
+#gm395456 #gm-reset:hover {
     color: #666666;
 }
 
-#gm395456 .gm_title {
+#gm395456 .gm-title {
     font-size: 1.6em;
     margin: 1.6em 0.8em 0.8em 0.8em;
     text-align: center;
 }
 
-#gm395456 .gm_subtitle {
+#gm395456 .gm-subtitle {
   font-size: 0.4em;
   margin-top: 0.4em;
 }
 
-#gm395456 .gm_shadow {
+#gm395456 .gm-shadow {
     background: #000000b0;
     position: fixed;
     top: 0%;
@@ -392,20 +391,20 @@
       if (!el_setting) {
         el_setting = el_gm395456.appendChild(document.createElement('div'))
         menus.setting.el = el_setting
-        el_setting.className = 'gm_setting'
+        el_setting.className = 'gm-setting'
         el_setting.innerHTML = `
-<div class="gm_setting_page">
-    <div class="gm_title">
-        <div id="gm_maintitle" onclick="window.open('${GM_info.script.homepage}')" title="${GM_info.script.homepage}">B站稍后再看功能增强</div>
-        <div class="gm_subtitle">V${GM_info.script.version} by ${GM_info.script.author}</div>
+<div class="gm-setting-page">
+    <div class="gm-title">
+        <div id="gm-maintitle" onclick="window.open('${GM_info.script.homepage}')" title="${GM_info.script.homepage}">B站稍后再看功能增强</div>
+        <div class="gm-subtitle">V${GM_info.script.version} by ${GM_info.script.author}</div>
     </div>
-    <div class="gm_items">
-        <div class="gm_item">
+    <div class="gm-items">
+        <div class="gm-item">
             <label title="在顶栏“动态”和“收藏”之间加入稍后再看入口，鼠标移至上方时弹出列表菜单，支持点击功能设置">
-                <span>【所有页面】在顶栏中加入稍后再看入口</span><input id="gm_headerButton" type="checkbox"></label>
-            <label class="gm_subitem" title="选择点击入口后执行的操作">
+                <span>【所有页面】在顶栏中加入稍后再看入口</span><input id="gm-headerButton" type="checkbox"></label>
+            <label class="gm-subitem" title="选择点击入口后执行的操作">
                 <span>点击入口时</span>
-                <select id="gm_headerButtonOperation">
+                <select id="gm-headerButtonOperation">
                     <option value="op_openListInCurrent">在当前页面打开列表页面</option>
                     <option value="op_openListInNew">在新标签页打开列表页面</option>
                     <option value="op_playAllInCurrent">在当前页面播放全部</option>
@@ -416,39 +415,39 @@
                 </select>
             </label>
         </div>
-        <label class="gm_item" title="在常规播放页面中加入能将视频快速切换添加或移除出稍后再看列表的按钮">
-            <span>【播放页面】加入快速切换视频稍后再看状态的按钮</span><input id="gm_videoButton" type="checkbox"></label>
-        <label class="gm_item" title="是否自动从【www.bilibili.com/medialist/play/watchlater/p*】页面切换至【www.bilibili.com/video/BV*】页面播放">
-            <span>【播放页面】从稍后再看模式切换到普通模式播放</span><input id="gm_redirect" type="checkbox"></label>
-        <label class="gm_item" title="在【www.bilibili.com/watchlater/#/list】页面点击时，是否在新标签页打开视频">
-            <span>【列表页面】在新标签页中打开视频</span><input id="gm_openInNew" type="checkbox"></label>
-        <div class="gm_item">
+        <label class="gm-item" title="在常规播放页面中加入能将视频快速切换添加或移除出稍后再看列表的按钮">
+            <span>【播放页面】加入快速切换视频稍后再看状态的按钮</span><input id="gm-videoButton" type="checkbox"></label>
+        <label class="gm-item" title="是否自动从【www.bilibili.com/medialist/play/watchlater/p*】页面切换至【www.bilibili.com/video/BV*】页面播放">
+            <span>【播放页面】从稍后再看模式切换到普通模式播放</span><input id="gm-redirect" type="checkbox"></label>
+        <label class="gm-item" title="在【www.bilibili.com/watchlater/#/list】页面点击时，是否在新标签页打开视频">
+            <span>【列表页面】在新标签页中打开视频</span><input id="gm-openInNew" type="checkbox"></label>
+        <div class="gm-item">
             <label title="保留最近几次打开【www.bilibili.com/watchlater/#/list】页面时稍后再看列表的记录，以查找出这段时间内将哪些视频移除出稍后再看，用于防止误删操作">
-                <span>【列表页面】开启稍后再看移除记录（防误删）</span><input id="gm_removeHistory" type="checkbox"></label>
-            <div class="gm_subitem" title="范围：${rhsMin}~${rhsMax}。请不要设置过大的数值，否则会带来较大的开销。而且移除记录并非按移除时间排序，设置过大的历史范围反而会给误删视频的定位造成麻烦。该项修改后，会立即对过时记录进行清理，重新修改为原来的值无法还原被清除的记录！">
-                <span>根据最近多少次列表页面数据生成</span><input id="gm_removeHistorySaves" type="text"></div>
+                <span>【列表页面】开启稍后再看移除记录（防误删）</span><input id="gm-removeHistory" type="checkbox"></label>
+            <div class="gm-subitem" title="范围：${rhsMin}~${rhsMax}。请不要设置过大的数值，否则会带来较大的开销。而且移除记录并非按移除时间排序，设置过大的历史范围反而会给误删视频的定位造成麻烦。该项修改后，会立即对过时记录进行清理，重新修改为原来的值无法还原被清除的记录！">
+                <span>根据最近多少次列表页面数据生成</span><input id="gm-removeHistorySaves" type="text"></div>
         </div>
-        <label class="gm_item" title="用户设置完成后，某些选项需重新加载页面以生效，是否立即重新加载页面">
-            <span>【用户设置】设置完成后重新加载页面</span><input id="gm_reloadAfterSetting" type="checkbox"></label>
+        <label class="gm-item" title="用户设置完成后，某些选项需重新加载页面以生效，是否立即重新加载页面">
+            <span>【用户设置】设置完成后重新加载页面</span><input id="gm-reloadAfterSetting" type="checkbox"></label>
     </div>
-    <div class="gm_bottom">
-        <button id="gm_save">保存</button><button id="gm_cancel">取消</button>
+    <div class="gm-bottom">
+        <button id="gm-save">保存</button><button id="gm-cancel">取消</button>
     </div>
-    <div id="gm_reset" title="重置脚本设置及内部数据，也许能解决脚本运行错误的问题。无法解决请联系脚本作者：${GM_info.script.supportURL}">重置脚本数据</div>
+    <div id="gm-reset" title="重置脚本设置及内部数据，也许能解决脚本运行错误的问题。无法解决请联系脚本作者：${GM_info.script.supportURL}">重置脚本数据</div>
 </div>
-<div class="gm_shadow"></div>
+<div class="gm-shadow"></div>
 `
-        var el_reset = el_setting.querySelector('#gm_reset')
+        var el_reset = el_setting.querySelector('#gm-reset')
         el_reset.onclick = resetScript
 
-        var el_headerButton = el_setting.querySelector('#gm_headerButton')
-        var el_headerButtonOperation = el_setting.querySelector('#gm_headerButtonOperation')
-        var el_videoButton = el_setting.querySelector('#gm_videoButton')
-        var el_redirect = el_setting.querySelector('#gm_redirect')
-        var el_openInNew = el_setting.querySelector('#gm_openInNew')
-        var el_removeHistory = el_setting.querySelector('#gm_removeHistory')
-        var el_removeHistorySaves = el_setting.querySelector('#gm_removeHistorySaves')
-        var el_reloadAfterSetting = el_setting.querySelector('#gm_reloadAfterSetting')
+        var el_headerButton = el_setting.querySelector('#gm-headerButton')
+        var el_headerButtonOperation = el_setting.querySelector('#gm-headerButtonOperation')
+        var el_videoButton = el_setting.querySelector('#gm-videoButton')
+        var el_redirect = el_setting.querySelector('#gm-redirect')
+        var el_openInNew = el_setting.querySelector('#gm-openInNew')
+        var el_removeHistory = el_setting.querySelector('#gm-removeHistory')
+        var el_removeHistorySaves = el_setting.querySelector('#gm-removeHistorySaves')
+        var el_reloadAfterSetting = el_setting.querySelector('#gm-reloadAfterSetting')
 
         el_headerButton.onchange = function() {
           var parent = el_headerButtonOperation.parentElement
@@ -488,9 +487,9 @@
           }
         }
 
-        var el_save = el_setting.querySelector('#gm_save')
-        var el_cancel = el_setting.querySelector('#gm_cancel')
-        var el_shadow = el_setting.querySelector('.gm_shadow')
+        var el_save = el_setting.querySelector('#gm-save')
+        var el_cancel = el_setting.querySelector('#gm-cancel')
+        var el_shadow = el_setting.querySelector('.gm-shadow')
         el_save.onclick = () => {
           headerButton = el_headerButton.checked
           GM_setValue('gm395456_headerButton', headerButton)
@@ -581,24 +580,24 @@
       if (!el_history) {
         el_history = el_gm395456.appendChild(document.createElement('div'))
         menus.history.el = el_history
-        el_history.className = 'gm_history'
+        el_history.className = 'gm-history'
         el_history.innerHTML = `
-<div class="gm_history_page">
-    <div class="gm_title">稍后再看移除记录</div>
-    <div class="gm_comment">
-        <div>根据最近<span id="gm_save_times">X</span>次打开列表页面时获取到的<span id="gm_record_num">X</span>条记录生成，共筛选出<span id="gm_remove_num">X</span>条移除记录。排序由首次加入到稍后再看的顺序决定，与移除出稍后再看的时间无关。如果记录太多难以定位被误删的视频，请在下方设置减少最大搜寻次数；如果第一次进入时处理时间过长，请设置较小的历史范围。鼠标移动到内容区域可向下滚动翻页，点击对话框以外的位置退出。</div>
-        <div style="text-align:right;font-weight:bold;margin-right:1em" title="最大搜寻次数，以便于定位被误删的视频。按下回车键或输入框失去焦点时刷新数据。">最大搜寻次数：<input type="text" id="gm_search_times" value="${removeHistoryData.maxSize}"></div>
+<div class="gm-history-page">
+    <div class="gm-title">稍后再看移除记录</div>
+    <div class="gm-comment">
+        <div>根据最近<span id="gm-save-times">X</span>次打开列表页面时获取到的<span id="gm-record-num">X</span>条记录生成，共筛选出<span id="gm-remove-num">X</span>条移除记录。排序由首次加入到稍后再看的顺序决定，与移除出稍后再看的时间无关。如果记录太多难以定位被误删的视频，请在下方设置减少最大搜寻次数；如果第一次进入时处理时间过长，请设置较小的历史范围。鼠标移动到内容区域可向下滚动翻页，点击对话框以外的位置退出。</div>
+        <div style="text-align:right;font-weight:bold;margin-right:1em" title="最大搜寻次数，以便于定位被误删的视频。按下回车键或输入框失去焦点时刷新数据。">最大搜寻次数：<input type="text" id="gm-search-times" value="${removeHistoryData.maxSize}"></div>
     </div>
 </div>
-<div class="gm_shadow"></div>
+<div class="gm-shadow"></div>
 `
-        var el_historyPage = el_history.querySelector('.gm_history_page')
-        var el_comment = el_history.querySelector('.gm_comment')
+        var el_historyPage = el_history.querySelector('.gm-history-page')
+        var el_comment = el_history.querySelector('.gm-comment')
         var el_content = null
-        var el_saveTimes = el_history.querySelector('#gm_save_times')
-        var el_recordNum = el_history.querySelector('#gm_record_num')
-        var el_removeNum = el_history.querySelector('#gm_remove_num')
-        var el_searchTimes = el_history.querySelector('#gm_search_times')
+        var el_saveTimes = el_history.querySelector('#gm-save-times')
+        var el_recordNum = el_history.querySelector('#gm-record-num')
+        var el_removeNum = el_history.querySelector('#gm-remove-num')
+        var el_searchTimes = el_history.querySelector('#gm-search-times')
 
         var currentSearTimes = removeHistoryData.size
         var stMax = removeHistoryData.size
@@ -649,7 +648,7 @@
             firstTime = false
           }
           el_content = el_historyPage.appendChild(document.createElement('div'))
-          el_content.className = 'gm_content'
+          el_content.className = 'gm-content'
 
           GM_xmlhttpRequest({
             method: 'GET',
@@ -698,7 +697,7 @@
         }
         menus.history.openHandler = openHandler
 
-        var el_shadow = el_history.querySelector('.gm_shadow')
+        var el_shadow = el_history.querySelector('.gm-shadow')
         el_shadow.onclick = () => {
           closeMenuItem('history')
         }
@@ -857,10 +856,10 @@
         var base = null
         if (openInNew) {
           base = document.head.appendChild(document.createElement('base'))
-          base.id = 'gm_base'
+          base.id = 'gm-base'
           base.target = '_blank'
         } else {
-          base = document.head.querySelector('base#gm_base')
+          base = document.head.querySelector('base#gm-base')
           base && base.remove()
         }
       }
