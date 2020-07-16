@@ -14,6 +14,8 @@ module.exports = {
     'GM_setValue': true,
     'GM_registerMenuCommand': true,
     'GM_xmlhttpRequest': true,
+    'GM_listValues': true,
+    'GM_deleteValue': true,
   },
   'parserOptions': {
     'ecmaVersion': 2018,

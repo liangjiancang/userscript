@@ -1,26 +1,28 @@
 // ==UserScript==
-// @id             BilibiliWatchlaterPlus@Laster2800
-// @name           B站稍后再看功能增强
-// @version        2.5.0.20200716
-// @namespace      laster2800
-// @author         Laster2800
-// @description    B站稍后再看功能增强，目前功能包括UI增强、重定向至常规播放页、稍后再看移除记录等，支持功能设置
-// @homepage       https://greasyfork.org/zh-CN/scripts/395456
-// @supportURL     https://greasyfork.org/zh-CN/scripts/395456/feedback
-// @include        *://www.bilibili.com/*
-// @include        *://message.bilibili.com/*
-// @include        *://search.bilibili.com/*
-// @include        *://space.bilibili.com/*
-// @include        *://t.bilibili.com/*
-// @include        *://account.bilibili.com/*
-// @exclude        *://message.bilibili.com/pages/*
-// @grant          GM_addStyle
-// @grant          GM_xmlhttpRequest
-// @grant          GM_registerMenuCommand
-// @grant          GM_setValue
-// @grant          GM_getValue
-// @connect        api.bilibili.com
-// @run-at         document-start
+// @id              BilibiliWatchlaterPlus@Laster2800
+// @name            B站稍后再看功能增强
+// @version         2.5.1.20200716
+// @namespace       laster2800
+// @author          Laster2800
+// @description     B站稍后再看功能增强，目前功能包括UI增强、重定向至常规播放页、稍后再看移除记录等，支持功能设置
+// @homepage        https://greasyfork.org/zh-CN/scripts/395456
+// @supportURL      https://greasyfork.org/zh-CN/scripts/395456/feedback
+// @include         *://www.bilibili.com/*
+// @include         *://message.bilibili.com/*
+// @include         *://search.bilibili.com/*
+// @include         *://space.bilibili.com/*
+// @include         *://t.bilibili.com/*
+// @include         *://account.bilibili.com/*
+// @exclude         *://message.bilibili.com/pages/*
+// @grant           GM_addStyle
+// @grant           GM_xmlhttpRequest
+// @grant           GM_registerMenuCommand
+// @grant           GM_setValue
+// @grant           GM_getValue
+// @grant           GM_deleteValue
+// @grant           GM_listValues
+// @connect         api.bilibili.com
+// @run-at          document-start
 // ==/UserScript==
 
 (function() {
@@ -814,6 +816,11 @@
     function resetScript() {
       var result = confirm('是否要重置脚本数据？')
       if (result) {
+        var gmKeys = GM_listValues()
+        for (var gmKey of gmKeys) {
+          GM_deleteValue(gmKey)
+        }
+
         init = 0
         GM_setValue('gm395456', init)
         location.reload()
