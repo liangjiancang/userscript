@@ -4,7 +4,7 @@
 // @version        4.0.0.20200716
 // @namespace      laster2800
 // @author         Laster2800
-// @description    B站视频播放页（正常模式、稍后再看模式）、番剧播放页、直播间添加获取封面的按钮
+// @description    B站视频播放页（普通模式、稍后再看模式）、番剧播放页、直播间添加获取封面的按钮
 // @include        *://www.bilibili.com/video/*
 // @include        *://www.bilibili.com/bangumi/play/*
 // @include        *://live.bilibili.com/*
