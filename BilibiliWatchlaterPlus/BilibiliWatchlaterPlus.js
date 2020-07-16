@@ -1,7 +1,7 @@
 // ==UserScript==
 // @id             BilibiliWatchlaterPlus@Laster2800
 // @name           B站稍后再看功能增强
-// @version        2.4.0.20200716
+// @version        2.5.0.20200716
 // @namespace      laster2800
 // @author         Laster2800
 // @description    B站稍后再看功能增强，目前功能包括UI增强、重定向至常规播放页、稍后再看移除记录等，支持功能设置
@@ -24,56 +24,15 @@
 // ==/UserScript==
 
 (function() {
-  // 顶栏入口的默认行为
-  var defaultHeaderButtonOperation = 'op_openListInNew'
-  // 移除历史的默认保存次数
-  var defaultRemoveHistorySaves = 8
-  // 移除历史保存次数的下限和上限
-  var rhsMin = 1
-  var rhsMax = 64
-
-  // 用户配置读取
+  // document-start 级用户配置读取
   var init = GM_getValue('gm395456')
-  var configUpdate = 20200715
-  // 默认值
-  var headerButton = true
-  var headerButtonOperation = defaultHeaderButtonOperation
-  var videoButton = true
+  var configUpdate = 20200716
+
   var redirect = false
-  var openInNew = false
-  var removeHistory = true
-  var removeHistorySaves = defaultRemoveHistorySaves
-  var removeHistoryData = null
-  var reloadAfterSetting = true
-  if (init >= configUpdate) {
-    // 一般情况下，读取用户配置；如果配置出错，则沿用默认值
-    headerButton = validate(GM_getValue('gm395456_headerButton'), 'boolean', headerButton)
-    headerButtonOperation = validate(GM_getValue('gm395456_headerButtonOperation'), 'string', headerButtonOperation)
-    videoButton = validate(GM_getValue('gm395456_videoButton'), 'boolean', videoButton)
-    redirect = validate(GM_getValue('gm395456_redirect'), 'boolean', redirect)
-    openInNew = validate(GM_getValue('gm395456_openInNew'), 'boolean', openInNew)
-    removeHistory = validate(GM_getValue('gm395456_removeHistory'), 'boolean', removeHistory)
-    removeHistorySaves = validate(GM_getValue('gm395456_removeHistorySaves'), 'number', removeHistorySaves)
-    removeHistoryData = validate(GM_getValue('gm395456_removeHistoryData'), 'object', null)
-    if (!removeHistoryData) {
-      removeHistoryData = new PushQueue(defaultRemoveHistorySaves, rhsMax)
-    } else {
-      Object.setPrototypeOf(removeHistoryData, PushQueue.prototype) // 还原类型信息
-    }
-    reloadAfterSetting = validate(GM_getValue('gm395456_reloadAfterSetting'), 'boolean', reloadAfterSetting)
+  if (init > 0) {
+    redirect = GM_getValue('gm395456_redirect')
   } else {
-    // 初始化
-    init = false
-    removeHistoryData = new PushQueue(defaultRemoveHistorySaves, rhsMax)
-    GM_setValue('gm395456_headerButton', headerButton)
-    GM_setValue('gm395456_headerButtonOperation', headerButtonOperation)
-    GM_setValue('gm395456_videoButton', videoButton)
     GM_setValue('gm395456_redirect', redirect)
-    GM_setValue('gm395456_openInNew', openInNew)
-    GM_setValue('gm395456_removeHistory', removeHistory)
-    GM_setValue('gm395456_removeHistorySaves', removeHistorySaves)
-    GM_setValue('gm395456_removeHistoryData', removeHistoryData)
-    GM_setValue('gm395456_reloadAfterSetting', reloadAfterSetting)
   }
 
   // 重定向，document-start 就执行，尽可能快地将原页面掩盖过去
@@ -81,7 +40,7 @@
     window.stop() // 停止原页面的加载
     GM_xmlhttpRequest({
       method: 'GET',
-      url: `https://api.bilibili.com/x/v2/history/toview/web?jsonp=jsonp`,
+      url: 'https://api.bilibili.com/x/v2/history/toview/web?jsonp=jsonp',
       onload: function(response) {
         if (response && response.responseText) {
           try {
@@ -90,8 +49,8 @@
               part = parseInt(location.href.match(/(?<=\/watchlater\/p)\d+(?=\/?)/)[0])
             } // 如果匹配不上，就是以 watchlater/ 直接结尾，等同于 watchlater/p1
             var json = JSON.parse(response.responseText)
-            var watchList = json.data.list
-            location.replace('https://www.bilibili.com/video/' + watchList[part - 1].bvid)
+            var watchlaterList = json.data.list
+            location.replace('https://www.bilibili.com/video/' + watchlaterList[part - 1].bvid)
           } catch (e) {
             var errorInfo = `重定向错误，重置脚本数据也许能解决问题。无法解决请联系脚本作者：${GM_info.script.supportURL}`
             console.error(errorInfo)
@@ -113,6 +72,97 @@
 
   // 脚本的其他部分推迟至 DOMContentLoaded 执行
   document.addEventListener('DOMContentLoaded', () => {
+    // 常用 URL
+    var URL = {
+      api_queryWatchlaterList: 'https://api.bilibili.com/x/v2/history/toview/web?jsonp=jsonp',
+      page_watchlaterList: 'https://www.bilibili.com/watchlater/#/list',
+      page_videoNormalMode: 'https://www.bilibili.com/video',
+      page_videoWatchlaterMode: 'https://www.bilibili.com/medialist/play/watchlater',
+      page_watchlaterPlayAll: 'https://www.bilibili.com/medialist/play/watchlater/p1',
+      noop: 'javascript:void(0)',
+    }
+
+    // 顶栏入口的默认行为
+    var defaultHeaderButtonOpL = 'op_openListInNew'
+    var defaultHeaderButtonOpR = 'op_openUserSetting'
+    // 移除记录使用的历史数据次数设置
+    var defaultRemoveHistorySaves = 16
+    var rhsMin = 1
+    var rhsMax = 64
+    // 移除记录默认历史回溯深度
+    var defaultRemoveHistorySearchTimes = 8
+
+    // 用户配置读取
+    // 默认值
+    var headerButton = true
+    var headerButtonOpL = defaultHeaderButtonOpL
+    var headerButtonOpR = defaultHeaderButtonOpR
+    var videoButton = true
+    var openInNew = false
+    var removeHistory = true
+    var removeHistorySaves = defaultRemoveHistorySaves
+    var removeHistorySearchTimes = defaultRemoveHistorySearchTimes
+    var removeHistoryData = null
+    var reloadAfterSetting = true
+
+    if (init > 0) {
+      // 一般情况下，读取用户配置；如果配置出错，则沿用默认值，并将默认值写入配置中
+      var gmValidate = (gmKey, type, defaultValue, writeDefault = true) => {
+        var value = GM_getValue(gmKey)
+        if (typeof value == type) {
+          return value
+        } else {
+          if (writeDefault) {
+            GM_setValue(gmKey, defaultValue)
+          }
+          return defaultValue
+        }
+      }
+
+      // document-start 级配置的校验
+      gmValidate('gm395456_redirect', 'boolean', redirect)
+      // 对配置进行校验
+      headerButton = gmValidate('gm395456_headerButton', 'boolean', headerButton)
+      headerButtonOpL = gmValidate('gm395456_headerButtonOpL', 'string', headerButtonOpL)
+      headerButtonOpR = gmValidate('gm395456_headerButtonOpR', 'string', headerButtonOpR)
+      videoButton = gmValidate('gm395456_videoButton', 'boolean', videoButton)
+      openInNew = gmValidate('gm395456_openInNew', 'boolean', openInNew)
+      removeHistory = gmValidate('gm395456_removeHistory', 'boolean', removeHistory)
+      removeHistorySaves = gmValidate('gm395456_removeHistorySaves', 'number', removeHistorySaves)
+      removeHistorySearchTimes = gmValidate('gm395456_removeHistorySearchTimes', 'number', removeHistorySearchTimes, false)
+      if (removeHistorySearchTimes > removeHistorySaves) {
+        removeHistorySearchTimes = removeHistorySaves
+        GM_setValue('gm395456_removeHistorySearchTimes', removeHistorySearchTimes)
+      }
+      removeHistoryData = gmValidate('gm395456_removeHistoryData', 'object', null, false)
+      if (!removeHistoryData) {
+        removeHistoryData = new PushQueue(defaultRemoveHistorySaves, rhsMax)
+        GM_setValue('gm395456_removeHistoryData', removeHistoryData)
+      } else {
+        Object.setPrototypeOf(removeHistoryData, PushQueue.prototype) // 还原类型信息
+      }
+      reloadAfterSetting = gmValidate('gm395456_reloadAfterSetting', 'boolean', reloadAfterSetting)
+
+      // 配置版本落后，如果更新后有必须执行的任务写在这里
+      // if (init < configUpdate) {
+      //   // init = false // 是否强制进行用户设置
+      // }
+    } else {
+      // 用户强制初始化，或者第一次安装脚本
+      init = false
+      removeHistoryData = new PushQueue(defaultRemoveHistorySaves, rhsMax)
+      GM_setValue('gm395456_headerButton', headerButton)
+      GM_setValue('gm395456_headerButtonOpL', headerButtonOpL)
+      GM_setValue('gm395456_headerButtonOpR', headerButtonOpR)
+      GM_setValue('gm395456_videoButton', videoButton)
+      GM_setValue('gm395456_openInNew', openInNew)
+      GM_setValue('gm395456_removeHistory', removeHistory)
+      GM_setValue('gm395456_removeHistorySaves', removeHistorySaves)
+      GM_setValue('gm395456_removeHistorySearchTimes', removeHistorySearchTimes)
+      GM_setValue('gm395456_removeHistoryData', removeHistoryData)
+      GM_setValue('gm395456_reloadAfterSetting', reloadAfterSetting)
+    }
+
     var fadeTime = 400
     var textFadeTime = 100
     GM_addStyle(`
@@ -132,7 +182,8 @@
     background-color: #ffffff;
     border-radius: 10px;
     z-index: 65535;
-    min-width: 38em;
+    min-width: 48em;
+    padding: 0.4em;
 }
 #gm395456 .gm-setting #gm-maintitle {
     cursor: pointer;
@@ -173,6 +224,7 @@
     width: 2em;
     text-align: right;
     padding: 0 0.2em;
+    margin-right: -0.2em;
 }
 #gm395456 .gm-setting select {
     border-width: 0 0 1px 0;
@@ -279,7 +331,8 @@
 }
 
 #gm395456 [disabled],
-#gm395456 [disabled] input {
+#gm395456 [disabled] input,
+#gm395456 [disabled] select {
   cursor: not-allowed;
 }
         `)
@@ -349,14 +402,14 @@
         // 将此时的稍后再看列表保存起来
         GM_xmlhttpRequest({
           method: 'GET',
-          url: `https://api.bilibili.com/x/v2/history/toview/web?jsonp=jsonp`,
+          url: URL.api_queryWatchlaterList,
           onload: function(response) {
             if (response && response.responseText) {
               var current = []
               try {
                 var json = JSON.parse(response.responseText)
-                var watchList = json.data.list
-                for (var e of watchList) {
+                var watchlaterList = json.data.list
+                for (var e of watchlaterList) {
                   current.push({
                     title: e.title,
                     bvid: e.bvid
@@ -402,18 +455,10 @@
         <div class="gm-item">
             <label title="在顶栏“动态”和“收藏”之间加入稍后再看入口，鼠标移至上方时弹出列表菜单，支持点击功能设置">
                 <span>【所有页面】在顶栏中加入稍后再看入口</span><input id="gm-headerButton" type="checkbox"></label>
-            <label class="gm-subitem" title="选择点击入口后执行的操作">
-                <span>点击入口时</span>
-                <select id="gm-headerButtonOperation">
-                    <option value="op_openListInCurrent">在当前页面打开列表页面</option>
-                    <option value="op_openListInNew">在新标签页打开列表页面</option>
-                    <option value="op_playAllInCurrent">在当前页面播放全部</option>
-                    <option value="op_playAllInNew">在新标签页播放全部</option>
-                    <option value="op_openUserSetting">打开用户设置</option>
-                    <option value="op_openRemoveHistory">打开稍后再看移除记录</option>
-                    <option value="op_noOperation">不执行操作</option>
-                </select>
-            </label>
+            <label class="gm-subitem" title="选择左键点击入口后执行的操作">
+                <span>在入口上点击鼠标左键时</span><select id="gm-headerButtonOpL"></select></label>
+            <label class="gm-subitem" title="选择右键点击入口后执行的操作">
+                <span>在入口上点击鼠标右键时</span><select id="gm-headerButtonOpR"></select></label>
         </div>
         <label class="gm-item" title="在常规播放页面中加入能将视频快速切换添加或移除出稍后再看列表的按钮">
             <span>【播放页面】加入快速切换视频稍后再看状态的按钮</span><input id="gm-videoButton" type="checkbox"></label>
@@ -422,10 +467,12 @@
         <label class="gm-item" title="在【www.bilibili.com/watchlater/#/list】页面点击时，是否在新标签页打开视频">
             <span>【列表页面】在新标签页中打开视频</span><input id="gm-openInNew" type="checkbox"></label>
         <div class="gm-item">
-            <label title="保留最近几次打开【www.bilibili.com/watchlater/#/list】页面时稍后再看列表的记录，以查找出这段时间内将哪些视频移除出稍后再看，用于防止误删操作">
+            <label title="保留最近几次打开【www.bilibili.com/watchlater/#/list】页面时稍后再看列表的记录，以查找出这段时间内将哪些视频移除出稍后再看，用于防止误删操作。关闭该选项后，会将内部历史数据清除！">
                 <span>【列表页面】开启稍后再看移除记录（防误删）</span><input id="gm-removeHistory" type="checkbox"></label>
-            <div class="gm-subitem" title="范围：${rhsMin}~${rhsMax}。请不要设置过大的数值，否则会带来较大的开销。而且移除记录并非按移除时间排序，设置过大的历史范围反而会给误删视频的定位造成麻烦。该项修改后，会立即对过时记录进行清理，重新修改为原来的值无法还原被清除的记录！">
-                <span>根据最近多少次列表页面数据生成</span><input id="gm-removeHistorySaves" type="text"></div>
+            <div class="gm-subitem" title="请不要设置过大的数值，否则会带来较大的开销。该项修改后，会立即对过时记录进行清理，重新修改为原来的值无法还原被清除的记录，设置为比原来小的值需慎重！范围：${rhsMin} ~ ${rhsMax}。">
+                <span>保存最近多少次列表页面数据用于生成移除记录</span><input id="gm-removeHistorySaves" type="text"></div>
+            <div class="gm-subitem" title="搜寻时在最近多少次列表页面数据中查找，设置较小的值能较好地定位最近移除的视频。不能大于最近列表页面数据保存次数。">
+                <span>默认历史回溯深度</span><input id="gm-removeHistorySearchTimes" type="text"></div>
         </div>
         <label class="gm-item" title="用户设置完成后，某些选项需重新加载页面以生效，是否立即重新加载页面">
             <span>【用户设置】设置完成后重新加载页面</span><input id="gm-reloadAfterSetting" type="checkbox"></label>
@@ -441,31 +488,42 @@
         el_reset.onclick = resetScript
 
         var el_headerButton = el_setting.querySelector('#gm-headerButton')
-        var el_headerButtonOperation = el_setting.querySelector('#gm-headerButtonOperation')
+        var el_headerButtonOpL = el_setting.querySelector('#gm-headerButtonOpL')
+        var el_headerButtonOpR = el_setting.querySelector('#gm-headerButtonOpR')
         var el_videoButton = el_setting.querySelector('#gm-videoButton')
         var el_redirect = el_setting.querySelector('#gm-redirect')
         var el_openInNew = el_setting.querySelector('#gm-openInNew')
         var el_removeHistory = el_setting.querySelector('#gm-removeHistory')
         var el_removeHistorySaves = el_setting.querySelector('#gm-removeHistorySaves')
+        var el_removeHistorySearchTimes = el_setting.querySelector('#gm-removeHistorySearchTimes')
         var el_reloadAfterSetting = el_setting.querySelector('#gm-reloadAfterSetting')
 
-        el_headerButton.onchange = function() {
-          var parent = el_headerButtonOperation.parentElement
-          if (this.checked) {
-            parent.removeAttribute('disabled')
-          } else {
-            parent.setAttribute('disabled', 'disabled')
+        el_headerButtonOpL.innerHTML = el_headerButtonOpR.innerHTML = `
+<option value="op_openListInCurrent">在当前页面打开列表页面</option>
+<option value="op_openListInNew">在新标签页打开列表页面</option>
+<option value="op_playAllInCurrent">在当前页面播放全部</option>
+<option value="op_playAllInNew">在新标签页播放全部</option>
+<option value="op_openUserSetting">打开用户设置</option>
+<option value="op_openRemoveHistory">打开稍后再看移除记录</option>
+<option value="op_noOperation">不执行操作</option>
+        `
+
+        var subitemChange = (item, subs) => {
+          for (var el of subs) {
+            var parent = el.parentElement
+            if (item.checked) {
+              parent.removeAttribute('disabled')
+            } else {
+              parent.setAttribute('disabled', 'disabled')
+            }
+            el.disabled = !item.checked
           }
-          el_headerButtonOperation.disabled = !this.checked
+        }
+        el_headerButton.onchange = function() {
+          subitemChange(this, [el_headerButtonOpL, el_headerButtonOpR])
         }
         el_removeHistory.onchange = function() {
-          var parent = el_removeHistorySaves.parentElement
-          if (this.checked) {
-            parent.removeAttribute('disabled')
-          } else {
-            parent.setAttribute('disabled', 'disabled')
-          }
-          el_removeHistorySaves.disabled = !this.checked
+          subitemChange(this, [el_removeHistorySaves, el_removeHistorySearchTimes])
         }
         el_removeHistorySaves.oninput = function() {
           var v0 = this.value.replace(/[^\d]/g, '')
@@ -483,7 +541,31 @@
         }
         el_removeHistorySaves.onblur = function() {
           if (this.value === '') {
-            this.value = defaultRemoveHistorySaves
+            this.value = el_removeHistorySearchTimes.value
+          }
+          if (parseInt(el_removeHistorySearchTimes.value) > parseInt(this.value)) {
+            el_removeHistorySearchTimes.value = this.value
+          }
+        }
+        el_removeHistorySearchTimes.oninput = function() {
+          var v0 = this.value.replace(/[^\d]/g, '')
+          if (v0 === '') {
+            this.value = ''
+          } else {
+            var value = parseInt(v0)
+            if (value > rhsMax) {
+              value = rhsMax
+            } else if (value < rhsMin) {
+              value = rhsMin
+            }
+            this.value = value
+          }
+        }
+        el_removeHistorySearchTimes.onblur = function() {
+          if (this.value === '') {
+            this.value = el_removeHistorySaves.value
+          } else if (parseInt(el_removeHistorySaves.value) < parseInt(this.value)) {
+            el_removeHistorySaves.value = this.value
           }
         }
 
@@ -493,8 +575,10 @@
         el_save.onclick = () => {
           headerButton = el_headerButton.checked
           GM_setValue('gm395456_headerButton', headerButton)
-          headerButtonOperation = el_headerButtonOperation.value
-          GM_setValue('gm395456_headerButtonOperation', headerButtonOperation)
+          headerButtonOpL = el_headerButtonOpL.value
+          GM_setValue('gm395456_headerButtonOpL', headerButtonOpL)
+          headerButtonOpR = el_headerButtonOpR.value
+          GM_setValue('gm395456_headerButtonOpR', headerButtonOpR)
 
           videoButton = el_videoButton.checked
           GM_setValue('gm395456_videoButton', videoButton)
@@ -521,6 +605,12 @@
               removeHistoryData.setMaxSize(rhsV)
               GM_setValue('gm395456_removeHistoryData', removeHistoryData)
             }
+            var rhstV = parseInt(el_removeHistorySearchTimes.value)
+            rhstV = isNaN(rhstV) ? removeHistorySaves : rhstV
+            if (rhstV != removeHistorySearchTimes) {
+              removeHistorySearchTimes = rhstV
+              GM_setValue('gm395456_removeHistorySearchTimes', removeHistorySearchTimes)
+            }
           } else if (resetMaxSize) {
             removeHistoryData.setMaxSize(0)
             GM_setValue('gm395456_removeHistoryData', removeHistoryData)
@@ -546,13 +636,15 @@
         }
         var openHandler = () => {
           el_headerButton.checked = headerButton
-          el_headerButtonOperation.value = headerButtonOperation
+          el_headerButtonOpL.value = headerButtonOpL
+          el_headerButtonOpR.value = headerButtonOpR
           el_headerButton.onchange()
           el_videoButton.checked = videoButton
           el_redirect.checked = redirect
           el_openInNew.checked = openInNew
           el_removeHistory.checked = removeHistory
           el_removeHistorySaves.value = isNaN(removeHistorySaves) ? defaultRemoveHistorySaves : removeHistorySaves
+          el_removeHistorySearchTimes.value = isNaN(removeHistorySearchTimes) ? el_removeHistorySaves.value : removeHistorySearchTimes
           el_removeHistory.onchange()
           el_reloadAfterSetting.checked = reloadAfterSetting
         }
@@ -560,7 +652,7 @@
         el_cancel.onclick = () => {
           closeMenuItem('setting')
         }
-        el_shadow.onclick = function(e) {
+        el_shadow.onclick = function() {
           if (!this.getAttribute('disabled')) {
             closeMenuItem('setting')
           }
@@ -577,6 +669,7 @@
 
     // 打开移除记录
     function openRemoveHistory() {
+      var el_searchTimes = null
       if (!el_history) {
         el_history = el_gm395456.appendChild(document.createElement('div'))
         menus.history.el = el_history
@@ -585,8 +678,8 @@
 <div class="gm-history-page">
     <div class="gm-title">稍后再看移除记录</div>
     <div class="gm-comment">
-        <div>根据最近<span id="gm-save-times">X</span>次打开列表页面时获取到的<span id="gm-record-num">X</span>条记录生成，共筛选出<span id="gm-remove-num">X</span>条移除记录。排序由首次加入到稍后再看的顺序决定，与移除出稍后再看的时间无关。如果记录太多难以定位被误删的视频，请在下方设置减少最大搜寻次数；如果第一次进入时处理时间过长，请设置较小的历史范围。鼠标移动到内容区域可向下滚动翻页，点击对话框以外的位置退出。</div>
-        <div style="text-align:right;font-weight:bold;margin-right:1em" title="最大搜寻次数，以便于定位被误删的视频。按下回车键或输入框失去焦点时刷新数据。">最大搜寻次数：<input type="text" id="gm-search-times" value="${removeHistoryData.maxSize}"></div>
+        <div>根据最近<span id="gm-save-times">X</span>次打开列表页面时获取到的<span id="gm-record-num">X</span>条记录生成，共筛选出<span id="gm-remove-num">X</span>条移除记录。排序由首次加入到稍后再看的顺序决定，与移除出稍后再看的时间无关。如果记录太多难以定位被误删的视频，请在下方设置减少历史回溯深度。鼠标移动到内容区域可向下滚动翻页，点击对话框以外的位置退出。</div>
+        <div style="text-align:right;font-weight:bold;margin-right:1em" title="搜寻时在最近多少次列表页面数据中查找，设置较小的值能较好地定位最近移除的视频。按下回车键或输入框失去焦点时刷新数据。">历史回溯深度：<input type="text" id="gm-search-times" value="X"></div>
     </div>
 </div>
 <div class="gm-shadow"></div>
@@ -597,9 +690,12 @@
         var el_saveTimes = el_history.querySelector('#gm-save-times')
         var el_recordNum = el_history.querySelector('#gm-record-num')
         var el_removeNum = el_history.querySelector('#gm-remove-num')
-        var el_searchTimes = el_history.querySelector('#gm-search-times')
 
-        var currentSearTimes = removeHistoryData.size
+        // 使用 el_searchTimes.current 代替本地变量记录数据，可以保证任何情况下闭包中都能获取到正确数据
+        el_searchTimes = el_history.querySelector('#gm-search-times')
+        el_searchTimes.current = removeHistorySearchTimes < removeHistoryData.size ? removeHistorySearchTimes : removeHistoryData.size
+        el_searchTimes.value = el_searchTimes.current
+
         var stMax = removeHistoryData.size
         var stMin = 1
         el_searchTimes.oninput = function() {
@@ -620,8 +716,8 @@
           if (this.value === '') {
             this.value = stMax
           }
-          if (this.value != currentSearTimes) {
-            currentSearTimes = this.value
+          if (this.value != el_searchTimes.current) {
+            el_searchTimes.current = this.value
             menus.history.openHandler()
           }
         }
@@ -645,25 +741,24 @@
             setTimeout(() => {
               oldContent.remove()
             }, textFadeTime)
-            firstTime = false
           }
           el_content = el_historyPage.appendChild(document.createElement('div'))
           el_content.className = 'gm-content'
 
           GM_xmlhttpRequest({
             method: 'GET',
-            url: `https://api.bilibili.com/x/v2/history/toview/web?jsonp=jsonp`,
+            url: URL.api_queryWatchlaterList,
             onload: function(response) {
               if (response && response.responseText) {
                 try {
                   var bvid = []
                   var json = JSON.parse(response.responseText)
-                  var watchList = json.data.list
-                  for (var e of watchList) {
+                  var watchlaterList = json.data.list
+                  for (var e of watchlaterList) {
                     bvid.push(e.bvid)
                   }
                   var map = new Map()
-                  var removeData = removeHistoryData.toArray(currentSearTimes)
+                  var removeData = removeHistoryData.toArray(el_searchTimes.current)
                   el_saveTimes.innerText = removeData.length
                   for (var i = removeData.length - 1; i >= 0; i--) { // 后面的数据较旧，从后往前遍历
                     for (var record of removeData[i]) {
@@ -676,18 +771,25 @@
                   }
                   var result = []
                   for (var rm of map.values()) {
-                    result.push(`<span>${rm.title}</span><br><a href="https://www.bilibili.com/video/${rm.bvid}" target="_blank">${rm.bvid}</a>`)
+                    result.push(`<span>${rm.title}</span><br><a href="${URL.page_videoNormalMode}/${rm.bvid}" target="_blank">${rm.bvid}</a>`)
                   }
                   el_removeNum.innerText = result.length
 
                   setContentTop() // 在设置内容前设置好 top，这样看不出修改的痕迹
-                  el_content.innerHTML = result.join('<br><br>')
+                  if (result.length > 0) {
+                    el_content.innerHTML = result.join('<br><br>')
+                  } else {
+                    el_content.innerText = `在最近 ${el_searchTimes.current} 次列表页面数据中没有找到被移除的记录，请尝试增大历史回溯深度`
+                    el_content.style.color = 'gray'
+                  }
                   el_content.style.opacity = '1'
                 } catch (e) {
                   var errorInfo = `网络连接错误，重置脚本数据也许能解决问题。无法解决请联系脚本作者：${GM_info.script.supportURL}`
                   setContentTop() // 在设置内容前设置好 top，这样看不出修改的痕迹
                   el_content.innerHTML = errorInfo
                   el_content.style.opacity = '1'
+                  el_content.style.color = 'gray'
+
                   console.error(errorInfo)
                   console.error(e)
                 }
@@ -701,6 +803,10 @@
         el_shadow.onclick = () => {
           closeMenuItem('history')
         }
+      } else {
+        el_searchTimes = el_history.querySelector('#gm-search-times')
+        el_searchTimes.current = removeHistorySearchTimes < removeHistoryData.size ? removeHistorySearchTimes : removeHistoryData.size
+        el_searchTimes.value = el_searchTimes.current
       }
       openMenuItem('history')
     }
@@ -719,40 +825,66 @@
         var collect = header.children[4]
         var watchlater = header.children[6].cloneNode(true)
         var link = watchlater.firstChild
-        switch (headerButtonOperation) {
-          case 'op_openListInCurrent':
-            link.href = 'https://www.bilibili.com/watchlater/#/list'
-            link.target = '_self'
-            break
-          case 'op_openListInNew':
-            link.href = 'https://www.bilibili.com/watchlater/#/list'
-            link.target = '_blank'
-            break
-          case 'op_playAllInCurrent':
-            link.href = 'https://www.bilibili.com/medialist/play/watchlater/p1'
-            link.target = '_self'
-            break
-          case 'op_playAllInNew':
-            link.href = 'https://www.bilibili.com/medialist/play/watchlater/p1'
-            link.target = '_blank'
-            break
-          case 'op_openUserSetting':
-            link.href = 'javascript:void(0)'
-            link.target = '_self'
-            link.onclick = () => openUserSetting()
-            break
-          case 'op_openRemoveHistory':
-            link.href = 'javascript:void(0)'
-            link.target = '_self'
-            link.onclick = () => openRemoveHistory()
-          case 'noOperation':
-          default:
-            link.href = 'javascript:void(0)'
-            link.target = '_self'
-        }
         var text = link.firstChild
         text.innerText = '稍后再看'
         header.insertBefore(watchlater, collect)
+
+        var getHrefAndTarget = op => {
+          var href = ''
+          if (/openList/i.test(op)) {
+            href = URL.page_watchlaterList
+          } else if (/playAll/.test(op)) {
+            href = URL.page_watchlaterPlayAll
+          } else {
+            href = URL.noop
+          }
+
+          var target = ''
+          if (/inCurrent/i.test(op)) {
+            target = '_self'
+          } else if (/inNew/i.test(op)) {
+            target = '_blank'
+          } else {
+            target = '_self'
+          }
+
+          return { href, target }
+        }
+
+        // 鼠标左键点击
+        // 使用 href 和 target 的方式设置，保留浏览器中键强制新标签页打开的特性
+        var left = getHrefAndTarget(headerButtonOpL)
+        link.href = left.href
+        link.target = left.target
+        switch (headerButtonOpL) {
+          case 'op_openUserSetting':
+            link.onclick = () => openUserSetting()
+            break
+          case 'op_openRemoveHistory':
+            link.onclick = () => openRemoveHistory()
+            break
+        }
+        // 鼠标右键点击
+        watchlater.oncontextmenu = function(e) {
+          if (headerButtonOpR != 'op_noOperation') {
+            e && e.preventDefault && e.preventDefault()
+          }
+          switch (headerButtonOpR) {
+            case 'op_openListInCurrent':
+            case 'op_openListInNew':
+            case 'op_playAllInCurrent':
+            case 'op_playAllInNew':
+              var right = getHrefAndTarget(headerButtonOpR)
+              window.open(right.href, right.target)
+              break
+            case 'op_openUserSetting':
+              openUserSetting()
+              break
+            case 'op_openRemoveHistory':
+              openRemoveHistory()
+              break
+          }
+        }
 
         // 鼠标移动到稍后再看入口上时，以 Tooltip 形式显示稍后再看列表
         var watchlaterPanelSelector = '[role=tooltip][aria-hidden=false] .tabs-panel [title=稍后再看]'
@@ -828,14 +960,14 @@
       // oVue.added 第一次取到的值总是 false，从页面无法获取到该视频是否已经在稍后再看列表中，需要使用API查询
       GM_xmlhttpRequest({
         method: 'GET',
-        url: `https://api.bilibili.com/x/v2/history/toview/web?jsonp=jsonp`,
+        url: URL.api_queryWatchlaterList,
         onload: function(response) {
           if (response && response.responseText) {
             try {
               var json = JSON.parse(response.responseText)
-              var watchList = json.data.list
+              var watchlaterList = json.data.list
               var av = oVue.aid
-              for (var e of watchList) {
+              for (var e of watchlaterList) {
                 if (av == e.aid) {
                   oVue.added = true
                   cb.checked = true
@@ -948,7 +1080,7 @@
         ...defaultOptions,
         ...options
       }
-      if (!o.callback instanceof Function) {
+      if (!(o.callback instanceof Function)) {
         return
       }
 
@@ -1025,144 +1157,132 @@
   })
 
   /**
-   * 检验数据是否符合类型定义，符合时返回原值，不符合时返回默认值
-   * 
-   * @param {object} value 待检验数据
-   * @param {string} type 给定的数据类型
-   * @param {object} defaultValue 默认值
-   * @return {object} 符合定义时返回原值，否则返回默认值
+   * 推入队列，循环数组实现
+   *
+   * @param {number} maxSize 队列的最大长度，达到此长度后继续推入数据，将舍弃末尾处的数据
+   * @param {number} [capacity=maxSize] 循环数组的长度，不能小于 maxSize
    */
-  function validate(value, type, defaultValue) {
-    return typeof value == type ? value : defaultValue
-  }
-})()
-
-/**
- * 推入队列，循环数组实现
- *
- * @param {number} maxSize 队列的最大长度，达到此长度后继续推入数据，将舍弃末尾处的数据
- * @param {number} [capacity=maxSize] 循环数组的长度，不能小于 maxSize
- */
-function PushQueue(maxSize, capacity) {
-  this.index = 0
-  this.size = 0
-  this.maxSize = maxSize
-  if (!capacity || capacity < maxSize) {
-    capacity = maxSize
-  }
-  this.capacity = capacity
-  this.data = new Array(capacity)
-}
-/**
- * 设置推入队列的最大长度
- *
- * @param {number} maxSize 队列的最大长度，不能大于 capacity
- */
-PushQueue.prototype.setMaxSize = function(maxSize) {
-  if (maxSize > this.capacity) {
-    maxSize = this.capacity
-  } else if (maxSize < this.size) {
-    this.size = maxSize
-  }
-  this.maxSize = maxSize
-  this.gc()
-}
-/**
- * 队列是否为空
- */
-PushQueue.prototype.empty = function() {
-  return this.size == 0
-}
-/**
- * 向队列中推入数据，若队列已达到最大长度，则舍弃末尾处数据
- *
- * @param {Object} value 推入队列的数据
- */
-PushQueue.prototype.push = function(value) {
-  this.data[this.index] = value
-  this.index += 1
-  if (this.index >= this.capacity) {
+  function PushQueue(maxSize, capacity) {
     this.index = 0
-  }
-  if (this.size < this.maxSize) {
-    this.size += 1
-  }
-  if (this.maxSize < this.capacity && this.size == this.maxSize) { // maxSize 等于 capacity 时资源刚好完美利用，不必回收资源
-    var release = this.index - this.size - 1
-    if (release < 0) {
-      release += this.capacity
+    this.size = 0
+    this.maxSize = maxSize
+    if (!capacity || capacity < maxSize) {
+      capacity = maxSize
     }
-    this.data[release] = null
+    this.capacity = capacity
+    this.data = new Array(capacity)
   }
-}
-/**
- * 将队列末位处的数据弹出
- *
- * @return {Object} 弹出的数据
- */
-PushQueue.prototype.pop = function() {
-  if (this.size > 0) {
-    var index = this.index - this.size
-    if (index < 0) {
-      index += this.capacity
+  /**
+   * 设置推入队列的最大长度
+   *
+   * @param {number} maxSize 队列的最大长度，不能大于 capacity
+   */
+  PushQueue.prototype.setMaxSize = function(maxSize) {
+    if (maxSize > this.capacity) {
+      maxSize = this.capacity
+    } else if (maxSize < this.size) {
+      this.size = maxSize
     }
-    this.size -= 1
-    var result = this.data[index]
-    this.data[index] = null
-    return result
+    this.maxSize = maxSize
+    this.gc()
   }
-}
-/**
- * 将推入队列以数组的形式返回
- *
- * @param {number} [maxLength=size] 读取的最大长度
- * @return {Array} 队列数据的数组形式
- */
-PushQueue.prototype.toArray = function(maxLength) {
-  if (typeof maxLength != 'number') {
-    maxLength = parseInt(maxLength)
+  /**
+   * 队列是否为空
+   */
+  PushQueue.prototype.empty = function() {
+    return this.size == 0
   }
-  if (isNaN(maxLength) || maxLength > this.size || maxLength < 0) {
-    maxLength = this.size
+  /**
+   * 向队列中推入数据，若队列已达到最大长度，则舍弃末尾处数据
+   *
+   * @param {Object} value 推入队列的数据
+   */
+  PushQueue.prototype.push = function(value) {
+    this.data[this.index] = value
+    this.index += 1
+    if (this.index >= this.capacity) {
+      this.index = 0
+    }
+    if (this.size < this.maxSize) {
+      this.size += 1
+    }
+    if (this.maxSize < this.capacity && this.size == this.maxSize) { // maxSize 等于 capacity 时资源刚好完美利用，不必回收资源
+      var release = this.index - this.size - 1
+      if (release < 0) {
+        release += this.capacity
+      }
+      this.data[release] = null
+    }
   }
-  var ar = []
-  var end = this.index - maxLength
-  var i = 0
-  for (i = this.index - 1; i >= end && i >= 0; i--) {
-    ar.push(this.data[i])
+  /**
+   * 将队列末位处的数据弹出
+   *
+   * @return {Object} 弹出的数据
+   */
+  PushQueue.prototype.pop = function() {
+    if (this.size > 0) {
+      var index = this.index - this.size
+      if (index < 0) {
+        index += this.capacity
+      }
+      this.size -= 1
+      var result = this.data[index]
+      this.data[index] = null
+      return result
+    }
   }
-  if (end < 0) {
-    end += this.capacity
-    for (i = this.capacity - 1; i >= end; i--) {
+  /**
+   * 将推入队列以数组的形式返回
+   *
+   * @param {number} [maxLength=size] 读取的最大长度
+   * @return {Array} 队列数据的数组形式
+   */
+  PushQueue.prototype.toArray = function(maxLength) {
+    if (typeof maxLength != 'number') {
+      maxLength = parseInt(maxLength)
+    }
+    if (isNaN(maxLength) || maxLength > this.size || maxLength < 0) {
+      maxLength = this.size
+    }
+    var ar = []
+    var end = this.index - maxLength
+    var i = 0
+    for (i = this.index - 1; i >= end && i >= 0; i--) {
       ar.push(this.data[i])
     }
-  }
-  return ar
-}
-/**
- * 清理内部无效数据，释放内存
- */
-PushQueue.prototype.gc = function() {
-  var i = 0
-  if (this.size > 0) {
-    var start = this.index - 1
-    var end = this.index - this.size
     if (end < 0) {
       end += this.capacity
-    }
-    if (start >= end) {
-      for (i = 0; i < end; i++) {
-        this.data[i] = null
-      }
-      for (i = start + 1; i < this.capacity; i++) {
-        this.data[i] = null
-      }
-    } else if (start < end) {
-      for (i = start + 1; i < end; i++) {
-        this.data[i] = null
+      for (i = this.capacity - 1; i >= end; i--) {
+        ar.push(this.data[i])
       }
     }
-  } else {
-    this.data = new Array(this.capacity)
+    return ar
   }
-}
+  /**
+   * 清理内部无效数据，释放内存
+   */
+  PushQueue.prototype.gc = function() {
+    var i = 0
+    if (this.size > 0) {
+      var start = this.index - 1
+      var end = this.index - this.size
+      if (end < 0) {
+        end += this.capacity
+      }
+      if (start >= end) {
+        for (i = 0; i < end; i++) {
+          this.data[i] = null
+        }
+        for (i = start + 1; i < this.capacity; i++) {
+          this.data[i] = null
+        }
+      } else if (start < end) {
+        for (i = start + 1; i < end; i++) {
+          this.data[i] = null
+        }
+      }
+    } else {
+      this.data = new Array(this.capacity)
+    }
+  }
+})()
