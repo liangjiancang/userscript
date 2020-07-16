@@ -158,8 +158,9 @@ function addWatchlaterVideoBtn(po) {
 .cover_btn {
     cursor: pointer;
     position: absolute;
-    right: 2em;
+    right: 24px;
     top: 0;
+    font-size: 12px;
 }
 .cover_btn:hover {
     color: #23ade5;
