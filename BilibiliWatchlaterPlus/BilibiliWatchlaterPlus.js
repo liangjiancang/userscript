@@ -1,7 +1,7 @@
 // ==UserScript==
 // @id              BilibiliWatchlaterPlus@Laster2800
 // @name            B站稍后再看功能增强
-// @version         2.5.1.20200716
+// @version         2.5.2.20200717
 // @namespace       laster2800
 // @author          Laster2800
 // @description     B站稍后再看功能增强，目前功能包括UI增强、重定向至常规播放页、稍后再看移除记录等，支持功能设置
@@ -28,7 +28,8 @@
 (function() {
   // document-start 级用户配置读取
   var init = GM_getValue('gm395456')
-  var configUpdate = 20200716
+  // 如果设置发生变动，将其修改为当前日期；若同一天修改多次，可以追加小数来区分
+  var configUpdate = 20200717
 
   var redirect = false
   if (init > 0) {
@@ -84,8 +85,10 @@
       noop: 'javascript:void(0)',
     }
 
+    // 顶栏下拉菜单点击默认行为
+    var defaultOpenHeaderDropdownLink = 'ohdl_openInCurrent'
     // 顶栏入口的默认行为
-    var defaultHeaderButtonOpL = 'op_openListInNew'
+    var defaultHeaderButtonOpL = 'op_openListInCurrent'
     var defaultHeaderButtonOpR = 'op_openUserSetting'
     // 移除记录使用的历史数据次数设置
     var defaultRemoveHistorySaves = 16
@@ -93,14 +96,17 @@
     var rhsMax = 64
     // 移除记录默认历史回溯深度
     var defaultRemoveHistorySearchTimes = 8
+    // 列表页面点击视频时默认行为
+    var defaultOpenListVideo = 'olv_openInCurrent'
 
     // 用户配置读取
     // 默认值
     var headerButton = true
+    var openHeaderDropdownLink = defaultOpenHeaderDropdownLink
     var headerButtonOpL = defaultHeaderButtonOpL
     var headerButtonOpR = defaultHeaderButtonOpR
     var videoButton = true
-    var openInNew = false
+    var openListVideo = defaultOpenListVideo
     var removeHistory = true
     var removeHistorySaves = defaultRemoveHistorySaves
     var removeHistorySearchTimes = defaultRemoveHistorySearchTimes
@@ -125,10 +131,11 @@
       gmValidate('gm395456_redirect', 'boolean', redirect)
       // 对配置进行校验
       headerButton = gmValidate('gm395456_headerButton', 'boolean', headerButton)
+      openHeaderDropdownLink = gmValidate('gm395456_openHeaderDropdownLink', 'string', openHeaderDropdownLink)
       headerButtonOpL = gmValidate('gm395456_headerButtonOpL', 'string', headerButtonOpL)
       headerButtonOpR = gmValidate('gm395456_headerButtonOpR', 'string', headerButtonOpR)
       videoButton = gmValidate('gm395456_videoButton', 'boolean', videoButton)
-      openInNew = gmValidate('gm395456_openInNew', 'boolean', openInNew)
+      openListVideo = gmValidate('gm395456_openListVideo', 'string', openListVideo)
       removeHistory = gmValidate('gm395456_removeHistory', 'boolean', removeHistory)
       removeHistorySaves = gmValidate('gm395456_removeHistorySaves', 'number', removeHistorySaves)
       removeHistorySearchTimes = gmValidate('gm395456_removeHistorySearchTimes', 'number', removeHistorySearchTimes, false)
@@ -154,10 +161,11 @@
       init = false
       removeHistoryData = new PushQueue(defaultRemoveHistorySaves, rhsMax)
       GM_setValue('gm395456_headerButton', headerButton)
+      GM_setValue('gm395456_openHeaderDropdownLink', openHeaderDropdownLink)
       GM_setValue('gm395456_headerButtonOpL', headerButtonOpL)
       GM_setValue('gm395456_headerButtonOpR', headerButtonOpR)
       GM_setValue('gm395456_videoButton', videoButton)
-      GM_setValue('gm395456_openInNew', openInNew)
+      GM_setValue('gm395456_openListVideo', openListVideo)
       GM_setValue('gm395456_removeHistory', removeHistory)
       GM_setValue('gm395456_removeHistorySaves', removeHistorySaves)
       GM_setValue('gm395456_removeHistorySearchTimes', removeHistorySearchTimes)
@@ -327,6 +335,9 @@
     width: 100%;
     height: 100%;
 }
+#gm395456 .gm-shadow[disabled] {
+  cursor: auto;
+}
 
 #gm395456 label {
     cursor: pointer;
@@ -345,12 +356,8 @@
     var el_history = null
     var menus = {
       // key: { state, el, openHandler, closeHandler }
-      setting: {
-        state: false
-      },
-      history: {
-        state: false
-      },
+      setting: { state: false },
+      history: { state: false },
     }
 
     // 脚本菜单
@@ -397,8 +404,11 @@
       })
     } else if (/bilibili.com\/watchlater\/.*\/list/.test(location.href)) {
       // 列表页面
-      if (openInNew) {
-        switchOpenInNew() // 新标签页打开
+      if (openListVideo == 'olv_openInNew') {
+        // 如果列表页面在新标签页打开视频
+        var base = document.head.appendChild(document.createElement('base'))
+        base.id = 'gm-base'
+        base.target = '_blank'
       }
       if (removeHistory) {
         // 将此时的稍后再看列表保存起来
@@ -457,17 +467,33 @@
         <div class="gm-item">
             <label title="在顶栏“动态”和“收藏”之间加入稍后再看入口，鼠标移至上方时弹出列表菜单，支持点击功能设置">
                 <span>【所有页面】在顶栏中加入稍后再看入口</span><input id="gm-headerButton" type="checkbox"></label>
-            <label class="gm-subitem" title="选择左键点击入口后执行的操作">
-                <span>在入口上点击鼠标左键时</span><select id="gm-headerButtonOpL"></select></label>
-            <label class="gm-subitem" title="选择右键点击入口后执行的操作">
-                <span>在入口上点击鼠标右键时</span><select id="gm-headerButtonOpR"></select></label>
+            <div class="gm-subitem" title="选择在下拉菜单中点击视频的行为">
+                <span>在下拉菜单中点击视频时</span>
+                <select id="gm-openHeaderDropdownLink">
+                    <option value="ohdl_openInCurrent">在当前页面打开</option>
+                    <option value="ohdl_openInNew">在新标签页打开</option>
+                </select>
+            </div>
+            <div class="gm-subitem" title="选择左键点击入口时执行的操作">
+                <span>在入口上点击鼠标左键时</span>
+                <select id="gm-headerButtonOpL"></select>
+            </div>
+            <div class="gm-subitem" title="选择右键点击入口时执行的操作">
+                <span>在入口上点击鼠标右键时</span>
+                <select id="gm-headerButtonOpR"></select>
+            </div>
         </div>
         <label class="gm-item" title="在常规播放页面中加入能将视频快速切换添加或移除出稍后再看列表的按钮">
             <span>【播放页面】加入快速切换视频稍后再看状态的按钮</span><input id="gm-videoButton" type="checkbox"></label>
         <label class="gm-item" title="是否自动从【www.bilibili.com/medialist/play/watchlater/p*】页面切换至【www.bilibili.com/video/BV*】页面播放">
             <span>【播放页面】从稍后再看模式切换到普通模式播放</span><input id="gm-redirect" type="checkbox"></label>
-        <label class="gm-item" title="在【www.bilibili.com/watchlater/#/list】页面点击时，是否在新标签页打开视频">
-            <span>【列表页面】在新标签页中打开视频</span><input id="gm-openInNew" type="checkbox"></label>
+        <label class="gm-item" title="选择【www.bilibili.com/watchlater/#/list】页面点击视频时的行为">
+            <span>【列表页面】点击视频时</span>
+            <select id="gm-openListVideo">
+                <option value="olv_openInCurrent">在当前页面打开</option>
+                <option value="olv_openInNew">在新标签页打开</option>
+            </select>
+        </label>
         <div class="gm-item">
             <label title="保留最近几次打开【www.bilibili.com/watchlater/#/list】页面时稍后再看列表的记录，以查找出这段时间内将哪些视频移除出稍后再看，用于防止误删操作。关闭该选项后，会将内部历史数据清除！">
                 <span>【列表页面】开启稍后再看移除记录（防误删）</span><input id="gm-removeHistory" type="checkbox"></label>
@@ -490,11 +516,12 @@
         el_reset.onclick = resetScript
 
         var el_headerButton = el_setting.querySelector('#gm-headerButton')
+        var el_openHeaderDropdownLink = el_setting.querySelector('#gm-openHeaderDropdownLink')
         var el_headerButtonOpL = el_setting.querySelector('#gm-headerButtonOpL')
         var el_headerButtonOpR = el_setting.querySelector('#gm-headerButtonOpR')
         var el_videoButton = el_setting.querySelector('#gm-videoButton')
         var el_redirect = el_setting.querySelector('#gm-redirect')
-        var el_openInNew = el_setting.querySelector('#gm-openInNew')
+        var el_openListVideo = el_setting.querySelector('#gm-openListVideo')
         var el_removeHistory = el_setting.querySelector('#gm-removeHistory')
         var el_removeHistorySaves = el_setting.querySelector('#gm-removeHistorySaves')
         var el_removeHistorySearchTimes = el_setting.querySelector('#gm-removeHistorySearchTimes')
@@ -522,7 +549,7 @@
           }
         }
         el_headerButton.onchange = function() {
-          subitemChange(this, [el_headerButtonOpL, el_headerButtonOpR])
+          subitemChange(this, [el_openHeaderDropdownLink, el_headerButtonOpL, el_headerButtonOpR])
         }
         el_removeHistory.onchange = function() {
           subitemChange(this, [el_removeHistorySaves, el_removeHistorySearchTimes])
@@ -577,6 +604,8 @@
         el_save.onclick = () => {
           headerButton = el_headerButton.checked
           GM_setValue('gm395456_headerButton', headerButton)
+          openHeaderDropdownLink = el_openHeaderDropdownLink.value
+          GM_setValue('gm395456_openHeaderDropdownLink', openHeaderDropdownLink)
           headerButtonOpL = el_headerButtonOpL.value
           GM_setValue('gm395456_headerButtonOpL', headerButtonOpL)
           headerButtonOpR = el_headerButtonOpR.value
@@ -588,9 +617,8 @@
           redirect = el_redirect.checked
           GM_setValue('gm395456_redirect', redirect)
 
-          openInNew = el_openInNew.checked
-          GM_setValue('gm395456_openInNew', openInNew)
-          switchOpenInNew()
+          openListVideo = el_openListVideo.value
+          GM_setValue('gm395456_openListVideo', openListVideo)
 
           var resetMaxSize = removeHistory != el_removeHistory.checked
           removeHistory = el_removeHistory.checked
@@ -638,12 +666,13 @@
         }
         var openHandler = () => {
           el_headerButton.checked = headerButton
+          el_openHeaderDropdownLink.value = openHeaderDropdownLink
           el_headerButtonOpL.value = headerButtonOpL
           el_headerButtonOpR.value = headerButtonOpR
           el_headerButton.onchange()
           el_videoButton.checked = videoButton
           el_redirect.checked = redirect
-          el_openInNew.checked = openInNew
+          el_openListVideo.value = openListVideo
           el_removeHistory.checked = removeHistory
           el_removeHistorySaves.value = isNaN(removeHistorySaves) ? defaultRemoveHistorySaves : removeHistorySaves
           el_removeHistorySearchTimes.value = isNaN(removeHistorySearchTimes) ? el_removeHistorySaves.value : removeHistorySearchTimes
@@ -904,7 +933,18 @@
               dispVue.showPopper = true
               executeAfterElementLoad({
                 selector: watchlaterPanelSelector,
-                callback: watchlaterPanel => watchlaterPanel.parentNode.click(),
+                callback: watchlaterPanel => {
+                  watchlaterPanel.parentNode.addEventListener('click', () => {
+                    setTimeout(() => {
+                      var target = openHeaderDropdownLink == 'ohdl_openInNew' ? '_blank' : '_self'
+                      var links = document.querySelectorAll('[role=tooltip][aria-hidden=false] .favorite-video-panel a')
+                      for (var link of links) {
+                        link.target = target
+                      }
+                    }, 200)
+                  })
+                  watchlaterPanel.parentNode.click()
+                },
                 interval: 50,
                 timeout: 1500,
               })
@@ -987,21 +1027,6 @@
           }
         }
       })
-    }
-
-    // 切换新标签页打开
-    function switchOpenInNew() {
-      if (/bilibili.com\/watchlater\/.*\/list/.test(location.href)) {
-        var base = null
-        if (openInNew) {
-          base = document.head.appendChild(document.createElement('base'))
-          base.id = 'gm-base'
-          base.target = '_blank'
-        } else {
-          base = document.head.querySelector('base#gm-base')
-          base && base.remove()
-        }
-      }
     }
 
     // 对“打开菜单项”这一操作进行处理，包括显示菜单项、设置当前菜单项的状态、关闭其他菜单项
