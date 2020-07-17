@@ -41,7 +41,7 @@
   initAtDocumentStart()
   if (urlMatch(/bilibili.com\/medialist\/play\/watchlater(?=\/|$)/)) {
     if (gm.config.redirect) { // 重定向，document-start 就执行，尽可能快地将原页面掩盖过去
-      redirectToNormalMode()
+      fnRedirect()
     }
   }
 
@@ -55,17 +55,22 @@
     if (gm.config.headerButton) {
       fnHeaderButton()
     }
-    if (urlMatch(gm.regex.page_videoNormalMode)) {
-      // 播放页面（正常模式）
-      if (gm.config.videoButton) {
-        fnVideoButton()
-      }
-    } else if (urlMatch(gm.regex.page_watchlaterList)) {
+    if (urlMatch(gm.regex.page_watchlaterList)) {
       // 列表页面
       fnOpenListVideo()
       createWatchlaterListUI()
       if (gm.config.removeHistory) {
         saveWatchlaterListData()
+      }
+    } else if (urlMatch(gm.regex.page_videoNormalMode)) {
+      // 播放页面（正常模式）
+      if (gm.config.videoButton) {
+        fnVideoButton_Normal()
+      }
+    } else if (urlMatch(gm.regex.page_videoWatchlaterMode)) {
+      // 播放页面（稍后再看模式）
+      if (gm.config.videoButton) {
+        fnVideoButton_Watchlater()
       }
     }
     addStyle()
@@ -76,6 +81,8 @@
     function init() {
       gm.url = {
         api_queryWatchlaterList: 'https://api.bilibili.com/x/v2/history/toview/web?jsonp=jsonp',
+        api_addToWatchlater: 'https://api.bilibili.com/x/v2/history/toview/add',
+        api_removeFromWatchlater: 'https://api.bilibili.com/x/v2/history/toview/del',
         page_watchlaterList: 'https://www.bilibili.com/watchlater/#/list',
         page_videoNormalMode: 'https://www.bilibili.com/video',
         page_videoWatchlaterMode: 'https://www.bilibili.com/medialist/play/watchlater',
@@ -96,6 +103,8 @@
         // 渐变时间
         fadeTime: 400,
         textFadeTime: 100,
+        // 通知时间
+        messageTime: 3000,
       }
 
       gm.config = {
@@ -329,86 +338,224 @@
     }
 
     /** 常规播放页加入快速切换稍后再看状态的按钮 */
-    function fnVideoButton() {
-      if (urlMatch(gm.regex.page_videoNormalMode)) {
-        /** 继续执行的条件 */
-        var executeCondition = () => {
-          // 必须在确定 Vue 加载完成后再修改 DOM 结构，否则会导致 Vue 加载出错造成页面错误
-          var app = document.querySelector('#app')
-          var vueLoad = app && app.__vue__
-          if (!vueLoad) {
-            return false
-          }
-          var atr = document.querySelector('#arc_toolbar_report')
-          var original = atr && atr.querySelector('.van-watchlater')
-          if (original && original.__vue__) {
-            return [atr, original]
-          } else {
-            return false
-          }
+    function fnVideoButton_Normal() {
+      /** 继续执行的条件 */
+      var executeCondition = () => {
+        // 必须在确定 Vue 加载完成后再修改 DOM 结构，否则会导致 Vue 加载出错造成页面错误
+        var app = document.querySelector('#app')
+        var vueLoad = app && app.__vue__
+        if (!vueLoad) {
+          return false
         }
+        var atr = document.querySelector('#arc_toolbar_report')
+        var original = atr && atr.querySelector('.van-watchlater')
+        if (original && original.__vue__) {
+          return [atr, original]
+        } else {
+          return false
+        }
+      }
 
-        executeAfterConditionPass({
-          condition: executeCondition,
-          callback: ([atr, original]) => {
-            var oVue = original.__vue__
-            var btn = document.createElement('label')
-            var cb = document.createElement('input')
-            cb.type = 'checkbox'
-            cb.style.verticalAlign = 'middle'
-            cb.style.margin = '0 2px 2px 0'
-            btn.appendChild(cb)
-            var text = document.createElement('span')
-            text.innerText = '稍后再看'
-            btn.className = 'appeal-text'
-            cb.onclick = () => { // 不要附加到 btn 上，否则点击时会执行两次
-              oVue.handler()
-              var checked = !oVue.added
-              // 检测操作是否生效，失败时弹出提示
-              executeAfterConditionPass({
-                condition: () => checked === oVue.added,
-                callback: () => { cb.checked = checked },
-                interval: 50,
-                timeout: 500,
-                onTimeout: () => {
-                  cb.checked = oVue.added
-                  alert(checked ? '添加至稍后再看失败' : '从稍后再看移除失败')
-                },
-              })
+      executeAfterConditionPass({
+        condition: executeCondition,
+        callback: ([atr, original]) => {
+          var oVue = original.__vue__
+          var btn = document.createElement('label')
+          btn.id = `${gm.id}-normal-video-btn`
+          var cb = document.createElement('input')
+          cb.type = 'checkbox'
+          btn.appendChild(cb)
+          var text = document.createElement('span')
+          text.innerText = '稍后再看'
+          btn.className = 'appeal-text'
+          cb.onclick = () => { // 不要附加到 btn 上，否则点击时会执行两次
+            oVue.handler()
+            var checked = !oVue.added
+            // 检测操作是否生效，失败时弹出提示
+            executeAfterConditionPass({
+              condition: () => checked === oVue.added,
+              callback: () => { cb.checked = checked },
+              interval: 50,
+              timeout: 500,
+              onTimeout: () => {
+                cb.checked = oVue.added
+                message(checked ? '添加至稍后再看失败' : '从稍后再看移除失败')
+              },
+            })
+          }
+          btn.appendChild(text)
+          atr.appendChild(btn)
+          original.parentNode.style.display = 'none'
+          setButtonStatus(oVue, cb)
+        },
+      })
+
+      /** 设置按钮的稍后再看状态 */
+      var setButtonStatus = (oVue, cb) => {
+        // oVue.added 第一次取到的值总是 false，从页面无法获取到该视频是否已经在稍后再看列表中，需要使用API查询
+        GM_xmlhttpRequest({
+          method: 'GET',
+          url: gm.url.api_queryWatchlaterList,
+          onload: function(response) {
+            if (response && response.responseText) {
+              try {
+                var json = JSON.parse(response.responseText)
+                var watchlaterList = json.data.list
+                var av = oVue.aid
+                for (var e of watchlaterList) {
+                  if (av == e.aid) {
+                    oVue.added = true
+                    cb.checked = true
+                    break
+                  }
+                }
+              } catch (e) {
+                console.error(e)
+              }
             }
-            btn.appendChild(text)
-            atr.appendChild(btn)
-            original.parentNode.style.display = 'none'
-            setButtonStatus(oVue, cb)
-          },
+          }
         })
+      }
+    }
 
-        /** 设置按钮的稍后再看状态 */
-        var setButtonStatus = (oVue, cb) => {
-          // oVue.added 第一次取到的值总是 false，从页面无法获取到该视频是否已经在稍后再看列表中，需要使用API查询
+    /** 稍后再看播放页加入快速切换稍后再看状态的按钮 */
+    function fnVideoButton_Watchlater() {
+      var aidMap = new Map()
+
+      /** 继续执行的条件 */
+      var executeCondition = () => {
+        // 必须在确定 Vue 加载完成后再修改 DOM 结构，否则会导致 Vue 加载出错造成页面错误
+        var app = document.querySelector('#app')
+        var vueLoad = app && app.__vue__
+        if (!vueLoad) {
+          return false
+        }
+        return app.querySelector('#playContainer .left-container .play-options .play-options-more')
+      }
+
+      executeAfterConditionPass({
+        condition: executeCondition,
+        callback: more => {
+          var btn = document.createElement('label')
+          btn.id = `${gm.id}-watchlater-video-btn`
+          btn.onclick = e => e.stopPropagation()
+          var cb = document.createElement('input')
+          cb.type = 'checkbox'
+          btn.appendChild(cb)
+          var text = document.createElement('span')
+          text.innerText = '稍后再看'
+          btn.appendChild(text)
+          more.appendChild(btn)
+
+          var added = true
+          cb.checked = true // 默认在稍后再看中
+
+          var csrf = getCsrf()
+          cb.onclick = async () => { // 不要附加到 btn 上，否则点击时会执行两次
+            var aid = await getAid()
+            if (!aid) {
+              cb.checked = added
+              message('网络错误，操作失败')
+              return
+            }
+            var data = new FormData()
+            data.append('aid', aid)
+            data.append('csrf', csrf)
+            GM_xmlhttpRequest({
+              method: 'POST',
+              url: added ? gm.url.api_removeFromWatchlater : gm.url.api_addToWatchlater,
+              data: data,
+              onload: function(response) {
+                try {
+                  var note = added ? '从稍后再看移除' : '添加到稍后再看'
+                  if (JSON.parse(response.response).code == 0) {
+                    added = !added
+                    cb.checked = added
+                    message(note + '成功')
+                  } else {
+                    cb.checked = added
+                    message(`网络错误，${note}失败`)
+                  }
+                } catch (e) {
+                  console.error(`网络连接错误，重置脚本数据也许能解决问题。无法解决请联系脚本作者：${GM_info.script.supportURL}`)
+                  console.error(e)
+                }
+              }
+            })
+          }
+        },
+      })
+
+      /** 获取 CSRF */
+      var getCsrf = () => {
+        var cookies = document.cookie.split('; ')
+        cookies = cookies.reduce((prev, val) => {
+          var parts = val.split('=')
+          var key = parts[0]
+          var value = parts[1]
+          prev[key] = value
+          return prev
+        }, {})
+        var csrf = cookies.bili_jct
+        return csrf
+      }
+
+      /** 获取当前页面对应的 aid */
+      var getAid = async () => {
+        var bvid = await getBvid()
+        var aid = aidMap.get(bvid)
+        if (aid) {
+          return aid
+        }
+        
+        // 用笨方法查算了，那套算法太烦，不想弄过来
+        // 这里不能根据分P来推测 aid，因为因为该功能的引入，分P不一定对得上真正的列表
+        return new Promise(resolve => {
           GM_xmlhttpRequest({
             method: 'GET',
             url: gm.url.api_queryWatchlaterList,
             onload: function(response) {
-              if (response && response.responseText) {
-                try {
-                  var json = JSON.parse(response.responseText)
-                  var watchlaterList = json.data.list
-                  var av = oVue.aid
-                  for (var e of watchlaterList) {
-                    if (av == e.aid) {
-                      oVue.added = true
-                      cb.checked = true
-                      break
-                    }
+              try {
+                var json = JSON.parse(response.responseText)
+                var watchlaterList = json.data.list
+                var aid = null
+                for (var e of watchlaterList) {
+                  if (bvid == e.bvid) {
+                    aid = e.aid
+                    break
                   }
-                } catch (e) {
-                  console.error(e)
                 }
+                if (aid) {
+                  aidMap.set(bvid, aid)
+                }
+                resolve(aid)
+              } catch (e) {
+                console.error(`网络连接错误，重置脚本数据也许能解决问题。无法解决请联系脚本作者：${GM_info.script.supportURL}`)
+                console.error(e)
               }
-            }
+            },
           })
-        }
+        })
+      }
+
+      /** 获取当前页面的 bvid */
+      var getBvid = async () => {
+        return new Promise(resolve => {
+          executeAfterConditionPass({
+            condition: () => {
+              try {
+                var url = document.querySelector('.play-title-location').href
+                var m = url.match(/(?<=\/)BV[a-zA-Z\d]+(?=\/|$)/)
+                if (m && m[0]) {
+                  return m[0]
+                }
+              } catch (e) {
+                // ignore
+              }
+            },
+            callback: bvid => resolve(bvid)
+          })
+        })
       }
     }
 
@@ -515,7 +662,7 @@
                 <select id="gm-headerButtonOpR"></select>
             </div>
         </div>
-        <label class="gm-item" title="在常规播放页面中加入能将视频快速切换添加或移除出稍后再看列表的按钮">
+        <label class="gm-item" title="在播放页面（包括普通模式和稍后再看模式）中加入能将视频快速切换添加或移除出稍后再看列表的按钮">
             <span>【播放页面】加入快速切换视频稍后再看状态的按钮</span><input id="gm-videoButton" type="checkbox"></label>
         <label class="gm-item" title="是否自动从【www.bilibili.com/medialist/play/watchlater/p*】页面切换至【www.bilibili.com/video/BV*】页面播放">
             <span>【播放页面】从稍后再看模式切换到普通模式播放</span><input id="gm-redirect" type="checkbox"></label>
@@ -938,7 +1085,33 @@
       }
     }
 
-    /** 处理 HTML 元素的渐显和渐隐 */
+    /**
+     * 用户通知
+     *
+     * @param {string} msg 信息
+     * @param {number} [ms=gm.const.messageTime] 显示时间（单位：ms）
+     * @param {boolean} [html=false] 是否将 msg 理解为 HTML
+     */
+    function message(msg, ms = gm.const.messageTime, html = false) {
+      var msgbox = document.body.appendChild(document.createElement('div'))
+      msgbox.id = `${gm.id}-msgbox`
+      if (html) {
+        msgbox.innerHTML = msg
+      } else {
+        msgbox.innerText = msg
+      }
+      fade(true, msgbox)
+      setTimeout(() => {
+        fade(false, msgbox)
+        setTimeout(() => msgbox.remove(), gm.const.fadeTime)
+      }, ms - 2 * gm.const.fadeTime)
+    }
+
+    /**
+     * 处理 HTML 元素的渐显和渐隐
+     * @param {boolean} inOut 渐显/渐隐
+     * @param {HTMLElement} target HTML 元素
+     */
     function fade(inOut, target) {
       if (inOut) { // 渐显
         // 只有 display 可视情况下修改 opacity 才会触发 transition
@@ -965,13 +1138,13 @@
      * 如果在此期间，终止条件一直失败，则顺利通过检测，执行 callback(result)。
      *
      * @param {Object} [options={}] 选项
-     * @param {Function} [options.condition] 条件，当 condition() 返回的 result 为真值时满足条件
-     * @param {Function} [options.callback] 当满足条件时执行 callback(result)
+     * @param {Function} options.condition 条件，当 condition() 返回的 result 为真值时满足条件
+     * @param {Function} options.callback 当满足条件时执行 callback(result)
      * @param {number} [options.interval=100] 检测时间间隔（单位：ms）
      * @param {number} [options.timeout=5000] 检测超时时间，检测时间超过该值时终止检测（单位：ms）
-     * @param {Function} [options.onTimeout] 检测超时时执行 onTimeout()
-     * @param {Function} [options.stopCondition] 终止条件，当 stopCondition() 返回的 stopResult 为真值时终止检测
-     * @param {Function} [options.stopCallback] 终止条件达成时执行 stopCallback()（包括终止条件的二次判断达成）
+     * @param {Function} options.onTimeout 检测超时时执行 onTimeout()
+     * @param {Function} options.stopCondition 终止条件，当 stopCondition() 返回的 stopResult 为真值时终止检测
+     * @param {Function} options.stopCallback 终止条件达成时执行 stopCallback()（包括终止条件的二次判断达成）
      * @param {number} [options.stopInterval=50] 终止条件二次判断期间的检测时间间隔（单位：ms）
      * @param {number} [options.stopTimeout=0] 终止条件二次判断期间的检测超时时间（单位：ms）
      */
@@ -1033,13 +1206,13 @@
      * 如果在此期间，终止元素加载失败，则顺利通过检测，执行 callback(element)。
      *
      * @param {Object} [options={}] 选项
-     * @param {Function} [options.selector] 该选择器指定要等待加载的元素 element
-     * @param {Function} [options.callback] 当 element 加载成功时执行 callback(element)
+     * @param {Function} options.selector 该选择器指定要等待加载的元素 element
+     * @param {Function} options.callback 当 element 加载成功时执行 callback(element)
      * @param {number} [options.interval=100] 检测时间间隔（单位：ms）
      * @param {number} [options.timeout=5000] 检测超时时间，检测时间超过该值时终止检测（单位：ms）
-     * @param {Function} [options.onTimeout] 检测超时时执行 onTimeout()
-     * @param {Function} [options.stopCondition] 该选择器指定终止元素 stopElement，若该元素加载成功则终止检测
-     * @param {Function} [options.stopCallback] 终止元素加载成功后执行 stopCallback()（包括终止元素的二次加载）
+     * @param {Function} options.onTimeout 检测超时时执行 onTimeout()
+     * @param {Function} options.stopCondition 该选择器指定终止元素 stopElement，若该元素加载成功则终止检测
+     * @param {Function} options.stopCallback 终止元素加载成功后执行 stopCallback()（包括终止元素的二次加载）
      * @param {number} [options.stopInterval=50] 终止元素二次加载期间的检测时间间隔（单位：ms）
      * @param {number} [options.stopTimeout=0] 终止元素二次加载期间的检测超时时间（单位：ms）
      */
@@ -1127,7 +1300,7 @@
     /**
      * 将队列末位处的数据弹出
      *
-     * @return {Object} 弹出的数据
+     * @returns {Object} 弹出的数据
      */
     PushQueue.prototype.pop = function() {
       if (this.size > 0) {
@@ -1145,7 +1318,7 @@
      * 将推入队列以数组的形式返回
      *
      * @param {number} [maxLength=size] 读取的最大长度
-     * @return {Array} 队列数据的数组形式
+     * @returns {Array} 队列数据的数组形式
      */
     PushQueue.prototype.toArray = function(maxLength) {
       if (typeof maxLength != 'number') {
@@ -1346,8 +1519,8 @@
 }
 
 #${gm.id} .gm-subtitle {
-  font-size: 0.4em;
-  margin-top: 0.4em;
+    font-size: 0.4em;
+    margin-top: 0.4em;
 }
 
 #${gm.id} .gm-shadow {
@@ -1360,7 +1533,7 @@
     height: 100%;
 }
 #${gm.id} .gm-shadow[disabled] {
-  cursor: auto;
+    cursor: auto;
 }
 
 #${gm.id} label {
@@ -1368,13 +1541,40 @@
 }
 #${gm.id} input,
 #${gm.id} select {
-  color: black;
+    color: black;
 }
 
 #${gm.id} [disabled],
 #${gm.id} [disabled] input,
 #${gm.id} [disabled] select {
-  cursor: not-allowed;
+    cursor: not-allowed;
+}
+
+#${gm.id}-watchlater-video-btn {
+    float: left;
+    margin-right: 1em;
+    cursor: pointer;
+    font-size: 12px;
+}
+#${gm.id}-normal-video-btn input[type=checkbox],
+#${gm.id}-watchlater-video-btn input[type=checkbox] {
+    vertical-align: middle;
+    margin: 0 2px 2px 0;
+}
+
+#${gm.id}-msgbox {
+    position: absolute;
+    top: 70%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 65535;
+    background-color: #000000bf;
+    font-size: 16px;
+    color: white;
+    padding: 0.5em 1em;
+    border-radius: 0.6em;
+    opacity: 0;
+    transition: opacity ${gm.const.fadeTime}ms ease-in-out;
 }
       `)
     }
@@ -1404,7 +1604,7 @@
   }
 
   /** 稍后再看模式重定向至正常模式播放 */
-  function redirectToNormalMode() {
+  function fnRedirect() {
     window.stop() // 停止原页面的加载
     GM_xmlhttpRequest({
       method: 'GET',
@@ -1442,7 +1642,7 @@
    * 判断当前 URL 是否匹配
    *
    * @param {RegExp} reg 用于判断是否匹配的正则表达纯
-   * @return {boolean} 是否匹配
+   * @returns {boolean} 是否匹配
    */
   function urlMatch(reg) {
     return reg.test(location.href)
