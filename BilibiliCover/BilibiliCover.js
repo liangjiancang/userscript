@@ -1,7 +1,7 @@
 // ==UserScript==
 // @id             BilibiliCover@Laster2800
 // @name           B站封面获取
-// @version        4.0.0.20200716
+// @version        4.1.0.20200718
 // @namespace      laster2800
 // @author         Laster2800
 // @description    B站视频播放页（普通模式、稍后再看模式）、番剧播放页、直播间添加获取封面的按钮
@@ -61,7 +61,7 @@
         if (!vueLoad) {
           return false
         }
-        return document.querySelector('#playContainer .left-container .play-options')
+        return app.querySelector('#playContainer .left-container .play-options .play-options-more')
       },
       callback: addWatchlaterVideoBtn,
     })
@@ -153,14 +153,14 @@ function addLiveBtn(urc) {
   urc.insertBefore(cover, urc.firstChild)
 }
 
-function addWatchlaterVideoBtn(po) {
+function addWatchlaterVideoBtn(pom) {
   GM_addStyle(`
 .cover_btn {
     cursor: pointer;
-    position: absolute;
-    right: 24px;
-    top: 0;
+    float: left;
+    margin-right: 1em;
     font-size: 12px;
+    color: #757575;
 }
 .cover_btn:hover {
     color: #23ade5;
@@ -168,11 +168,12 @@ function addWatchlaterVideoBtn(po) {
   `)
 
   var cover = document.createElement('a')
-  var errorMsg = '获取失败，若非网络问题请提供反馈'
+  var errorMsg = '获取失败，可能是因为该视频已经移除出稍后再看；若非该原因或网络问题，请提供反馈'
   cover.innerText = '获取封面'
   cover.target = '_blank'
   cover.className = 'cover_btn'
-  po.appendChild(cover)
+  cover.onclick = e => e.stopPropagation()
+  pom.appendChild(cover)
 
   var updateCoverUrl = () => {
     GM_xmlhttpRequest({
@@ -181,19 +182,38 @@ function addWatchlaterVideoBtn(po) {
       onload: function(response) {
         if (response && response.responseText) {
           try {
-            var part = 1
-            if (/watchlater\/p\d+/.test(location.href)) {
-              part = parseInt(location.href.match(/(?<=\/watchlater\/p)\d+(?=\/?)/)[0])
-            } // 如果匹配不上，就是以 watchlater/ 直接结尾，等同于 watchlater/p1
-            var json = JSON.parse(response.responseText)
-            var watchlaterList = json.data.list
-            var coverUrl = watchlaterList[part - 1].pic
-            if (coverUrl) {
-              cover.href = coverUrl
-            } else {
-              cover.onclick = () => alert(errorMsg)
-            }
-            cover.title = coverUrl || errorMsg
+            executeAfterConditionPass({
+              condition: () => {
+                try {
+                  var url = document.querySelector('.play-title-location').href
+                  var m = url.match(/(?<=\/)BV[a-zA-Z\d]+(?=\/|$)/)
+                  if (m && m[0]) {
+                    return m[0]
+                  }
+                } catch (e) {
+                  // ignore
+                }
+              },
+              callback: bvid => {
+                var json = JSON.parse(response.responseText)
+                var watchlaterList = json.data.list
+
+                var coverUrl = null
+                for (var e of watchlaterList) {
+                  if (bvid == e.bvid) {
+                    coverUrl = e.pic
+                    break
+                  }
+                }
+
+                if (coverUrl) {
+                  cover.href = coverUrl
+                } else {
+                  cover.onclick = () => alert(errorMsg)
+                }
+                cover.title = coverUrl || errorMsg
+              }
+            })
           } catch (e) {
             console.error(e)
           }
@@ -237,13 +257,13 @@ function addWatchlaterVideoBtn(po) {
  * 如果在此期间，终止条件一直失败，则顺利通过检测，执行 callback(result)。
  *
  * @param {Object} [options={}] 选项
- * @param {Function} [options.condition] 条件，当 condition() 返回的 result 为真值时满足条件
- * @param {Function} [options.callback] 当满足条件时执行 callback(result)
+ * @param {Function} options.condition 条件，当 condition() 返回的 result 为真值时满足条件
+ * @param {Function} options.callback 当满足条件时执行 callback(result)
  * @param {number} [options.interval=100] 检测时间间隔（单位：ms）
  * @param {number} [options.timeout=5000] 检测超时时间，检测时间超过该值时终止检测（单位：ms）
- * @param {Function} [options.onTimeout] 检测超时时执行 onTimeout()
- * @param {Function} [options.stopCondition] 终止条件，当 stopCondition() 返回的 stopResult 为真值时终止检测
- * @param {Function} [options.stopCallback] 终止条件达成时执行 stopCallback()（包括终止条件的二次判断达成）
+ * @param {Function} options.onTimeout 检测超时时执行 onTimeout()
+ * @param {Function} options.stopCondition 终止条件，当 stopCondition() 返回的 stopResult 为真值时终止检测
+ * @param {Function} options.stopCallback 终止条件达成时执行 stopCallback()（包括终止条件的二次判断达成）
  * @param {number} [options.stopInterval=50] 终止条件二次判断期间的检测时间间隔（单位：ms）
  * @param {number} [options.stopTimeout=0] 终止条件二次判断期间的检测超时时间（单位：ms）
  */
