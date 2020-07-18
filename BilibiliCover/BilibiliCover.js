@@ -1,7 +1,7 @@
 // ==UserScript==
 // @id             BilibiliCover@Laster2800
 // @name           B站封面获取
-// @version        4.1.0.20200718
+// @version        4.1.1.20200718
 // @namespace      laster2800
 // @author         Laster2800
 // @description    B站视频播放页（普通模式、稍后再看模式）、番剧播放页、直播间添加获取封面的按钮
@@ -256,7 +256,7 @@ function addWatchlaterVideoBtn(pom) {
  * 如果在此期间，终止条件通过，则表示依然不满足条件，故执行 stopCallback() 而非 callback(result)。
  * 如果在此期间，终止条件一直失败，则顺利通过检测，执行 callback(result)。
  *
- * @param {Object} [options={}] 选项
+ * @param {Object} options 选项
  * @param {Function} options.condition 条件，当 condition() 返回的 result 为真值时满足条件
  * @param {Function} options.callback 当满足条件时执行 callback(result)
  * @param {number} [options.interval=100] 检测时间间隔（单位：ms）
