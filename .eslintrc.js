@@ -8,6 +8,7 @@ module.exports = {
     'Atomics': 'readonly',
     'SharedArrayBuffer': 'readonly',
     'module': true,
+    'unsafeWindow': true,
     'GM_info': true,
     'GM_addStyle': true,
     'GM_getValue': true,

@@ -1,7 +1,7 @@
 // ==UserScript==
 // @id              BilibiliWatchlaterPlus@Laster2800
 // @name            B站稍后再看功能增强
-// @version         2.9.0.20200719
+// @version         2.9.1.20200719
 // @namespace       laster2800
 // @author          Laster2800
 // @description     B站稍后再看功能增强，目前功能包括UI增强、稍后再看模式自动切换至普通模式播放（重定向）、稍后再看移除记录等，支持功能设置
@@ -437,30 +437,11 @@
       })
 
       /** 设置按钮的稍后再看状态 */
-      var setButtonStatus = (oVue, cb) => {
-        // oVue.added 第一次取到的值总是 false，从页面无法获取到该视频是否已经在稍后再看列表中，需要使用API查询
-        GM_xmlhttpRequest({
-          method: 'GET',
-          url: gm.url.api_queryWatchlaterList,
-          onload: function(response) {
-            if (response && response.responseText) {
-              try {
-                var json = JSON.parse(response.responseText)
-                var watchlaterList = json.data.list
-                var av = oVue.aid
-                for (var e of watchlaterList) {
-                  if (av == e.aid) {
-                    oVue.added = true
-                    cb.checked = true
-                    break
-                  }
-                }
-              } catch (e) {
-                console.error(e)
-              }
-            }
-          }
-        })
+      var setButtonStatus = async (oVue, cb) => {
+        var aid = oVue.aid // also unsafeWindow.aid
+        var status = await getVideoWatchlaterStatusByAid(aid)
+        oVue.added = status
+        cb.checked = status
       }
     }
 
@@ -493,44 +474,70 @@
           btn.appendChild(text)
           more.appendChild(btn)
 
-          var added = true
-          cb.checked = true // 默认在稍后再看中
-
+          btn.added = true
+          cb.checked = true // 第一次打开时，默认在稍后再看中
           var csrf = getCsrf()
-          cb.onclick = async () => { // 不要附加到 btn 上，否则点击时会执行两次
-            var aid = await getAid()
-            if (!aid) {
-              cb.checked = added
-              message('网络错误，操作失败')
-              return
+          cb.onclick = () => executeSwitch({ btn, cb, csrf })
+
+          // 切换视频时的处理
+          createLocationchangeEvent()
+          window.addEventListener('locationchange', async function() {
+            if (!btn.aid) {
+              btn.aid = await getAid()
             }
-            var data = new FormData()
-            data.append('aid', aid)
-            data.append('csrf', csrf)
-            GM_xmlhttpRequest({
-              method: 'POST',
-              url: added ? gm.url.api_removeFromWatchlater : gm.url.api_addToWatchlater,
-              data: data,
-              onload: function(response) {
-                try {
-                  var note = added ? '从稍后再看移除' : '添加到稍后再看'
-                  if (JSON.parse(response.response).code == 0) {
-                    added = !added
-                    cb.checked = added
-                    message(note + '成功')
-                  } else {
-                    cb.checked = added
-                    message(`网络错误，${note}失败`)
-                  }
-                } catch (e) {
-                  console.error(`网络连接错误，重置脚本数据也许能解决问题。无法解决请联系脚本作者：${GM_info.script.supportURL}`)
-                  console.error(e)
+            executeAfterConditionPass({
+              condition: () => {
+                var aid = unsafeWindow.aid // 切换之后必然会有 unsafeWindow.aid
+                if (aid && aid != btn.aid) {
+                  return aid
                 }
+              },
+              callback: async aid => {
+                btn.aid = aid
+                var status = await getVideoWatchlaterStatusByAid(btn.aid)
+                btn.added = status
+                cb.checked = status
               }
             })
-          }
+          })
         },
       })
+
+      /**
+       * 处理视频状态的切换
+       */
+      var executeSwitch = async ({ btn, cb, csrf }) => { // 不要附加到 btn 上，否则点击时会执行两次
+        btn.aid = await getAid()
+        if (!btn.aid) {
+          cb.checked = btn.added
+          message('网络错误，操作失败')
+          return
+        }
+        var data = new FormData()
+        data.append('aid', btn.aid)
+        data.append('csrf', csrf)
+        GM_xmlhttpRequest({
+          method: 'POST',
+          url: btn.added ? gm.url.api_removeFromWatchlater : gm.url.api_addToWatchlater,
+          data: data,
+          onload: function(response) {
+            try {
+              var note = btn.added ? '从稍后再看移除' : '添加到稍后再看'
+              if (JSON.parse(response.response).code == 0) {
+                btn.added = !btn.added
+                cb.checked = btn.added
+                message(note + '成功')
+              } else {
+                cb.checked = btn.added
+                message(`网络错误，${note}失败`)
+              }
+            } catch (e) {
+              console.error(`网络连接错误，重置脚本数据也许能解决问题。无法解决请联系脚本作者：${GM_info.script.supportURL}`)
+              console.error(e)
+            }
+          }
+        })
+      }
 
       /** 获取 CSRF */
       var getCsrf = () => {
@@ -548,8 +555,13 @@
 
       /** 获取当前页面对应的 aid */
       var getAid = async () => {
+        var aid = unsafeWindow.aid // 第一次打开播放页时不存在，但切换视频后就存在了
+        if (aid) {
+          return aid
+        }
+
         var bvid = await getBvid()
-        var aid = aidMap.get(bvid)
+        aid = aidMap.get(bvid)
         if (aid) {
           return aid
         }
@@ -603,6 +615,65 @@
           })
         })
       }
+
+      /**
+       * 创建 locationchange 事件
+       *
+       * @see https://stackoverflow.com/a/52809105
+       */
+      var createLocationchangeEvent = () => {
+        if (!unsafeWindow._createLocationchangeEvent) {
+          history.pushState = (f => function pushState() {
+            var ret = f.apply(this, arguments)
+            window.dispatchEvent(new Event('pushstate'))
+            window.dispatchEvent(new Event('locationchange'))
+            return ret
+          })(history.pushState)
+          history.replaceState = (f => function replaceState() {
+            var ret = f.apply(this, arguments)
+            window.dispatchEvent(new Event('replacestate'))
+            window.dispatchEvent(new Event('locationchange'))
+            return ret
+          })(history.replaceState)
+          window.addEventListener('popstate', () => {
+            window.dispatchEvent(new Event('locationchange'))
+          })
+          unsafeWindow._createLocationchangeEvent = true
+        }
+      }
+    }
+
+    /**
+     * 根据 aid 获取视频的稍后再看状态
+     *
+     * @param {string | number} aid AV号
+     * @returns {Promise<boolean>} 视频是否在稍后再看中
+     */
+    async function getVideoWatchlaterStatusByAid(aid) {
+      // oVue.added 第一次取到的值总是 false，从页面无法获取到该视频是否已经在稍后再看列表中，需要使用API查询
+      return new Promise(resolve => {
+        GM_xmlhttpRequest({
+          method: 'GET',
+          url: gm.url.api_queryWatchlaterList,
+          onload: function(response) {
+            if (response && response.responseText) {
+              try {
+                var json = JSON.parse(response.responseText)
+                var watchlaterList = json.data.list
+                for (var e of watchlaterList) {
+                  if (aid == e.aid) {
+                    resolve(true)
+                    return
+                  }
+                }
+                resolve(false)
+              } catch (e) {
+                console.error(e)
+              }
+            }
+          }
+        })
+      })
     }
 
     /** 处理列表页面点击视频时的行为 */
@@ -1381,9 +1452,9 @@
      * @param {Function} options.callback 当满足条件时执行 callback(result)
      * @param {number} [options.interval=100] 检测时间间隔（单位：ms）
      * @param {number} [options.timeout=5000] 检测超时时间，检测时间超过该值时终止检测（单位：ms）
-     * @param {Function} options.onTimeout 检测超时时执行 onTimeout()
-     * @param {Function} options.stopCondition 终止条件，当 stopCondition() 返回的 stopResult 为真值时终止检测
-     * @param {Function} options.stopCallback 终止条件达成时执行 stopCallback()（包括终止条件的二次判断达成）
+     * @param {Function} [options.onTimeout] 检测超时时执行 onTimeout()
+     * @param {Function} [options.stopCondition] 终止条件，当 stopCondition() 返回的 stopResult 为真值时终止检测
+     * @param {Function} [options.stopCallback] 终止条件达成时执行 stopCallback()（包括终止条件的二次判断达成）
      * @param {number} [options.stopInterval=50] 终止条件二次判断期间的检测时间间隔（单位：ms）
      * @param {number} [options.stopTimeout=0] 终止条件二次判断期间的检测超时时间（单位：ms）
      */
@@ -1449,9 +1520,9 @@
      * @param {Function} options.callback 当 element 加载成功时执行 callback(element)
      * @param {number} [options.interval=100] 检测时间间隔（单位：ms）
      * @param {number} [options.timeout=5000] 检测超时时间，检测时间超过该值时终止检测（单位：ms）
-     * @param {Function} options.onTimeout 检测超时时执行 onTimeout()
-     * @param {Function} options.stopCondition 该选择器指定终止元素 stopElement，若该元素加载成功则终止检测
-     * @param {Function} options.stopCallback 终止元素加载成功后执行 stopCallback()（包括终止元素的二次加载）
+     * @param {Function} [options.onTimeout] 检测超时时执行 onTimeout()
+     * @param {Function} [options.stopCondition] 该选择器指定终止元素 stopElement，若该元素加载成功则终止检测
+     * @param {Function} [options.stopCallback] 终止元素加载成功后执行 stopCallback()（包括终止元素的二次加载）
      * @param {number} [options.stopInterval=50] 终止元素二次加载期间的检测时间间隔（单位：ms）
      * @param {number} [options.stopTimeout=0] 终止元素二次加载期间的检测超时时间（单位：ms）
      */
