@@ -1,7 +1,7 @@
 // ==UserScript==
 // @id              BilibiliWatchlaterPlus@Laster2800
 // @name            B站稍后再看功能增强
-// @version         2.8.0.20200718
+// @version         2.9.0.20200719
 // @namespace       laster2800
 // @author          Laster2800
 // @description     B站稍后再看功能增强，目前功能包括UI增强、稍后再看模式自动切换至普通模式播放（重定向）、稍后再看移除记录等，支持功能设置
@@ -14,6 +14,7 @@
 // @include         *://t.bilibili.com/*
 // @include         *://account.bilibili.com/*
 // @exclude         *://message.bilibili.com/pages/*
+// @exclude         *://t.bilibili.com/h5/dynamic/specification
 // @grant           GM_addStyle
 // @grant           GM_xmlhttpRequest
 // @grant           GM_registerMenuCommand
@@ -97,14 +98,17 @@
       }
 
       gm.const = {
-        // 移除记录历史次数的上下限
+        // 移除记录保存相关
         rhsMin: 1,
         rhsMax: 1024, // 经过性能测试，放宽到 1024 应该没有太大问题
+        rhsWarning: 256,
         // 渐变时间
         fadeTime: 400,
         textFadeTime: 100,
-        // 通知时间
+        // 信息框
         messageTime: 1200,
+        messageTop: '70%',
+        messageLeft: '50%',
       }
 
       gm.config = {
@@ -116,7 +120,7 @@
         videoButton: true,
         openListVideo: 'olv_openInCurrent',
         removeHistory: true,
-        removeHistorySaves: 64, // 就目前的PC运算力，即使达到 256 且在极限情况下也不会有明显的卡顿
+        removeHistorySaves: 64, // 就目前的PC运算力，即使达到 gm.const.rhsWarning 且在极限情况下也不会有明显的卡顿
         removeHistorySearchTimes: 8,
         removeHistoryData: null, // 特殊处理
         resetAfterFnUpdate: false,
@@ -667,7 +671,7 @@
       } else {
         var el = {}
         var configMap = {
-          // { attr, manual }
+          // { attr, manual, needNotReload }
           headerButton: { attr: 'checked' },
           openHeaderDropdownLink: { attr: 'value' },
           headerButtonOpL: { attr: 'value' },
@@ -676,10 +680,10 @@
           redirect: { attr: 'checked' },
           openListVideo: { attr: 'value' },
           removeHistory: { attr: 'checked', manual: true },
-          removeHistorySaves: { attr: 'value', manual: true },
-          removeHistorySearchTimes: { attr: 'value', manual: true },
+          removeHistorySaves: { attr: 'value', manual: true, needNotReload: true },
+          removeHistorySearchTimes: { attr: 'value', manual: true, needNotReload: true },
           resetAfterFnUpdate: { attr: 'checked' },
-          reloadAfterSetting: { attr: 'checked' },
+          reloadAfterSetting: { attr: 'checked', needNotReload: true },
         }
         setTimeout(() => {
           initSetting()
@@ -721,9 +725,9 @@
         </div>
         <label class="gm-item" title="在播放页面（包括普通模式和稍后再看模式）中加入能将视频快速切换添加或移除出稍后再看列表的按钮">
             <span>【播放页面】加入快速切换视频稍后再看状态的按钮</span><input id="gm-videoButton" type="checkbox"></label>
-        <label class="gm-item" title="是否自动从【www.bilibili.com/medialist/play/watchlater/p*】页面切换至【www.bilibili.com/video/BV*】页面播放">
+        <label class="gm-item" title="打开【${gm.url.page_videoWatchlaterMode}】页面时，自动切换至【${gm.url.page_videoNormalMode}】页面进行播放">
             <span>【播放页面】从稍后再看模式切换到普通模式播放</span><input id="gm-redirect" type="checkbox"></label>
-        <label class="gm-item" title="选择【www.bilibili.com/watchlater/#/list】页面点击视频时的行为">
+        <label class="gm-item" title="设置在【${gm.url.page_watchlaterList}】页面点击视频时的行为">
             <span>【列表页面】点击视频时</span>
             <select id="gm-openListVideo">
                 <option value="olv_openInCurrent">在当前页面打开</option>
@@ -731,17 +735,23 @@
             </select>
         </label>
         <div class="gm-item">
-            <label title="保留最近几次打开【www.bilibili.com/watchlater/#/list】页面时稍后再看列表的记录，以查找出这段时间内将哪些视频移除出稍后再看，用于防止误删操作。关闭该选项后，会将内部历史数据清除！">
-                <span>【列表页面】开启稍后再看移除记录（防误删）</span><input id="gm-removeHistory" type="checkbox"></label>
-            <div class="gm-subitem" title="较大的数值可能会带来较大的开销，经过性能测试，作者认为在设置在 256 以下时，即使在极限情况下也不会产生让人能察觉到的卡顿（存取总时不超过 100ms），但在没有特殊要求的情况下依然不建议设置到这么大。该项修改后，会立即对过时记录进行清理，重新修改为原来的值无法还原被清除的记录，设置为比原来小的值需慎重！（范围：${gm.const.rhsMin} ~ ${gm.const.rhsMax}）">
-                <span>保存最近多少次列表页面数据用于生成移除记录</span><input id="gm-removeHistorySaves" type="text"></div>
+            <label title="保留最近几次打开【${gm.url.page_watchlaterList}】页面时稍后再看列表的记录，以查找出这段时间内将哪些视频移除出稍后再看，用于防止误删操作。关闭该选项后，会将内部历史数据清除！">
+                <span>【列表页面】开启稍后再看移除记录（防误删）</span>
+                <input id="gm-removeHistory" type="checkbox">
+                <span id="gm-rhWarning" class="gm-warning">⚠</span>
+            </label>
+            <div class="gm-subitem" title="较大的数值可能会带来较大的开销，经过性能测试，作者认为在设置在${gm.const.rhsWarning}以下时，即使在极限情况下也不会产生让人能察觉到的卡顿（存取总时不超过100ms），但在没有特殊要求的情况下依然不建议设置到这么大。该项修改后，会立即对过期记录进行清理，重新修改为原来的值无法还原被清除的记录，设置为比原来小的值需慎重！（范围：${gm.const.rhsMin} ~ ${gm.const.rhsMax}）">
+                <span>保存最近多少次列表页面数据用于生成移除记录</span>
+                <input id="gm-removeHistorySaves" type="text">
+                <span id="gm-rhsWarning" class="gm-warning">⚠</span>
+            </div>
             <div class="gm-subitem" title="搜寻时在最近多少次列表页面数据中查找，设置较小的值能较好地定位最近移除的视频。设置较大的值几乎不会对性能造成影响，但不能大于最近列表页面数据保存次数。">
                 <span>默认历史回溯深度</span><input id="gm-removeHistorySearchTimes" type="text"></div>
         </div>
-        <label class="gm-item" title="功能性更新后，是否强制进行初始化设置。特别地，该选项的设置在初始化设置时将被保留，但重置脚本数据时依然会被重置。">
-            <span>【用户设置】功能性更新后是否进行初始化设置</span><input id="gm-resetAfterFnUpdate" type="checkbox"></label>
-        <label class="gm-item" title="用户设置完成后，某些选项需重新加载页面以生效，是否立即重新加载页面">
-            <span>【用户设置】设置完成后重新加载页面</span><input id="gm-reloadAfterSetting" type="checkbox"></label>
+        <label class="gm-item" title="功能性更新后，是否强制进行初始化设置？特别地，该选项的设置在初始化设置时将被保留，但重置脚本数据时依然会被重置。">
+            <span>【用户设置】功能性更新后进行初始化设置</span><input id="gm-resetAfterFnUpdate" type="checkbox"></label>
+        <label class="gm-item" title="勾选后，如果更改的配置需要重新加载才能生效，那么会在设置完成后重新加载页面。">
+            <span>【用户设置】必要时在设置完成后重新加载页面</span><input id="gm-reloadAfterSetting" type="checkbox"></label>
     </div>
     <div class="gm-bottom">
         <button id="gm-save">保存</button><button id="gm-cancel">取消</button>
@@ -751,16 +761,21 @@
 <div class="gm-shadow"></div>
 `
 
+          // 找出配置对应的元素
+          for (var name in gm.config) {
+            el[name] = gm.el.setting.querySelector('#gm-' + name)
+          }
+
           el.save = gm.el.setting.querySelector('#gm-save')
           el.cancel = gm.el.setting.querySelector('#gm-cancel')
           el.shadow = gm.el.setting.querySelector('.gm-shadow')
           el.reset = gm.el.setting.querySelector('#gm-reset')
           el.reset.onclick = resetScript
 
-          // 找出配置对应的元素
-          for (var name in gm.config) {
-            el[name] = gm.el.setting.querySelector('#gm-' + name)
-          }
+          el.rhWarning = gm.el.setting.querySelector('#gm-rhWarning')
+          initWarning(el.rhWarning, '关闭移除记录，或将列表页面数据保存次数设置为比原来小的值，都会造成对内部过期历史数据的清理！')
+          el.rhsWarning = gm.el.setting.querySelector('#gm-rhsWarning')
+          initWarning(el.rhsWarning, `该项设置过大时，在极端情况下可能会产生明显的卡顿，一般不建议该项超过${gm.const.rhsWarning}。`)
 
           el.headerButtonOpL.innerHTML = el.headerButtonOpR.innerHTML = `
 <option value="op_openListInCurrent">在当前页面打开列表页面</option>
@@ -792,6 +807,7 @@
           }
           el.removeHistory.onchange = function() {
             subitemChange(this, [el.removeHistorySaves, el.removeHistorySearchTimes])
+            setRhWaring()
           }
 
           // 输入框内容处理
@@ -808,6 +824,8 @@
               }
               this.value = value
             }
+            setRhWaring()
+            setRhsWarning()
           }
           el.removeHistorySaves.onblur = function() {
             if (this.value === '') {
@@ -816,6 +834,8 @@
             if (parseInt(el.removeHistorySearchTimes.value) > parseInt(this.value)) {
               el.removeHistorySearchTimes.value = this.value
             }
+            setRhWaring()
+            setRhsWarning()
           }
           el.removeHistorySearchTimes.oninput = function() {
             var v0 = this.value.replace(/[^\d]/g, '')
@@ -836,6 +856,8 @@
               this.value = el.removeHistorySaves.value
             } else if (parseInt(el.removeHistorySaves.value) < parseInt(this.value)) {
               el.removeHistorySaves.value = this.value
+              setRhWaring()
+              setRhsWarning()
             }
           }
         }
@@ -857,22 +879,35 @@
           }
         }
 
+        var needReload = false
         /** 设置保存时执行 */
         var onSave = () => {
           // 通用处理
           for (var name in configMap) {
-            if (!configMap[name].manual) {
-              saveConfig(name, configMap[name].attr)
+            var cfg = configMap[name]
+            if (!cfg.manual) {
+              var change = saveConfig(name, cfg.attr)
+              if (!cfg.needNotReload) {
+                needReload = needReload || change
+              }
             }
           }
 
           // 特殊处理
-          var resetMaxSize = gm.config.removeHistory != el.removeHistory.checked
-          gm.config.removeHistory = el.removeHistory.checked
-          GM_setValue('removeHistory', gm.config.removeHistory)
+          var resetMaxSize = false
+          // removeHistory
+          if (gm.config.removeHistory != el.removeHistory.checked) {
+            gm.config.removeHistory = el.removeHistory.checked
+            GM_setValue('removeHistory', gm.config.removeHistory)
+            resetMaxSize = true
+            needReload = true
+          }
+          // “因”中无 removeHistory，就说明 needReload 需要设置为 true，除非“果”不需要刷新页面就能生效
           if (gm.config.removeHistory) {
             var rhsV = parseInt(el.removeHistorySaves.value)
             if (rhsV != gm.config.removeHistorySaves && !isNaN(rhsV)) {
+              // 因：removeHistorySaves
+              // 果：removeHistorySaves & removeHistoryData
               if (gm.config.removeHistoryData) {
                 gm.config.removeHistoryData.setMaxSize(rhsV)
               } else {
@@ -881,7 +916,10 @@
               gm.config.removeHistorySaves = rhsV
               GM_setValue('removeHistorySaves', gm.config.removeHistorySaves)
               GM_setValue('removeHistoryData', gm.config.removeHistoryData)
+              // 不需要修改 needReload
             } else if (resetMaxSize) {
+              // 因：removeHistory
+              // 果：removeHistoryData
               if (gm.config.removeHistoryData) {
                 gm.config.removeHistoryData.setMaxSize(rhsV)
               } else {
@@ -889,12 +927,17 @@
               }
               GM_setValue('removeHistoryData', gm.config.removeHistoryData)
             }
+            // 因：removeHistorySearchTimes
+            // 果：removeHistorySearchTimes
             var rhstV = parseInt(el.removeHistorySearchTimes.value)
             if (rhstV != gm.config.removeHistorySearchTimes && !isNaN(rhstV)) {
               gm.config.removeHistorySearchTimes = rhstV
               GM_setValue('removeHistorySearchTimes', gm.config.removeHistorySearchTimes)
+              // 不需要修改 needReload
             }
           } else if (resetMaxSize) {
+            // 因：removeHistory
+            // 果：removeHistoryData
             if (gm.config.removeHistoryData) {
               gm.config.removeHistoryData = null
               GM_setValue('removeHistoryData', gm.config.removeHistoryData)
@@ -914,7 +957,8 @@
             }, gm.const.fadeTime)
           }
 
-          if (gm.config.reloadAfterSetting) {
+          if (gm.config.reloadAfterSetting && needReload) {
+            needReload = false
             location.reload()
           }
         }
@@ -934,10 +978,88 @@
          *
          * @param {string} name 配置名称
          * @param {string} attr 从对应元素的什么属性读取
+         * @returns {boolean} 是否有实际更新
          */
         var saveConfig = (name, attr) => {
-          gm.config[name] = el[name][attr]
-          GM_setValue(name, gm.config[name])
+          var elValue = el[name][attr]
+          if (gm.config[name] != elValue) {
+            gm.config[name] = elValue
+            GM_setValue(name, gm.config[name])
+            return true
+          }
+          return false
+        }
+
+        /** 设置 removeHistory 警告项 */
+        var setRhWaring = () => {
+          var warn = false
+          var rh = el.removeHistory.checked
+          if (!rh) {
+            warn = true
+          } else {
+            var rhs = parseInt(el.removeHistorySaves.value)
+            if (isNaN(rhs)) {
+              rhs = 0
+            }
+            if (rhs < gm.config.removeHistorySaves) {
+              warn = true
+            }
+          }
+
+          if (el.rhWarning.show) {
+            if (!warn) {
+              fade(false, el.rhWarning)
+              el.rhWarning.show = false
+            }
+          } else {
+            if (warn) {
+              fade(true, el.rhWarning)
+              el.rhWarning.show = true
+            }
+          }
+        }
+
+        /** 设置 removeHistorySaves 警告项 */
+        var setRhsWarning = () => {
+          var value = parseInt(el.removeHistorySaves.value)
+          if (isNaN(value)) {
+            value = 0
+          }
+          if (el.rhsWarning.show) {
+            if (value <= gm.const.rhsWarning) {
+              fade(false, el.rhsWarning)
+              el.rhsWarning.show = false
+            }
+          } else {
+            if (value > gm.const.rhsWarning) {
+              fade(true, el.rhsWarning)
+              el.rhsWarning.show = true
+            }
+          }
+        }
+      }
+
+      /**
+       * 设置警告项
+       *
+       * @param {HTMLElement} elWarning 警告元素
+       * @param {string} msg 警告信息
+       */
+      var initWarning = (elWarning, msg) => {
+        elWarning.show = false
+        elWarning.onmouseover = function() {
+          var htmlMsg = `
+<table><tr>
+    <td style="font-size:1.8em;line-height:1.8em;padding-right:0.6em;">⚠</td>
+    <td>${msg}</td>
+</tr></table>
+`
+          this.msgbox = message(htmlMsg, { html: true, autoClose: false })
+        }
+        elWarning.onmouseleave = function() {
+          if (this.msgbox) {
+            closeMessage(this.msgbox)
+          }
         }
       }
     }
@@ -1127,8 +1249,8 @@
           var menu = gm.menu[key]
           if (key == name) {
             menu.state = true
-            fade(true, menu.el)
             menu.openHandler && menu.openHandler()
+            fade(true, menu.el)
           } else {
             if (menu.state) {
               closeMenuItem(key)
@@ -1143,10 +1265,9 @@
       var menu = gm.menu[name]
       if (menu.state) {
         menu.state = false
-        fade(false, menu.el)
-        menu.closeHandler && setTimeout(() => {
-          menu.closeHandler()
-        }, gm.const.fadeTime)
+        fade(false, menu.el, () => {
+          menu.closeHandler && menu.closeHandler()
+        })
       }
     }
 
@@ -1154,22 +1275,57 @@
      * 用户通知
      *
      * @param {string} msg 信息
-     * @param {number} [ms=gm.const.messageTime] 显示时间（单位：ms，不含渐显/渐隐时间）
-     * @param {boolean} [html=false] 是否将 msg 理解为 HTML
+     * @param {object} [config] 设置
+     * @param {boolean} [config.autoClose=true] 是否自动关闭信息，配合 config.ms 使用
+     * @param {number} [config.ms=gm.const.messageTime] 显示时间（单位：ms，不含渐显/渐隐时间）
+     * @param {boolean} [config.html=false] 是否将 msg 理解为 HTML
+     * @param {object} [config.position=null] 信息框的位置，不设置该项默认为 { top: gm.const.messageTop, left: gm.const.messageLeft }
+     * @param {string} config.position.top 信息框元素的 top
+     * @param {string} config.position.left 信息框元素的 left
+     * @return {HTMLElement} 信息框元素
      */
-    function message(msg, ms = gm.const.messageTime, html = false) {
+    function message(msg, config = {}) {
+      var defaultConfig = {
+        autoClose: true,
+        ms: gm.const.messageTime,
+        html: false,
+        position: null,
+      }
+      config = { ...defaultConfig, ...config }
+
       var msgbox = document.body.appendChild(document.createElement('div'))
-      msgbox.id = `${gm.id}-msgbox`
-      if (html) {
+      msgbox.className = `${gm.id}-msgbox`
+      if (config.position) {
+        msgbox.style.top = config.position.top
+        msgbox.style.left = config.position.left
+      }
+
+      if (config.html) {
         msgbox.innerHTML = msg
       } else {
         msgbox.innerText = msg
       }
-      fade(true, msgbox)
-      setTimeout(() => {
-        fade(false, msgbox)
-        setTimeout(() => msgbox.remove(), gm.const.fadeTime)
-      }, ms + gm.const.fadeTime)
+      fade(true, msgbox, () => {
+        if (config.autoClose) {
+          setTimeout(() => {
+            closeMessage(msgbox)
+          }, config.ms)
+        }
+      })
+      return msgbox
+    }
+
+    /**
+     * 关闭信息
+     *
+     * @param {HTMLElement} msgbox 信息框元素
+     */
+    function closeMessage(msgbox) {
+      if (msgbox) {
+        fade(false, msgbox, () => {
+          msgbox && msgbox.remove()
+        })
+      }
     }
 
     /**
@@ -1177,22 +1333,39 @@
      *
      * @param {boolean} inOut 渐显/渐隐
      * @param {HTMLElement} target HTML 元素
+     * @param {fadeCallback} [callback] 处理完成后的回调函数
      */
-    function fade(inOut, target) {
+    function fade(inOut, target, callback) {
+      // fadeId 等同于当前时间戳，其意义在于保证对于同一元素，后执行的操作必将覆盖前的操作
+      var fadeId = new Date().getTime()
+      target._fadeId = fadeId
       if (inOut) { // 渐显
         // 只有 display 可视情况下修改 opacity 才会触发 transition
-        // 按 HTML5 定义，浏览器需保证 display 在修改 4ms 后保证生效，但实际上大部分浏览器貌似做不到，等个 10ms 再修改 opacity
         target.style.display = 'unset'
         setTimeout(() => {
-          target.style.opacity = '1'
-        }, 10)
+          var success = false
+          if (target._fadeId <= fadeId) {
+            target.style.opacity = '1'
+            success = true
+          }
+          callback && callback(success)
+        }, 10) // 此处的 10ms 是为了保证修改 display 后在浏览器上真正生效，按 HTML5 定义，浏览器需保证 display 在修改 4ms 后保证生效，但实际上大部分浏览器貌似做不到，等个 10ms 再修改 opacity
       } else { // 渐隐
         target.style.opacity = '0'
         setTimeout(() => {
-          target.style.display = 'none'
+          var success = false
+          if (target._fadeId <= fadeId) {
+            target.style.display = 'none'
+            success = true
+          }
+          callback && callback(success)
         }, gm.const.fadeTime)
       }
     }
+    /**
+     * @callback fadeCallback
+     * @param {boolean} success 当前 fade 任务是否完成
+     */
 
     /**
      * 在条件满足后执行操作
@@ -1203,7 +1376,7 @@
      * 如果在此期间，终止条件通过，则表示依然不满足条件，故执行 stopCallback() 而非 callback(result)。
      * 如果在此期间，终止条件一直失败，则顺利通过检测，执行 callback(result)。
      *
-     * @param {Object} [options={}] 选项
+     * @param {Object} options 选项
      * @param {Function} options.condition 条件，当 condition() 返回的 result 为真值时满足条件
      * @param {Function} options.callback 当满足条件时执行 callback(result)
      * @param {number} [options.interval=100] 检测时间间隔（单位：ms）
@@ -1271,7 +1444,7 @@
      * 如果在此期间，终止元素加载成功，则表示依然不满足条件，故执行 stopCallback() 而非 callback(element)。
      * 如果在此期间，终止元素加载失败，则顺利通过检测，执行 callback(element)。
      *
-     * @param {Object} [options={}] 选项
+     * @param {Object} options 选项
      * @param {Function} options.selector 该选择器指定要等待加载的元素 element
      * @param {Function} options.callback 当 element 加载成功时执行 callback(element)
      * @param {number} [options.interval=100] 检测时间间隔（单位：ms）
@@ -1326,7 +1499,7 @@
     border-radius: 10px;
     z-index: 65535;
     min-width: 48em;
-    padding: 0.4em;
+    padding: 1em 1.4em;
 }
 #${gm.id} .gm-setting #gm-maintitle {
     cursor: pointer;
@@ -1342,13 +1515,13 @@
     display: block;
     padding: 0.6em;
 }
+#${gm.id} .gm-setting .gm-item:hover {
+  color: #0075FF;
+}
 #${gm.id} .gm-setting .gm-subitem {
     display: block;
     margin-left: 6em;
     margin-top: 0.3em;
-}
-#${gm.id} .gm-setting .gm-item:hover {
-    color: #0075FF;
 }
 #${gm.id} .gm-setting .gm-subitem[disabled] {
     color: gray;
@@ -1364,7 +1537,7 @@
 #${gm.id} .gm-setting input[type=text] {
     float: right;
     border-width: 0 0 1px 0;
-    width: 2em;
+    width: 2.4em;
     text-align: right;
     padding: 0 0.2em;
     margin-right: -0.2em;
@@ -1372,6 +1545,16 @@
 #${gm.id} .gm-setting select {
     border-width: 0 0 1px 0;
     cursor: pointer;
+}
+#${gm.id} .gm-setting .gm-warning {
+    position: absolute;
+    right: 1.4em;
+    color: #e37100;
+    font-size: 1.4em;
+    line-height: 1em;
+    transition: opacity ${gm.const.fadeTime}ms ease-in-out;
+    opacity: 0;
+    display: none;
 }
 #${gm.id} .gm-setting .gm-bottom {
     margin: 0.8em 2em 1.8em 2em;
@@ -1489,6 +1672,7 @@
 #${gm.id} [disabled] input,
 #${gm.id} [disabled] select {
     cursor: not-allowed;
+    color: gray;
 }
 
 #${gm.id}-watchlater-video-btn {
@@ -1503,14 +1687,16 @@
     margin: 0 2px 2px 0;
 }
 
-#${gm.id}-msgbox {
+.${gm.id}-msgbox {
     position: fixed;
-    top: 70%;
-    left: 50%;
+    top: ${gm.const.messageTop};
+    left: ${gm.const.messageLeft};
     transform: translate(-50%, -50%);
     z-index: 65535;
     background-color: #000000bf;
     font-size: 16px;
+    max-width: 24em;
+    min-width: 2em;
     color: white;
     padding: 0.5em 1em;
     border-radius: 0.6em;
