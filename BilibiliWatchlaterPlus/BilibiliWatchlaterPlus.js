@@ -1,7 +1,7 @@
 // ==UserScript==
 // @id              BilibiliWatchlaterPlus@Laster2800
 // @name            B站稍后再看功能增强
-// @version         2.7.0.20200718
+// @version         2.8.0.20200718
 // @namespace       laster2800
 // @author          Laster2800
 // @description     B站稍后再看功能增强，目前功能包括UI增强、稍后再看模式自动切换至普通模式播放（重定向）、稍后再看移除记录等，支持功能设置
@@ -27,12 +27,11 @@
 
 (function() {
   'use strict'
-
   // 全局对象
   var gm = {
     id: 'gm395456',
     configVersion: GM_getValue('configVersion'), // 配置版本，为执行初始化的代码版本对应的配置版本号
-    configUpdate: 20200717.1, // 当前版本对应的配置版本号；若同一天修改多次，可以追加小数来区分
+    configUpdate: 20200718, // 当前版本对应的配置版本号；若同一天修改多次，可以追加小数来区分
     config: {
       redirect: false,
     },
@@ -42,6 +41,7 @@
   if (urlMatch(/bilibili.com\/medialist\/play\/watchlater(?=\/|$)/)) {
     if (gm.config.redirect) { // 重定向，document-start 就执行，尽可能快地将原页面掩盖过去
       fnRedirect()
+      return // 必须 return，否则后面的内容还会执行使得加载速度超极慢
     }
   }
 
@@ -99,12 +99,12 @@
       gm.const = {
         // 移除记录历史次数的上下限
         rhsMin: 1,
-        rhsMax: 64,
+        rhsMax: 1024, // 经过性能测试，放宽到 1024 应该没有太大问题
         // 渐变时间
         fadeTime: 400,
         textFadeTime: 100,
         // 通知时间
-        messageTime: 3000,
+        messageTime: 1200,
       }
 
       gm.config = {
@@ -116,9 +116,10 @@
         videoButton: true,
         openListVideo: 'olv_openInCurrent',
         removeHistory: true,
-        removeHistorySaves: 16,
+        removeHistorySaves: 64, // 就目前的PC运算力，即使达到 256 且在极限情况下也不会有明显的卡顿
         removeHistorySearchTimes: 8,
         removeHistoryData: null, // 特殊处理
+        resetAfterFnUpdate: false,
         reloadAfterSetting: true,
       }
 
@@ -138,32 +139,63 @@
 
     /** 版本更新处理 */
     function updateVersion() {
-      if (gm.configVersion !== 0) {
-        if (gm.configVersion === undefined && GM_getValue('gm395456') > 0) {
-          // 2.6.0.20200717 版本重构
-          for (var name in gm.config) {
-            var oldName = 'gm395456_' + name
-            var value = GM_getValue(oldName)
-            GM_setValue(name, value)
-            GM_deleteValue(oldName)
+      // 该项与更新相关，在此处处理
+      gm.config.resetAfterFnUpdate = gmValidate('resetAfterFnUpdate', gm.config.resetAfterFnUpdate)
+
+      if (gm.configVersion !== 0 && gm.configVersion !== gm.configUpdate) {
+        if (gm.config.resetAfterFnUpdate) {
+          gm.configVersion = 0
+          return
+        }
+
+        if (gm.configVersion < gm.configUpdate) {
+          if (gm.configVersion < 20200718) {
+            // 2.8.0.20200718
+            // 强制设置为新的默认值
+            GM_setValue('removeHistorySaves', gm.config.removeHistorySaves)
+            var removeHistory = GM_getValue('removeHistory')
+            if (removeHistory) {
+              // 修改容量
+              var removeHistoryData = GM_getValue('removeHistoryData')
+              if (removeHistoryData) {
+                Object.setPrototypeOf(removeHistoryData, PushQueue.prototype)
+                removeHistoryData.setCapacity(gm.const.rhsMax)
+                GM_setValue('removeHistoryData', removeHistoryData)
+              }
+            } else {
+              // 如果 removeHistory 关闭则移除 removeHistoryData
+              GM_setValue('removeHistoryData', null)
+            }
+            // 升级配置版本
+            gm.configVersion = gm.configUpdate
+            GM_setValue('configVersion', gm.configVersion)
           }
-          gm.configVersion = GM_getValue('gm395456')
-          GM_setValue('configVersion', gm.configVersion)
-          GM_deleteValue('gm395456')
+        } else if (gm.configVersion === undefined) {
+          if (GM_getValue('gm395456') > 0) {
+            // 2.6.0.20200717 版本重构
+            for (var name in gm.config) {
+              var oldName = 'gm395456_' + name
+              var value = GM_getValue(oldName)
+              GM_setValue(name, value)
+              GM_deleteValue(oldName)
+            }
+            gm.configVersion = GM_getValue('gm395456')
+            GM_setValue('configVersion', gm.configVersion) // 保留配置版本
+            GM_deleteValue('gm395456')
+          }
         }
       }
     }
 
     /** 用户配置读取 */
     function readConfig() {
-      // document-start 时期就处理过的配置
-      var cfgDocumentStart = { redirect: true }
+      var cfgDocumentStart = { redirect: true } // document-start 时期就处理过的配置
+      var cfgManual = { removeHistoryData: true, resetAfterFnUpdate: true } // 手动处理的配置
       if (gm.configVersion > 0) {
         // 对配置进行校验
-        // 需特殊处理，不进行回写的配置
-        var cfgNoWriteBack = { removeHistorySearchTimes: true, removeHistoryData: true }
+        var cfgNoWriteBack = { removeHistorySearchTimes: true } // 不进行回写的配置
         for (var name in gm.config) {
-          if (!cfgDocumentStart[name]) {
+          if (!cfgDocumentStart[name] && !cfgManual[name]) {
             gm.config[name] = gmValidate(name, gm.config[name], !cfgNoWriteBack[name])
           }
         }
@@ -172,18 +204,28 @@
           gm.config.removeHistorySearchTimes = gm.config.removeHistorySaves
           GM_setValue('removeHistorySearchTimes', gm.config.removeHistorySearchTimes)
         }
-        if (!gm.config.removeHistoryData) {
-          gm.config.removeHistoryData = new PushQueue(gm.config.removeHistorySaves, gm.const.rhsMax)
-          GM_setValue('removeHistoryData', gm.config.removeHistoryData)
-        } else {
-          Object.setPrototypeOf(gm.config.removeHistoryData, PushQueue.prototype) // 还原类型信息
+        // 处理 removeHistoryData
+        if (gm.config.removeHistory) {
+          gm.config.removeHistoryData = gmValidate('removeHistoryData', null, false)
+          if (gm.config.removeHistoryData) {
+            Object.setPrototypeOf(gm.config.removeHistoryData, PushQueue.prototype) // 还原类型信息
+            if (gm.config.removeHistoryData.maxSize != gm.config.removeHistorySaves) {
+              gm.config.removeHistoryData.setMaxSize(gm.config.removeHistorySaves)
+            }
+          } else {
+            gm.config.removeHistoryData = new PushQueue(gm.config.removeHistorySaves, gm.const.rhsMax)
+            GM_setValue('removeHistoryData', gm.config.removeHistoryData)
+          }
         }
       } else {
         // 用户强制初始化，或者第一次安装脚本
         gm.configVersion = 0
-        gm.config.removeHistoryData = new PushQueue(gm.config.removeHistorySaves, gm.const.rhsMax)
+        if (gm.config.removeHistory) {
+          gm.config.removeHistoryData = new PushQueue(gm.config.removeHistorySaves, gm.const.rhsMax)
+          GM_setValue('removeHistoryData', gm.config.removeHistoryData)
+        }
         for (name in gm.config) {
-          if (!cfgDocumentStart[name]) {
+          if (!cfgDocumentStart[name] && !cfgManual[name]) {
             GM_setValue(name, gm.config[name])
           }
         }
@@ -507,9 +549,9 @@
         if (aid) {
           return aid
         }
-        
+
         // 用笨方法查算了，那套算法太烦，不想弄过来
-        // 这里不能根据分P来推测 aid，因为因为该功能的引入，分P不一定对得上真正的列表
+        // 这里不能根据分P来推测 aid，因为该功能的引入，分P不一定对得上真正的列表
         return new Promise(resolve => {
           GM_xmlhttpRequest({
             method: 'GET',
@@ -624,6 +666,21 @@
         openMenuItem('setting')
       } else {
         var el = {}
+        var configMap = {
+          // { attr, manual }
+          headerButton: { attr: 'checked' },
+          openHeaderDropdownLink: { attr: 'value' },
+          headerButtonOpL: { attr: 'value' },
+          headerButtonOpR: { attr: 'value' },
+          videoButton: { attr: 'checked' },
+          redirect: { attr: 'checked' },
+          openListVideo: { attr: 'value' },
+          removeHistory: { attr: 'checked', manual: true },
+          removeHistorySaves: { attr: 'value', manual: true },
+          removeHistorySearchTimes: { attr: 'value', manual: true },
+          resetAfterFnUpdate: { attr: 'checked' },
+          reloadAfterSetting: { attr: 'checked' },
+        }
         setTimeout(() => {
           initSetting()
           handleConfigItem()
@@ -676,11 +733,13 @@
         <div class="gm-item">
             <label title="保留最近几次打开【www.bilibili.com/watchlater/#/list】页面时稍后再看列表的记录，以查找出这段时间内将哪些视频移除出稍后再看，用于防止误删操作。关闭该选项后，会将内部历史数据清除！">
                 <span>【列表页面】开启稍后再看移除记录（防误删）</span><input id="gm-removeHistory" type="checkbox"></label>
-            <div class="gm-subitem" title="请不要设置过大的数值，否则会带来较大的开销。该项修改后，会立即对过时记录进行清理，重新修改为原来的值无法还原被清除的记录，设置为比原来小的值需慎重！范围：${gm.const.rhsMin} ~ ${gm.const.rhsMax}。">
+            <div class="gm-subitem" title="较大的数值可能会带来较大的开销，经过性能测试，作者认为在设置在 256 以下时，即使在极限情况下也不会产生让人能察觉到的卡顿（存取总时不超过 100ms），但在没有特殊要求的情况下依然不建议设置到这么大。该项修改后，会立即对过时记录进行清理，重新修改为原来的值无法还原被清除的记录，设置为比原来小的值需慎重！（范围：${gm.const.rhsMin} ~ ${gm.const.rhsMax}）">
                 <span>保存最近多少次列表页面数据用于生成移除记录</span><input id="gm-removeHistorySaves" type="text"></div>
-            <div class="gm-subitem" title="搜寻时在最近多少次列表页面数据中查找，设置较小的值能较好地定位最近移除的视频。不能大于最近列表页面数据保存次数。">
+            <div class="gm-subitem" title="搜寻时在最近多少次列表页面数据中查找，设置较小的值能较好地定位最近移除的视频。设置较大的值几乎不会对性能造成影响，但不能大于最近列表页面数据保存次数。">
                 <span>默认历史回溯深度</span><input id="gm-removeHistorySearchTimes" type="text"></div>
         </div>
+        <label class="gm-item" title="功能性更新后，是否强制进行初始化设置。特别地，该选项的设置在初始化设置时将被保留，但重置脚本数据时依然会被重置。">
+            <span>【用户设置】功能性更新后是否进行初始化设置</span><input id="gm-resetAfterFnUpdate" type="checkbox"></label>
         <label class="gm-item" title="用户设置完成后，某些选项需重新加载页面以生效，是否立即重新加载页面">
             <span>【用户设置】设置完成后重新加载页面</span><input id="gm-reloadAfterSetting" type="checkbox"></label>
     </div>
@@ -800,36 +859,34 @@
 
         /** 设置保存时执行 */
         var onSave = () => {
-          gm.config.headerButton = el.headerButton.checked
-          GM_setValue('headerButton', gm.config.headerButton)
-          gm.config.openHeaderDropdownLink = el.openHeaderDropdownLink.value
-          GM_setValue('openHeaderDropdownLink', gm.config.openHeaderDropdownLink)
-          gm.config.headerButtonOpL = el.headerButtonOpL.value
-          GM_setValue('headerButtonOpL', gm.config.headerButtonOpL)
-          gm.config.headerButtonOpR = el.headerButtonOpR.value
-          GM_setValue('headerButtonOpR', gm.config.headerButtonOpR)
+          // 通用处理
+          for (var name in configMap) {
+            if (!configMap[name].manual) {
+              saveConfig(name, configMap[name].attr)
+            }
+          }
 
-          gm.config.videoButton = el.videoButton.checked
-          GM_setValue('videoButton', gm.config.videoButton)
-
-          gm.config.redirect = el.redirect.checked
-          GM_setValue('redirect', gm.config.redirect)
-
-          gm.config.openListVideo = el.openListVideo.value
-          GM_setValue('openListVideo', gm.config.openListVideo)
-
+          // 特殊处理
           var resetMaxSize = gm.config.removeHistory != el.removeHistory.checked
           gm.config.removeHistory = el.removeHistory.checked
           GM_setValue('removeHistory', gm.config.removeHistory)
           if (gm.config.removeHistory) {
             var rhsV = parseInt(el.removeHistorySaves.value)
             if (rhsV != gm.config.removeHistorySaves && !isNaN(rhsV)) {
-              gm.config.removeHistoryData.setMaxSize(rhsV)
+              if (gm.config.removeHistoryData) {
+                gm.config.removeHistoryData.setMaxSize(rhsV)
+              } else {
+                gm.config.removeHistoryData = new PushQueue(rhsV, gm.const.rhsMax)
+              }
               gm.config.removeHistorySaves = rhsV
               GM_setValue('removeHistorySaves', gm.config.removeHistorySaves)
               GM_setValue('removeHistoryData', gm.config.removeHistoryData)
             } else if (resetMaxSize) {
-              gm.config.removeHistoryData.setMaxSize(rhsV)
+              if (gm.config.removeHistoryData) {
+                gm.config.removeHistoryData.setMaxSize(rhsV)
+              } else {
+                gm.config.removeHistoryData = new PushQueue(rhsV, gm.const.rhsMax)
+              }
               GM_setValue('removeHistoryData', gm.config.removeHistoryData)
             }
             var rhstV = parseInt(el.removeHistorySearchTimes.value)
@@ -838,12 +895,11 @@
               GM_setValue('removeHistorySearchTimes', gm.config.removeHistorySearchTimes)
             }
           } else if (resetMaxSize) {
-            gm.config.removeHistoryData.setMaxSize(0)
-            GM_setValue('removeHistoryData', gm.config.removeHistoryData)
+            if (gm.config.removeHistoryData) {
+              gm.config.removeHistoryData = null
+              GM_setValue('removeHistoryData', gm.config.removeHistoryData)
+            }
           }
-
-          gm.config.reloadAfterSetting = el.reloadAfterSetting.checked
-          GM_setValue('reloadAfterSetting', gm.config.reloadAfterSetting)
 
           closeMenuItem('setting')
           if (initial) {
@@ -865,25 +921,34 @@
 
         /** 设置打开时执行 */
         var onOpen = () => {
-          el.headerButton.checked = gm.config.headerButton
-          el.openHeaderDropdownLink.value = gm.config.openHeaderDropdownLink
-          el.headerButtonOpL.value = gm.config.headerButtonOpL
-          el.headerButtonOpR.value = gm.config.headerButtonOpR
+          for (var name in configMap) {
+            var attr = configMap[name].attr
+            el[name][attr] = gm.config[name]
+          }
           el.headerButton.onchange()
-          el.videoButton.checked = gm.config.videoButton
-          el.redirect.checked = gm.config.redirect
-          el.openListVideo.value = gm.config.openListVideo
-          el.removeHistory.checked = gm.config.removeHistory
-          el.removeHistorySaves.value = gm.config.removeHistorySaves
-          el.removeHistorySearchTimes.value = gm.config.removeHistorySearchTimes
           el.removeHistory.onchange()
-          el.reloadAfterSetting.checked = gm.config.reloadAfterSetting
+        }
+
+        /**
+         * 保存配置
+         *
+         * @param {string} name 配置名称
+         * @param {string} attr 从对应元素的什么属性读取
+         */
+        var saveConfig = (name, attr) => {
+          gm.config[name] = el[name][attr]
+          GM_setValue(name, gm.config[name])
         }
       }
     }
 
     /** 打开移除记录 */
     function openRemoveHistory() {
+      if (!gm.config.removeHistory) {
+        message('请在设置中开启稍后再看移除记录')
+        return
+      }
+
       var el = {}
       el.searchTimes = null
       if (gm.el.history) {
@@ -1089,7 +1154,7 @@
      * 用户通知
      *
      * @param {string} msg 信息
-     * @param {number} [ms=gm.const.messageTime] 显示时间（单位：ms）
+     * @param {number} [ms=gm.const.messageTime] 显示时间（单位：ms，不含渐显/渐隐时间）
      * @param {boolean} [html=false] 是否将 msg 理解为 HTML
      */
     function message(msg, ms = gm.const.messageTime, html = false) {
@@ -1104,11 +1169,12 @@
       setTimeout(() => {
         fade(false, msgbox)
         setTimeout(() => msgbox.remove(), gm.const.fadeTime)
-      }, ms - 2 * gm.const.fadeTime)
+      }, ms + gm.const.fadeTime)
     }
 
     /**
      * 处理 HTML 元素的渐显和渐隐
+     *
      * @param {boolean} inOut 渐显/渐隐
      * @param {HTMLElement} target HTML 元素
      */
@@ -1239,134 +1305,6 @@
       })
     }
 
-    /**
-     * 推入队列，循环数组实现
-     *
-     * @param {number} maxSize 队列的最大长度，达到此长度后继续推入数据，将舍弃末尾处的数据
-     * @param {number} [capacity=maxSize] 循环数组的长度，不能小于 maxSize
-     */
-    function PushQueue(maxSize, capacity) {
-      this.index = 0
-      this.size = 0
-      this.maxSize = maxSize
-      if (!capacity || capacity < maxSize) {
-        capacity = maxSize
-      }
-      this.capacity = capacity
-      this.data = new Array(capacity)
-    }
-    /**
-     * 设置推入队列的最大长度
-     *
-     * @param {number} maxSize 队列的最大长度，不能大于 capacity
-     */
-    PushQueue.prototype.setMaxSize = function(maxSize) {
-      if (maxSize > this.capacity) {
-        maxSize = this.capacity
-      } else if (maxSize < this.size) {
-        this.size = maxSize
-      }
-      this.maxSize = maxSize
-      this.gc()
-    }
-    /**
-     * 队列是否为空
-     */
-    PushQueue.prototype.empty = function() {
-      return this.size == 0
-    }
-    /**
-     * 向队列中推入数据，若队列已达到最大长度，则舍弃末尾处数据
-     *
-     * @param {Object} value 推入队列的数据
-     */
-    PushQueue.prototype.push = function(value) {
-      this.data[this.index] = value
-      this.index += 1
-      if (this.index >= this.capacity) {
-        this.index = 0
-      }
-      if (this.size < this.maxSize) {
-        this.size += 1
-      }
-      if (this.maxSize < this.capacity && this.size == this.maxSize) { // maxSize 等于 capacity 时资源刚好完美利用，不必回收资源
-        var release = this.index - this.size - 1
-        if (release < 0) {
-          release += this.capacity
-        }
-        this.data[release] = null
-      }
-    }
-    /**
-     * 将队列末位处的数据弹出
-     *
-     * @returns {Object} 弹出的数据
-     */
-    PushQueue.prototype.pop = function() {
-      if (this.size > 0) {
-        var index = this.index - this.size
-        if (index < 0) {
-          index += this.capacity
-        }
-        this.size -= 1
-        var result = this.data[index]
-        this.data[index] = null
-        return result
-      }
-    }
-    /**
-     * 将推入队列以数组的形式返回
-     *
-     * @param {number} [maxLength=size] 读取的最大长度
-     * @returns {Array} 队列数据的数组形式
-     */
-    PushQueue.prototype.toArray = function(maxLength) {
-      if (typeof maxLength != 'number') {
-        maxLength = parseInt(maxLength)
-      }
-      if (isNaN(maxLength) || maxLength > this.size || maxLength < 0) {
-        maxLength = this.size
-      }
-      var ar = []
-      var end = this.index - maxLength
-      for (var i = this.index - 1; i >= end && i >= 0; i--) {
-        ar.push(this.data[i])
-      }
-      if (end < 0) {
-        end += this.capacity
-        for (i = this.capacity - 1; i >= end; i--) {
-          ar.push(this.data[i])
-        }
-      }
-      return ar
-    }
-    /**
-     * 清理内部无效数据，释放内存
-     */
-    PushQueue.prototype.gc = function() {
-      if (this.size > 0) {
-        var start = this.index - 1
-        var end = this.index - this.size
-        if (end < 0) {
-          end += this.capacity
-        }
-        if (start >= end) {
-          for (var i = 0; i < end; i++) {
-            this.data[i] = null
-          }
-          for (i = start + 1; i < this.capacity; i++) {
-            this.data[i] = null
-          }
-        } else if (start < end) {
-          for (i = start + 1; i < end; i++) {
-            this.data[i] = null
-          }
-        }
-      } else {
-        this.data = new Array(this.capacity)
-      }
-    }
-
     /** 添加脚本样式 */
     function addStyle() {
       GM_addStyle(`
@@ -1377,6 +1315,7 @@
     display: none;
     position: fixed;
     z-index: 10000;
+    user-select: none;
 }
 #${gm.id} .gm-setting .gm-setting-page {
     position: fixed;
@@ -1401,7 +1340,7 @@
 }
 #${gm.id} .gm-setting .gm-item {
     display: block;
-    padding: 0.4em;
+    padding: 0.6em;
 }
 #${gm.id} .gm-setting .gm-subitem {
     display: block;
@@ -1454,6 +1393,7 @@
     display: none;
     position: fixed;
     z-index: 10000;
+    user-select: none;
 }
 #${gm.id} .gm-history .gm-history-page {
     position: fixed;
@@ -1495,6 +1435,7 @@
     right: 0;
     opacity: 0;
     transition: opacity ${gm.const.textFadeTime}ms ease-in-out;
+    user-select: text;
 }
 #${gm.id} .gm-history .gm-content::-webkit-scrollbar {
     display: none;
@@ -1563,7 +1504,7 @@
 }
 
 #${gm.id}-msgbox {
-    position: absolute;
+    position: fixed;
     top: 70%;
     left: 50%;
     transform: translate(-50%, -50%);
@@ -1575,6 +1516,7 @@
     border-radius: 0.6em;
     opacity: 0;
     transition: opacity ${gm.const.fadeTime}ms ease-in-out;
+    user-select: none;
 }
       `)
     }
@@ -1646,5 +1588,152 @@
    */
   function urlMatch(reg) {
     return reg.test(location.href)
+  }
+
+  /**
+   * 推入队列，循环数组实现
+   *
+   * @param {number} maxSize 队列的最大长度，达到此长度后继续推入数据，将舍弃末尾处的数据
+   * @param {number} [capacity=maxSize] 容量，即循环数组的长度，不能小于 maxSize
+   */
+  function PushQueue(maxSize, capacity) {
+    this.index = 0
+    this.size = 0
+    this.maxSize = maxSize
+    if (!capacity || capacity < maxSize) {
+      capacity = maxSize
+    }
+    this.capacity = capacity
+    this.data = new Array(capacity)
+  }
+  /**
+   * 设置推入队列的最大长度
+   *
+   * @param {number} maxSize 队列的最大长度，不能大于 capacity
+   */
+  PushQueue.prototype.setMaxSize = function(maxSize) {
+    if (maxSize > this.capacity) {
+      maxSize = this.capacity
+    } else if (maxSize < this.size) {
+      this.size = maxSize
+    }
+    this.maxSize = maxSize
+    this.gc()
+  }
+  /**
+   * 重新设置推入队列的容量
+   *
+   * @param {number} capacity 容量
+   */
+  PushQueue.prototype.setCapacity = function(capacity) {
+    if (this.maxSize > capacity) {
+      this.maxSize = capacity
+      if (this.size > capacity) {
+        this.size = capacity
+      }
+      // no need to gc()
+    }
+    var raw = this.toArray()
+    var data = [...raw.reverse()]
+    this.index = data.length
+    data.length = capacity
+    this.data = data
+  }
+  /**
+   * 队列是否为空
+   */
+  PushQueue.prototype.empty = function() {
+    return this.size == 0
+  }
+  /**
+   * 向队列中推入数据，若队列已达到最大长度，则舍弃末尾处数据
+   *
+   * @param {Object} value 推入队列的数据
+   */
+  PushQueue.prototype.push = function(value) {
+    this.data[this.index] = value
+    this.index += 1
+    if (this.index >= this.capacity) {
+      this.index = 0
+    }
+    if (this.size < this.maxSize) {
+      this.size += 1
+    }
+    if (this.maxSize < this.capacity && this.size == this.maxSize) { // maxSize 等于 capacity 时资源刚好完美利用，不必回收资源
+      var release = this.index - this.size - 1
+      if (release < 0) {
+        release += this.capacity
+      }
+      this.data[release] = null
+    }
+  }
+  /**
+   * 将队列末位处的数据弹出
+   *
+   * @returns {Object} 弹出的数据
+   */
+  PushQueue.prototype.pop = function() {
+    if (this.size > 0) {
+      var index = this.index - this.size
+      if (index < 0) {
+        index += this.capacity
+      }
+      this.size -= 1
+      var result = this.data[index]
+      this.data[index] = null
+      return result
+    }
+  }
+  /**
+   * 将推入队列以数组的形式返回
+   *
+   * @param {number} [maxLength=size] 读取的最大长度
+   * @returns {Array} 队列数据的数组形式
+   */
+  PushQueue.prototype.toArray = function(maxLength) {
+    if (typeof maxLength != 'number') {
+      maxLength = parseInt(maxLength)
+    }
+    if (isNaN(maxLength) || maxLength > this.size || maxLength < 0) {
+      maxLength = this.size
+    }
+    var ar = []
+    var end = this.index - maxLength
+    for (var i = this.index - 1; i >= end && i >= 0; i--) {
+      ar.push(this.data[i])
+    }
+    if (end < 0) {
+      end += this.capacity
+      for (i = this.capacity - 1; i >= end; i--) {
+        ar.push(this.data[i])
+      }
+    }
+    return ar
+  }
+  /**
+   * 清理内部无效数据，释放内存
+   */
+  PushQueue.prototype.gc = function() {
+    if (this.size > 0) {
+      var start = this.index - 1
+      var end = this.index - this.size
+      if (end < 0) {
+        end += this.capacity
+      }
+      if (start >= end) {
+        for (var i = 0; i < end; i++) {
+          this.data[i] = null
+        }
+        for (i = start + 1; i < this.capacity; i++) {
+          this.data[i] = null
+        }
+      } else if (start < end) {
+        for (i = start + 1; i < end; i++) {
+          this.data[i] = null
+        }
+      }
+    } else {
+      this.data = new Array(this.capacity)
+    }
   }
 })()
