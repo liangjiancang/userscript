@@ -1,7 +1,7 @@
 // ==UserScript==
 // @id             BilibiliCover@Laster2800
 // @name           B站封面获取
-// @version        4.1.1.20200718
+// @version        4.1.2.20200719
 // @namespace      laster2800
 // @author         Laster2800
 // @description    B站视频播放页（普通模式、稍后再看模式）、番剧播放页、直播间添加获取封面的按钮
@@ -127,9 +127,7 @@ function addLiveBtn(urc) {
   `)
 
   try {
-    // 这个 __NEPTUNE_IS_MY_WAIFU__ 在最外层的 window 对象上，因为变量名覆盖的原因无法获取到该 window，只能直接用
-    // eslint-disable-next-line no-undef
-    var data = __NEPTUNE_IS_MY_WAIFU__.baseInfoRes.data
+    var data = unsafeWindow.__NEPTUNE_IS_MY_WAIFU__.baseInfoRes.data
     var coverUrl = data.user_cover
     var kfUrl = data.keyframe
   } catch (e) {
@@ -226,21 +224,24 @@ function addWatchlaterVideoBtn(pom) {
 
   // 创建 locationchange 事件
   // https://stackoverflow.com/a/52809105
-  history.pushState = (f => function pushState() {
-    var ret = f.apply(this, arguments)
-    window.dispatchEvent(new Event('pushstate'))
-    window.dispatchEvent(new Event('locationchange'))
-    return ret
-  })(history.pushState)
-  history.replaceState = (f => function replaceState() {
-    var ret = f.apply(this, arguments)
-    window.dispatchEvent(new Event('replacestate'))
-    window.dispatchEvent(new Event('locationchange'))
-    return ret
-  })(history.replaceState)
-  window.addEventListener('popstate', () => {
-    window.dispatchEvent(new Event('locationchange'))
-  })
+  if (!unsafeWindow._createLocationchangeEvent) {
+    history.pushState = (f => function pushState() {
+      var ret = f.apply(this, arguments)
+      window.dispatchEvent(new Event('pushstate'))
+      window.dispatchEvent(new Event('locationchange'))
+      return ret
+    })(history.pushState)
+    history.replaceState = (f => function replaceState() {
+      var ret = f.apply(this, arguments)
+      window.dispatchEvent(new Event('replacestate'))
+      window.dispatchEvent(new Event('locationchange'))
+      return ret
+    })(history.replaceState)
+    window.addEventListener('popstate', () => {
+      window.dispatchEvent(new Event('locationchange'))
+    })
+    unsafeWindow._createLocationchangeEvent = true
+  }
 
   window.addEventListener('locationchange', function() {
     updateCoverUrl()
@@ -261,9 +262,9 @@ function addWatchlaterVideoBtn(pom) {
  * @param {Function} options.callback 当满足条件时执行 callback(result)
  * @param {number} [options.interval=100] 检测时间间隔（单位：ms）
  * @param {number} [options.timeout=5000] 检测超时时间，检测时间超过该值时终止检测（单位：ms）
- * @param {Function} options.onTimeout 检测超时时执行 onTimeout()
- * @param {Function} options.stopCondition 终止条件，当 stopCondition() 返回的 stopResult 为真值时终止检测
- * @param {Function} options.stopCallback 终止条件达成时执行 stopCallback()（包括终止条件的二次判断达成）
+ * @param {Function} [options.onTimeout] 检测超时时执行 onTimeout()
+ * @param {Function} [options.stopCondition] 终止条件，当 stopCondition() 返回的 stopResult 为真值时终止检测
+ * @param {Function} [options.stopCallback] 终止条件达成时执行 stopCallback()（包括终止条件的二次判断达成）
  * @param {number} [options.stopInterval=50] 终止条件二次判断期间的检测时间间隔（单位：ms）
  * @param {number} [options.stopTimeout=0] 终止条件二次判断期间的检测超时时间（单位：ms）
  */
