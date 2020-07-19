@@ -1,7 +1,7 @@
 // ==UserScript==
 // @id              BilibiliWatchlaterPlus@Laster2800
 // @name            B站稍后再看功能增强
-// @version         2.10.0.20200719
+// @version         2.10.1.20200720
 // @namespace       laster2800
 // @author          Laster2800
 // @description     B站稍后再看功能增强，目前功能包括UI增强、稍后再看模式自动切换至普通模式播放（重定向）、稍后再看移除记录等，支持功能设置
@@ -42,7 +42,7 @@
   if (urlMatch(/bilibili.com\/medialist\/play\/watchlater(?=\/|$)/)) {
     if (gm.config.redirect) { // 重定向，document-start 就执行，尽可能快地将原页面掩盖过去
       fnRedirect()
-      return // 必须 return，否则后面的内容还会执行使得加载速度超极慢
+      return // 必须 return，否则后面的内容还会执行使得加载速度超级慢
     }
   }
 
@@ -1525,7 +1525,7 @@
      * @param {boolean} [config.autoClose=true] 是否自动关闭信息，配合 config.ms 使用
      * @param {number} [config.ms=gm.const.messageTime] 显示时间（单位：ms，不含渐显/渐隐时间）
      * @param {boolean} [config.html=false] 是否将 msg 理解为 HTML
-     * @param {Object} [config.position=null] 信息框的位置，不设置该项默认为 { top: gm.const.messageTop, left: gm.const.messageLeft }
+     * @param {Object} [config.position=null] 信息框的位置，不设置该项时，相当于设置为 { top: gm.const.messageTop, left: gm.const.messageLeft }
      * @param {string} config.position.top 信息框元素的 top
      * @param {string} config.position.left 信息框元素的 left
      * @return {HTMLElement} 信息框元素
@@ -1577,7 +1577,7 @@
      * 处理 HTML 元素的渐显和渐隐
      * @param {boolean} inOut 渐显/渐隐
      * @param {HTMLElement} target HTML 元素
-     * @param {fadeCallback} [callback] 处理完成后的回调函数
+     * @param {Function} [callback] 处理完成后的回调函数
      */
     function fade(inOut, target, callback) {
       // fadeId 等同于当前时间戳，其意义在于保证对于同一元素，后执行的操作必将覆盖前的操作
@@ -2087,7 +2087,7 @@
 
   /**
    * 判断当前 URL 是否匹配
-   * @param {RegExp} reg 用于判断是否匹配的正则表达纯
+   * @param {RegExp} reg 用于判断是否匹配的正则表达式
    * @returns {boolean} 是否匹配
    */
   function urlMatch(reg) {
