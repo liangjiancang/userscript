@@ -1,7 +1,7 @@
 // ==UserScript==
 // @id              BilibiliWatchlaterPlus@Laster2800
 // @name            B站稍后再看功能增强
-// @version         2.9.2.20200719
+// @version         2.10.0.20200719
 // @namespace       laster2800
 // @author          Laster2800
 // @description     B站稍后再看功能增强，目前功能包括UI增强、稍后再看模式自动切换至普通模式播放（重定向）、稍后再看移除记录等，支持功能设置
@@ -78,7 +78,9 @@
 
     /* END OF PROC, BEGIN OF FUNCTION */
 
-    /** 初始化 */
+    /**
+     * 初始化
+     */
     function init() {
       gm.url = {
         api_queryWatchlaterList: 'https://api.bilibili.com/x/v2/history/toview/web?jsonp=jsonp',
@@ -139,9 +141,16 @@
         history: null,
       }
       gm.el.gmRoot.id = gm.id
+
+      gm.error = {
+        HTML_PARSING: `HTML解析错误，可能是B站网页改版。请联系脚本作者：${GM_info.script.supportURL}`,
+        NETWORK: `网络连接错误，也可能是脚本内部数据出错，重置脚本数据也许能解决问题。无法解决请联系脚本作者：${GM_info.script.supportURL}`,
+      }
     }
 
-    /** 版本更新处理 */
+    /**
+     * 版本更新处理
+     */
     function updateVersion() {
       // 该项与更新相关，在此处处理
       gm.config.resetAfterFnUpdate = gmValidate('resetAfterFnUpdate', gm.config.resetAfterFnUpdate)
@@ -191,7 +200,9 @@
       }
     }
 
-    /** 用户配置读取 */
+    /**
+     * 用户配置读取
+     */
     function readConfig() {
       var cfgDocumentStart = { redirect: true } // document-start 时期就处理过的配置
       var cfgManual = { removeHistoryData: true, resetAfterFnUpdate: true } // 手动处理的配置
@@ -236,7 +247,9 @@
       }
     }
 
-    /** 添加脚本菜单 */
+    /**
+     * 添加脚本菜单
+     */
     function addScriptMenu() {
       // 用户配置设置
       GM_registerMenuCommand('用户设置', openUserSetting)
@@ -251,27 +264,33 @@
       GM_registerMenuCommand('重置脚本数据', resetScript)
     }
 
-    /** 顶栏中加入稍后再看入口 */
+    /**
+     * 顶栏中加入稍后再看入口
+     */
     function fnHeaderButton() {
       executeAfterElementLoad({
         selector: '.user-con.signin',
         callback: header => {
           if (header) {
             var collect = header.children[4]
-            var watchlater = header.children[6].cloneNode(true)
-            var link = watchlater.firstChild
-            var text = link.firstChild
+            var watchlater = document.createElement('div')
+            watchlater.className = 'item'
+            var link = watchlater.appendChild(document.createElement('a'))
+            var text = link.appendChild(document.createElement('span'))
+            text.className = 'name'
             text.innerText = '稍后再看'
             header.insertBefore(watchlater, collect)
 
             executeLeftClick(link)
             executeRightClick(watchlater)
-            executeTooltip(collect, watchlater)
+            executeTooltip({ collect, watchlater })
           }
         },
       })
 
-      /** 处理鼠标左键点击 */
+      /**
+       * 处理鼠标左键点击
+       */
       var executeLeftClick = link => {
         // 使用 href 和 target 的方式设置，保留浏览器中键强制新标签页打开的特性
         var left = getHrefAndTarget(gm.config.headerButtonOpL)
@@ -287,7 +306,9 @@
         }
       }
 
-      /** 处理鼠标右键点击 */
+      /**
+       * 处理鼠标右键点击
+       */
       var executeRightClick = watchlater => {
         watchlater.oncontextmenu = function(e) {
           if (gm.config.headerButtonOpR != 'op_noOperation') {
@@ -311,47 +332,76 @@
         }
       }
 
-      /** 处理弹出菜单 */
-      function executeTooltip(collect, watchlater) {
+      /**
+       * 处理弹出菜单
+       */
+      function executeTooltip({ collect, watchlater }) {
         // 鼠标移动到稍后再看入口上时，以 Tooltip 形式显示稍后再看列表
-        var watchlaterPanelSelector = '[role=tooltip][aria-hidden=false] .tabs-panel [title=稍后再看]'
+        var dropdownSelector = open => { // 注意，该 selector 无法直接选出对应的下拉菜单，只能用作拼接
+          if (typeof open == 'boolean') {
+            return `[role=tooltip][aria-hidden=${!open}]`
+          } else {
+            return '[role=tooltip][aria-hidden]'
+          }
+        }
+        var tabsPanelSelector = open => `${dropdownSelector(open)} .tabs-panel`
+        var videoPanel = open => `${dropdownSelector(open)} .favorite-video-panel`
+
+        var defaultCollectPanelChildSelector = open => `${tabsPanelSelector(open)} [title=默认收藏夹]`
+        var watchlaterPanelChildSelector = open => `${tabsPanelSelector(open)} [title=稍后再看]`
+        var activePanelSelector = open => `${tabsPanelSelector(open)} .tab-item--active`
         var dispVue = collect.firstChild.__vue__
-        watchlater.onmouseover = () => {
-          // 确保原列表完全消失后再显示，避免从“收藏”移动到稍后再看时列表反而消失的问题
-          executeAfterConditionPass({
-            condition: () => !document.querySelector(watchlaterPanelSelector),
-            callback: () => {
-              dispVue.showPopper = true
-              executeAfterElementLoad({
-                selector: watchlaterPanelSelector,
-                callback: watchlaterPanel => {
-                  watchlaterPanel.parentNode.addEventListener('click', () => {
-                    setTimeout(() => {
-                      var target = gm.config.openHeaderDropdownLink == 'ohdl_openInNew' ? '_blank' : '_self'
-                      var links = document.querySelectorAll('[role=tooltip][aria-hidden=false] .favorite-video-panel a')
-                      for (var link of links) {
-                        link.target = target
-                      }
-                    }, 200)
-                  })
-                  watchlaterPanel.parentNode.click()
-                },
-                interval: 50,
-                timeout: 1500,
-              })
-            },
-            interval: 10,
-            timeout: 500,
-          })
+
+        // addEventListener 尽量避免冲掉事件
+        setTimeout(() => {
+          watchlater.addEventListener('mouseenter', onEnterWatchlater)
+          watchlater.addEventListener('mouseleave', onLeaveWatchlater)
+          collect.addEventListener('mouseenter', onEnterCollect)
+          collect.addEventListener('mouseleave', onLeaveCollect)
+        })
+
+        /**
+         * 进入稍后再看入口的处理
+         * 
+         * @async
+         */
+        var onEnterWatchlater = async function() {
+          try {
+            var activePanel = document.querySelector(activePanelSelector(true))
+            if (activePanel) {
+              // 在没有打开下拉菜单前，获取不到 activePanel
+              collect._activeTitle = activePanel.firstChild.title
+              collect._activePanel = activePanel
+            }
+
+            // 不能直接修改 showPopper，可能现在鼠标刚离开“收藏”，Vue 在等待菜单关闭之后将其改为 false
+            // 如果直接改 showPopper = true，等下会被 Vue 又改回 false，先等 Vue 改好再说
+            await waitForConditionPass({
+              condition: () => !dispVue.showPopper,
+              interval: 10,
+              timeout: 500,
+            })
+            // 不需要菜单真正关闭，只需该状态已经变为 false 就可以开始操作了，此时 DOM 上的菜单往往并没有真正关闭
+            dispVue.showPopper = true
+            // 等待下拉菜单的状态变为“打开”再操作，会比较安全，虽然此时 DOM 上的菜单可能没有真正打开
+            var watchlaterPanelChild = await waitForElementLoad({
+              selector: watchlaterPanelChildSelector(true),
+              interval: 10,
+              timeout: 500,
+            })
+            watchlaterPanelChild.parentNode.click()
+          } catch (e) {
+            console.error(gm.error.HTML_PARSING)
+            console.error(e)
+          }
+          // 到这里才添加，避免掉前面 click 的影响，保持一致性
+          addTabsPanelClickEvent()
         }
-        // 鼠标从“稍后再看”离开时关闭列表，但移动到“收藏”上面时不关闭
-        collect.onmouseover = () => {
-          collect.mouseOver = true
-        }
-        collect.onmouseleave = () => {
-          collect.mouseOver = false
-        }
-        watchlater.onmouseleave = () => {
+
+        /**
+         * 离开稍后再看入口的处理
+         */
+        var onLeaveWatchlater = function() {
           // 要留出足够空间让 collect.mouseOver 变化
           // 但有时候还是会闪，毕竟常规方式估计是无法阻止鼠标移动到“收藏”上时的 Vue 事件
           setTimeout(() => {
@@ -359,6 +409,79 @@
               dispVue.showPopper = false
             }
           }, 100)
+        }
+
+        /**
+         * 进入“收藏”的处理
+         * 
+         * @async
+         */
+        var onEnterCollect = async function() {
+          this.mouseOver = true
+          try {
+            var activePanel = await waitForElementLoad({
+              selector: activePanelSelector(true),
+              interval: 50,
+              timeout: 1500,
+            })
+            var activeTitle = activePanel.firstChild.title
+            if (activeTitle == '稍后再看') {
+              if (!collect._activePanel || collect._activeTitle == '稍后再看') {
+                // 一般来说，只有当打开页面后直接通过稍后再看入口打开下拉菜单，然后再将鼠标移动到“收藏”上，才会执行进来
+                var defaultCollectPanelChild = await waitForElementLoad({
+                  selector: defaultCollectPanelChildSelector(true),
+                  interval: 50,
+                  timeout: 1500,
+                })
+                collect._activeTitle = defaultCollectPanelChild.title
+                collect._activePanel = defaultCollectPanelChild.parentNode
+              }
+              collect._activePanel.click()
+            }
+          } catch (e) {
+            console.error(gm.error.HTML_PARSING)
+            console.error(e)
+          }
+          addTabsPanelClickEvent()
+        }
+
+        /**
+         * 离开“收藏”的处理
+         */
+        var onLeaveCollect = function() {
+          this.mouseOver = false
+        }
+
+        /**
+         * 给 tabsPanel 中每个收藏夹和稍后再看添加点击事件
+         */
+        var addTabsPanelClickEvent = () => {
+          if (!collect._addTabsPanelClickEvent && gm.config.openHeaderDropdownLink == 'ohdl_openInCurrent') {
+            setVideoPanelLinkTarget() // 先执行一次，让当前 videoPanel 中的 target 改变
+            executeAfterElementLoad({
+              selector: tabsPanelSelector(),
+              callback: tabsPanel => {
+                for (var child of tabsPanel.children) {
+                  child.addEventListener('click', () => setVideoPanelLinkTarget())
+                }
+                collect._addTabsPanelClickEvent = true
+              }
+            })
+          }
+        }
+
+        /**
+         * 设置下拉菜单面板中视频链接的 target
+         */
+        var setVideoPanelLinkTarget = () => {
+          setTimeout(() => {
+            // var target = gm.config.openHeaderDropdownLink == 'ohdl_openInNew' ? '_blank' : '_self'
+            var target = '_self'
+            var links = document.querySelectorAll(`${videoPanel()} a`)
+            for (var link of links) {
+              link.target = target
+            }
+          }, 200)
         }
       }
 
@@ -383,9 +506,13 @@
       }
     }
 
-    /** 常规播放页加入快速切换稍后再看状态的按钮 */
+    /**
+     * 常规播放页加入快速切换稍后再看状态的按钮
+     */
     function fnVideoButton_Normal() {
-      /** 继续执行的条件 */
+      /**
+       * 继续执行的条件
+       */
       var executeCondition = () => {
         // 必须在确定 Vue 加载完成后再修改 DOM 结构，否则会导致 Vue 加载出错造成页面错误
         var app = document.querySelector('#app')
@@ -436,7 +563,11 @@
         },
       })
 
-      /** 设置按钮的稍后再看状态 */
+      /**
+       * 设置按钮的稍后再看状态
+       * 
+       * @async
+       */
       var setButtonStatus = async (oVue, cb) => {
         var aid = oVue.aid // also unsafeWindow.aid
         var status = await getVideoWatchlaterStatusByAid(aid)
@@ -445,11 +576,15 @@
       }
     }
 
-    /** 稍后再看播放页加入快速切换稍后再看状态的按钮 */
+    /**
+     * 稍后再看播放页加入快速切换稍后再看状态的按钮
+     */
     function fnVideoButton_Watchlater() {
       var aidMap = new Map()
 
-      /** 继续执行的条件 */
+      /**
+       * 继续执行的条件
+       */
       var executeCondition = () => {
         // 必须在确定 Vue 加载完成后再修改 DOM 结构，否则会导致 Vue 加载出错造成页面错误
         var app = document.querySelector('#app')
@@ -505,6 +640,8 @@
 
       /**
        * 处理视频状态的切换
+       * 
+       * @async
        */
       var executeSwitch = async ({ btn, cb, csrf }) => { // 不要附加到 btn 上，否则点击时会执行两次
         btn.aid = await getAid()
@@ -532,14 +669,16 @@
                 message(`网络错误，${note}失败`)
               }
             } catch (e) {
-              console.error(`网络连接错误，重置脚本数据也许能解决问题。无法解决请联系脚本作者：${GM_info.script.supportURL}`)
+              console.error(gm.error.NETWORK)
               console.error(e)
             }
           }
         })
       }
 
-      /** 获取 CSRF */
+      /**
+       * 获取 CSRF
+       */
       var getCsrf = () => {
         var cookies = document.cookie.split('; ')
         cookies = cookies.reduce((prev, val) => {
@@ -553,7 +692,9 @@
         return csrf
       }
 
-      /** 获取当前页面对应的 aid */
+      /**
+       * 获取当前页面对应的 aid
+       */
       var getAid = async () => {
         var aid = unsafeWindow.aid // 第一次打开播放页时不存在，但切换视频后就存在了
         if (aid) {
@@ -588,7 +729,7 @@
                 }
                 resolve(aid)
               } catch (e) {
-                console.error(`网络连接错误，重置脚本数据也许能解决问题。无法解决请联系脚本作者：${GM_info.script.supportURL}`)
+                console.error(gm.error.NETWORK)
                 console.error(e)
               }
             },
@@ -596,7 +737,11 @@
         })
       }
 
-      /** 获取当前页面的 bvid */
+      /**
+       * 获取当前页面的 bvid
+       * 
+       * @async
+       */
       var getBvid = async () => {
         return new Promise(resolve => {
           executeAfterConditionPass({
@@ -618,8 +763,7 @@
 
       /**
        * 创建 locationchange 事件
-       *
-       * @see https://stackoverflow.com/a/52809105
+       * @see @{link https://stackoverflow.com/a/52809105}
        */
       var createLocationchangeEvent = () => {
         if (!unsafeWindow._createLocationchangeEvent) {
@@ -645,8 +789,8 @@
 
     /**
      * 根据 aid 获取视频的稍后再看状态
-     *
-     * @param {string | number} aid AV号
+     * @async
+     * @param {number} aid AV号
      * @returns {Promise<boolean>} 视频是否在稍后再看中
      */
     async function getVideoWatchlaterStatusByAid(aid) {
@@ -668,6 +812,7 @@
                 }
                 resolve(false)
               } catch (e) {
+                console.error(gm.error.NETWORK)
                 console.error(e)
               }
             }
@@ -676,7 +821,9 @@
       })
     }
 
-    /** 处理列表页面点击视频时的行为 */
+    /**
+     * 处理列表页面点击视频时的行为
+     */
     function fnOpenListVideo() {
       if (gm.config.openListVideo == 'olv_openInNew') {
         // 如果列表页面在新标签页打开视频
@@ -686,7 +833,9 @@
       }
     }
 
-    /** 保存列表页面数据，用于生成移除记录 */
+    /**
+     * 保存列表页面数据，用于生成移除记录
+     */
     function saveWatchlaterListData() {
       GM_xmlhttpRequest({
         method: 'GET',
@@ -706,7 +855,7 @@
               gm.config.removeHistoryData.push(current)
               GM_setValue('removeHistoryData', gm.config.removeHistoryData)
             } catch (e) {
-              console.error(`保存稍后再看列表错误，重置脚本数据也许能解决问题。无法解决请联系脚本作者：${GM_info.script.supportURL}`)
+              console.error(gm.error.NETWORK)
               console.error(e)
             }
           }
@@ -714,7 +863,9 @@
       })
     }
 
-    /** 生成列表页面的 UI */
+    /**
+     * 生成列表页面的 UI
+     */
     function createWatchlaterListUI() {
       var r_con = document.querySelector('.watch-later-list.bili-wrapper header .r-con')
       if (gm.config.removeHistory) {
@@ -733,7 +884,6 @@
 
     /**
      * 打开用户设置
-     *
      * @param {boolean} initial 是否进行初始化设置
      */
     function openUserSetting(initial) {
@@ -763,7 +913,9 @@
           openMenuItem('setting')
         })
 
-        /** 设置页面初始化 */
+        /**
+         * 设置页面初始化
+         */
         var initSetting = () => {
           gm.el.setting = gm.el.gmRoot.appendChild(document.createElement('div'))
           gm.menu.setting.el = gm.el.setting
@@ -778,7 +930,7 @@
         <div class="gm-item">
             <label title="在顶栏“动态”和“收藏”之间加入稍后再看入口，鼠标移至上方时弹出列表菜单，支持点击功能设置。">
                 <span>【所有页面】在顶栏中加入稍后再看入口</span><input id="gm-headerButton" type="checkbox"></label>
-            <div class="gm-subitem" title="选择在下拉菜单中点击视频的行为。">
+            <div class="gm-subitem" title="选择在下拉菜单中点击视频的行为。为了保证行为一致，这个选项也会影响下拉菜单中收藏夹视频的打开。">
                 <span>在下拉菜单中点击视频时</span>
                 <select id="gm-openHeaderDropdownLink">
                     <option value="ohdl_openInCurrent">在当前页面打开</option>
@@ -859,12 +1011,14 @@
         `
         }
 
-        /** 维护与设置项相关的数据和元素 */
+        /**
+         * 维护与设置项相关的数据和元素
+         */
         var handleConfigItem = () => {
           // 子项与父项相关联
           var subitemChange = (item, subs) => {
             for (var el of subs) {
-              var parent = el.parentElement
+              var parent = el.parentNode
               if (item.checked) {
                 parent.removeAttribute('disabled')
               } else {
@@ -933,7 +1087,9 @@
           }
         }
 
-        /** 处理与设置页面相关的数据和元素 */
+        /**
+         * 处理与设置页面相关的数据和元素
+         */
         var handleSettingItem = () => {
           el.save.onclick = onSave
           gm.menu.setting.openHandler = onOpen
@@ -951,7 +1107,9 @@
         }
 
         var needReload = false
-        /** 设置保存时执行 */
+        /**
+         * 设置保存时执行
+         */
         var onSave = () => {
           // 通用处理
           for (var name in configMap) {
@@ -1034,7 +1192,9 @@
           }
         }
 
-        /** 设置打开时执行 */
+        /**
+         * 设置打开时执行
+         */
         var onOpen = () => {
           for (var name in configMap) {
             var attr = configMap[name].attr
@@ -1046,7 +1206,6 @@
 
         /**
          * 保存配置
-         *
          * @param {string} name 配置名称
          * @param {string} attr 从对应元素的什么属性读取
          * @returns {boolean} 是否有实际更新
@@ -1061,7 +1220,9 @@
           return false
         }
 
-        /** 设置 removeHistory 警告项 */
+        /**
+         * 设置 removeHistory 警告项
+         */
         var setRhWaring = () => {
           var warn = false
           var rh = el.removeHistory.checked
@@ -1090,7 +1251,9 @@
           }
         }
 
-        /** 设置 removeHistorySaves 警告项 */
+        /**
+         * 设置 removeHistorySaves 警告项
+         */
         var setRhsWarning = () => {
           var value = parseInt(el.removeHistorySaves.value)
           if (isNaN(value)) {
@@ -1112,7 +1275,6 @@
 
       /**
        * 设置警告项
-       *
        * @param {HTMLElement} elWarning 警告元素
        * @param {string} msg 警告信息
        */
@@ -1135,7 +1297,9 @@
       }
     }
 
-    /** 打开移除记录 */
+    /**
+     * 打开移除记录
+     */
     function openRemoveHistory() {
       if (!gm.config.removeHistory) {
         message('请在设置中开启稍后再看移除记录')
@@ -1156,7 +1320,9 @@
           openMenuItem('history')
         })
 
-        /** 初始化移除记录页面 */
+        /**
+         * 初始化移除记录页面
+         */
         var historyInit = () => {
           gm.el.history = gm.el.gmRoot.appendChild(document.createElement('div'))
           gm.menu.history.el = gm.el.history
@@ -1180,7 +1346,9 @@
           el.shadow = gm.el.history.querySelector('.gm-shadow')
         }
 
-        /** 维护内部元素和数据 */
+        /**
+         * 维护内部元素和数据
+         */
         var handleItem = () => {
           // 使用 el.searchTimes.current 代替本地变量记录数据，可以保证任何情况下闭包中都能获取到正确数据
           el.searchTimes = gm.el.history.querySelector('#gm-search-times')
@@ -1225,7 +1393,9 @@
           }
         }
 
-        /** 移除记录打开时执行 */
+        /**
+         * 移除记录打开时执行
+         */
         var onOpen = () => {
           if (el.content) {
             var oldContent = el.content
@@ -1276,7 +1446,7 @@
                   }
                   el.content.style.opacity = '1'
                 } catch (e) {
-                  var errorInfo = `网络连接错误，重置脚本数据也许能解决问题。无法解决请联系脚本作者：${GM_info.script.supportURL}`
+                  var errorInfo = gm.error.NETWORK
                   setContentTop() // 在设置内容前设置好 top，这样看不出修改的痕迹
                   el.content.innerHTML = errorInfo
                   el.content.style.opacity = '1'
@@ -1298,7 +1468,9 @@
       }
     }
 
-    /** 重置脚本数据 */
+    /**
+     * 重置脚本数据
+     */
     function resetScript() {
       var result = confirm('是否要重置脚本数据？')
       if (result) {
@@ -1313,7 +1485,9 @@
       }
     }
 
-    /** 对“打开菜单项”这一操作进行处理，包括显示菜单项、设置当前菜单项的状态、关闭其他菜单项 */
+    /**
+     * 对“打开菜单项”这一操作进行处理，包括显示菜单项、设置当前菜单项的状态、关闭其他菜单项
+     */
     function openMenuItem(name) {
       if (!gm.menu[name].state) {
         for (var key in gm.menu) {
@@ -1331,7 +1505,9 @@
       }
     }
 
-    /** 对“关闭菜单项”这一操作进行处理，包括隐藏菜单项、设置当前菜单项的状态 */
+    /**
+     * 对“关闭菜单项”这一操作进行处理，包括隐藏菜单项、设置当前菜单项的状态
+     */
     function closeMenuItem(name) {
       var menu = gm.menu[name]
       if (menu.state) {
@@ -1344,13 +1520,12 @@
 
     /**
      * 用户通知
-     *
      * @param {string} msg 信息
-     * @param {object} [config] 设置
+     * @param {Object} [config] 设置
      * @param {boolean} [config.autoClose=true] 是否自动关闭信息，配合 config.ms 使用
      * @param {number} [config.ms=gm.const.messageTime] 显示时间（单位：ms，不含渐显/渐隐时间）
      * @param {boolean} [config.html=false] 是否将 msg 理解为 HTML
-     * @param {object} [config.position=null] 信息框的位置，不设置该项默认为 { top: gm.const.messageTop, left: gm.const.messageLeft }
+     * @param {Object} [config.position=null] 信息框的位置，不设置该项默认为 { top: gm.const.messageTop, left: gm.const.messageLeft }
      * @param {string} config.position.top 信息框元素的 top
      * @param {string} config.position.left 信息框元素的 left
      * @return {HTMLElement} 信息框元素
@@ -1388,7 +1563,6 @@
 
     /**
      * 关闭信息
-     *
      * @param {HTMLElement} msgbox 信息框元素
      */
     function closeMessage(msgbox) {
@@ -1401,7 +1575,6 @@
 
     /**
      * 处理 HTML 元素的渐显和渐隐
-     *
      * @param {boolean} inOut 渐显/渐隐
      * @param {HTMLElement} target HTML 元素
      * @param {fadeCallback} [callback] 处理完成后的回调函数
@@ -1433,30 +1606,27 @@
         }, gm.const.fadeTime)
       }
     }
-    /**
-     * @callback fadeCallback
-     * @param {boolean} success 当前 fade 任务是否完成
-     */
 
     /**
      * 在条件满足后执行操作
      *
-     * 当条件满足后，如果不存在终止条件，那么直接执行 callback(result)。
+     * 当条件满足后，如果不存在终止条件，那么直接执行 `callback(result)`。
      *
-     * 当条件满足后，如果存在终止条件，且 stopTimeout 大于 0，则还会在接下来的 stopTimeout 时间内判断是否满足终止条件，称为终止条件的二次判断。
-     * 如果在此期间，终止条件通过，则表示依然不满足条件，故执行 stopCallback() 而非 callback(result)。
-     * 如果在此期间，终止条件一直失败，则顺利通过检测，执行 callback(result)。
+     * 当条件满足后，如果存在终止条件，且 `stopTimeout` 大于 0，则还会在接下来的 `stopTimeout` 时间内判断是否满足终止条件，称为终止条件的二次判断。
+     * 如果在此期间，终止条件通过，则表示依然不满足条件，故执行 `stopCallback()` 而非 `callback(result)`。
+     * 如果在此期间，终止条件一直失败，则顺利通过检测，执行 `callback(result)`。
      *
      * @param {Object} options 选项
-     * @param {Function} options.condition 条件，当 condition() 返回的 result 为真值时满足条件
-     * @param {Function} options.callback 当满足条件时执行 callback(result)
+     * @param {Function} options.condition 条件，当 `condition()` 返回的 `result` 为真值时满足条件
+     * @param {Function} options.callback 当满足条件时执行 `callback(result)`
      * @param {number} [options.interval=100] 检测时间间隔（单位：ms）
      * @param {number} [options.timeout=5000] 检测超时时间，检测时间超过该值时终止检测（单位：ms）
-     * @param {Function} [options.onTimeout=0] 检测超时时执行 onTimeout()
-     * @param {Function} [options.stopCondition] 终止条件，当 stopCondition() 返回的 stopResult 为真值时终止检测
-     * @param {Function} [options.stopCallback] 终止条件达成时执行 stopCallback()（包括终止条件的二次判断达成）
+     * @param {Function} [options.onTimeout] 检测超时时执行 `onTimeout()`
+     * @param {Function} [options.stopCondition] 终止条件，当 `stopCondition()` 返回的 `stopResult` 为真值时终止检测
+     * @param {Function} [options.stopCallback] 终止条件达成时执行 `stopCallback()`（包括终止条件的二次判断达成）
      * @param {number} [options.stopInterval=50] 终止条件二次判断期间的检测时间间隔（单位：ms）
      * @param {number} [options.stopTimeout=0] 终止条件二次判断期间的检测超时时间（单位：ms）
+     * @param {number} [options.timePadding=0] 等待 `timePadding`ms 后才开始执行；包含在 `timeout` 中，因此不能大于 `timeout`
      */
     function executeAfterConditionPass(options) {
       var defaultOptions = {
@@ -1469,6 +1639,7 @@
         stopCallback: null,
         stopInterval: 50,
         stopTimeout: 0,
+        timePadding: 0,
       }
       var o = {
         ...defaultOptions,
@@ -1478,9 +1649,10 @@
         return
       }
 
+      var tid
       var cnt = 0
-      var maxCnt = o.timeout / o.interval
-      var tid = setInterval(() => {
+      var maxCnt = (o.timeout - o.timePadding) / o.interval
+      var task = () => {
         var result = o.condition()
         var stopResult = o.stopCondition && o.stopCondition()
         if (stopResult) {
@@ -1503,28 +1675,33 @@
             o.callback(result)
           }
         }
-      }, o.interval)
+      }
+      setTimeout(() => {
+        tid = setInterval(task, o.interval)
+        task()
+      }, o.timePadding)
     }
 
     /**
      * 在元素加载完成后执行操作
      *
-     * 当条件满足后，如果不存在终止条件，那么直接执行 callback(element)。
+     * 当条件满足后，如果不存在终止条件，那么直接执行 `callback(element)`。
      *
-     * 当条件满足后，如果存在终止条件，且 stopTimeout 大于 0，则还会在接下来的 stopTimeout 时间内判断是否满足终止条件，称为终止条件的二次判断。
-     * 如果在此期间，终止条件通过，则表示依然不满足条件，故执行 stopCallback() 而非 callback(element)。
-     * 如果在此期间，终止条件一直失败，则顺利通过检测，执行 callback(element)。
+     * 当条件满足后，如果存在终止条件，且 `stopTimeout` 大于 `0`，则还会在接下来的 `stopTimeout` 时间内判断是否满足终止条件，称为终止条件的二次判断。
+     * 如果在此期间，终止条件通过，则表示依然不满足条件，故执行 `stopCallback()` 而非 `callback(element)`。
+     * 如果在此期间，终止条件一直失败，则顺利通过检测，执行 `callback(element)`。
      *
      * @param {Object} options 选项
-     * @param {string} options.selector 该选择器指定要等待加载的元素 element
-     * @param {Function} options.callback 当 element 加载成功时执行 callback(element)
+     * @param {string} options.selector 该选择器指定要等待加载的元素 `element`
+     * @param {Function} options.callback 当 `element` 加载成功时执行 `callback(element)`
      * @param {number} [options.interval=100] 检测时间间隔（单位：ms）
      * @param {number} [options.timeout=5000] 检测超时时间，检测时间超过该值时终止检测（单位：ms）
-     * @param {Function} [options.onTimeout=0] 检测超时时执行 onTimeout()
-     * @param {Function | string} [options.stopCondition] 终止条件。若为函数，当 stopCondition() 返回的 stopResult 为真值时终止检测；若为字符串，则作为元素选择器指定终止元素 stopElement，若该元素加载成功则终止检测
-     * @param {Function} [options.stopCallback] 终止条件达成时执行 stopCallback()（包括终止条件的二次判断达成）
+     * @param {Function} [options.onTimeout] 检测超时时执行 `onTimeout()`
+     * @param {Function | string} [options.stopCondition] 终止条件。若为函数，当 `stopCondition()` 返回的 `stopResult` 为真值时终止检测；若为字符串，则作为元素选择器指定终止元素 `stopElement`，若该元素加载成功则终止检测
+     * @param {Function} [options.stopCallback] 终止条件达成时执行 `stopCallback()`（包括终止条件的二次判断达成）
      * @param {number} [options.stopInterval=50] 终止条件二次判断期间的检测时间间隔（单位：ms）
      * @param {number} [options.stopTimeout=0] 终止条件二次判断期间的检测超时时间（单位：ms）
+     * @param {number} [options.timePadding=0] 等待 `timePadding`ms 后才开始执行；包含在 `timeout` 中，因此不能大于 `timeout`
      */
     function executeAfterElementLoad(options) {
       var defaultOptions = {
@@ -1537,6 +1714,7 @@
         stopCallback: null,
         stopInterval: 50,
         stopTimeout: 0,
+        timePadding: 0,
       }
       var o = {
         ...defaultOptions,
@@ -1557,7 +1735,65 @@
       })
     }
 
-    /** 添加脚本样式 */
+    /**
+     * 等待条件满足
+     * 
+     * 执行细节类似于 @{link executeAfterConditionPass}。在原来执行 `callback(result)` 的地方执行 `resolve(result)`，被终止或超时执行 `reject()`。
+     * 
+     * @async
+     * @see executeAfterConditionPass
+     * @param {Object} options 选项
+     * @param {Function} options.condition 条件，当 condition() 返回的 result 为真值时满足条件
+     * @param {number} [options.interval=100] 检测时间间隔（单位：ms）
+     * @param {number} [options.timeout=5000] 检测超时时间，检测时间超过该值时终止检测（单位：ms）
+     * @param {Function} [options.stopCondition] 终止条件，当 `stopCondition()` 返回的 `stopResult` 为真值时终止检测
+     * @param {number} [options.stopInterval=50] 终止条件二次判断期间的检测时间间隔（单位：ms）
+     * @param {number} [options.stopTimeout=0] 终止条件二次判断期间的检测超时时间（单位：ms）
+     * @param {number} [options.timePadding=0] 等待 `timePadding`ms 后才开始执行；包含在 `timeout` 中，因此不能大于 `timeout`
+     * @returns {Promise}
+     */
+    async function waitForConditionPass(options) {
+      return new Promise((resolve, reject) => {
+        executeAfterConditionPass({
+          ...options,
+          callback: result => resolve(result),
+          onTimeout: () => reject(['TIMEOUT', 'waitForConditionPass']),
+          stopCallback: () => reject(['STOP', 'waitForConditionPass']),
+        })
+      })
+    }
+
+    /**
+     * 等待元素加载
+     * 
+     * 执行细节类似于 @{link executeAfterElementLoad}。在原来执行 `callback(element)` 的地方执行 `resolve(element)`，被终止或超时执行 `reject()`。
+     * 
+     * @async
+     * @see executeAfterElementLoad
+     * @param {Object} options 选项
+     * @param {string} options.selector 该选择器指定要等待加载的元素 `element`
+     * @param {number} [options.interval=100] 检测时间间隔（单位：ms）
+     * @param {number} [options.timeout=5000] 检测超时时间，检测时间超过该值时终止检测（单位：ms）
+     * @param {Function | string} [options.stopCondition] 终止条件。若为函数，当 `stopCondition()` 返回的 `stopResult` 为真值时终止检测；若为字符串，则作为元素选择器指定终止元素 `stopElement`，若该元素加载成功则终止检测
+     * @param {number} [options.stopInterval=50] 终止条件二次判断期间的检测时间间隔（单位：ms）
+     * @param {number} [options.stopTimeout=0] 终止条件二次判断期间的检测超时时间（单位：ms）
+     * @param {number} [options.timePadding=0] 等待 `timePadding`ms 后才开始执行；包含在 `timeout` 中，因此不能大于 `timeout`
+     * @returns {Promise}
+     */
+    async function waitForElementLoad(options) {
+      return new Promise((resolve, reject) => {
+        executeAfterElementLoad({
+          ...options,
+          callback: element => resolve(element),
+          onTimeout: () => reject(['TIMEOUT', 'waitForElementLoad']),
+          stopCallback: () => reject(['STOP', 'waitForElementLoad']),
+        })
+      })
+    }
+
+    /**
+     * 添加脚本样式
+     */
     function addStyle() {
       GM_addStyle(`
 #${gm.id} .gm-setting {
@@ -1800,7 +2036,9 @@
     }
   }
 
-  /** document-start 时期初始化 */
+  /**
+   * document-start 时期初始化
+   */
   function initAtDocumentStart() {
     // document-start 级用户配置读取
     if (gm.configVersion > 0) {
@@ -1810,7 +2048,9 @@
     }
   }
 
-  /** 稍后再看模式重定向至正常模式播放 */
+  /**
+   * 稍后再看模式重定向至正常模式播放
+   */
   function fnRedirect() {
     window.stop() // 停止原页面的加载
     GM_xmlhttpRequest({
@@ -1847,7 +2087,6 @@
 
   /**
    * 判断当前 URL 是否匹配
-   *
    * @param {RegExp} reg 用于判断是否匹配的正则表达纯
    * @returns {boolean} 是否匹配
    */
@@ -1857,7 +2096,7 @@
 
   /**
    * 推入队列，循环数组实现
-   *
+   * @constructor
    * @param {number} maxSize 队列的最大长度，达到此长度后继续推入数据，将舍弃末尾处的数据
    * @param {number} [capacity=maxSize] 容量，即循环数组的长度，不能小于 maxSize
    */
@@ -1873,7 +2112,6 @@
   }
   /**
    * 设置推入队列的最大长度
-   *
    * @param {number} maxSize 队列的最大长度，不能大于 capacity
    */
   PushQueue.prototype.setMaxSize = function(maxSize) {
@@ -1887,7 +2125,6 @@
   }
   /**
    * 重新设置推入队列的容量
-   *
    * @param {number} capacity 容量
    */
   PushQueue.prototype.setCapacity = function(capacity) {
@@ -1912,8 +2149,7 @@
   }
   /**
    * 向队列中推入数据，若队列已达到最大长度，则舍弃末尾处数据
-   *
-   * @param {Object} value 推入队列的数据
+   * @param {*} value 推入队列的数据
    */
   PushQueue.prototype.push = function(value) {
     this.data[this.index] = value
@@ -1934,8 +2170,7 @@
   }
   /**
    * 将队列末位处的数据弹出
-   *
-   * @returns {Object} 弹出的数据
+   * @returns {*} 弹出的数据
    */
   PushQueue.prototype.pop = function() {
     if (this.size > 0) {
@@ -1951,7 +2186,6 @@
   }
   /**
    * 将推入队列以数组的形式返回
-   *
    * @param {number} [maxLength=size] 读取的最大长度
    * @returns {Array} 队列数据的数组形式
    */
