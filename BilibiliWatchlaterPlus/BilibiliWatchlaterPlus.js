@@ -1,7 +1,7 @@
 // ==UserScript==
 // @id              BilibiliWatchlaterPlus@Laster2800
 // @name            B站稍后再看功能增强
-// @version         2.9.1.20200719
+// @version         2.9.2.20200719
 // @namespace       laster2800
 // @author          Laster2800
 // @description     B站稍后再看功能增强，目前功能包括UI增强、稍后再看模式自动切换至普通模式播放（重定向）、稍后再看移除记录等，支持功能设置
@@ -776,29 +776,29 @@
     </div>
     <div class="gm-items">
         <div class="gm-item">
-            <label title="在顶栏“动态”和“收藏”之间加入稍后再看入口，鼠标移至上方时弹出列表菜单，支持点击功能设置">
+            <label title="在顶栏“动态”和“收藏”之间加入稍后再看入口，鼠标移至上方时弹出列表菜单，支持点击功能设置。">
                 <span>【所有页面】在顶栏中加入稍后再看入口</span><input id="gm-headerButton" type="checkbox"></label>
-            <div class="gm-subitem" title="选择在下拉菜单中点击视频的行为">
+            <div class="gm-subitem" title="选择在下拉菜单中点击视频的行为。">
                 <span>在下拉菜单中点击视频时</span>
                 <select id="gm-openHeaderDropdownLink">
                     <option value="ohdl_openInCurrent">在当前页面打开</option>
                     <option value="ohdl_openInNew">在新标签页打开</option>
                 </select>
             </div>
-            <div class="gm-subitem" title="选择左键点击入口时执行的操作">
+            <div class="gm-subitem" title="选择左键点击入口时执行的操作。">
                 <span>在入口上点击鼠标左键时</span>
                 <select id="gm-headerButtonOpL"></select>
             </div>
-            <div class="gm-subitem" title="选择右键点击入口时执行的操作">
+            <div class="gm-subitem" title="选择右键点击入口时执行的操作。">
                 <span>在入口上点击鼠标右键时</span>
                 <select id="gm-headerButtonOpR"></select>
             </div>
         </div>
-        <label class="gm-item" title="在播放页面（包括普通模式和稍后再看模式）中加入能将视频快速切换添加或移除出稍后再看列表的按钮">
+        <label class="gm-item" title="在播放页面（包括普通模式和稍后再看模式）中加入能将视频快速切换添加或移除出稍后再看列表的按钮。">
             <span>【播放页面】加入快速切换视频稍后再看状态的按钮</span><input id="gm-videoButton" type="checkbox"></label>
-        <label class="gm-item" title="打开【${gm.url.page_videoWatchlaterMode}】页面时，自动切换至【${gm.url.page_videoNormalMode}】页面进行播放">
+        <label class="gm-item" title="打开【${gm.url.page_videoWatchlaterMode}】页面时，自动切换至【${gm.url.page_videoNormalMode}】页面进行播放。">
             <span>【播放页面】从稍后再看模式切换到普通模式播放</span><input id="gm-redirect" type="checkbox"></label>
-        <label class="gm-item" title="设置在【${gm.url.page_watchlaterList}】页面点击视频时的行为">
+        <label class="gm-item" title="设置在【${gm.url.page_watchlaterList}】页面点击视频时的行为。">
             <span>【列表页面】点击视频时</span>
             <select id="gm-openListVideo">
                 <option value="olv_openInCurrent">在当前页面打开</option>
@@ -846,7 +846,7 @@
           el.rhWarning = gm.el.setting.querySelector('#gm-rhWarning')
           initWarning(el.rhWarning, '关闭移除记录，或将列表页面数据保存次数设置为比原来小的值，都会造成对内部过期历史数据的清理！')
           el.rhsWarning = gm.el.setting.querySelector('#gm-rhsWarning')
-          initWarning(el.rhsWarning, `该项设置过大时，在极端情况下可能会产生明显的卡顿，一般不建议该项超过${gm.const.rhsWarning}。`)
+          initWarning(el.rhsWarning, `该项设置过大时，在极端情况下可能会造成明显的卡顿，一般不建议该项超过${gm.const.rhsWarning}。当然，如果对机器的读写性能自信，可以无视该警告。`)
 
           el.headerButtonOpL.innerHTML = el.headerButtonOpR.innerHTML = `
 <option value="op_openListInCurrent">在当前页面打开列表页面</option>
@@ -1452,7 +1452,7 @@
      * @param {Function} options.callback 当满足条件时执行 callback(result)
      * @param {number} [options.interval=100] 检测时间间隔（单位：ms）
      * @param {number} [options.timeout=5000] 检测超时时间，检测时间超过该值时终止检测（单位：ms）
-     * @param {Function} [options.onTimeout] 检测超时时执行 onTimeout()
+     * @param {Function} [options.onTimeout=0] 检测超时时执行 onTimeout()
      * @param {Function} [options.stopCondition] 终止条件，当 stopCondition() 返回的 stopResult 为真值时终止检测
      * @param {Function} [options.stopCallback] 终止条件达成时执行 stopCallback()（包括终止条件的二次判断达成）
      * @param {number} [options.stopInterval=50] 终止条件二次判断期间的检测时间间隔（单位：ms）
@@ -1509,22 +1509,22 @@
     /**
      * 在元素加载完成后执行操作
      *
-     * 当元素加载成功后，如果没有设置终止元素选择器，那么直接执行 callback(element)。
+     * 当条件满足后，如果不存在终止条件，那么直接执行 callback(element)。
      *
-     * 当元素加载成功后，如果没有设置终止元素选择器，且 stopTimeout 大于 0，则还会在接下来的 stopTimeout 时间内判断终止元素是否加载成功，称为终止元素的二次加载。
-     * 如果在此期间，终止元素加载成功，则表示依然不满足条件，故执行 stopCallback() 而非 callback(element)。
-     * 如果在此期间，终止元素加载失败，则顺利通过检测，执行 callback(element)。
+     * 当条件满足后，如果存在终止条件，且 stopTimeout 大于 0，则还会在接下来的 stopTimeout 时间内判断是否满足终止条件，称为终止条件的二次判断。
+     * 如果在此期间，终止条件通过，则表示依然不满足条件，故执行 stopCallback() 而非 callback(element)。
+     * 如果在此期间，终止条件一直失败，则顺利通过检测，执行 callback(element)。
      *
      * @param {Object} options 选项
-     * @param {Function} options.selector 该选择器指定要等待加载的元素 element
+     * @param {string} options.selector 该选择器指定要等待加载的元素 element
      * @param {Function} options.callback 当 element 加载成功时执行 callback(element)
      * @param {number} [options.interval=100] 检测时间间隔（单位：ms）
      * @param {number} [options.timeout=5000] 检测超时时间，检测时间超过该值时终止检测（单位：ms）
-     * @param {Function} [options.onTimeout] 检测超时时执行 onTimeout()
-     * @param {Function} [options.stopCondition] 该选择器指定终止元素 stopElement，若该元素加载成功则终止检测
-     * @param {Function} [options.stopCallback] 终止元素加载成功后执行 stopCallback()（包括终止元素的二次加载）
-     * @param {number} [options.stopInterval=50] 终止元素二次加载期间的检测时间间隔（单位：ms）
-     * @param {number} [options.stopTimeout=0] 终止元素二次加载期间的检测超时时间（单位：ms）
+     * @param {Function} [options.onTimeout=0] 检测超时时执行 onTimeout()
+     * @param {Function | string} [options.stopCondition] 终止条件。若为函数，当 stopCondition() 返回的 stopResult 为真值时终止检测；若为字符串，则作为元素选择器指定终止元素 stopElement，若该元素加载成功则终止检测
+     * @param {Function} [options.stopCallback] 终止条件达成时执行 stopCallback()（包括终止条件的二次判断达成）
+     * @param {number} [options.stopInterval=50] 终止条件二次判断期间的检测时间间隔（单位：ms）
+     * @param {number} [options.stopTimeout=0] 终止条件二次判断期间的检测超时时间（单位：ms）
      */
     function executeAfterElementLoad(options) {
       var defaultOptions = {
@@ -1533,7 +1533,7 @@
         interval: 100,
         timeout: 5000,
         onTimeout: null,
-        stopSelector: null,
+        stopCondition: null,
         stopCallback: null,
         stopInterval: 50,
         stopTimeout: 0,
@@ -1545,7 +1545,15 @@
       executeAfterConditionPass({
         ...o,
         condition: () => document.querySelector(o.selector),
-        stopCondition: o.stopSelector && (() => document.querySelector(o.stopSelector)),
+        stopCondition: () => {
+          if (o.stopCondition) {
+            if (o.stopCondition instanceof Function) {
+              return o.stopCondition()
+            } else if (typeof o.stopCondition == 'string') {
+              return document.querySelector(o.stopCondition)
+            }
+          }
+        },
       })
     }
 
