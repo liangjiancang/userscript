@@ -1,19 +1,19 @@
 // ==UserScript==
-// @id             BilibiliCover@Laster2800
-// @name           B站封面获取
-// @version        4.1.3.20200719
-// @namespace      laster2800
-// @author         Laster2800
-// @description    B站视频播放页（普通模式、稍后再看模式）、番剧播放页、直播间添加获取封面的按钮
-// @include        *://www.bilibili.com/video/*
-// @include        *://www.bilibili.com/bangumi/play/*
-// @include        *://live.bilibili.com/*
-// @include        *://www.bilibili.com/medialist/play/watchlater/*
-// @exclude        *://live.bilibili.com/
-// @exclude        *://live.bilibili.com/p/html/live-web-mng/*
-// @grant          GM_xmlhttpRequest
-// @connect        api.bilibili.com
-// @grant          GM_addStyle
+// @id              BilibiliCover@Laster2800
+// @name            B站封面获取
+// @version         4.1.4.20200720
+// @namespace       laster2800
+// @author          Laster2800
+// @description     B站视频播放页（普通模式、稍后再看模式）、番剧播放页、直播间添加获取封面的按钮
+// @include         *://www.bilibili.com/video/*
+// @include         *://www.bilibili.com/bangumi/play/*
+// @include         *://www.bilibili.com/medialist/play/watchlater/*
+// @include         *://live.bilibili.com/*
+// @exclude         *://live.bilibili.com/
+// @exclude         *://live.bilibili.com/*/*
+// @grant           GM_xmlhttpRequest
+// @connect         api.bilibili.com
+// @grant           GM_addStyle
 // ==/UserScript==
 
 (function() {
