@@ -1,7 +1,7 @@
 // ==UserScript==
 // @id              BilibiliWatchlaterPlus@Laster2800
 // @name            B站稍后再看功能增强
-// @version         2.10.2.20200720
+// @version         2.10.3.20200720
 // @namespace       laster2800
 // @author          Laster2800
 // @description     B站稍后再看功能增强，目前功能包括UI增强、稍后再看模式自动切换至普通模式播放（重定向）、稍后再看移除记录等，支持功能设置
@@ -83,13 +83,24 @@
      */
     function init() {
       gm.url = {
+        /** 稍后再看列表数据 */
         api_queryWatchlaterList: 'https://api.bilibili.com/x/v2/history/toview/web?jsonp=jsonp',
+        /**
+         * 视频数据，含 aid、bvid 等数据
+         * @param {string} type 取值 `'aid'` 或 `'bvid'`
+         * @param {string} id AV 号或 BV 号，形如 `'10000'` 和 `'BV1bx411c7ux'`
+         */
+        api_queryVideoStatus: (type, id) => `http://api.bilibili.com/x/web-interface/archive/stat?${type}=${id}`,
+        /** 将视频添加至稍后再看，要求 POST 一个含 aid 和 csrf 的表单 */
         api_addToWatchlater: 'https://api.bilibili.com/x/v2/history/toview/add',
+        /** 将视频从稍后再看移除，要求 POST 一个含 aid 和 csrf 的表单 */
         api_removeFromWatchlater: 'https://api.bilibili.com/x/v2/history/toview/del',
+
         page_watchlaterList: 'https://www.bilibili.com/watchlater/#/list',
         page_videoNormalMode: 'https://www.bilibili.com/video',
         page_videoWatchlaterMode: 'https://www.bilibili.com/medialist/play/watchlater',
         page_watchlaterPlayAll: 'https://www.bilibili.com/medialist/play/watchlater/p1',
+
         noop: 'javascript:void(0)',
       }
 
@@ -694,6 +705,7 @@
 
       /**
        * 获取当前页面对应的 aid
+       * @see {@link https://www.v2ex.com/t/655569 B 站点 bv 与 av 互转} 
        */
       var getAid = async () => {
         var aid = unsafeWindow.aid // 第一次打开播放页时不存在，但切换视频后就存在了
@@ -707,26 +719,15 @@
           return aid
         }
 
-        // 用笨方法查算了，那套算法太烦，不想弄过来
-        // 这里不能根据分P来推测 aid，因为该功能的引入，分P不一定对得上真正的列表
         return new Promise(resolve => {
           GM_xmlhttpRequest({
             method: 'GET',
-            url: gm.url.api_queryWatchlaterList,
+            url: gm.url.api_queryVideoStatus('bvid', bvid),
             onload: function(response) {
               try {
                 var json = JSON.parse(response.responseText)
-                var watchlaterList = json.data.list
-                var aid = null
-                for (var e of watchlaterList) {
-                  if (bvid == e.bvid) {
-                    aid = e.aid
-                    break
-                  }
-                }
-                if (aid) {
-                  aidMap.set(bvid, aid)
-                }
+                var aid = json.data.aid
+                aidMap.set(bvid, aid)
                 resolve(aid)
               } catch (e) {
                 console.error(gm.error.NETWORK)
@@ -763,7 +764,7 @@
 
       /**
        * 创建 locationchange 事件
-       * @see @{link https://stackoverflow.com/a/52809105}
+       * @see {@link https://stackoverflow.com/a/52809105 How to detect if URL has changed after hash in JavaScript}
        */
       var createLocationchangeEvent = () => {
         if (!unsafeWindow._createLocationchangeEvent) {
@@ -1738,7 +1739,7 @@
     /**
      * 等待条件满足
      * 
-     * 执行细节类似于 @{link executeAfterConditionPass}。在原来执行 `callback(result)` 的地方执行 `resolve(result)`，被终止或超时执行 `reject()`。
+     * 执行细节类似于 {@link executeAfterConditionPass}。在原来执行 `callback(result)` 的地方执行 `resolve(result)`，被终止或超时执行 `reject()`。
      * 
      * @async
      * @see executeAfterConditionPass
@@ -1766,7 +1767,7 @@
     /**
      * 等待元素加载
      * 
-     * 执行细节类似于 @{link executeAfterElementLoad}。在原来执行 `callback(element)` 的地方执行 `resolve(element)`，被终止或超时执行 `reject()`。
+     * 执行细节类似于 {@link executeAfterElementLoad}。在原来执行 `callback(element)` 的地方执行 `resolve(element)`，被终止或超时执行 `reject()`。
      * 
      * @async
      * @see executeAfterElementLoad
