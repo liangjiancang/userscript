@@ -1,7 +1,7 @@
 // ==UserScript==
 // @id              BilibiliWatchlaterPlus@Laster2800
 // @name            B站稍后再看功能增强
-// @version         3.0.0.20200721
+// @version         3.0.1.20200721
 // @namespace       laster2800
 // @author          Laster2800
 // @description     B站稍后再看功能增强，目前功能包括UI增强、稍后再看模式自动切换至普通模式播放（重定向）、稍后再看移除记录等，支持功能设置
@@ -1487,7 +1487,7 @@
 <div class="gm-history-page">
     <div class="gm-title">稍后再看移除记录</div>
     <div class="gm-comment">
-        <div>根据最近<span id="gm-save-times">X</span>次打开列表页面时获取到的<span id="gm-record-num">X</span>条记录生成，共筛选出<span id="gm-remove-num">X</span>条移除记录。排序由首次加入到稍后再看的顺序决定，与移除出稍后再看的时间无关。如果记录太多难以定位被误删的视频，请在下方设置减少历史回溯深度。鼠标移动到内容区域可向下滚动翻页，点击对话框以外的位置退出。</div>
+        <div>根据最近<span id="gm-save-times">X</span>次打开列表页面时获取到的<span id="gm-record-num">X</span>条不重复的记录生成（总计<span id="gm-record-num-repeat">X</span>条），共筛选出<span id="gm-remove-num">X</span>条移除记录。排序由首次加入到稍后再看的顺序决定，与移除出稍后再看的时间无关。如果记录太多难以定位被误删的视频，请在下方设置减少历史回溯深度。鼠标移动到内容区域可向下滚动翻页，点击对话框以外的位置退出。</div>
         <div style="text-align:right;font-weight:bold;margin-right:1em" title="搜寻时在最近多少次列表页面数据中查找，设置较小的值能较好地定位最近移除的视频。按下回车键或输入框失去焦点时刷新数据。">历史回溯深度：<input type="text" id="gm-search-times" value="X"></div>
     </div>
 </div>
@@ -1498,6 +1498,7 @@
           el.content = null
           el.saveTimes = gm.el.history.querySelector('#gm-save-times')
           el.recordNum = gm.el.history.querySelector('#gm-record-num')
+          el.recordNumRepeat = gm.el.history.querySelector('#gm-record-num-repeat')
           el.removeNum = gm.el.history.querySelector('#gm-remove-num')
           el.shadow = gm.el.history.querySelector('.gm-shadow')
         }
@@ -1578,12 +1579,15 @@
                   var map = new Map()
                   var removeData = gm.config.removeHistoryData.toArray(el.searchTimes.current)
                   el.saveTimes.innerText = removeData.length
+                  var total = 0
                   for (var i = removeData.length - 1; i >= 0; i--) { // 后面的数据较旧，从后往前遍历
                     for (var record of removeData[i]) {
                       map.set(record.bvid, record)
                     }
+                    total += removeData[i].length
                   }
                   el.recordNum.innerText = map.size
+                  el.recordNumRepeat.innerText = total
                   for (var id of bvid) {
                     map.delete(id)
                   }
@@ -1971,6 +1975,10 @@
      */
     function addStyle() {
       GM_addStyle(`
+#${gm.id} {
+    color: black;
+}
+
 #${gm.id} .gm-setting {
     font-size: 12px;
     transition: opacity ${gm.const.fadeTime}ms ease-in-out;
@@ -2132,16 +2140,16 @@
     position: absolute;
     right: 0;
     bottom: 0;
-    margin: 0.6em 0.8em;
-    color: #b4b4b4;
+    margin: 1em 1.6em;
+    color: #cfcfcf;
     cursor: pointer;
 }
 #${gm.id} #gm-update-log {
   position: absolute;
-  right: 7em;
-  bottom: 0;
-  margin: 0.6em 0.8em;
-  color: #b4b4b4;
+  right: 0;
+  bottom: 1.8em;
+  margin: 1em 1.6em;
+  color: #cfcfcf;
   cursor: pointer;
 }
 #${gm.id} #gm-reset:hover,
