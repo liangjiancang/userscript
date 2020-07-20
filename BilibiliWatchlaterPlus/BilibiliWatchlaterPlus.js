@@ -1,7 +1,7 @@
 // ==UserScript==
 // @id              BilibiliWatchlaterPlus@Laster2800
 // @name            B站稍后再看功能增强
-// @version         3.0.2.20200721
+// @version         3.0.3.20200721
 // @namespace       laster2800
 // @author          Laster2800
 // @description     B站稍后再看功能增强，目前功能包括UI增强、稍后再看模式自动切换至普通模式播放（重定向）、稍后再看移除记录等，支持功能设置
@@ -1097,13 +1097,13 @@
             <label title="保留最近几次打开【${gm.url.page_watchlaterList}】页面时稍后再看列表的记录，以查找出这段时间内将哪些视频移除出稍后再看，用于防止误删操作。关闭该选项后，会将内部历史数据清除！">
                 <span>【列表页面】开启稍后再看移除记录（防误删）</span>
                 <input id="gm-removeHistory" type="checkbox">
-                <span id="gm-rhWarning" class="gm-warning">⚠</span>
+                <span id="gm-rhWarning" class="gm-warning" title="">⚠</span>
             </label>
             <div class="gm-subitem" title="较大的数值可能会带来较大的开销，经过性能测试，作者认为在设置在${gm.const.rhsWarning}以下时，即使在极限情况下也不会产生让人能察觉到的卡顿（存取总时不超过100ms），但在没有特殊要求的情况下依然不建议设置到这么大。该项修改后，会立即对过期记录进行清理，重新修改为原来的值无法还原被清除的记录，设置为比原来小的值需慎重！（范围：${gm.const.rhsMin} ~ ${gm.const.rhsMax}）">
                 <span>保存最近几次列表页面数据用于生成移除记录</span>
                 <span id="gm-cleanRemoveHistoryData" class="gm-hint-option" title="清理已保存的列表页面数据，不可恢复！">清空数据(0条)</span>
                 <input id="gm-removeHistorySaves" type="text">
-                <span id="gm-rhsWarning" class="gm-warning">⚠</span>
+                <span id="gm-rhsWarning" class="gm-warning" title="">⚠</span>
             </div>
             <div class="gm-subitem" title="搜寻时在最近多少次列表页面数据中查找，设置较小的值能较好地定位最近移除的视频。设置较大的值几乎不会对性能造成影响，但不能大于最近列表页面数据保存次数。">
                 <span>默认历史回溯深度</span><input id="gm-removeHistorySearchTimes" type="text"></div>
@@ -2067,6 +2067,7 @@
     transition: opacity ${gm.const.fadeTime}ms ease-in-out;
     opacity: 0;
     display: none;
+    cursor: pointer;
 }
 #${gm.id} .gm-setting .gm-bottom {
     margin: 0.8em 2em 1.8em 2em;
