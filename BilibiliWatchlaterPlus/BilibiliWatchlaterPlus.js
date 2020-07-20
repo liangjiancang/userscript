@@ -66,7 +66,7 @@
    * @property {string} page_videoNormalMode 正常模式播放页
    * @property {string} page_videoWatchlaterMode 稍后再看模式播放页
    * @property {string} page_watchlaterPlayAll 稍后再看播放全部
-   * @property {string} gm_updateLog 更新日志
+   * @property {string} gm_changelog 更新日志
    * @property {string} noop 无操作
    */
   /**
@@ -169,7 +169,7 @@
         page_videoNormalMode: 'https://www.bilibili.com/video',
         page_videoWatchlaterMode: 'https://www.bilibili.com/medialist/play/watchlater',
         page_watchlaterPlayAll: 'https://www.bilibili.com/medialist/play/watchlater/p1',
-        gm_updateLog: 'https://greasyfork.org/zh-CN/scripts/395456/versions',
+        gm_changelog: 'https://greasyfork.org/zh-CN/scripts/395456-b站稍后再看功能增强/versions?show_all_versions=1',
         noop: 'javascript:void(0)',
       }
 
@@ -1117,7 +1117,7 @@
         <button id="gm-save">保存</button><button id="gm-cancel">取消</button>
     </div>
     <div id="gm-reset" title="重置脚本设置及内部数据，也许能解决脚本运行错误的问题。该操作不会清除已保存的列表页面数据，因此不会导致移除记录丢失。无法解决请联系脚本作者：${GM_info.script.supportURL}">重置脚本数据</div>
-    <div id="gm-update-log" title="显示更新日志" onclick="window.open('${gm.url.gm_updateLog}')">更新日志</div>
+    <div id="gm-changelog" title="显示更新日志" onclick="window.open('${gm.url.gm_changelog}')">更新日志</div>
 </div>
 <div class="gm-shadow"></div>
 `
@@ -2144,7 +2144,7 @@
     color: #cfcfcf;
     cursor: pointer;
 }
-#${gm.id} #gm-update-log {
+#${gm.id} #gm-changelog {
   position: absolute;
   right: 0;
   bottom: 1.8em;
@@ -2153,7 +2153,7 @@
   cursor: pointer;
 }
 #${gm.id} #gm-reset:hover,
-#${gm.id} #gm-update-log:hover {
+#${gm.id} #gm-changelog:hover {
     color: #666666;
     text-decoration: underline;
 }
