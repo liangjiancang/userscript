@@ -1,18 +1,17 @@
 // ==UserScript==
 // @id              BilibiliCover@Laster2800
 // @name            B站封面获取
-// @version         4.1.4.20200720
+// @version         4.2.0.20200720
 // @namespace       laster2800
 // @author          Laster2800
 // @description     B站视频播放页（普通模式、稍后再看模式）、番剧播放页、直播间添加获取封面的按钮
 // @include         *://www.bilibili.com/video/*
 // @include         *://www.bilibili.com/bangumi/play/*
+// @include         *://www.bilibili.com/medialist/play/watchlater
 // @include         *://www.bilibili.com/medialist/play/watchlater/*
 // @include         *://live.bilibili.com/*
 // @exclude         *://live.bilibili.com/
 // @exclude         *://live.bilibili.com/*/*
-// @grant           GM_xmlhttpRequest
-// @connect         api.bilibili.com
 // @grant           GM_addStyle
 // ==/UserScript==
 
@@ -161,91 +160,97 @@ function addWatchlaterVideoBtn(pom) {
     color: #757575;
 }
 .cover_btn:hover {
-    color: #23ade5;
+  color: #23ade5;
 }
-  `)
+`)
 
+  var bus = {}
   var cover = document.createElement('a')
-  var errorMsg = '获取失败，可能是因为该视频已经移除出稍后再看；若非该原因或网络问题，请提供反馈'
+  var errorMsg = '获取失败，可能是因为该视频已经移除出稍后再看；也可能是网络原因，可刷新并尝试。如果还是不行请联系脚本作者……'
   cover.innerText = '获取封面'
   cover.target = '_blank'
   cover.className = 'cover_btn'
   cover.onclick = e => e.stopPropagation()
   pom.appendChild(cover)
 
-  var updateCoverUrl = () => {
-    GM_xmlhttpRequest({
-      method: 'GET',
-      url: 'https://api.bilibili.com/x/v2/history/toview/web?jsonp=jsonp',
-      onload: function(response) {
-        if (response && response.responseText) {
-          try {
-            executeAfterConditionPass({
-              condition: () => {
-                try {
-                  var url = document.querySelector('.play-title-location').href
-                  var m = url.match(/(?<=\/)BV[a-zA-Z\d]+(?=\/|$)/)
-                  if (m && m[0]) {
-                    return m[0]
-                  }
-                } catch (e) {
-                  // ignore
-                }
-              },
-              callback: bvid => {
-                var json = JSON.parse(response.responseText)
-                var watchlaterList = json.data.list
-
-                var coverUrl = null
-                for (var e of watchlaterList) {
-                  if (bvid == e.bvid) {
-                    coverUrl = e.pic
-                    break
-                  }
-                }
-
-                if (coverUrl) {
-                  cover.href = coverUrl
-                } else {
-                  cover.onclick = () => alert(errorMsg)
-                }
-                cover.title = coverUrl || errorMsg
-              }
-            })
-          } catch (e) {
-            console.error(e)
-          }
-        }
+  executeAfterConditionPass({
+    condition: () => {
+      var app = document.querySelector('#app')
+      var vueLoad = app && app.__vue__
+      if (!vueLoad) {
+        return false
       }
-    })
-  }
+      var playContainer = app.querySelector('#playContainer')
+      if (playContainer.__vue__.playCover) {
+        return playContainer
+      }
+    },
+    callback: playContainer => {
+      bus.playContainer = playContainer
+      bus.cover = playContainer.__vue__.playCover
+      setCover(bus.cover)
 
-  updateCoverUrl()
-
-  // 创建 locationchange 事件
-  // https://stackoverflow.com/a/52809105
-  if (!unsafeWindow._createLocationchangeEvent) {
-    history.pushState = (f => function pushState() {
-      var ret = f.apply(this, arguments)
-      window.dispatchEvent(new Event('pushstate'))
-      window.dispatchEvent(new Event('locationchange'))
-      return ret
-    })(history.pushState)
-    history.replaceState = (f => function replaceState() {
-      var ret = f.apply(this, arguments)
-      window.dispatchEvent(new Event('replacestate'))
-      window.dispatchEvent(new Event('locationchange'))
-      return ret
-    })(history.replaceState)
-    window.addEventListener('popstate', () => {
-      window.dispatchEvent(new Event('locationchange'))
-    })
-    unsafeWindow._createLocationchangeEvent = true
-  }
-
-  window.addEventListener('locationchange', function() {
-    updateCoverUrl()
+      createLocationchangeEvent()
+      window.addEventListener('locationchange', function() {
+        updateCoverUrl()
+      })
+    },
+    timeout: 2000,
+    onTimeout: () => setCover(false)
   })
+
+  var updateCoverUrl = () => {
+    executeAfterConditionPass({
+      condition: () => {
+        var cover = bus.playContainer.__vue__.playCover
+        if (cover && cover != bus.cover) {
+          return cover
+        }
+      },
+      callback: cover => {
+        bus.cover = cover
+        setCover(cover)
+      },
+      timeout: 2000,
+      onTimeout: () => setCover(false)
+    })
+  }
+
+  var setCover = coverUrl => {
+    if (coverUrl) {
+      cover.href = coverUrl
+      if (cover.onclick) {
+        cover.onclick = null
+      }
+    } else {
+      cover.onclick = () => alert(errorMsg)
+    }
+    cover.title = coverUrl || errorMsg
+  }
+
+
+  var createLocationchangeEvent = () => {
+    // 创建 locationchange 事件
+    // https://stackoverflow.com/a/52809105
+    if (!unsafeWindow._createLocationchangeEvent) {
+      history.pushState = (f => function pushState() {
+        var ret = f.apply(this, arguments)
+        window.dispatchEvent(new Event('pushstate'))
+        window.dispatchEvent(new Event('locationchange'))
+        return ret
+      })(history.pushState)
+      history.replaceState = (f => function replaceState() {
+        var ret = f.apply(this, arguments)
+        window.dispatchEvent(new Event('replacestate'))
+        window.dispatchEvent(new Event('locationchange'))
+        return ret
+      })(history.replaceState)
+      window.addEventListener('popstate', () => {
+        window.dispatchEvent(new Event('locationchange'))
+      })
+      unsafeWindow._createLocationchangeEvent = true
+    }
+  }
 }
 
 /**
@@ -258,20 +263,19 @@ function addWatchlaterVideoBtn(pom) {
  * 如果在此期间，终止条件一直失败，则顺利通过检测，执行 `callback(result)`。
  *
  * @param {Object} options 选项
- * @param {Function} options.condition 条件，当 `condition()` 返回的 `result` 为真值时满足条件
- * @param {Function} options.callback 当满足条件时执行 `callback(result)`
+ * @param {() => ?*} options.condition 条件，当 `condition()` 返回的 `result` 为真值时满足条件
+ * @param {?((result) => void)} [options.callback] 当满足条件时执行 `callback(result)`
  * @param {number} [options.interval=100] 检测时间间隔（单位：ms）
  * @param {number} [options.timeout=5000] 检测超时时间，检测时间超过该值时终止检测（单位：ms）
- * @param {Function} [options.onTimeout] 检测超时时执行 `onTimeout()`
- * @param {Function} [options.stopCondition] 终止条件，当 `stopCondition()` 返回的 `stopResult` 为真值时终止检测
- * @param {Function} [options.stopCallback] 终止条件达成时执行 `stopCallback()`（包括终止条件的二次判断达成）
+ * @param {?(() => void)} [options.onTimeout] 检测超时时执行 `onTimeout()`
+ * @param {?(() => ?*)} [options.stopCondition] 终止条件，当 `stopCondition()` 返回的 `stopResult` 为真值时终止检测
+ * @param {?(() => void)} [options.stopCallback] 终止条件达成时执行 `stopCallback()`（包括终止条件的二次判断达成）
  * @param {number} [options.stopInterval=50] 终止条件二次判断期间的检测时间间隔（单位：ms）
  * @param {number} [options.stopTimeout=0] 终止条件二次判断期间的检测超时时间（单位：ms）
  * @param {number} [options.timePadding=0] 等待 `timePadding`ms 后才开始执行；包含在 `timeout` 中，因此不能大于 `timeout`
  */
 function executeAfterConditionPass(options) {
   var defaultOptions = {
-    condition: () => true,
     callback: result => console.log(result),
     interval: 100,
     timeout: 5000,
@@ -282,43 +286,40 @@ function executeAfterConditionPass(options) {
     stopTimeout: 0,
     timePadding: 0,
   }
-  var o = {
+  options = {
     ...defaultOptions,
     ...options
-  }
-  if (!(o.callback instanceof Function)) {
-    return
   }
 
   var tid
   var cnt = 0
-  var maxCnt = (o.timeout - o.timePadding) / o.interval
+  var maxCnt = (options.timeout - options.timePadding) / options.interval
   var task = () => {
-    var result = o.condition()
-    var stopResult = o.stopCondition && o.stopCondition()
+    var result = options.condition()
+    var stopResult = options.stopCondition && options.stopCondition()
     if (stopResult) {
       clearInterval(tid)
-      o.stopCallback instanceof Function && o.stopCallback()
+      options.stopCallback && options.stopCallback()
     } else if (++cnt > maxCnt) {
       clearInterval(tid)
-      o.onTimeout instanceof Function && o.onTimeout()
+      options.onTimeout && options.onTimeout()
     } else if (result) {
       clearInterval(tid)
-      if (o.stopCondition && o.stopTimeout > 0) {
+      if (options.stopCondition && options.stopTimeout > 0) {
         executeAfterConditionPass({
-          condition: o.stopCondition,
-          callback: o.stopCallback,
-          interval: o.stopInterval,
-          timeout: o.stopTimeout,
-          onTimeout: () => o.callback(result)
+          condition: options.stopCondition,
+          callback: options.stopCallback,
+          interval: options.stopInterval,
+          timeout: options.stopTimeout,
+          onTimeout: () => options.callback(result)
         })
       } else {
-        o.callback(result)
+        options.callback(result)
       }
     }
   }
   setTimeout(() => {
-    tid = setInterval(task, o.interval)
+    tid = setInterval(task, options.interval)
     task()
-  }, o.timePadding)
+  }, options.timePadding)
 }
