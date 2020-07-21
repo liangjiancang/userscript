@@ -1,7 +1,7 @@
 // ==UserScript==
 // @id              BilibiliCover@Laster2800
 // @name            B站封面获取
-// @version         4.2.0.20200720
+// @version         4.2.1.20200721
 // @namespace       laster2800
 // @author          Laster2800
 // @description     B站视频播放页（普通模式、稍后再看模式）、番剧播放页、直播间添加获取封面的按钮
@@ -263,13 +263,13 @@ function addWatchlaterVideoBtn(pom) {
  * 如果在此期间，终止条件一直失败，则顺利通过检测，执行 `callback(result)`。
  *
  * @param {Object} options 选项
- * @param {() => ?*} options.condition 条件，当 `condition()` 返回的 `result` 为真值时满足条件
- * @param {?((result) => void)} [options.callback] 当满足条件时执行 `callback(result)`
+ * @param {() => *} options.condition 条件，当 `condition()` 返回的 `result` 为真值时满足条件
+ * @param {(result) => void} [options.callback] 当满足条件时执行 `callback(result)`
  * @param {number} [options.interval=100] 检测时间间隔（单位：ms）
  * @param {number} [options.timeout=5000] 检测超时时间，检测时间超过该值时终止检测（单位：ms）
- * @param {?(() => void)} [options.onTimeout] 检测超时时执行 `onTimeout()`
- * @param {?(() => ?*)} [options.stopCondition] 终止条件，当 `stopCondition()` 返回的 `stopResult` 为真值时终止检测
- * @param {?(() => void)} [options.stopCallback] 终止条件达成时执行 `stopCallback()`（包括终止条件的二次判断达成）
+ * @param {() => void} [options.onTimeout] 检测超时时执行 `onTimeout()`
+ * @param {() => *} [options.stopCondition] 终止条件，当 `stopCondition()` 返回的 `stopResult` 为真值时终止检测
+ * @param {() => void} [options.stopCallback] 终止条件达成时执行 `stopCallback()`（包括终止条件的二次判断达成）
  * @param {number} [options.stopInterval=50] 终止条件二次判断期间的检测时间间隔（单位：ms）
  * @param {number} [options.stopTimeout=0] 终止条件二次判断期间的检测超时时间（单位：ms）
  * @param {number} [options.timePadding=0] 等待 `timePadding`ms 后才开始执行；包含在 `timeout` 中，因此不能大于 `timeout`
