@@ -1,7 +1,7 @@
 // ==UserScript==
 // @id              BilibiliWatchlaterPlus@Laster2800
 // @name            B站稍后再看功能增强
-// @version         3.1.0.20200722
+// @version         3.1.1.20200722
 // @namespace       laster2800
 // @author          Laster2800
 // @description     B站稍后再看功能增强，目前功能包括UI增强、稍后再看模式自动切换至普通模式播放（重定向）、稍后再看移除记录等，支持功能设置
@@ -54,6 +54,8 @@
    * @property {boolean} removeHistory 稍后再看移除记录
    * @property {number} removeHistorySaves 列表页数数据保存次数
    * @property {number} removeHistorySearchTimes 历史回溯深度
+   * @property {boolean} removeButton_removeAll 移除“一键清空”按钮
+   * @property {boolean} removeButton_removeWatched 移除“移除已观看视频”按钮
    * @property {boolean} resetAfterFnUpdate 功能性更新后初始化
    * @property {boolean} reloadAfterSetting 设置生效后刷新页面
    */
@@ -203,7 +205,7 @@
     if (urlMatch(gm.regex.page_watchlaterList)) {
       // 列表页面
       fnOpenListVideo()
-      createWatchlaterListUI()
+      adjustWatchlaterListUI()
       if (gm.config.removeHistory) {
         saveWatchlaterListData()
       }
@@ -275,6 +277,8 @@
         removeHistory: true,
         removeHistorySaves: gm.const.defaultRhs,
         removeHistorySearchTimes: 8,
+        removeButton_removeAll: false,
+        removeButton_removeWatched: false,
         resetAfterFnUpdate: false,
         reloadAfterSetting: true,
       }
@@ -1089,9 +1093,9 @@
     }
 
     /**
-     * 生成列表页面的 UI
+     * 调整列表页面的 UI
      */
-    function createWatchlaterListUI() {
+    function adjustWatchlaterListUI() {
       var r_con = document.querySelector('.watch-later-list.bili-wrapper header .r-con')
       if (gm.config.removeHistory) {
         // 在列表页面加入“移除记录”
@@ -1105,6 +1109,14 @@
       plusButton.innerText = '增强设置'
       plusButton.className = 's-btn'
       plusButton.onclick = () => openUserSetting() // 要避免 MouseEvent 的传递
+      // 移除“一键清空”按钮
+      if (gm.config.removeButton_removeAll) {
+        r_con.children[1].style.display = 'none'
+      }
+      // 移除“移除已观看视频”按钮
+      if (gm.config.removeButton_removeWatched) {
+        r_con.children[2].style.display = 'none'
+      }
     }
 
     /**
@@ -1129,6 +1141,8 @@
           removeHistory: { attr: 'checked', manual: true },
           removeHistorySaves: { attr: 'value', manual: true, needNotReload: true },
           removeHistorySearchTimes: { attr: 'value', manual: true, needNotReload: true },
+          removeButton_removeAll: { attr: 'checked' },
+          removeButton_removeWatched: { attr: 'checked' },
           resetAfterFnUpdate: { attr: 'checked', needNotReload: true },
           reloadAfterSetting: { attr: 'checked', needNotReload: true },
         }
@@ -1193,7 +1207,7 @@
         </label>
         <div class="gm-item">
             <label title="保留最近几次打开【${gm.url.page_watchlaterList}】页面时稍后再看列表的记录，以查找出这段时间内将哪些视频移除出稍后再看，用于防止误删操作。关闭该选项后，会将内部历史数据清除！">
-                <span>【列表页面】开启稍后再看移除记录（防误删）</span>
+                <span>【列表页面】开启稍后再看移除记录</span>
                 <input id="gm-removeHistory" type="checkbox">
                 <span id="gm-rhWarning" class="gm-warning" title="">⚠</span>
             </label>
@@ -1206,6 +1220,10 @@
             <div class="gm-subitem" title="搜寻时在最近多少次列表页面数据中查找，设置较小的值能较好地定位最近移除的视频。设置较大的值几乎不会对性能造成影响，但不能大于最近列表页面数据保存次数。">
                 <span>默认历史回溯深度</span><input id="gm-removeHistorySearchTimes" type="text"></div>
         </div>
+        <label class="gm-item" title="这个按钮太危险了，看着就让人不舒服……">
+            <span>【列表页面】移除“一键清空”按钮</span><input id="gm-removeButton_removeAll" type="checkbox"></label>
+        <label class="gm-item" title="这个按钮太危险了，看着就让人不舒服……">
+            <span>【列表页面】移除“移除已观看视频”按钮</span><input id="gm-removeButton_removeWatched" type="checkbox"></label>
         <label class="gm-item" title="功能性更新后，是否强制进行初始化设置？特别地，该选项的设置在初始化设置时将被保留，但初始化脚本时依然会被重置。">
             <span>【用户设置】功能性更新后进行初始化设置</span><input id="gm-resetAfterFnUpdate" type="checkbox"></label>
         <label class="gm-item" title="勾选后，如果更改的配置需要重新加载才能生效，那么会在设置完成后重新加载页面。">
@@ -2123,7 +2141,7 @@
     border-radius: 10px;
     z-index: 65535;
     min-width: 53em;
-    padding: 1em 1.4em;
+    padding: 0.9em 1.4em;
 }
 #${gm.id} .gm-setting #gm-maintitle {
     cursor: pointer;
@@ -2235,6 +2253,7 @@
     z-index: 65535;
     height: 75%;
     width: 60%;
+    padding: 0.1em;
 }
 #${gm.id} .gm-history .gm-comment {
     margin: 0 2em;
