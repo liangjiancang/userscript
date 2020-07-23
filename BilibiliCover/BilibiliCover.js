@@ -1,7 +1,7 @@
 // ==UserScript==
 // @id              BilibiliCover@Laster2800
 // @name            B站封面获取
-// @version         4.2.1.20200721
+// @version         4.2.2.20200723
 // @namespace       laster2800
 // @author          Laster2800
 // @description     B站视频播放页（普通模式、稍后再看模式）、番剧播放页、直播间添加获取封面的按钮
@@ -17,7 +17,7 @@
 
 (function() {
   if (/\/video\//.test(location.href)) {
-    executeAfterConditionPass({
+    executeAfterConditionPassed({
       condition: () => {
         var app = document.querySelector('#app')
         var vueLoad = app && app.__vue__
@@ -29,7 +29,7 @@
       callback: addVideoBtn,
     })
   } else if (/\/bangumi\/play\//.test(location.href)) {
-    executeAfterConditionPass({
+    executeAfterConditionPassed({
       condition: () => {
         var app = document.querySelector('#app')
         var vueLoad = app && app.__vue__
@@ -41,7 +41,7 @@
       callback: addBangumiBtn,
     })
   } else if (/live\.bilibili\.com\/\d/.test(location.href)) {
-    executeAfterConditionPass({
+    executeAfterConditionPassed({
       condition: () => {
         var hiVm = document.querySelector('#head-info-vm')
         var vueLoad = hiVm && hiVm.__vue__
@@ -53,7 +53,7 @@
       callback: addLiveBtn,
     })
   } else if (/\/medialist\/play\/watchlater(?=\/|$)/.test(location.href)) {
-    executeAfterConditionPass({
+    executeAfterConditionPassed({
       condition: () => {
         var app = document.querySelector('#app')
         var vueLoad = app && app.__vue__
@@ -173,7 +173,7 @@ function addWatchlaterVideoBtn(pom) {
   cover.onclick = e => e.stopPropagation()
   pom.appendChild(cover)
 
-  executeAfterConditionPass({
+  executeAfterConditionPassed({
     condition: () => {
       var app = document.querySelector('#app')
       var vueLoad = app && app.__vue__
@@ -200,7 +200,7 @@ function addWatchlaterVideoBtn(pom) {
   })
 
   var updateCoverUrl = () => {
-    executeAfterConditionPass({
+    executeAfterConditionPassed({
       condition: () => {
         var cover = bus.playContainer.__vue__.playCover
         if (cover && cover != bus.cover) {
@@ -274,7 +274,7 @@ function addWatchlaterVideoBtn(pom) {
  * @param {number} [options.stopTimeout=0] 终止条件二次判断期间的检测超时时间（单位：ms）
  * @param {number} [options.timePadding=0] 等待 `timePadding`ms 后才开始执行；包含在 `timeout` 中，因此不能大于 `timeout`
  */
-function executeAfterConditionPass(options) {
+function executeAfterConditionPassed(options) {
   var defaultOptions = {
     callback: result => console.log(result),
     interval: 100,
@@ -306,7 +306,7 @@ function executeAfterConditionPass(options) {
     } else if (result) {
       clearInterval(tid)
       if (options.stopCondition && options.stopTimeout > 0) {
-        executeAfterConditionPass({
+        executeAfterConditionPassed({
           condition: options.stopCondition,
           callback: options.stopCallback,
           interval: options.stopInterval,
