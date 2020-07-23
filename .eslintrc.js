@@ -22,12 +22,13 @@ module.exports = {
     'ecmaVersion': 2018,
   },
   'rules': {
-    'indent': ['error', 2, {
+    'indent': ['warn', 2, {
       'SwitchCase': 1
     }],
-    'semi': ['error', 'never'],
-    'quotes': ['error', 'single'],
-    'comma-dangle': ['error', 'only-multiline'],
+    'semi': ['warn', 'never'],
+    'quotes': ['warn', 'single'],
+    'comma-dangle': ['warn', 'only-multiline'],
+    'no-unused-vars': ['warn', { 'args': 'none' }],
     'no-debugger': 'warn',
   },
 }
