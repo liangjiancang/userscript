@@ -1,7 +1,7 @@
 // ==UserScript==
 // @id              BilibiliWatchlaterPlus@Laster2800
 // @name            B站稍后再看功能增强
-// @version         3.2.1.20200724
+// @version         3.2.2.20200724
 // @namespace       laster2800
 // @author          Laster2800
 // @description     B站稍后再看功能增强，目前功能包括UI增强、稍后再看模式自动切换至普通模式播放（重定向）、稍后再看移除记录等，支持功能设置
@@ -1773,13 +1773,13 @@
                   }
                   var result = []
                   for (var rm of map.values()) {
-                    result.push(`<span>${rm.title}</span><br><a href="${gm.url.page_videoNormalMode}/${rm.bvid}" target="_blank">${rm.bvid}</a>`)
+                    result.push(`<div><div>${rm.title}</div><a href="${gm.url.page_videoNormalMode}/${rm.bvid}" target="_blank">${rm.bvid}</a></div>`)
                   }
                   el.removeNum.innerText = result.length
 
                   setContentTop() // 在设置内容前设置好 top，这样看不出修改的痕迹
                   if (result.length > 0) {
-                    el.content.innerHTML = result.join('<br><br>')
+                    el.content.innerHTML = result.join('<br>')
                   } else {
                     el.content.innerText = `在最近 ${el.searchTimes.current} 次列表页面数据中没有找到被移除的记录，请尝试增大历史回溯深度`
                     el.content.style.color = 'gray'
@@ -2456,6 +2456,9 @@
     border-radius: 3px;
     background: #0000002b;
 }
+#${gm.id} .gm-history .gm-content > div:hover {
+    font-weight: bold;
+}
 
 #${gm.id} #gm-reset {
     position: absolute;
@@ -2509,6 +2512,12 @@
 #${gm.id} input,
 #${gm.id} select {
     color: black;
+}
+#${gm.id} a {
+  color: #0075FF
+}
+#${gm.id} a:visited {
+  color: #551a8b
 }
 
 #${gm.id} [disabled],
