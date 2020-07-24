@@ -1,10 +1,10 @@
 // ==UserScript==
 // @id              BilibiliWatchlaterPlus@Laster2800
 // @name            B站稍后再看功能增强
-// @version         3.2.2.20200724
+// @version         3.2.3.20200724
 // @namespace       laster2800
 // @author          Laster2800
-// @description     B站稍后再看功能增强，目前功能包括UI增强、稍后再看模式自动切换至普通模式播放（重定向）、稍后再看移除记录等，支持功能设置
+// @description     与稍后再看功能相关，一切你能想到和想不到的功能
 // @homepage        https://greasyfork.org/zh-CN/scripts/395456
 // @supportURL      https://greasyfork.org/zh-CN/scripts/395456/feedback
 // @include         *://www.bilibili.com/*
