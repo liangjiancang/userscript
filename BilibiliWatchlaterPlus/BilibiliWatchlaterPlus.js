@@ -1,7 +1,7 @@
 // ==UserScript==
 // @id              BilibiliWatchlaterPlus@Laster2800
 // @name            B站稍后再看功能增强
-// @version         3.2.3.20200724
+// @version         3.3.0.20200725
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -1643,7 +1643,6 @@
       }
 
       var el = {}
-      el.searchTimes = null
       if (gm.el.history) {
         el.searchTimes = gm.el.history.querySelector('#gm-search-times')
         el.searchTimes.current = gm.config.removeHistorySearchTimes < gm.data.removeHistoryData().size ? gm.config.removeHistorySearchTimes : gm.data.removeHistoryData().size
@@ -1667,8 +1666,11 @@
 <div class="gm-history-page">
     <div class="gm-title">稍后再看移除记录</div>
     <div class="gm-comment">
-        <div>根据最近<span id="gm-save-times">X</span>次打开列表页面时获取到的<span id="gm-record-num">X</span>条不重复的记录生成（总计<span id="gm-record-num-repeat">X</span>条），共筛选出<span id="gm-remove-num">X</span>条移除记录。排序由加入到稍后再看的顺序决定，与移除出稍后再看的时间无关。如果记录太多难以定位被误删的视频，请在下方设置减少历史回溯深度。鼠标移动到内容区域可向下滚动翻页，点击对话框以外的位置退出。</div>
-        <div style="text-align:right;font-weight:bold;margin-right:1em" title="搜寻时在最近多少次列表页面数据中查找，设置较小的值能较好地定位最近移除的视频。按下回车键或输入框失去焦点时刷新数据。">历史回溯深度：<input type="text" id="gm-search-times" value="X"></div>
+        <div>根据最近<span id="gm-save-times">0</span>次打开列表页面时获取到的<span id="gm-record-num">0</span>条不重复的记录生成（总计<span id="gm-record-num-repeat">0</span>条），共筛选出<span id="gm-remove-num">0</span>条移除记录。排序由视频最后一次加入到稍后再看的时间决定，与移除出稍后再看的时间无关。如果记录太多难以定位被误删的视频，请在下方设置减少历史回溯深度。鼠标移动到内容区域可向下滚动翻页，点击对话框以外的位置退出。</div>
+        <div style="text-align:right;font-weight:bold">
+            <span id="gm-history-sort" style="text-decoration:underline;cursor:pointer">倒序</span>
+            <span title="搜寻时在最近多少次列表页面数据中查找，设置较小的值能较好地定位最近移除的视频。按下回车键或输入框失去焦点时刷新数据，输入框为空时自动设为可取的最大值。">历史回溯深度：<input type="text" id="gm-search-times" value="0"></span>
+        </div>
     </div>
 </div>
 <div class="gm-shadow"></div>
@@ -1723,6 +1725,19 @@
             }
           }
 
+          // 排序方式
+          el.historySort = gm.el.history.querySelector('#gm-history-sort')
+          el.historySort.type = 0
+          el.historySort.typeText = ['降序', '升序']
+          // el.historySort.innerText = el.historySort.typeText[el.historySort.type]
+          el.historySort.title = '点击切换升序'
+          el.historySort.onclick = function() {
+            this.type = (this.type + 1) % 2
+            el.historySort.innerText = this.typeText[this.type]
+            el.historySort.title = '点击切换' + this.typeText[(this.type + 1) % 2]
+            gm.menu.history.openHandler()
+          }
+
           gm.menu.history.openHandler = onOpen
           window.addEventListener('resize', setContentTop)
           el.shadow.onclick = () => {
@@ -1760,11 +1775,15 @@
                   var removeData = gm.data.removeHistoryData().toArray(el.searchTimes.current)
                   el.saveTimes.innerText = removeData.length
                   var total = 0
-                  for (var i = removeData.length - 1; i >= 0; i--) { // 后面的数据较旧，从后往前遍历
-                    for (var record of removeData[i]) {
-                      map.set(record.bvid, record)
+                  // 升序时，假如视频 A 在早期就加入了稍后再看，但是很久都没有看
+                  // 之后再次加入，这种情况下我们认为视频 A 是很晚才加入，而选择性忽略它早期就加入的事实
+                  for (var records of removeData) {
+                    for (var record of records) {
+                      if (!map.has(record.bvid)) {
+                        map.set(record.bvid, record) // 往后是旧的信息，弃之不用
+                      }
                     }
-                    total += removeData[i].length
+                    total += records.length
                   }
                   el.recordNum.innerText = map.size
                   el.recordNumRepeat.innerText = total
@@ -1779,6 +1798,9 @@
 
                   setContentTop() // 在设置内容前设置好 top，这样看不出修改的痕迹
                   if (result.length > 0) {
+                    if (el.historySort.type === 1) {
+                      result.reverse()
+                    }
                     el.content.innerHTML = result.join('<br>')
                   } else {
                     el.content.innerText = `在最近 ${el.searchTimes.current} 次列表页面数据中没有找到被移除的记录，请尝试增大历史回溯深度`
@@ -2236,16 +2258,17 @@
 #app > .out-container > .container::-webkit-scrollbar {
     width: 6px;
     height: 6px;
+    background-color: #00000000;
 }
 [role=tooltip] ::-webkit-scrollbar-thumb,
 #app > .out-container > .container::-webkit-scrollbar-thumb {
     border-radius: 3px;
-    background: #00000000;
+    background-color: #00000000;
 }
 [role=tooltip] :hover::-webkit-scrollbar-thumb,
 #app > .out-container > .container:hover::-webkit-scrollbar-thumb {
     border-radius: 3px;
-    background: #0000002b;
+    background-color: #0000002b;
 }
           `
           break
@@ -2447,14 +2470,15 @@
 #${gm.id} .gm-history .gm-content::-webkit-scrollbar {
     width: 6px;
     height: 6px;
+    background-color: #00000000;
 }
 #${gm.id} .gm-history .gm-content::-webkit-scrollbar-thumb {
     border-radius: 3px;
-    background: #00000000;
+    background-color: #00000000;
 }
 #${gm.id} .gm-history .gm-content:hover::-webkit-scrollbar-thumb {
     border-radius: 3px;
-    background: #0000002b;
+    background-color: #0000002b;
 }
 #${gm.id} .gm-history .gm-content > div:hover {
     font-weight: bold;
