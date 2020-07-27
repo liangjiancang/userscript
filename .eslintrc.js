@@ -17,6 +17,7 @@ module.exports = {
     'GM_xmlhttpRequest': true,
     'GM_listValues': true,
     'GM_deleteValue': true,
+    'GM_download': true,
   },
   'parserOptions': {
     'ecmaVersion': 2018,

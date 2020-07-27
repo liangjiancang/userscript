@@ -1,10 +1,11 @@
 // ==UserScript==
 // @id              BilibiliCover@Laster2800
 // @name            B站封面获取
-// @version         4.2.2.20200723
+// @version         4.3.0.20200727
 // @namespace       laster2800
 // @author          Laster2800
 // @description     B站视频播放页（普通模式、稍后再看模式）、番剧播放页、直播间添加获取封面的按钮
+// @icon            https://www.bilibili.com/favicon.ico
 // @include         *://www.bilibili.com/video/*
 // @include         *://www.bilibili.com/bangumi/play/*
 // @include         *://www.bilibili.com/medialist/play/watchlater
@@ -13,6 +14,7 @@
 // @exclude         *://live.bilibili.com/
 // @exclude         *://live.bilibili.com/*/*
 // @grant           GM_addStyle
+// @grant           GM_download
 // ==/UserScript==
 
 (function() {
@@ -67,6 +69,11 @@
   }
 })()
 
+var gm = {
+  id: 'gm395575',
+  title: '点击保存封面，右键点击可基于图片链接作进一步的处理',
+}
+
 function addVideoBtn(atr) {
   var coverMeta = document.querySelector('head meta[itemprop=image]')
   var coverUrl = coverMeta && coverMeta.content
@@ -76,28 +83,17 @@ function addVideoBtn(atr) {
   cover.target = '_blank'
   if (coverUrl) {
     cover.href = coverUrl
+    addDownloadEvent(cover)
+    createPreview(cover).src = coverUrl
   } else {
     cover.onclick = () => alert(errorMsg)
   }
-  cover.title = coverUrl || errorMsg
+  cover.title = gm.title || errorMsg
   cover.className = 'appeal-text'
   atr.appendChild(cover)
 }
 
 function addBangumiBtn(tm) {
-  GM_addStyle(`
-.cover_btn {
-    float: right;
-    cursor: pointer;
-    font-size: 12px;
-    margin-right: 16px;
-    line-height: 36px;
-    color: #505050;
-}
-.cover_btn:hover {
-    color: #00a1d6;
-}
-    `)
   var coverMeta = document.querySelector('head meta[property="og:image"]')
   var coverUrl = coverMeta && coverMeta.content
   var cover = document.createElement('a')
@@ -106,25 +102,31 @@ function addBangumiBtn(tm) {
   cover.target = '_blank'
   if (coverUrl) {
     cover.href = coverUrl
+    addDownloadEvent(cover)
+    createPreview(cover).src = coverUrl
   } else {
     cover.onclick = () => alert(errorMsg)
   }
-  cover.title = coverUrl || errorMsg
-  cover.className = 'cover_btn'
+  cover.title = gm.title || errorMsg
+  cover.className = `${gm.id}_cover_btn`
   tm.appendChild(cover)
+
+  GM_addStyle(`
+.${gm.id}_cover_btn {
+    float: right;
+    cursor: pointer;
+    font-size: 12px;
+    margin-right: 16px;
+    line-height: 36px;
+    color: #505050;
+}
+.${gm.id}_cover_btn:hover {
+    color: #00a1d6;
+}
+  `)
 }
 
 function addLiveBtn(urc) {
-  GM_addStyle(`
-.cover_btn {
-    cursor: pointer;
-    color: rgb(153, 153, 153);
-}
-.cover_btn:hover {
-    color: #23ade5;
-}
-  `)
-
   try {
     var data = unsafeWindow.__NEPTUNE_IS_MY_WAIFU__.baseInfoRes.data
     var coverUrl = data.user_cover
@@ -137,41 +139,43 @@ function addLiveBtn(urc) {
   cover.target = '_blank'
   if (coverUrl) {
     cover.href = coverUrl
-    cover.title = coverUrl
+    cover.title = gm.title
+    addDownloadEvent(cover)
+    createPreview(cover).src = coverUrl
   } else if (kfUrl) {
     cover.href = kfUrl
     cover.title = '直播间没有设置封面，或者因不明原因无法获取到封面，点击获取关键帧：\n' + kfUrl
+    addDownloadEvent(cover)
+    createPreview(cover).src = kfUrl
   } else {
     var errorMsg = '获取失败，若非网络问题请提供反馈'
     cover.onclick = () => alert(errorMsg)
     cover.title = errorMsg
   }
-  cover.className = 'cover_btn'
+  cover.className = `${gm.id}_cover_btn`
   urc.insertBefore(cover, urc.firstChild)
+
+  GM_addStyle(`
+.${gm.id}_cover_btn {
+    cursor: pointer;
+    color: rgb(153, 153, 153);
+}
+.${gm.id}_cover_btn:hover {
+    color: #23ade5;
+}
+  `)
 }
 
 function addWatchlaterVideoBtn(pom) {
-  GM_addStyle(`
-.cover_btn {
-    cursor: pointer;
-    float: left;
-    margin-right: 1em;
-    font-size: 12px;
-    color: #757575;
-}
-.cover_btn:hover {
-  color: #23ade5;
-}
-`)
-
   var bus = {}
   var cover = document.createElement('a')
   var errorMsg = '获取失败，可能是因为该视频已经移除出稍后再看；也可能是网络原因，可刷新并尝试。如果还是不行请联系脚本作者……'
   cover.innerText = '获取封面'
   cover.target = '_blank'
-  cover.className = 'cover_btn'
+  cover.className = `${gm.id}_cover_btn`
   cover.onclick = e => e.stopPropagation()
   pom.appendChild(cover)
+  var preview = createPreview(cover)
 
   executeAfterConditionPassed({
     condition: () => {
@@ -219,15 +223,15 @@ function addWatchlaterVideoBtn(pom) {
   var setCover = coverUrl => {
     if (coverUrl) {
       cover.href = coverUrl
-      if (cover.onclick) {
-        cover.onclick = null
-      }
+      preview.src = coverUrl
+      addDownloadEvent(cover)
     } else {
+      cover.href = ''
+      preview.src = ''
       cover.onclick = () => alert(errorMsg)
     }
-    cover.title = coverUrl || errorMsg
+    cover.title = gm.title || errorMsg
   }
-
 
   var createLocationchangeEvent = () => {
     // 创建 locationchange 事件
@@ -251,6 +255,125 @@ function addWatchlaterVideoBtn(pom) {
       unsafeWindow._createLocationchangeEvent = true
     }
   }
+
+  GM_addStyle(`
+.${gm.id}_cover_btn {
+    cursor: pointer;
+    float: left;
+    margin-right: 1em;
+    font-size: 12px;
+    color: #757575;
+}
+.${gm.id}_cover_btn:hover {
+  color: #23ade5;
+}
+  `)
+}
+
+/**
+ * 下载图片
+ * @param {HTMLElement} target 图片按钮元素
+ */
+function addDownloadEvent(target) {
+  target.onclick = function(e) {
+    e.preventDefault()
+    target.dispatchEvent(new Event('mouseleave'))
+    target.disablePreview = true
+    GM_download(this.href, document.title || 'Cover')
+  }
+}
+
+/**
+ * 创建预览元素
+ * @param {HTMLElement} target 触发元素
+ * @returns {HTMLImageElement}
+ */
+function createPreview(target) {
+  var preview = document.body.appendChild(document.createElement('img'))
+  preview.className = `${gm.id}_preview`
+
+  var fadeTime = 200
+  var browserSyncTime = 10
+  var antiConflictTime = 20
+
+  var fadeIn = () => {
+    preview.style.display = 'unset'
+    setTimeout(() => {
+      preview.style.opacity = '1'
+    }, browserSyncTime)
+  }
+  var fadeOut = callback => {
+    preview.style.opacity = '0'
+    setTimeout(() => {
+      preview.style.display = 'none'
+      callback && callback()
+    }, fadeTime)
+  }
+  var disablePreviewTemp = () => {
+    target.disablePreview = true
+    setTimeout(() => {
+      if (!target.mouseOver) {
+        target.disablePreview = false
+      }
+    }, 80)
+  }
+
+  target.addEventListener('mouseenter', function() {
+    this.mouseOver = true
+    if (this.disablePreview) {
+      return
+    }
+    setTimeout(() => {
+      preview.src && fadeIn()
+    }, antiConflictTime)
+  })
+  target.addEventListener('mouseleave', function() {
+    this.mouseOver = false
+    if (this.disablePreview) {
+      this.disablePreview = false
+      return
+    }
+    setTimeout(() => {
+      preview.src && !preview.mouseOver && fadeOut()
+    }, antiConflictTime)
+  })
+  preview.onmouseenter = function() {
+    this.mouseOver = true
+  }
+  preview.onmouseleave = function() {
+    this.mouseOver = false
+    setTimeout(() => {
+      preview.src && fadeOut()
+    }, antiConflictTime)
+  }
+  preview.onclick = function() {
+    if (this.src) {
+      GM_download(this.src, document.title)
+      fadeOut(disablePreviewTemp)
+    }
+  }
+  preview.addEventListener('wheel', function() {
+    // 这个事件一定要加，不然那个预览界面可能会卡住用户操作，很烦的
+    fadeOut(disablePreviewTemp)
+  })
+
+  GM_addStyle(`
+.${gm.id}_preview {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 142857;
+    max-width: 60vw; /* 自适应宽度和高度 */
+    max-height: 100vh;
+    display: none;
+    transition: opacity ${fadeTime}ms ease-in-out;
+    opacity: 0;
+    cursor: pointer;
+}
+  `)
+
+  return preview
 }
 
 /**
