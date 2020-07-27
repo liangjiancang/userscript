@@ -1,10 +1,11 @@
 // ==UserScript==
 // @id              BilibiliWatchlaterPlus@Laster2800
 // @name            B站稍后再看功能增强
-// @version         3.3.1.20200727
+// @version         3.4.0.20200728
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
+// @icon            https://www.bilibili.com/favicon.ico
 // @homepage        https://greasyfork.org/zh-CN/scripts/395456
 // @supportURL      https://greasyfork.org/zh-CN/scripts/395456/feedback
 // @include         *://www.bilibili.com/*
@@ -40,6 +41,7 @@
    * @property {GMObject_regex} regex 正则表达式
    * @property {GMObject_const} const 常量
    * @property {GMObject_menu} menu 菜单
+   * @property {{[s: string]: HTMLElement}} el HTML 元素
    * @property {GMObject_error} error 错误信息
    */
   /**
@@ -95,6 +97,7 @@
    * @property {number} rhsMin 列表页面数据最小保存次数
    * @property {number} rhsMax 列表页面数据最大保存次数
    * @property {number} defaultRhs 列表页面数据的默认保存次数
+   * @property {number} defaultRhst 默认历史回溯深度
    * @property {number} rhsWarning 列表页面数据保存数警告线
    * @property {number} fadeTime UI 渐变时间
    * @property {number} textFadeTime 文字渐变时间
@@ -265,6 +268,7 @@
         rhsMin: 1,
         rhsMax: 1024, // 经过性能测试，放宽到 1024 应该没有太大问题
         defaultRhs: 64, // 就目前的PC运算力，即使达到 gm.const.rhsWarning 且在极限情况下也不会有明显的卡顿
+        defaultRhst: 16,
         rhsWarning: 256,
         // 渐变时间
         fadeTime: 400,
@@ -287,7 +291,7 @@
         forceConsistentVideo: true,
         removeHistory: true,
         removeHistorySaves: gm.const.defaultRhs,
-        removeHistorySearchTimes: 8,
+        removeHistorySearchTimes: gm.const.defaultRhst,
         removeButton_removeAll: false,
         removeButton_removeWatched: false,
         resetAfterFnUpdate: false,
@@ -1023,7 +1027,7 @@
             if (response && response.responseText) {
               try {
                 var json = JSON.parse(response.responseText)
-                var watchlaterList = json.data.list
+                var watchlaterList = json.data.list || []
                 for (var e of watchlaterList) {
                   if (aid == e.aid) {
                     resolve(true)
@@ -1158,7 +1162,7 @@
             var current = []
             try {
               var json = JSON.parse(response.responseText)
-              var watchlaterList = json.data.list
+              var watchlaterList = json.data.list || []
               for (var e of watchlaterList) {
                 current.push({
                   title: e.title,
@@ -1250,7 +1254,7 @@
           gm.menu.setting.el = gm.el.setting
           gm.el.setting.className = 'gm-setting'
           gm.el.setting.innerHTML = `
-<div class="gm-setting-page">
+<div id="gm-setting-page">
     <div class="gm-title">
         <div id="gm-maintitle" onclick="window.open('${GM_info.script.homepage}')" title="${GM_info.script.homepage}">B站稍后再看功能增强</div>
         <div class="gm-subtitle">V${GM_info.script.version} by ${GM_info.script.author}</div>
@@ -1337,6 +1341,7 @@
             el[name] = gm.el.setting.querySelector('#gm-' + name)
           }
 
+          el.settingPage = gm.el.setting.querySelector('#gm-setting-page')
           el.save = gm.el.setting.querySelector('#gm-save')
           el.cancel = gm.el.setting.querySelector('#gm-cancel')
           el.shadow = gm.el.setting.querySelector('.gm-shadow')
@@ -1464,6 +1469,11 @@
             el.cancel.disabled = true
             el.shadow.setAttribute('disabled', 'disabled')
           }
+
+          el.settingPage.parentNode.style.display = 'block'
+          setTimeout(() => {
+            setAbsoluteCenter(el.settingPage)
+          }, 10)
         }
 
         var needReload = false
@@ -1525,7 +1535,7 @@
             GM_setValue('configVersion', gm.configVersion)
             // 关闭初始化状态
             setTimeout(() => {
-              el.reset.style.display = 'unset'
+              el.reset.style.display = ''
               el.cancel.disabled = false
               el.shadow.removeAttribute('disabled')
             }, gm.const.fadeTime)
@@ -1743,6 +1753,11 @@
           el.shadow.onclick = () => {
             closeMenuItem('history')
           }
+
+          el.historyPage.parentNode.style.display = 'block'
+          setTimeout(() => {
+            setAbsoluteCenter(el.historyPage)
+          }, 10)
         }
 
         /**
@@ -1767,7 +1782,7 @@
                 try {
                   var bvid = []
                   var json = JSON.parse(response.responseText)
-                  var watchlaterList = json.data.list
+                  var watchlaterList = json.data.list || []
                   for (var e of watchlaterList) {
                     bvid.push(e.bvid)
                   }
@@ -1872,15 +1887,17 @@
 
     /**
      * 对“打开菜单项”这一操作进行处理，包括显示菜单项、设置当前菜单项的状态、关闭其他菜单项
+     * @param {string} name 菜单项的名称
+     * @param {() => void} [callback] 打开菜单项后的回调函数
      */
-    function openMenuItem(name) {
+    function openMenuItem(name, callback) {
       if (!gm.menu[name].state) {
         for (var key in gm.menu) {
           var menu = gm.menu[key]
           if (key == name) {
             menu.state = true
             menu.openHandler && menu.openHandler()
-            fade(true, menu.el)
+            fade(true, menu.el, callback)
           } else {
             if (menu.state) {
               closeMenuItem(key)
@@ -1893,15 +1910,40 @@
     /**
      * 对“关闭菜单项”这一操作进行处理，包括隐藏菜单项、设置当前菜单项的状态
      * @param {string} name 菜单项的名称
+     * @param {() => void} [callback] 关闭菜单项后的回调函数
      */
-    function closeMenuItem(name) {
+    function closeMenuItem(name, callback) {
       var menu = gm.menu[name]
       if (menu.state) {
         menu.state = false
         fade(false, menu.el, () => {
           menu.closeHandler && menu.closeHandler()
+          callback && callback()
         })
       }
+    }
+
+    /**
+     * 将一个元素绝对居中，要求该元素此时可见
+     * @param {HTMLElement} target 目标元素
+     * @param {Object} [config] 配置
+     * @param {string} [config.position='fixed'] 定位方式
+     * @param {string} [config.top='50%'] `style.top`
+     * @param {string} [config.left='50%'] `style.left`
+     */
+    function setAbsoluteCenter(target, config) {
+      var defaultConfig = {
+        position: 'fixed',
+        top: '50%',
+        left: '50%',
+      }
+      config = { ...defaultConfig, ...config }
+      var style = getComputedStyle(target)
+      var top = (parseFloat(style.height) + parseFloat(style.paddingTop) + parseFloat(style.paddingBottom)) / 2
+      var left = (parseFloat(style.width) + parseFloat(style.paddingLeft) + parseFloat(style.paddingRight)) / 2
+      target.style.top = `calc(${config.top} - ${top}px)`
+      target.style.left = `calc(${config.left} - ${left}px)`
+      target.style.position = config.position
     }
 
     /**
@@ -1911,7 +1953,7 @@
      * @param {boolean} [config.autoClose=true] 是否自动关闭信息，配合 `config.ms` 使用
      * @param {number} [config.ms=gm.const.messageTime] 显示时间（单位：ms，不含渐显/渐隐时间）
      * @param {boolean} [config.html=false] 是否将 `msg` 理解为 HTML
-     * @param {string} [width] 信息框的宽度，不设置的情况下根据内容决定，但有最小宽度和最大宽度的限制
+     * @param {string} [config.width] 信息框的宽度，不设置的情况下根据内容决定，但有最小宽度和最大宽度的限制
      * @param {{top: string, left: string}} [config.position] 信息框的位置，不设置该项时，相当于设置为 `{ top: gm.const.messageTop, left: gm.const.messageLeft }`
      * @return {HTMLElement} 信息框元素
      */
@@ -1920,8 +1962,11 @@
         autoClose: true,
         ms: gm.const.messageTime,
         html: false,
-        position: null,
         width: null,
+        position: {
+          top: gm.const.messageTop,
+          left: gm.const.messageLeft,
+        },
       }
       config = { ...defaultConfig, ...config }
 
@@ -1932,10 +1977,11 @@
         msgbox.style.maxWidth = 'none'
         msgbox.style.width = config.width
       }
-      if (config.position) {
-        msgbox.style.top = config.position.top
-        msgbox.style.left = config.position.left
-      }
+
+      msgbox.style.display = 'block'
+      setTimeout(() => {
+        setAbsoluteCenter(msgbox, config.position)
+      }, 10)
 
       if (config.html) {
         msgbox.innerHTML = msg
@@ -1977,8 +2023,7 @@
     function advancedMessage(el, msg, flag, config) {
       var defaultConfig = {
         flagSize: '1.8em',
-        width: null,
-        position: null,
+        // 不能把数据列出，否则解构的时候会出问题
       }
       config = { ...defaultConfig, ...config }
 
@@ -2023,7 +2068,9 @@
       target._fadeId = fadeId
       if (inOut) { // 渐显
         // 只有 display 可视情况下修改 opacity 才会触发 transition
-        target.style.display = 'unset'
+        if (getComputedStyle(target).display == 'none') {
+          target.style.display = 'unset'
+        }
         setTimeout(() => {
           var success = false
           if (target._fadeId <= fadeId) {
@@ -2270,6 +2317,10 @@
     border-radius: 3px;
     background-color: #0000002b;
 }
+[role=tooltip] ::-webkit-scrollbar-corner,
+#app > .out-container > .container::-webkit-scrollbar-corner {
+  background-color: #00000000;
+}
           `
           break
         case enums.menuScrollbarSetting.hidden:
@@ -2308,11 +2359,7 @@
     z-index: 10000;
     user-select: none;
 }
-#${gm.id} .gm-setting .gm-setting-page {
-    position: fixed;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
+#${gm.id} .gm-setting #gm-setting-page {
     background-color: #ffffff;
     border-radius: 10px;
     z-index: 65535;
@@ -2424,16 +2471,11 @@
     user-select: none;
 }
 #${gm.id} .gm-history .gm-history-page {
-    position: fixed;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
     background-color: #ffffff;
     border-radius: 10px;
     z-index: 65535;
-    height: 75%;
-    width: 60%;
-    padding: 0.1em;
+    height: 75vh;
+    width: 60vw;
 }
 #${gm.id} .gm-history .gm-comment {
     margin: 0 2em;
@@ -2479,6 +2521,9 @@
 #${gm.id} .gm-history .gm-content:hover::-webkit-scrollbar-thumb {
     border-radius: 3px;
     background-color: #0000002b;
+}
+#${gm.id} .gm-history .gm-content::-webkit-scrollbar-corner {
+  background-color: #00000000;
 }
 #${gm.id} .gm-history .gm-content > div:hover {
     font-weight: bold;
@@ -2564,10 +2609,6 @@
 }
 
 .${gm.id}-msgbox {
-    position: fixed;
-    top: ${gm.const.messageTop};
-    left: ${gm.const.messageLeft};
-    transform: translate(-50%, -50%);
     z-index: 65535;
     background-color: #000000bf;
     font-size: 16px;
@@ -2643,7 +2684,7 @@
               part = parseInt(location.href.match(/(?<=\/watchlater\/p)\d+(?=\/?)/)[0])
             } // 如果匹配不上，就是以 watchlater/ 直接结尾，等同于 watchlater/p1
             var json = JSON.parse(response.responseText)
-            var watchlaterList = json.data.list
+            var watchlaterList = json.data.list || []
             location.replace(gm.url.page_videoNormalMode + '/' + watchlaterList[part - 1].bvid)
           } catch (e) {
             var errorInfo = gm.error.REDIRECT
