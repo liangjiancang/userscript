@@ -1,7 +1,7 @@
 // ==UserScript==
 // @id              BilibiliWatchlaterPlus@Laster2800
 // @name            B站稍后再看功能增强
-// @version         3.3.0.20200725
+// @version         3.3.1.20200727
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -100,7 +100,7 @@
    * @property {number} textFadeTime 文字渐变时间
    * @property {number} messageTime 默认信息显示时间
    * @property {string} messageTop 信息显示默认 `style.top`
-   * @property {string} messageLeft 信息显示默认 `stele.left`
+   * @property {string} messageLeft 信息显示默认 `style.left`
    */
   /**
    * @typedef GMObject_menu
@@ -227,7 +227,7 @@
         fnVideoButton_Watchlater()
       }
       if (gm.config.forceConsistentVideo) {
-        ForceConsistentVideoInWatchlaterMode()
+        forceConsistentVideoInWatchlaterMode()
       }
     } else if (urlMatch(gm.regex.page_dynamicMenu)) {
       // 动态入口弹出菜单页面的处理
@@ -1128,7 +1128,7 @@
     /**
      * 对于稍后再看模式播放页，根据 URL 上的查询参数，强制切换到准确的视频上
      */
-    async function ForceConsistentVideoInWatchlaterMode() {
+    async function forceConsistentVideoInWatchlaterMode() {
       var paramBvid = gm.searchParams.get(`${gm.id}_bvid`)
       if (paramBvid) {
         try {
@@ -2247,7 +2247,7 @@
 
     /**
      * 添加弹出菜单的滚动条样式
-     * */
+     */
     function addMenuScrollbarStyle() {
       var menuScrollbarStyle
       switch (gm.config.menuScrollbarSetting) {
