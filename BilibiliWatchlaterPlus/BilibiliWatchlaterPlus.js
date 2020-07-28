@@ -1,7 +1,7 @@
 // ==UserScript==
 // @id              BilibiliWatchlaterPlus@Laster2800
 // @name            B站稍后再看功能增强
-// @version         3.4.0.20200728
+// @version         3.4.1.20200728
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -1469,11 +1469,6 @@
             el.cancel.disabled = true
             el.shadow.setAttribute('disabled', 'disabled')
           }
-
-          el.settingPage.parentNode.style.display = 'block'
-          setTimeout(() => {
-            setAbsoluteCenter(el.settingPage)
-          }, 10)
         }
 
         var needReload = false
@@ -1571,6 +1566,11 @@
           } else {
             el.cleanRemoveHistoryData.innerText = '清空数据(0条)'
           }
+
+          el.settingPage.parentNode.style.display = 'block'
+          setTimeout(() => {
+            setAbsoluteCenter(el.settingPage)
+          }, 10)
         }
 
         /**
@@ -1753,11 +1753,6 @@
           el.shadow.onclick = () => {
             closeMenuItem('history')
           }
-
-          el.historyPage.parentNode.style.display = 'block'
-          setTimeout(() => {
-            setAbsoluteCenter(el.historyPage)
-          }, 10)
         }
 
         /**
@@ -1773,6 +1768,11 @@
           }
           el.content = el.historyPage.appendChild(document.createElement('div'))
           el.content.className = 'gm-content'
+
+          el.historyPage.parentNode.style.display = 'block'
+          setTimeout(() => {
+            setAbsoluteCenter(el.historyPage)
+          }, 10)
 
           GM_xmlhttpRequest({
             method: 'GET',
@@ -1924,7 +1924,9 @@
     }
 
     /**
-     * 将一个元素绝对居中，要求该元素此时可见
+     * 将一个元素绝对居中
+     * 
+     * 要求该元素此时可见且尺寸为确定值（一般要求为块状元素）。运行后会在 `target` 上附加 `_absoluteCenter` 方法，若该方法已存在，则无视 `config` 直接执行 `target._absoluteCenter()`。
      * @param {HTMLElement} target 目标元素
      * @param {Object} [config] 配置
      * @param {string} [config.position='fixed'] 定位方式
@@ -1932,18 +1934,37 @@
      * @param {string} [config.left='50%'] `style.left`
      */
     function setAbsoluteCenter(target, config) {
-      var defaultConfig = {
-        position: 'fixed',
-        top: '50%',
-        left: '50%',
+      if (!target._absoluteCenter) {
+        var defaultConfig = {
+          position: 'fixed',
+          top: '50%',
+          left: '50%',
+        }
+        config = { ...defaultConfig, ...config }
+        target._absoluteCenter = () => {
+          var style = getComputedStyle(target)
+          var top = (parseFloat(style.height) + parseFloat(style.paddingTop) + parseFloat(style.paddingBottom)) / 2
+          var left = (parseFloat(style.width) + parseFloat(style.paddingLeft) + parseFloat(style.paddingRight)) / 2
+          target.style.top = `calc(${config.top} - ${top}px)`
+          target.style.left = `calc(${config.left} - ${left}px)`
+          target.style.position = config.position
+        }
+
+        // 实现一个简单的 debounce 来响应 resize 事件
+        var tid
+        window.addEventListener('resize', function() {
+          if (target._absoluteCenter) {
+            if (tid) {
+              clearTimeout(tid)
+              tid = null
+            }
+            tid = setTimeout(() => {
+              target._absoluteCenter()
+            }, 500)
+          }
+        })
       }
-      config = { ...defaultConfig, ...config }
-      var style = getComputedStyle(target)
-      var top = (parseFloat(style.height) + parseFloat(style.paddingTop) + parseFloat(style.paddingBottom)) / 2
-      var left = (parseFloat(style.width) + parseFloat(style.paddingLeft) + parseFloat(style.paddingRight)) / 2
-      target.style.top = `calc(${config.top} - ${top}px)`
-      target.style.left = `calc(${config.left} - ${left}px)`
-      target.style.position = config.position
+      target._absoluteCenter()
     }
 
     /**
@@ -2365,6 +2386,7 @@
     z-index: 65535;
     min-width: 53em;
     padding: 1em 1.4em;
+    transition: top 100ms, left 100ms;
 }
 #${gm.id} .gm-setting #gm-maintitle {
     cursor: pointer;
@@ -2476,6 +2498,9 @@
     z-index: 65535;
     height: 75vh;
     width: 60vw;
+    min-width: 40em;
+    min-height: 50em;
+    transition: top 100ms, left 100ms;
 }
 #${gm.id} .gm-history .gm-comment {
     margin: 0 2em;
