@@ -14,6 +14,7 @@ module.exports = {
     'GM_getValue': true,
     'GM_setValue': true,
     'GM_registerMenuCommand': true,
+    'GM_unregisterMenuCommand': true,
     'GM_xmlhttpRequest': true,
     'GM_listValues': true,
     'GM_deleteValue': true,
