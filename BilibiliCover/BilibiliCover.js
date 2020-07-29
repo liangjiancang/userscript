@@ -1,7 +1,7 @@
 // ==UserScript==
 // @id              BilibiliCover@Laster2800
 // @name            B站封面获取
-// @version         4.4.0.20200730
+// @version         4.5.0.20200730
 // @namespace       laster2800
 // @author          Laster2800
 // @description     B站视频播放页（普通模式、稍后再看模式）、番剧播放页、直播间添加获取封面的按钮
@@ -371,24 +371,45 @@
         }, antiConflictTime)
       }
     })
+
+    var startPos // 鼠标进入预览时的初始坐标
     preview.onmouseenter = function() {
       this.mouseOver = true
     }
     preview.onmouseleave = function() {
       this.mouseOver = false
+      startPos = undefined
       setTimeout(() => {
         preview.src && fadeOut()
       }, antiConflictTime)
     }
     preview.onclick = function() {
       if (this.src) {
-        GM_download(this.src, document.title)
+        if (gm.enable.download) {
+          GM_download(this.src, document.title)
+        } else {
+          window.open(this.src)
+        }
         fadeOut(disablePreviewTemp)
       }
     }
     preview.addEventListener('wheel', function() {
-      // 这个事件一定要加，不然那个预览界面可能会卡住用户操作，很烦的
+      // 滚动时关闭预览，优化用户体验
       fadeOut(disablePreviewTemp)
+    })
+    preview.addEventListener('mousemove', function(e) {
+      // 鼠标移动一段距离关闭预览，优化用户体验
+      if (startPos) {
+        var dSquare = Math.pow(startPos.x - e.clientX, 2) + Math.pow(startPos.y - e.clientY, 2)
+        if (dSquare > Math.pow(20, 2)) {
+          fadeOut(disablePreviewTemp)
+        }
+      } else {
+        startPos = {
+          x: e.clientX,
+          y: e.clientY,
+        }
+      }
     })
 
     GM_addStyle(`
