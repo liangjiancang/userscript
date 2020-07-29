@@ -1,7 +1,7 @@
 // ==UserScript==
 // @id              BilibiliCover@Laster2800
 // @name            B站封面获取
-// @version         4.5.1.20200730
+// @version         4.5.2.20200730
 // @namespace       laster2800
 // @author          Laster2800
 // @description     B站视频播放页（普通模式、稍后再看模式）、番剧播放页、直播间添加获取封面的按钮
@@ -118,7 +118,14 @@
     }
     cover.title = gm.title || errorMsg
     cover.className = 'appeal-text'
-    atr.appendChild(cover)
+
+    // 确保与其他脚本配合时相关 UI 排列顺序不会乱
+    var gm395456 = atr.querySelector('[id|=gm395456]')
+    if (gm395456) {
+      atr.insertBefore(cover, gm395456)
+    } else {
+      atr.appendChild(cover)
+    }
   }
 
   function addBangumiBtn(tm) {
@@ -202,8 +209,16 @@
     cover.target = '_blank'
     cover.className = `${gm.id}_cover_btn`
     cover.onclick = e => e.stopPropagation()
-    pom.appendChild(cover)
     var preview = createPreview(cover)
+
+    // 确保与其他脚本配合时相关 UI 排列顺序不会乱
+    var gmContainer = pom.querySelector('[id=gm-container]')
+    if (!gmContainer) {
+      gmContainer = pom.appendChild(document.createElement('span'))
+      gmContainer.id = 'gm-container'
+      gmContainer.style.float = 'left'
+    }
+    gmContainer.appendChild(cover)
 
     executeAfterConditionPassed({
       condition: () => {
@@ -287,7 +302,7 @@
     GM_addStyle(`
   .${gm.id}_cover_btn {
       cursor: pointer;
-      float: left;
+      float: right;
       margin-right: 1em;
       font-size: 12px;
       color: #757575;
@@ -321,7 +336,6 @@
   function createPreview(target) {
     var preview = document.body.appendChild(document.createElement('img'))
     preview.className = `${gm.id}_preview`
-    preview.title = gm.title
 
     var fadeTime = 200
     var browserSyncTime = 10

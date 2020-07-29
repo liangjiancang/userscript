@@ -1,7 +1,7 @@
 // ==UserScript==
 // @id              BilibiliWatchlaterPlus@Laster2800
 // @name            B站稍后再看功能增强
-// @version         3.4.1.20200728
+// @version         3.4.2.20200730
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -897,7 +897,15 @@
           var text = document.createElement('span')
           text.innerText = '稍后再看'
           btn.appendChild(text)
-          more.appendChild(btn)
+
+          // 确保与其他脚本配合时相关 UI 排列顺序不会乱
+          var gmContainer = more.querySelector('[id=gm-container]')
+          if (!gmContainer) {
+            gmContainer = more.appendChild(document.createElement('span'))
+            gmContainer.id = 'gm-container'
+            gmContainer.style.float = 'left'
+          }
+          gmContainer.appendChild(btn)
 
           btn.added = true
           cb.checked = true // 第一次打开时，默认在稍后再看中
@@ -2622,7 +2630,6 @@
 }
 
 #${gm.id}-watchlater-video-btn {
-    float: left;
     margin-right: 1em;
     cursor: pointer;
     font-size: 12px;
