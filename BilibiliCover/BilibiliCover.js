@@ -1,7 +1,7 @@
 // ==UserScript==
 // @id              BilibiliCover@Laster2800
 // @name            B站封面获取
-// @version         4.5.0.20200730
+// @version         4.5.1.20200730
 // @namespace       laster2800
 // @author          Laster2800
 // @description     B站视频播放页（普通模式、稍后再看模式）、番剧播放页、直播间添加获取封面的按钮
@@ -321,6 +321,7 @@
   function createPreview(target) {
     var preview = document.body.appendChild(document.createElement('img'))
     preview.className = `${gm.id}_preview`
+    preview.title = gm.title
 
     var fadeTime = 200
     var browserSyncTime = 10
