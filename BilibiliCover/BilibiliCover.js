@@ -1,7 +1,7 @@
 // ==UserScript==
 // @id              BilibiliCover@Laster2800
 // @name            B站封面获取
-// @version         4.5.2.20200730
+// @version         4.5.3.20200731
 // @namespace       laster2800
 // @author          Laster2800
 // @description     B站视频播放页（普通模式、稍后再看模式）、番剧播放页、直播间添加获取封面的按钮
@@ -31,7 +31,7 @@
     },
     fnName: {
       preview: '封面预览',
-      download:'点击下载',
+      download: '点击下载',
     }
   }
 
@@ -415,8 +415,8 @@
     preview.addEventListener('mousemove', function(e) {
       // 鼠标移动一段距离关闭预览，优化用户体验
       if (startPos) {
-        var dSquare = Math.pow(startPos.x - e.clientX, 2) + Math.pow(startPos.y - e.clientY, 2)
-        if (dSquare > Math.pow(20, 2)) {
+        var dSquare = (startPos.x - e.clientX) ** 2 + (startPos.y - e.clientY) ** 2
+        if (dSquare > 20 ** 2) { // 20px
           fadeOut(disablePreviewTemp)
         }
       } else {
@@ -452,7 +452,7 @@
    * 当条件满足后，如果不存在终止条件，那么直接执行 `callback(result)`。
    *
    * 当条件满足后，如果存在终止条件，且 `stopTimeout` 大于 0，则还会在接下来的 `stopTimeout` 时间内判断是否满足终止条件，称为终止条件的二次判断。
-   * 如果在此期间，终止条件通过，则表示依然不满足条件，故执行 `stopCallback()` 而非 `callback(result)`。
+   * 如果在此期间，终止条件通过，则表示依然不满足条件，故执行 `onStop()` 而非 `callback(result)`。
    * 如果在此期间，终止条件一直失败，则顺利通过检测，执行 `callback(result)`。
    *
    * @param {Object} options 选项
@@ -462,19 +462,19 @@
    * @param {number} [options.timeout=5000] 检测超时时间，检测时间超过该值时终止检测（单位：ms）
    * @param {() => void} [options.onTimeout] 检测超时时执行 `onTimeout()`
    * @param {() => *} [options.stopCondition] 终止条件，当 `stopCondition()` 返回的 `stopResult` 为真值时终止检测
-   * @param {() => void} [options.stopCallback] 终止条件达成时执行 `stopCallback()`（包括终止条件的二次判断达成）
+   * @param {() => void} [options.onStop] 终止条件达成时执行 `onStop()`（包括终止条件的二次判断达成）
    * @param {number} [options.stopInterval=50] 终止条件二次判断期间的检测时间间隔（单位：ms）
    * @param {number} [options.stopTimeout=0] 终止条件二次判断期间的检测超时时间（单位：ms）
    * @param {number} [options.timePadding=0] 等待 `timePadding`ms 后才开始执行；包含在 `timeout` 中，因此不能大于 `timeout`
    */
   function executeAfterConditionPassed(options) {
-    var defaultOptions = {
+    const defaultOptions = {
       callback: result => console.log(result),
       interval: 100,
       timeout: 5000,
       onTimeout: null,
       stopCondition: null,
-      stopCallback: null,
+      onStop: null,
       stopInterval: 50,
       stopTimeout: 0,
       timePadding: 0,
@@ -484,30 +484,30 @@
       ...options
     }
 
-    var tid
-    var cnt = 0
-    var maxCnt = (options.timeout - options.timePadding) / options.interval
-    var task = () => {
-      var result = options.condition()
-      var stopResult = options.stopCondition && options.stopCondition()
+    let tid
+    let cnt = 0
+    const maxCnt = (options.timeout - options.timePadding) / options.interval
+    const task = () => {
+      const result = options.condition()
+      const stopResult = options.stopCondition && options.stopCondition()
       if (stopResult) {
         clearInterval(tid)
-        options.stopCallback && options.stopCallback()
+        options.onStop && options.onStop.call(options)
       } else if (++cnt > maxCnt) {
         clearInterval(tid)
-        options.onTimeout && options.onTimeout()
+        options.onTimeout && options.onTimeout.call(options)
       } else if (result) {
         clearInterval(tid)
         if (options.stopCondition && options.stopTimeout > 0) {
-          executeAfterConditionPassed({
+          this.executeAfterConditionPassed({
             condition: options.stopCondition,
-            callback: options.stopCallback,
+            callback: options.onStop,
             interval: options.stopInterval,
             timeout: options.stopTimeout,
-            onTimeout: () => options.callback(result)
+            onTimeout: () => options.callback.call(options, result)
           })
         } else {
-          options.callback(result)
+          options.callback.call(options, result)
         }
       }
     }
