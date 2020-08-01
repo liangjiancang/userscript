@@ -1,0 +1,18 @@
+Todo:
+  
+
+Task:
+  - 动态页刷新之后，页面中所有视频一律会显示没有加入稍后再看。其实主页还有其他别的很多地方也是这样，我怀疑B站本身根本没有办法直接获取某一个视频是否加入到稍后再看，所以视频返回的是不带稍后再看状态的。后面要做的就是用脚本把这些缺失的状态填充上去，但估计只会做动态页的，其他地方太多太杂了，告辞。
+    `document.querySelectorAll('.video-container').__vue__.seeLaterStatus`
+  - 顶栏的弹出菜单，如果能直接将视频移除出稍后再看就好了。
+    `aid = $0.__vue__._props.card.id`
+
+Archive:
+  ✔ 修改封面获取脚本 @started(20-08-01 23:05) @done(20-08-01 23:20) @lasted(15m1s) @project(Todo)
+  ✔ 更新封面获取脚本 @started(20-08-01 23:20) @done(20-08-01 23:22) @lasted(2m41s) @project(Todo)
+  ✔ 更新脚本 @started(20-08-01 22:48) @done(20-08-01 23:04) @lasted(16m25s) @project(Todo)
+  ✔ 重构 @done(20-08-01 22:18) @project(Todo)
+  ✔ var -> let & const @done(20-08-01 22:18) @project(Todo)
+  ✔ API 增强，带 this 信息 @done(20-08-01 22:19) @project(Todo)
+  ✔ 修复修改保存次数后，历史回溯深度上限不变的问题 @done(20-08-01 22:21) @project(Todo)
+  ✔ 测试每个功能 @started(20-08-01 22:18) @done(20-08-01 22:48) @lasted(30m41s) @project(Todo)

@@ -30,7 +30,7 @@ module.exports = {
     'semi': ['warn', 'never'],
     'quotes': ['warn', 'single'],
     'comma-dangle': ['warn', 'only-multiline'],
-    // 'no-unused-vars': ['warn', { 'args': 'none' }],
+    'no-unused-vars': 'warn',
     'no-debugger': 'warn',
   },
 }
