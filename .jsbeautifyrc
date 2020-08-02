@@ -4,5 +4,11 @@
     "space_after_anon_function": false,
     "end_with_newline": true,
     "brace_style": "none,preserve-inline"
+  },
+  "html": {
+    "indent_size": 2
+  },
+  "css": {
+    "indent_size": 2
   }
 }
