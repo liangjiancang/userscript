@@ -1,5 +1,5 @@
 {
-  "name": "tampermonkey",
+  "name": "userscript",
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
@@ -8,12 +8,12 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://gitee.com/liangjiancang/tampermonkey.git"
+    "url": "https://gitee.com/liangjiancang/userscript.git"
   },
   "author": "",
   "license": "ISC",
   "devDependencies": {
-    "eslint": "^7.4.0",
+    "eslint": "^7.6.0",
     "eslint-config-airbnb-base": "^14.2.0",
     "eslint-plugin-import": "^2.22.0"
   }
