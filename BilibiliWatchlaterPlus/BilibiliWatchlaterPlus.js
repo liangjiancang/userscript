@@ -1,7 +1,7 @@
 // ==UserScript==
 // @id              BilibiliWatchlaterPlus@Laster2800
 // @name            B站稍后再看功能增强
-// @version         4.0.0.20200806
+// @version         4.0.1.20200806
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -664,7 +664,9 @@
           gm.el.setting.innerHTML = `
 <div id="gm-setting-page">
   <div class="gm-title">
-    <div id="gm-maintitle" onclick="window.open('${GM_info.script.homepage}')" title="${GM_info.script.homepage}">${GM_info.script.name}</div>
+    <div id="gm-maintitle" title="${GM_info.script.homepage}">
+      <a href="${GM_info.script.homepage}" target="_blank">${GM_info.script.name}</a>
+    </div>
     <div class="gm-subtitle">V${GM_info.script.version} by ${GM_info.script.author}</div>
   </div>
   <div class="gm-items">
@@ -764,7 +766,7 @@
     <button id="gm-save">保存</button><button id="gm-cancel">取消</button>
   </div>
   <div id="gm-reset" title="重置脚本设置及内部数据，也许能解决脚本运行错误的问题。该操作不会清除已保存的列表页面数据，因此不会导致移除记录丢失。无法解决请联系脚本作者：${GM_info.script.supportURL}">初始化脚本</div>
-  <div id="gm-changelog" title="显示更新日志" onclick="window.open('${gm.url.gm_changelog}')">更新日志</div>
+  <a id="gm-changelog" title="显示更新日志" href="${gm.url.gm_changelog}" target="_blank">更新日志</a>
 </div>
 <div class="gm-shadow"></div>`
 
@@ -2536,10 +2538,11 @@
   transition: top 100ms, left 100ms;
 }
 
-#${gm.id} .gm-setting #gm-maintitle {
+#${gm.id} .gm-setting #gm-maintitle * {
   cursor: pointer;
+  color: black;
 }
-#${gm.id} .gm-setting #gm-maintitle:hover {
+#${gm.id} .gm-setting #gm-maintitle:hover * {
   color: #0075FF;
 }
 

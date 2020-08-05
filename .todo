@@ -11,6 +11,7 @@ BilibiliCover:
   `aid = $0.__vue__._props.card.id`
 
 Archive:
+  ✔ 设置页上的内容，支持中键点击打开 @started(20-08-06 01:41) @done(20-08-06 01:49) @lasted(8m5s) @project(BilibiliWatchlaterPlus)
   ✔ 自动同步，包括脚本和说明 @started(20-08-06 00:19) @done(20-08-06 00:41) @lasted(22m32s) @project(开源)
   ✔ 所有情况下，打开视频时将其移除出稍后再看 @done(20-08-05 01:12) @project(BilibiliWatchlaterPlus)
   ✔ 列表页面，打开链接的同时将视频移除出稍后再看 @started(20-08-02 21:10) @done(20-08-05 01:12) @lasted(2d4h2m15s) @project(BilibiliWatchlaterPlus)
