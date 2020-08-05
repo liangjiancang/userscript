@@ -1,4 +1,4 @@
-# B站封面获取
+# [B站封面获取](https://greasyfork.org/zh-CN/scripts/395575)
 
 在视频播放页（包括普通模式和稍后再看模式）、番剧播放页和直播间添加一个获取封面的按钮，支持封面预览（可关闭）。左键点击下载或在新标签页中打开封面（点击行为可选），右键点击可基于图片链接作进一步的处理，如通过“另存为”直接保存图片。
 
@@ -27,3 +27,7 @@
 * 封面预览
 
     ![封面预览](https://gitee.com/liangjiancang/userscript/raw/master/BilibiliCover/screenshot/封面预览.jpg)
+
+*gitee: [BilibiliCover](https://gitee.com/liangjiancang/userscript/tree/master/BilibiliCover)*
+
+*by Laster2800*

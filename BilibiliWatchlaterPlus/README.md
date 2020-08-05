@@ -1,4 +1,4 @@
-# B站稍后再看功能增强
+# [B站稍后再看功能增强](https://greasyfork.org/zh-CN/scripts/395456)
 
 功能如下，一图胜千言，无须多言。点击查看 [更新日志](https://gitee.com/liangjiancang/userscript/blob/master/BilibiliWatchlaterPlus/changelog.md)。
 
