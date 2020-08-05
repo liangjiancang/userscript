@@ -1,13 +1,14 @@
 // ==UserScript==
 // @id              BilibiliWatchlaterPlus@Laster2800
 // @name            B站稍后再看功能增强
-// @version         3.5.0.20200801
+// @version         4.0.0.20200806
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
 // @icon            https://www.bilibili.com/favicon.ico
 // @homepage        https://greasyfork.org/zh-CN/scripts/395456
 // @supportURL      https://greasyfork.org/zh-CN/scripts/395456/feedback
+// @license         LGPL-3.0
 // @include         *://www.bilibili.com/*
 // @include         /^(.*):\/\/t\.bilibili\.com(\/([^\/]*\/?|pages\/nav\/index_new.*))?$/
 // @include         *://message.bilibili.com/*
@@ -31,7 +32,7 @@
 
   /**
    * @typedef GMObject
-   * @property {string} id 当前脚本的标识
+   * @property {string} id 脚本标识
    * @property {number} configVersion 配置版本，为执行初始化的代码版本对应的配置版本号
    * @property {number} configUpdate 当前版本对应的配置版本号；若同一天修改多次，可以追加小数来区分
    * @property {URLSearchParams} searchParams URL 查询参数
@@ -52,6 +53,7 @@
    * @property {openHeaderMenuLink} openHeaderMenuLink 顶栏弹出菜单链接点击行为
    * @property {menuScrollbarSetting} menuScrollbarSetting 弹出菜单的滚动条设置
    * @property {boolean} videoButton 视频播放页稍后再看状态快速切换
+   * @property {autoRemove} autoRemove 自动将视频从播放列表移除
    * @property {boolean} redirect 稍后再看模式重定向至普通模式播放
    * @property {openListVideo} openListVideo 列表页面视频点击行为
    * @property {boolean} forceConsistentVideo 确保打开与列表页面一致的视频
@@ -60,7 +62,7 @@
    * @property {number} removeHistorySearchTimes 历史回溯深度
    * @property {boolean} removeButton_removeAll 移除“一键清空”按钮
    * @property {boolean} removeButton_removeWatched 移除“移除已观看视频”按钮
-   * @property {boolean} resetAfterFnUpdate 功能性更新后初始化
+   * @property {boolean} openSettingAfterConfigUpdate 功能性更新后打开设置页面
    * @property {boolean} reloadAfterSetting 设置生效后刷新页面
    */
   /**
@@ -71,11 +73,23 @@
   /**
    * @typedef GMObject_data
    * @property {removeHistoryData} removeHistoryData 为生成移除记录而保存的列表页面数据
-   * @property {{ title: string, bvid: string }[]} watchlaterListData 当前列表页面的数据
+   * @property {GMObject_data_item[]} watchlaterListData 当前列表页面的数据
+   */
+  /**
+   * @typedef GMObject_data_item
+   * @property {string} title 视频标题
+   * @property {string} bvid 视频 `bvid`
+   */
+  /**
+   * @callback api_videoInfo
+   * @param {string} id `aid` 或 `bvid`
+   * @param {'aid' | 'bvid'} `id` 类型
+   * @returns 查询视频信息的 URL
    */
   /**
    * @typedef GMObject_url
    * @property {string} api_queryWatchlaterList 稍后再看列表数据
+   * @property {api_videoInfo} api_videoInfo 视频信息
    * @property {string} api_addToWatchlater 将视频添加至稍后再看，要求 POST 一个含 `aid` 和 `csrf` 的表单
    * @property {string} api_removeFromWatchlater 将视频从稍后再看移除，要求 POST 一个含 `aid` 和 `csrf` 的表单
    * @property {string} page_watchlaterList 列表页面
@@ -119,7 +133,7 @@
    */
   /**
    * @typedef GMObject_error
-   * @property {string} HTML_PARSING HTML 解析错误
+   * @property {string} DOM_PARSE HTML 解析错误
    * @property {string} NETWORK 网络错误
    * @property {string} REDIRECT 重定向错误
    */
@@ -130,13 +144,14 @@
   const gm = {
     id: 'gm395456',
     configVersion: GM_getValue('configVersion'),
-    configUpdate: 20200723,
+    configUpdate: 20200805,
     searchParams: new URL(location.href).searchParams,
     config: {
       redirect: false,
     },
     url: {
       api_queryWatchlaterList: 'https://api.bilibili.com/x/v2/history/toview/web?jsonp=jsonp',
+      api_videoInfo: (id, type) => `http://api.bilibili.com/x/web-interface/view?${type}=${id}`,
       page_videoNormalMode: 'https://www.bilibili.com/video',
       page_watchlaterList: 'https://www.bilibili.com/watchlater/#/list',
     },
@@ -186,6 +201,15 @@
      * @readonly
      * @enum {string}
      */
+    autoRemove: {
+      always: 'always',
+      openFromList: 'openFromList',
+      never: 'never',
+    },
+    /**
+     * @readonly
+     * @enum {string}
+     */
     openListVideo: {
       openInCurrent: 'openInCurrent',
       openInNew: 'openInNew',
@@ -216,36 +240,34 @@
 
     // 所有页面
     if (gm.config.headerButton) {
-      webpage.fnHeaderButton()
+      webpage.addHeaderButton()
     }
     if (urlMatch(gm.regex.page_watchlaterList)) {
       // 列表页面
-      webpage.fnOpenListVideo()
+      webpage.processOpenListVideo()
       webpage.adjustWatchlaterListUI()
       if (gm.config.removeHistory || gm.config.forceConsistentVideo) {
         webpage.saveWatchlaterListData()
-        if (gm.config.forceConsistentVideo) {
-          webpage.fnForceConsistentVideo()
-        }
+      }
+      if (gm.config.forceConsistentVideo || gm.config.autoRemove != Enums.autoRemove.never) {
+        webpage.processWatchlaterListLink()
       }
     } else if (urlMatch(gm.regex.page_videoNormalMode)) {
       // 播放页面（正常模式）
       if (gm.config.videoButton) {
-        webpage.fnVideoButton_Normal()
+        webpage.addVideoButton_Normal()
       }
     } else if (urlMatch(gm.regex.page_videoWatchlaterMode)) {
       // 播放页面（稍后再看模式）
       if (gm.config.videoButton) {
-        webpage.fnVideoButton_Watchlater()
-      }
-      if (gm.config.forceConsistentVideo) {
-        webpage.forceConsistentVideoInWatchlaterMode()
+        webpage.addVideoButton_Watchlater()
       }
     } else if (urlMatch(gm.regex.page_dynamicMenu)) {
       // 动态入口弹出菜单页面的处理
       webpage.addMenuScrollbarStyle()
       return
     }
+    webpage.processSearchParams()
     webpage.addStyle()
   })
 
@@ -298,7 +320,7 @@
     // 不要担心由于稍后再看列表在其他地方被改动，导致当前分 P 与实际位置对不上，从而导致重定向到另一个视频上。之所以
     // 这样说，不是因为这种情况不会发生，而是因为这是 B 站自己的问题，即使不做重定向，在这种情况下也必然会打开到另一
     // 个视频上。
-    // 为了彻底解决这种特殊情况，引入另一个功能“避免在特殊情况下，点击A视频却打开B视频的情况”。
+    // 为了彻底解决这种特殊情况，引入另一个功能“避免在特殊情况下，点击A视频却打开B视频的问题”。
     GM_xmlhttpRequest({
       method: 'GET',
       url: gm.url.api_queryWatchlaterList,
@@ -325,7 +347,7 @@
             location.replace(gm.url.page_watchlaterList)
           }
         }
-      }
+      },
     })
   }
 
@@ -356,7 +378,7 @@
         api_removeFromWatchlater: 'https://api.bilibili.com/x/v2/history/toview/del',
         page_videoWatchlaterMode: 'https://www.bilibili.com/medialist/play/watchlater',
         page_watchlaterPlayAll: 'https://www.bilibili.com/medialist/play/watchlater/p1',
-        gm_changelog: 'https://greasyfork.org/zh-CN/scripts/395456/versions',
+        gm_changelog: 'https://gitee.com/liangjiancang/userscript/blob/master/BilibiliWatchlaterPlus/changelog.md',
         noop: 'javascript:void(0)',
       }
 
@@ -392,6 +414,7 @@
         openHeaderMenuLink: Enums.openHeaderMenuLink.openInCurrent,
         menuScrollbarSetting: Enums.menuScrollbarSetting.beautify,
         videoButton: true,
+        autoRemove: Enums.autoRemove.openFromList,
         openListVideo: Enums.openListVideo.openInCurrent,
         forceConsistentVideo: true,
         removeHistory: true,
@@ -399,7 +422,7 @@
         removeHistorySearchTimes: gm.const.defaultRhst,
         removeButton_removeAll: false,
         removeButton_removeWatched: false,
-        resetAfterFnUpdate: false,
+        openSettingAfterConfigUpdate: true,
         reloadAfterSetting: true,
       }
 
@@ -445,7 +468,7 @@
 
       gm.error = {
         ...gm.error,
-        HTML_PARSING: `HTML解析错误。大部分情况下是由于网络加载速度不足造成的，不影响脚本工作；否则就是B站网页改版，请联系脚本作者修改：${GM_info.script.supportURL}`,
+        DOM_PARSE: `DOM解析错误。大部分情况下是由于网络加载速度不足造成的，不影响脚本工作；否则就是B站网页改版，请联系脚本作者修改：${GM_info.script.supportURL}`,
         NETWORK: `网络连接错误，有可能是网络加载速度不足或者 B 站后台 API 修改。不排除是脚本内部数据出错造成的，初始化脚本或清空列表页面数据也许能解决问题。无法解决请联系脚本作者：${GM_info.script.supportURL}`,
       }
     }
@@ -455,12 +478,10 @@
      */
     updateVersion() {
       // 该项与更新相关，在此处处理
-      gm.config.resetAfterFnUpdate = gmValidate('resetAfterFnUpdate', gm.config.resetAfterFnUpdate)
-
+      gm.config.openSettingAfterConfigUpdate = gmValidate('openSettingAfterConfigUpdate', gm.config.openSettingAfterConfigUpdate)
       if (gm.configVersion !== 0 && gm.configVersion !== gm.configUpdate) {
-        if (gm.config.resetAfterFnUpdate) {
-          gm.configVersion = 0
-          return
+        if (gm.config.openSettingAfterConfigUpdate) {
+          this.openUserSetting(2)
         }
 
         if (gm.configVersion < gm.configUpdate) {
@@ -488,6 +509,7 @@
             gm.configVersion = 20200718
             GM_setValue('configVersion', gm.configVersion)
           }
+
           // 3.0.0.20200721
           if (gm.configVersion < 20200721) {
             const openHeaderMenuLink = gmValidate('openHeaderDropdownLink', gm.config.openHeaderMenuLink, false)
@@ -497,6 +519,7 @@
             gm.configVersion = 20200721
             GM_setValue('configVersion', gm.configVersion)
           }
+
           // 3.1.0.20200722
           if (gm.configVersion < 20200722) {
             const exec = name => {
@@ -512,6 +535,10 @@
 
             gm.configVersion = 20200722
             GM_setValue('configVersion', gm.configVersion)
+          }
+
+          if (gm.configVersion < 20200805) {
+            GM_deleteValue('resetAfterFnUpdate')
           }
         } else if (gm.configVersion === undefined) {
           if (GM_getValue('gm395456') > 0) {
@@ -537,7 +564,7 @@
       const cfgDocumentStart = { redirect: true } // document-start 时期就处理过的配置
       if (gm.configVersion > 0) {
         // 对配置进行校验
-        const cfgManual = { resetAfterFnUpdate: true } // 手动处理的配置
+        const cfgManual = { openSettingAfterConfigUpdate: true } // 手动处理的配置
         const cfgNoWriteback = { removeHistorySearchTimes: true } // 不进行回写的配置
         for (const name in gm.config) {
           if (!cfgDocumentStart[name] && !cfgManual[name]) {
@@ -574,30 +601,30 @@
      * 添加脚本菜单
      */
     addScriptMenu() {
-      const self = this
+      const _self = this
       // 用户配置设置
-      GM_registerMenuCommand('用户设置', () => self.openUserSetting())
+      GM_registerMenuCommand('用户设置', () => _self.openUserSetting())
       if (!gm.configVersion) { // 初始化
-        self.openUserSetting(true)
+        _self.openUserSetting(1)
       }
       if (gm.config.removeHistory) {
         // 稍后再看移除记录
-        GM_registerMenuCommand('稍后再看移除记录', () => self.openRemoveHistory()) // 注意不要直接传函数对象，否则 this 不对
+        GM_registerMenuCommand('稍后再看移除记录', () => _self.openRemoveHistory()) // 注意不要直接传函数对象，否则 this 不对
         // 清空列表页面数据
-        GM_registerMenuCommand('清空列表页面数据', () => self.cleanRemoveHistoryData())
+        GM_registerMenuCommand('清空列表页面数据', () => _self.cleanRemoveHistoryData())
       }
       // 强制初始化
-      GM_registerMenuCommand('初始化脚本', () => self.resetScript())
+      GM_registerMenuCommand('初始化脚本', () => _self.resetScript())
     }
 
     /**
      * 打开用户设置
-     * @param {boolean} [initial] 是否进行初始化设置
+     * @param {number} [type=0] 普通 `0` | 初始化 `1` | 功能性更新 `2`
      */
-    openUserSetting(initial) {
-      const self = this
+    openUserSetting(type = 0) {
+      const _self = this
       if (gm.el.setting) {
-        self.openMenuItem('setting')
+        _self.openMenuItem('setting')
       } else {
         const el = {}
         const configMap = {
@@ -608,6 +635,7 @@
           headerButtonOpL: { attr: 'value' },
           headerButtonOpR: { attr: 'value' },
           videoButton: { attr: 'checked' },
+          autoRemove: { attr: 'value' },
           redirect: { attr: 'checked' },
           openListVideo: { attr: 'value' },
           forceConsistentVideo: { attr: 'checked' },
@@ -616,14 +644,14 @@
           removeHistorySearchTimes: { attr: 'value', manual: true, needNotReload: true },
           removeButton_removeAll: { attr: 'checked' },
           removeButton_removeWatched: { attr: 'checked' },
-          resetAfterFnUpdate: { attr: 'checked', needNotReload: true },
+          openSettingAfterConfigUpdate: { attr: 'checked', needNotReload: true },
           reloadAfterSetting: { attr: 'checked', needNotReload: true },
         }
         setTimeout(() => {
           initSetting()
           processConfigItem()
           processSettingItem()
-          self.openMenuItem('setting')
+          _self.openMenuItem('setting')
         })
 
         /**
@@ -636,85 +664,109 @@
           gm.el.setting.innerHTML = `
 <div id="gm-setting-page">
   <div class="gm-title">
-      <div id="gm-maintitle" onclick="window.open('${GM_info.script.homepage}')" title="${GM_info.script.homepage}">B站稍后再看功能增强</div>
-      <div class="gm-subtitle">V${GM_info.script.version} by ${GM_info.script.author}</div>
+    <div id="gm-maintitle" onclick="window.open('${GM_info.script.homepage}')" title="${GM_info.script.homepage}">${GM_info.script.name}</div>
+    <div class="gm-subtitle">V${GM_info.script.version} by ${GM_info.script.author}</div>
   </div>
   <div class="gm-items">
-      <div class="gm-item">
-          <label title="在顶栏“动态”和“收藏”之间加入稍后再看入口，鼠标移至上方时弹出列表菜单，支持点击功能设置。">
-              <span>【所有页面】在顶栏中加入稍后再看入口</span><input id="gm-headerButton" type="checkbox"></label>
-          <div class="gm-subitem" title="选择左键点击入口时执行的操作。">
-              <span>在入口上点击鼠标左键时</span>
-              <select id="gm-headerButtonOpL"></select>
-          </div>
-          <div class="gm-subitem" title="选择右键点击入口时执行的操作。">
-              <span>在入口上点击鼠标右键时</span>
-              <select id="gm-headerButtonOpR"></select>
-          </div>
-          <div class="gm-subitem" title="选择在弹出菜单中点击视频的行为。为了保持行为一致，这个选项也会影响弹出菜单中收藏夹视频的打开，但不影响“动态”、“历史”等其他弹出菜单中点击视频的行为。">
-              <span>在弹出菜单中点击视频时</span>
-              <select id="gm-openHeaderMenuLink">
-                  <option value="${Enums.openHeaderMenuLink.openInCurrent}">在当前页面打开</option>
-                  <option value="${Enums.openHeaderMenuLink.openInNew}">在新标签页打开</option>
-              </select>
-          </div>
-          <div class="gm-subitem" title="对弹出菜单中滚动条样式进行设置。为了保持行为一致，这个选项也会影响“动态”、“历史”等其他入口的弹出菜单。">
-              <span>对于弹出菜单中的滚动条</span>
-              <select id="gm-menuScrollbarSetting">
-                  <option value="${Enums.menuScrollbarSetting.beautify}">修改其外观为扁平化风格</option>
-                  <option value="${Enums.menuScrollbarSetting.hidden}">将其隐藏（不影响鼠标滚动）</option>
-                  <option value="${Enums.menuScrollbarSetting.original}">维持官方的滚动条样式</option>
-              </select>
-          </div>
-      </div>
-      <label class="gm-item" title="在播放页面（包括普通模式和稍后再看模式）中加入能将视频快速切换添加或移除出稍后再看列表的按钮。">
-          <span>【播放页面】加入快速切换视频稍后再看状态的按钮</span><input id="gm-videoButton" type="checkbox"></label>
-      <label class="gm-item" title="打开【${gm.url.page_videoWatchlaterMode}】页面时，自动切换至【${gm.url.page_videoNormalMode}】页面进行播放。">
-          <span>【播放页面】从稍后再看模式切换到普通模式播放</span><input id="gm-redirect" type="checkbox"></label>
-      <label class="gm-item" title="设置在【${gm.url.page_watchlaterList}】页面点击视频时的行为。">
-          <span>【列表页面】点击视频时</span>
-          <select id="gm-openListVideo">
-              <option value="${Enums.openListVideo.openInCurrent}">在当前页面打开</option>
-              <option value="${Enums.openListVideo.openInNew}">在新标签页打开</option>
-          </select>
+    <div class="gm-item">
+      <label title="在顶栏“动态”和“收藏”之间加入稍后再看入口，鼠标移至上方时弹出列表菜单，支持点击功能设置。">
+        <span>【所有页面】在顶栏中加入稍后再看入口</span><input id="gm-headerButton" type="checkbox">
       </label>
-      <label class="gm-item" title="见弹出说明">
-          <span>【列表页面】避免在特殊情况下，点击A视频却打开B视频的情况</span>
-          <span id="gm-fcvInformation" class="gm-information" title="">💬</span>
-          <input id="gm-forceConsistentVideo" type="checkbox">
-      </label>
-      <div class="gm-item">
-          <label title="保留最近几次打开【${gm.url.page_watchlaterList}】页面时稍后再看列表的记录，以查找出这段时间内将哪些视频移除出稍后再看，用于防止误删操作。关闭该选项后，会将内部历史数据清除！">
-              <span>【列表页面】开启稍后再看移除记录</span>
-              <input id="gm-removeHistory" type="checkbox">
-              <span id="gm-rhWarning" class="gm-warning" title="">⚠</span>
-          </label>
-          <div class="gm-subitem" title="较大的数值可能会带来较大的开销，经过性能测试，作者认为在设置在${gm.const.rhsWarning}以下时，即使在极限情况下也不会产生让人能察觉到的卡顿（存取总时不超过100ms），但在没有特殊要求的情况下依然不建议设置到这么大。该项修改后，会立即对过期记录进行清理，重新修改为原来的值无法还原被清除的记录，设置为比原来小的值需慎重！（范围：${gm.const.rhsMin} ~ ${gm.const.rhsMax}）">
-              <span>保存最近几次列表页面数据用于生成移除记录</span>
-              <span id="gm-cleanRemoveHistoryData" class="gm-hint-option" title="清理已保存的列表页面数据，不可恢复！">清空数据(0条)</span>
-              <input id="gm-removeHistorySaves" type="text">
-              <span id="gm-rhsWarning" class="gm-warning" title="">⚠</span>
-          </div>
-          <div class="gm-subitem" title="搜寻时在最近多少次列表页面数据中查找，设置较小的值能较好地定位最近移除的视频。设置较大的值几乎不会对性能造成影响，但不能大于最近列表页面数据保存次数。">
-              <span>默认历史回溯深度</span><input id="gm-removeHistorySearchTimes" type="text"></div>
+      <div class="gm-subitem" title="选择左键点击入口时执行的操作。">
+        <span>在入口上点击鼠标左键时</span>
+        <select id="gm-headerButtonOpL"></select>
       </div>
-      <label class="gm-item" title="这个按钮太危险了，看着就让人不舒服……">
-          <span>【列表页面】移除“一键清空”按钮</span><input id="gm-removeButton_removeAll" type="checkbox"></label>
-      <label class="gm-item" title="这个按钮太危险了，看着就让人不舒服……">
-          <span>【列表页面】移除“移除已观看视频”按钮</span><input id="gm-removeButton_removeWatched" type="checkbox"></label>
-      <label class="gm-item" title="功能性更新后，是否强制进行初始化设置？特别地，该选项的设置在初始化设置时将被保留，但初始化脚本时依然会被重置。">
-          <span>【用户设置】功能性更新后进行初始化设置</span><input id="gm-resetAfterFnUpdate" type="checkbox"></label>
-      <label class="gm-item" title="勾选后，如果更改的配置需要重新加载才能生效，那么会在设置完成后重新加载页面。">
-          <span>【用户设置】必要时在设置完成后重新加载页面</span><input id="gm-reloadAfterSetting" type="checkbox"></label>
+      <div class="gm-subitem" title="选择右键点击入口时执行的操作。">
+        <span>在入口上点击鼠标右键时</span>
+        <select id="gm-headerButtonOpR"></select>
+      </div>
+      <div class="gm-subitem" title="选择在弹出菜单中点击视频的行为。为了保持行为一致，这个选项也会影响弹出菜单中收藏夹视频的打开，但不影响“动态”、“历史”等其他弹出菜单中点击视频的行为。">
+        <span>在弹出菜单中点击视频时</span>
+        <select id="gm-openHeaderMenuLink">
+          <option value="${Enums.openHeaderMenuLink.openInCurrent}">在当前页面打开</option>
+          <option value="${Enums.openHeaderMenuLink.openInNew}">在新标签页打开</option>
+        </select>
+      </div>
+      <div class="gm-subitem" title="对弹出菜单中滚动条样式进行设置。为了保持行为一致，这个选项也会影响“动态”、“历史”等其他入口的弹出菜单。">
+        <span>对于弹出菜单中的滚动条</span>
+        <select id="gm-menuScrollbarSetting">
+          <option value="${Enums.menuScrollbarSetting.beautify}">修改其外观为扁平化风格</option>
+          <option value="${Enums.menuScrollbarSetting.hidden}">将其隐藏（不影响鼠标滚动）</option>
+          <option value="${Enums.menuScrollbarSetting.original}">维持官方的滚动条样式</option>
+        </select>
+      </div>
+    </div>
+
+    <label class="gm-item" title="在播放页面（包括普通模式和稍后再看模式）中加入能将视频快速切换添加或移除出稍后再看列表的按钮。">
+      <span>【播放页面】加入快速切换视频稍后再看状态的按钮</span><input id="gm-videoButton" type="checkbox">
+    </label>
+
+    <div class="gm-item" title="打开播放页面时，自动将视频从稍后再看列表中移除，或在特定条件下执行自动移除。">
+      <span>【播放页面】打开视频时，</span>
+      <select id="gm-autoRemove">
+        <option value="${Enums.autoRemove.always}">总是自动移除出稍后再看（若在稍后再看中）</option>
+        <option value="${Enums.autoRemove.openFromList}" title="包括列表页面和弹出菜单列表">若从稍后再看列表点击进入，则自动移除出稍后再看</option>
+        <option value="${Enums.autoRemove.never}">从不自动移除出稍后再看</option>
+      </select>
+    </div>
+
+    <label class="gm-item" title="打开【${gm.url.page_videoWatchlaterMode}】页面时，自动切换至【${gm.url.page_videoNormalMode}】页面进行播放。">
+      <span>【播放页面】从稍后再看模式强制切换到普通模式播放</span><input id="gm-redirect" type="checkbox">
+    </label>
+
+    <label class="gm-item" title="设置在【${gm.url.page_watchlaterList}】页面点击视频时的行为。">
+      <span>【列表页面】点击视频时</span>
+      <select id="gm-openListVideo">
+        <option value="${Enums.openListVideo.openInCurrent}">在当前页面打开</option>
+        <option value="${Enums.openListVideo.openInNew}">在新标签页打开</option>
+      </select>
+    </label>
+
+    <label class="gm-item" title="见弹出说明">
+      <span>【列表页面】避免在特殊情况下，点击A视频却打开B视频的问题</span>
+      <span id="gm-fcvInformation" class="gm-information" title="">💬</span>
+      <input id="gm-forceConsistentVideo" type="checkbox">
+    </label>
+
+    <div class="gm-item">
+      <label title="保留最近几次打开【${gm.url.page_watchlaterList}】页面时稍后再看列表的记录，以查找出这段时间内将哪些视频移除出稍后再看，用于防止误删操作。关闭该选项后，会将内部历史数据清除！">
+        <span>【列表页面】开启稍后再看移除记录</span>
+        <input id="gm-removeHistory" type="checkbox">
+        <span id="gm-rhWarning" class="gm-warning" title="">⚠</span>
+      </label>
+      <div class="gm-subitem" title="较大的数值可能会带来较大的开销，经过性能测试，作者认为在设置在${gm.const.rhsWarning}以下时，即使在极限情况下也不会产生让人能察觉到的卡顿（存取总时不超过100ms），但在没有特殊要求的情况下依然不建议设置到这么大。该项修改后，会立即对过期记录进行清理，重新修改为原来的值无法还原被清除的记录，设置为比原来小的值需慎重！（范围：${gm.const.rhsMin} ~ ${gm.const.rhsMax}）">
+        <span>保存最近几次列表页面数据用于生成移除记录</span>
+        <span id="gm-cleanRemoveHistoryData" class="gm-hint-option" title="清理已保存的列表页面数据，不可恢复！">清空数据(0条)</span>
+        <input id="gm-removeHistorySaves" type="text">
+        <span id="gm-rhsWarning" class="gm-warning" title="">⚠</span>
+      </div>
+      <div class="gm-subitem" title="搜寻时在最近多少次列表页面数据中查找，设置较小的值能较好地定位最近移除的视频。设置较大的值几乎不会对性能造成影响，但不能大于最近列表页面数据保存次数。">
+        <span>默认历史回溯深度</span><input id="gm-removeHistorySearchTimes" type="text"></div>
+    </div>
+
+    <label class="gm-item" title="这个按钮太危险了……">
+      <span>【列表页面】移除 “一键清空” 按钮</span><input id="gm-removeButton_removeAll" type="checkbox">
+    </label>
+
+    <label class="gm-item" title="这个按钮太危险了……">
+      <span>【列表页面】移除 “移除已观看视频” 按钮</span><input id="gm-removeButton_removeWatched" type="checkbox">
+    </label>
+
+    <label class="gm-item" title="功能性更新后，是否打开用户设置？">
+      <span>【用户设置】功能性更新后打开用户设置</span><input id="gm-openSettingAfterConfigUpdate" type="checkbox">
+    </label>
+
+    <label class="gm-item" title="勾选后，如果更改的配置需要重新加载才能生效，那么会在设置完成后重新加载页面。">
+      <span>【用户设置】必要时在设置完成后重新加载页面</span><input id="gm-reloadAfterSetting" type="checkbox">
+    </label>
   </div>
   <div class="gm-bottom">
-      <button id="gm-save">保存</button><button id="gm-cancel">取消</button>
+    <button id="gm-save">保存</button><button id="gm-cancel">取消</button>
   </div>
   <div id="gm-reset" title="重置脚本设置及内部数据，也许能解决脚本运行错误的问题。该操作不会清除已保存的列表页面数据，因此不会导致移除记录丢失。无法解决请联系脚本作者：${GM_info.script.supportURL}">初始化脚本</div>
   <div id="gm-changelog" title="显示更新日志" onclick="window.open('${gm.url.gm_changelog}')">更新日志</div>
 </div>
-<div class="gm-shadow"></div>
-`
+<div class="gm-shadow"></div>`
 
           // 找出配置对应的元素
           for (const name in gm.config) {
@@ -722,28 +774,37 @@
           }
 
           el.settingPage = gm.el.setting.querySelector('#gm-setting-page')
+          el.maintitle = gm.el.setting.querySelector('#gm-maintitle')
+          switch (type) {
+            case 1:
+              el.maintitle.innerHTML += '<br><span style="font-size:0.8em">(初始化设置)</span>'
+              break
+            case 2:
+              el.maintitle.innerHTML += '<br><span style="font-size:0.8em">(功能性更新设置)</span>'
+              break
+          }
           el.save = gm.el.setting.querySelector('#gm-save')
           el.cancel = gm.el.setting.querySelector('#gm-cancel')
           el.shadow = gm.el.setting.querySelector('.gm-shadow')
           el.reset = gm.el.setting.querySelector('#gm-reset')
-          el.reset.onclick = () => self.resetScript()
+          el.reset.onclick = () => _self.resetScript()
           el.cleanRemoveHistoryData = gm.el.setting.querySelector('#gm-cleanRemoveHistoryData')
           el.cleanRemoveHistoryData.onclick = function() {
-            el.removeHistory.checked && self.cleanRemoveHistoryData()
+            el.removeHistory.checked && _self.cleanRemoveHistoryData()
           }
 
           el.fcvInformation = gm.el.setting.querySelector('#gm-fcvInformation')
-          self.api.message.advanced(el.fcvInformation, `
+          _self.api.message.advanced(el.fcvInformation, `
 <div style="text-indent:2em;line-height:1.6em;">
-  <p>从列表页面打开视频时，其URL使用该视频在列表中的位置来标识。假如列表在其他页面上被修改，这种定位方式就会出错。这是B站新版稍后再看播放页面的设计缺陷，本设置开启后能修复这个问题。</>
+  <p>从列表页面打开视频时，其URL使用该视频在列表中的位置来标识。假如列表在其他页面上被修改，这种定位方式就会出错。这是B站新版稍后再看播放页面的设计缺陷，本设置开启后能修复这个问题。</p>
   <p>假设先打开列表页面，此时列表的第1个视频是A，然后在其他页面将B视频添加到稍后再看，最后回到刚才列表页面点击A视频，结果播放的会是此时真正位于列表第1位的B视频。</p>
   <p>在正常使用的情况下，这个问题出现的频率并不高；此外，如果没有开启模式切换功能，在修复成功后浏览器的历史回退功能会受到影响，且修复过程可能会伴随页面内容切换和不明显的URL变动。如果不希望见到这些问题，或者只是单纯不想在页面引入不必要的脚本操作，可以选择关闭。</p>
 </div>
-        `, '💬', { width: '36em', flagSize: '2em' }) // 谨慎地调这个宽度，不然又会引起字体发虚问题
+          `, '💬', { width: '36em', flagSize: '2em' }) // 谨慎地调这个宽度，不然又会引起字体发虚问题
           el.rhWarning = gm.el.setting.querySelector('#gm-rhWarning')
-          self.api.message.advanced(el.rhWarning, '关闭移除记录，或将列表页面数据保存次数设置为比原来小的值，都会造成对内部过期历史数据的清理！', '⚠')
+          _self.api.message.advanced(el.rhWarning, '关闭移除记录，或将列表页面数据保存次数设置为比原来小的值，都会造成对内部过期历史数据的清理！', '⚠')
           el.rhsWarning = gm.el.setting.querySelector('#gm-rhsWarning')
-          self.api.message.advanced(el.rhsWarning, `该项设置过大时，在极端情况下可能会造成明显的卡顿，一般不建议该项超过${gm.const.rhsWarning}。当然，如果对机器的读写性能自信，可以无视该警告。`, '⚠')
+          _self.api.message.advanced(el.rhsWarning, `该项设置过大时，在极端情况下可能会造成明显的卡顿，一般不建议该项超过${gm.const.rhsWarning}。当然，如果对机器的读写性能自信，可以无视该警告。`, '⚠')
 
           el.headerButtonOpL.innerHTML = el.headerButtonOpR.innerHTML = `
 <option value="${Enums.headerButtonOp.openListInCurrent}">在当前页面打开列表页面</option>
@@ -836,17 +897,16 @@
          * 处理与设置页面相关的数据和元素
          */
         const processSettingItem = () => {
-          const self = this
+          const _self = this
           el.save.onclick = onSave
           gm.menu.setting.openHandler = onOpen
-          el.cancel.onclick = () => self.closeMenuItem('setting')
+          el.cancel.onclick = () => _self.closeMenuItem('setting')
           el.shadow.onclick = function() {
             if (!this.getAttribute('disabled')) {
-              self.closeMenuItem('setting')
+              _self.closeMenuItem('setting')
             }
           }
-          if (initial) {
-            el.reset.style.display = 'none'
+          if (type > 0) {
             el.cancel.disabled = true
             el.shadow.setAttribute('disabled', 'disabled')
           }
@@ -904,14 +964,14 @@
             GM_deleteValue('removeHistoryData')
           }
 
-          self.closeMenuItem('setting')
-          if (initial) {
+          _self.closeMenuItem('setting')
+          if (type > 0) {
             // 更新配置版本
             gm.configVersion = gm.configUpdate
             GM_setValue('configVersion', gm.configVersion)
-            // 关闭初始化状态
+            // 关闭特殊状态
             setTimeout(() => {
-              el.reset.style.display = ''
+              el.maintitle.innerText = GM_info.script.name
               el.cancel.disabled = false
               el.shadow.removeAttribute('disabled')
             }, gm.const.fadeTime)
@@ -950,7 +1010,7 @@
 
           el.settingPage.parentNode.style.display = 'block'
           setTimeout(() => {
-            self.api.dom.setAbsoluteCenter(el.settingPage)
+            _self.api.dom.setAbsoluteCenter(el.settingPage)
           }, 10)
         }
 
@@ -990,12 +1050,12 @@
 
           if (el.rhWarning.show) {
             if (!warn) {
-              self.api.dom.fade(false, el.rhWarning)
+              _self.api.dom.fade(false, el.rhWarning)
               el.rhWarning.show = false
             }
           } else {
             if (warn) {
-              self.api.dom.fade(true, el.rhWarning)
+              _self.api.dom.fade(true, el.rhWarning)
               el.rhWarning.show = true
             }
           }
@@ -1011,12 +1071,12 @@
           }
           if (el.rhsWarning.show) {
             if (value <= gm.const.rhsWarning) {
-              self.api.dom.fade(false, el.rhsWarning)
+              _self.api.dom.fade(false, el.rhsWarning)
               el.rhsWarning.show = false
             }
           } else {
             if (value > gm.const.rhsWarning) {
-              self.api.dom.fade(true, el.rhsWarning)
+              _self.api.dom.fade(true, el.rhsWarning)
               el.rhsWarning.show = true
             }
           }
@@ -1028,9 +1088,9 @@
      * 打开移除记录
      */
     openRemoveHistory() {
-      const self = this
+      const _self = this
       if (!gm.config.removeHistory) {
-        self.api.message.create('请在设置中开启稍后再看移除记录')
+        _self.api.message.create('请在设置中开启稍后再看移除记录')
         return
       }
 
@@ -1045,12 +1105,12 @@
           el.historySort.setType(0) // 倒序
         }
 
-        self.openMenuItem('history')
+        _self.openMenuItem('history')
       } else {
         setTimeout(() => {
           initHistory()
           processItem()
-          self.openMenuItem('history')
+          _self.openMenuItem('history')
         })
 
         /**
@@ -1064,15 +1124,14 @@
 <div class="gm-history-page">
   <div class="gm-title">稍后再看移除记录</div>
   <div class="gm-comment">
-      <div>根据最近<span id="gm-save-times">0</span>次打开列表页面时获取到的<span id="gm-record-num">0</span>条不重复的记录生成（总计<span id="gm-record-num-repeat">0</span>条），共筛选出<span id="gm-remove-num">0</span>条移除记录。排序由视频最后一次加入到稍后再看的时间决定，与移除出稍后再看的时间无关。如果记录太多难以定位被误删的视频，请在下方设置减少历史回溯深度。鼠标移动到内容区域可向下滚动翻页，点击对话框以外的位置退出。</div>
-      <div style="text-align:right;font-weight:bold">
-          <span id="gm-history-sort" style="text-decoration:underline;cursor:pointer">倒序</span>
-          <span title="搜寻时在最近多少次列表页面数据中查找，设置较小的值能较好地定位最近移除的视频。按下回车键或输入框失去焦点时刷新数据，输入框为空时自动设为可取的最大值。">历史回溯深度：<input type="text" id="gm-search-times" value="0"></span>
-      </div>
+    <div>根据最近<span id="gm-save-times">0</span>次打开列表页面时获取到的<span id="gm-record-num">0</span>条不重复的记录生成（总计<span id="gm-record-num-repeat">0</span>条），共筛选出<span id="gm-remove-num">0</span>条移除记录。排序由视频最后一次加入到稍后再看的时间决定，与移除出稍后再看的时间无关。如果记录太多难以定位被误删的视频，请在下方设置减少历史回溯深度。鼠标移动到内容区域可向下滚动翻页，点击对话框以外的位置退出。</div>
+    <div style="text-align:right;font-weight:bold">
+      <span id="gm-history-sort" style="text-decoration:underline;cursor:pointer">倒序</span>
+      <span title="搜寻时在最近多少次列表页面数据中查找，设置较小的值能较好地定位最近移除的视频。按下回车键或输入框失去焦点时刷新数据，输入框为空时自动设为可取的最大值。">历史回溯深度：<input type="text" id="gm-search-times" value="0"></span>
+    </div>
   </div>
 </div>
-<div class="gm-shadow"></div>
-`
+<div class="gm-shadow"></div>`
           el.historyPage = gm.el.history.querySelector('.gm-history-page')
           el.comment = gm.el.history.querySelector('.gm-comment')
           el.content = null
@@ -1141,7 +1200,7 @@
 
           gm.menu.history.openHandler = onOpen
           window.addEventListener('resize', setContentTop)
-          el.shadow.onclick = () => self.closeMenuItem('history')
+          el.shadow.onclick = () => _self.closeMenuItem('history')
         }
 
         /**
@@ -1160,7 +1219,7 @@
 
           el.historyPage.parentNode.style.display = 'block'
           setTimeout(() => {
-            self.api.dom.setAbsoluteCenter(el.historyPage)
+            _self.api.dom.setAbsoluteCenter(el.historyPage)
           }, 10)
 
           GM_xmlhttpRequest({
@@ -1278,7 +1337,7 @@
      * @param {() => void} [callback] 打开菜单项后的回调函数
      */
     openMenuItem(name, callback) {
-      const self = this
+      const _self = this
       if (!gm.menu[name].state) {
         for (const key in gm.menu) {
           /** @type {GMObject_menu_item} */
@@ -1286,10 +1345,10 @@
           if (key == name) {
             menu.state = true
             menu.openHandler && menu.openHandler.call(menu)
-            self.api.dom.fade(true, menu.el, callback)
+            _self.api.dom.fade(true, menu.el, callback)
           } else {
             if (menu.state) {
-              self.closeMenuItem(key)
+              _self.closeMenuItem(key)
             }
           }
         }
@@ -1319,16 +1378,181 @@
    */
   class Webpage {
     constructor() {
+      const webpage = this
       this.script = new Script()
       this.api = new API()
+
+      /** 内部通用方法 */
+      this.method = {
+        /** 内部数据 */
+        _: {},
+
+        /**
+         * 获取 CSRF
+         * @param {boolean} [refresh] 是否重新从 Cookie 中获取
+         * @returns {string} `csrf`
+         */
+        getCSRF(refresh) {
+          const _ = this._
+          if (!_.csrf || refresh) {
+            let cookies = document.cookie.split('; ')
+            cookies = cookies.reduce((prev, val) => {
+              const parts = val.split('=')
+              const key = parts[0]
+              const value = parts[1]
+              prev[key] = value
+              return prev
+            }, {})
+            _.csrf = cookies.bili_jct
+          }
+          return _.csrf
+        },
+
+        /**
+         * 在普通模式播放页中获取当前页面对应的 `aid`
+         * @returns {string} `aid`
+         */
+        getAidInNormalMode() {
+          if (unsafeWindow.aid) {
+            return String(unsafeWindow.aid)
+          } else {
+            console.error(gm.error.DOM_PARSE)
+          }
+        },
+
+        /**
+         * 获取视频信息
+         * @param {String} id `aid` 或 `bvid`
+         * @param {'aid' | 'bvid'} [type='bvid'] `id` 类型
+         * @returns {JSON} 视频信息
+         */
+        async getVideoInfo(id, type = 'bvid') {
+          return new Promise(resolve => {
+            GM_xmlhttpRequest({
+              method: 'GET',
+              url: gm.url.api_videoInfo(id, type),
+              onload: function(response) {
+                try {
+                  const info = JSON.parse(response.responseText).data
+                  resolve(info)
+                } catch (e) {
+                  console.error(gm.error.NETWORK)
+                  console.error(e)
+                  resolve()
+                }
+              },
+            })
+          })
+        },
+
+        /**
+         * 在稍后再看模式播放页中获取当前页面对应的 `aid`
+         * @async
+         * @returns {string} `aid`
+         */
+        async getAidInWatchlaterMode() {
+          if (unsafeWindow.aid) {
+            return String(unsafeWindow.aid)
+          }
+
+          const _ = this._
+          try {
+            if (!_.playContainer) {
+              _.playContainer = await webpage.api.wait.waitForConditionPassed({
+                condition: () => {
+                  const app = document.querySelector('#app')
+                  const vueLoad = app && app.__vue__
+                  if (!vueLoad) {
+                    return false
+                  }
+                  const playContainer = app.querySelector('#playContainer')
+                  if (playContainer.__vue__.playId) {
+                    // 等到能获取到 aid 再进入，免得等下处处都要异步处理
+                    return playContainer
+                  }
+                }
+              })
+            }
+          } catch (e) {
+            console.error(gm.error.DOM_PARSE)
+            console.error(e)
+          }
+          return String(_.playContainer.__vue__.playId)
+        },
+
+        /**
+         * 根据 aid 获取视频的稍后再看状态
+         * @async
+         * @param {number} aid AV号
+         * @returns {Promise<boolean>} 视频是否在稍后再看中
+         */
+        async getVideoWatchlaterStatusByAid(aid) {
+          return new Promise(resolve => {
+            GM_xmlhttpRequest({
+              method: 'GET',
+              url: gm.url.api_queryWatchlaterList,
+              onload: function(response) {
+                try {
+                  const json = JSON.parse(response.responseText)
+                  const watchlaterList = json.data.list || []
+                  for (const e of watchlaterList) {
+                    if (aid == e.aid) {
+                      resolve(true)
+                      return
+                    }
+                  }
+                  resolve(false)
+                } catch (e) {
+                  console.error(gm.error.NETWORK)
+                  console.error(e)
+                  resolve(false)
+                }
+              },
+            })
+          })
+        },
+
+        /**
+         * 将视频加如稍后再看，或从稍后再看移除
+         * @async
+         * @param {string} aid 视频 `aid`
+         * @param {boolean} [status=true] 添加 `true` / 移除 `false`
+         * @returns {boolean} 操作是否成功
+         */
+        async switchVideoWatchlaterStatus(aid, status = true) {
+          const data = new FormData()
+          data.append('aid', aid)
+          data.append('csrf', this.getCSRF())
+          return new Promise(resolve => {
+            GM_xmlhttpRequest({
+              method: 'POST',
+              url: status ? gm.url.api_addToWatchlater : gm.url.api_removeFromWatchlater,
+              data: data,
+              onload: function(response) {
+                try {
+                  if (JSON.parse(response.response).code == 0) {
+                    resolve(true)
+                  } else {
+                    resolve(false)
+                  }
+                } catch (e) {
+                  console.error(gm.error.NETWORK)
+                  console.error(e)
+                  resolve(false)
+                }
+              },
+            })
+          })
+        },
+      }
     }
 
     /**
      * 顶栏中加入稍后再看入口
      */
-    fnHeaderButton() {
-      const self = this
-      self.api.wait.executeAfterElementLoaded({
+    addHeaderButton() {
+      const _self = this
+      _self.api.wait.executeAfterElementLoaded({
         selector: '.user-con.signin',
         callback: header => {
           if (header) {
@@ -1353,15 +1577,15 @@
        */
       const processLeftClick = link => {
         // 使用 href 和 target 的方式设置，保留浏览器中键强制新标签页打开的特性
-        const left = getHrefAndTarget(gm.config.headerButtonOpL)
+        const left = getHeaderButtonOpConfig(gm.config.headerButtonOpL)
         link.href = left.href
         link.target = left.target
         switch (gm.config.headerButtonOpL) {
           case Enums.headerButtonOp.openUserSetting:
-            link.onclick = () => self.script.openUserSetting()
+            link.onclick = () => _self.script.openUserSetting()
             break
           case Enums.headerButtonOp.openRemoveHistory:
-            link.onclick = () => self.script.openRemoveHistory()
+            link.onclick = () => _self.script.openRemoveHistory()
             break
         }
       }
@@ -1379,15 +1603,15 @@
             case Enums.headerButtonOp.openListInNew:
             case Enums.headerButtonOp.playAllInCurrent:
             case Enums.headerButtonOp.playAllInNew: {
-              const right = getHrefAndTarget(gm.config.headerButtonOpR)
+              const right = getHeaderButtonOpConfig(gm.config.headerButtonOpR)
               window.open(right.href, right.target)
               break
             }
             case Enums.headerButtonOp.openUserSetting:
-              self.script.openUserSetting()
+              _self.script.openUserSetting()
               break
             case Enums.headerButtonOp.openRemoveHistory:
-              self.script.openRemoveHistory()
+              _self.script.openRemoveHistory()
               break
           }
         }
@@ -1487,14 +1711,14 @@
             }
             // 等待弹出菜单的状态变为“打开”再操作，会比较安全，虽然此时 DOM 上的菜单可能没有真正打开
             // 时间可以给长一点，否则有时候加载得比较慢会 timeout
-            const watchlaterPanelChild = await self.api.wait.waitForElementLoaded({
+            const watchlaterPanelChild = await _self.api.wait.waitForElementLoaded({
               selector: watchlaterPanelChildSelector(true),
               interval: 50,
               timeout: 2000,
             })
             watchlaterPanelChild.parentNode.click()
           } catch (e) {
-            console.error(gm.error.HTML_PARSING)
+            console.error(gm.error.DOM_PARSE)
             console.error(e)
           }
           setMenuArrow()
@@ -1521,7 +1745,7 @@
           this.mouseOver = true
           addHeaderMenuLinkObserver()
           try {
-            const activePanel = await self.api.wait.waitForElementLoaded({
+            const activePanel = await _self.api.wait.waitForElementLoaded({
               selector: activePanelSelector(true),
               interval: 50,
               timeout: 1500,
@@ -1530,7 +1754,7 @@
             if (activeTitle == '稍后再看') {
               if (!collect._activePanel || collect._activeTitle == '稍后再看') {
                 // 一般来说，只有当打开页面后直接通过稍后再看入口打开弹出菜单，然后再将鼠标移动到收藏入口上，才会执行进来
-                const defaultCollectPanelChild = await self.api.wait.waitForElementLoaded({
+                const defaultCollectPanelChild = await _self.api.wait.waitForElementLoaded({
                   selector: defaultCollectPanelChildSelector(true),
                   interval: 50,
                   timeout: 1500,
@@ -1541,7 +1765,7 @@
               collect._activePanel.click()
             }
           } catch (e) {
-            console.error(gm.error.HTML_PARSING)
+            console.error(gm.error.DOM_PARSE)
             console.error(e)
           }
           setMenuArrow()
@@ -1559,29 +1783,49 @@
          * @async
          */
         const addHeaderMenuLinkObserver = async () => {
-          // 目前默认原来是 _blank，如果以后 B 站改成默认 _self，那要反过来
-          if (!menu._addLinkObserver && gm.config.openHeaderMenuLink == Enums.openHeaderMenuLink.openInCurrent) {
-            menu._addLinkObserver = true
-            try {
-              // const target = gm.config.openHeaderMenuLink == enums.openHeaderMenuLink.openInNew ? '_blank' : '_self'
-              const target = '_self'
-              const videoPanel = await self.api.wait.waitForElementLoaded(videoPanelSelector())
-              // 添加一个 ob，在给右边视频面板添加链接时，对其进行处理
-              const ob = new MutationObserver(records => {
-                for (const record of records) {
-                  for (const addedNode of record.addedNodes) {
-                    if (addedNode.nodeName == 'A' && addedNode.target != target) {
-                      addedNode.target = target
+          if (!menu._addLinkObserver) {
+            const openLinkInCurrent = gm.config.openHeaderMenuLink == Enums.openHeaderMenuLink.openInCurrent
+            const autoRemove = gm.config.autoRemove == Enums.autoRemove.openFromList
+            if (openLinkInCurrent || autoRemove) {
+              menu._addLinkObserver = true
+              try {
+                // 目前默认原来是 _blank，如果以后 B 站改成默认 _self，那要反过来
+                // const target = gm.config.openHeaderMenuLink == enums.openHeaderMenuLink.openInNew ? '_blank' : '_self'
+                const videoPanel = await _self.api.wait.waitForElementLoaded(videoPanelSelector())
+                // 添加一个 ob，在给右边视频面板添加链接时，对其进行处理
+                const ob = new MutationObserver(records => {
+                  for (const record of records) {
+                    for (const addedNode of record.addedNodes) {
+                      if (addedNode.nodeName == 'A') {
+                        /** @type {HTMLAnchorElement} */
+                        const link = addedNode
+                        if (openLinkInCurrent && link.target != '_self') {
+                          link.target = '_self'
+                        }
+
+                        if (autoRemove) {
+                          const url = new URL(link.href)
+                          url.searchParams.set(`${gm.id}_remove_from_list`, 'true')
+                          link.href = url.href
+
+                          link.addEventListener('mouseup', function(e) {
+                            // 不能 mousedown，隐藏之后无法触发事件
+                            if (e.button == 0 || e.button == 1) { // 左键或中键
+                              link.style.display = 'none'
+                            }
+                          })
+                        }
+                      }
                     }
                   }
-                }
-                // 不要 observer.disconnect()，需一直监听变化
-              })
-              ob.observe(videoPanel.firstChild, { childList: true })
-            } catch (e) {
-              menu._addLinkObserver = false
-              console.error(gm.error.HTML_PARSING)
-              console.error(e)
+                  // 不要 observer.disconnect()，需一直监听变化
+                })
+                ob.observe(videoPanel.firstChild, { childList: true })
+              } catch (e) {
+                menu._addLinkObserver = false
+                console.error(gm.error.DOM_PARSE)
+                console.error(e)
+              }
             }
           }
         }
@@ -1613,32 +1857,46 @@
         }
       }
 
-      function getHrefAndTarget(op) {
-        let href = ''
-        if (/openList/i.test(op)) {
-          href = gm.url.page_watchlaterList
-        } else if (/playAll/.test(op)) {
-          href = gm.url.page_watchlaterPlayAll
-        } else {
-          href = gm.url.noop
+      /**
+       * 获取入口点击的链接设置
+       * @param {headerButtonOp} op
+       * @returns {{href: string, target: '_self' | '_blank'}}
+       */
+      function getHeaderButtonOpConfig(op) {
+        const result = {}
+        switch (op) {
+          case Enums.headerButtonOp.openListInCurrent:
+          case Enums.headerButtonOp.openListInNew:
+            result.href = gm.url.page_watchlaterList
+            break
+          case Enums.headerButtonOp.playAllInCurrent:
+          case Enums.headerButtonOp.playAllInNew:
+            result.href = gm.url.page_watchlaterPlayAll
+            break
+          case Enums.headerButtonOp.openUserSetting:
+          case Enums.headerButtonOp.openRemoveHistory:
+          case Enums.headerButtonOp.noOperation:
+            result.href = gm.url.noop
+            break
         }
-        let target = ''
-        if (/inCurrent/i.test(op)) {
-          target = '_self'
-        } else if (/inNew/i.test(op)) {
-          target = '_blank'
-        } else {
-          target = '_self'
+        switch (op) {
+          case Enums.headerButtonOp.openListInNew:
+          case Enums.headerButtonOp.playAllInNew:
+            result.target = '_blank'
+            break
+          default:
+            result.target = '_self'
         }
-        return { href, target }
+        return result
       }
     }
 
     /**
-     * 常规播放页加入快速切换稍后再看状态的按钮
+     * 正常模式播放页加入快速切换稍后再看状态的按钮
      */
-    fnVideoButton_Normal() {
-      const self = this
+    addVideoButton_Normal() {
+      const _self = this
+      let bus = {}
 
       /**
        * 继续执行的条件
@@ -1659,10 +1917,9 @@
         }
       }
 
-      self.api.wait.executeAfterConditionPassed({
+      _self.api.wait.executeAfterConditionPassed({
         condition: executeCondition,
         callback: ({ atr, original }) => {
-          const oVue = original.__vue__
           const btn = document.createElement('label')
           btn.id = `${gm.id}-normal-video-btn`
           const cb = document.createElement('input')
@@ -1672,45 +1929,88 @@
           text.innerText = '稍后再看'
           btn.className = 'appeal-text'
           cb.onclick = function() { // 不要附加到 btn 上，否则点击时会执行两次
-            oVue.handler()
-            const checked = !oVue.added
-            // 检测操作是否生效，失败时弹出提示
-            self.api.wait.executeAfterConditionPassed({
-              condition: () => checked === oVue.added,
-              callback: () => { cb.checked = checked },
-              interval: 50,
-              timeout: 500,
-              onTimeout: () => {
-                cb.checked = oVue.added
-                self.api.message.create(checked ? '添加至稍后再看失败' : '从稍后再看移除失败')
-              },
-            })
+            processSwitch()
           }
           btn.appendChild(text)
           atr.appendChild(btn)
+
+          const aid = _self.method.getAidInNormalMode()
+          bus = { ...bus, btn, cb, aid }
+          initButtonStatus()
           original.parentNode.style.display = 'none'
-          setButtonStatus(oVue, cb)
+
+          _self.api.dom.createLocationchangeEvent()
+          window.addEventListener('locationchange', async function() {
+            try {
+              bus.aid = await _self.api.wait.waitForConditionPassed({
+                condition: async () => {
+                  // 要等 aid 跟之前存的不一样，才能说明是切换成功后获取到的 aid
+                  const aid = await _self.method.getAidInWatchlaterMode()
+                  if (aid && aid != bus.aid) {
+                    return aid
+                  }
+                },
+              })
+              gm.searchParams = new URL(location.href).searchParams
+              const removed = await _self.processAutoRemoveInNormalMode()
+              const status = removed ? false : await _self.method.getVideoWatchlaterStatusByAid(bus.aid)
+              btn.added = status
+              cb.checked = status
+            } catch (e) {
+              console.error(gm.error.DOM_PARSE)
+              console.error(e)
+            }
+          })
         },
       })
 
       /**
-       * 设置按钮的稍后再看状态
+       * 初始化按钮的稍后再看状态
        * @async
        */
-      const setButtonStatus = async (oVue, cb) => {
-        const aid = oVue.aid // also unsafeWindow.aid
-        const status = await self.getVideoWatchlaterStatusByAid(aid)
-        oVue.added = status
-        cb.checked = status
+      const initButtonStatus = async () => {
+        const setStatus = async () => {
+          const status = await _self.method.getVideoWatchlaterStatusByAid(bus.aid)
+          bus.btn.added = status
+          bus.cb.checked = status
+        }
+        const alwaysAutoRemove = gm.config.autoRemove == Enums.autoRemove.always
+        const spRemove = gm.searchParams.get(`${gm.id}_remove_from_list`) === 'true'
+        if (!alwaysAutoRemove && !spRemove) {
+          setStatus()
+        }
+        // 如果当前视频应当被移除，那就不必读取状态了
+        // 注意，哪处代码先执行不确定，不过从理论上来说这里应该是会晚执行
+        // 当然，自动移除的操作有可能会失败，但两处代码联动太麻烦了，还会涉及到切换其他视频的问题，综合考虑之下对这种小概率事件不作处理
+      }
+
+      /**
+       * 处理视频状态的切换
+       * @async
+       */
+      const processSwitch = async () => {
+        const btn = bus.btn
+        const cb = bus.cb
+        const note = btn.added ? '从稍后再看移除' : '添加到稍后再看'
+        const success = await _self.method.switchVideoWatchlaterStatus(bus.aid, !btn.added)
+        if (success) {
+          btn.added = !btn.added
+          cb.checked = btn.added
+          _self.api.message.create(note + '成功')
+        } else {
+          cb.checked = btn.added
+          _self.api.message.create(`网络错误，${note}失败`)
+        }
       }
     }
 
     /**
-     * 稍后再看播放页加入快速切换稍后再看状态的按钮
+     * 稍后再看模式播放页加入快速切换稍后再看状态的按钮
      */
-    fnVideoButton_Watchlater() {
-      const self = this
+    addVideoButton_Watchlater() {
+      const _self = this
       let bus = {}
+
       /**
        * 继续执行的条件
        */
@@ -1728,9 +2028,9 @@
         }
       }
 
-      self.api.wait.executeAfterConditionPassed({
+      _self.api.wait.executeAfterConditionPassed({
         condition: executeCondition,
-        callback: playContainer => {
+        callback: async playContainer => {
           const more = playContainer.querySelector('#playContainer .left-container .play-options .play-options-more')
           const btn = document.createElement('label')
           btn.id = `${gm.id}-watchlater-video-btn`
@@ -1751,30 +2051,31 @@
           }
           gmContainer.appendChild(btn)
 
-          btn.added = true
-          cb.checked = true // 第一次打开时，默认在稍后再看中
-          const csrf = getCsrf()
-          cb.onclick = () => executeSwitch() // 不要附加到 btn 上，否则点击时会执行两次
-          bus = { ...bus, playContainer, btn, cb, csrf }
-          bus.aid = getAid()
+          cb.onclick = () => processSwitch() // 不要附加到 btn 上，否则点击时会执行两次
+          bus = { ...bus, btn, cb }
+          bus.aid = await _self.method.getAidInWatchlaterMode()
+          initButtonStatus()
 
           // 切换视频时的处理
-          createLocationchangeEvent()
+          _self.api.dom.createLocationchangeEvent()
           window.addEventListener('locationchange', async function() {
             try {
-              bus.aid = await self.api.wait.waitForConditionPassed({
-                condition: () => {
-                  const aid = getAid()
+              bus.aid = await _self.api.wait.waitForConditionPassed({
+                condition: async () => {
+                  // 要等 aid 跟之前存的不一样，才能说明是切换成功后获取到的 aid
+                  const aid = await _self.method.getAidInWatchlaterMode()
                   if (aid && aid != bus.aid) {
                     return aid
                   }
                 },
               })
-              const status = await self.getVideoWatchlaterStatusByAid(bus.aid)
+              gm.searchParams = new URL(location.href).searchParams
+              const removed = await _self.processAutoRemoveInWatchlaterMode()
+              const status = removed ? false : await _self.method.getVideoWatchlaterStatusByAid(bus.aid)
               btn.added = status
               cb.checked = status
             } catch (e) {
-              console.error(gm.error.HTML_PARSING)
+              console.error(gm.error.DOM_PARSE)
               console.error(e)
             }
           })
@@ -1782,128 +2083,84 @@
       })
 
       /**
-       * 处理视频状态的切换
+       * 初始化按钮的稍后再看状态
+       * @async
        */
-      const executeSwitch = () => {
+      const initButtonStatus = async () => {
+        const setStatus = () => {
+          // 既然是稍后再看播放模式，那就默认视频在稍后再看中
+          bus.btn.added = true
+          bus.cb.checked = true
+        }
+
+        const alwaysAutoRemove = gm.config.autoRemove == Enums.autoRemove.always
+        const spRemove = gm.searchParams.get(`${gm.id}_remove_from_list`) === 'true'
+        if (!alwaysAutoRemove && !spRemove) {
+          setStatus()
+        } else {
+          const _self = this
+          let aid
+          const spBvid = gm.searchParams.get(`${gm.id}_bvid`)
+          if (spBvid) {
+            // 如果查询参数上存在 bvid，要作进一步处理
+            try {
+              const info = await _self.method.getVideoInfo(spBvid)
+              aid = String(info.aid)
+              // 必须要等到页面上的 aid 与之完全一致才行，那样说明已经切换到正确的视频上，然后再进行处理
+              await _self.api.wait.waitForConditionPassed({
+                condition: async () => {
+                  const currentAid = await _self.method.getAidInWatchlaterMode()
+                  if (aid == currentAid) {
+                    return aid
+                  }
+                },
+              })
+            } catch (e) {
+              console.error(gm.error.NETWORK)
+              console.error(e)
+              // 说明当前播放视频并非所寻的与 spBvid 对应的视频，则继续处理
+              setStatus()
+            }
+          }
+        }
+
+
+
+        // 如果当前视频应当被移除，那就不必读取状态了
+        // 注意，哪处代码先执行不确定，不过从理论上来说这里应该是会晚执行
+        // 当然，自动移除的操作有可能会失败，但两处代码联动太麻烦了，还会涉及到切换其他视频的问题，综合考虑之下对这种小概率事件不作处理
+      }
+
+      /**
+       * 处理视频状态的切换
+       * @async
+       */
+      const processSwitch = async () => {
         const btn = bus.btn
         const cb = bus.cb
-        bus.aid = getAid()
+        bus.aid = await _self.method.getAidInWatchlaterMode()
         if (!bus.aid) {
           cb.checked = btn.added
-          self.api.message.create('网络错误，操作失败')
+          _self.api.message.create('网络错误，操作失败')
           return
         }
-        const data = new FormData()
-        data.append('aid', bus.aid)
-        data.append('csrf', bus.csrf)
-        GM_xmlhttpRequest({
-          method: 'POST',
-          url: btn.added ? gm.url.api_removeFromWatchlater : gm.url.api_addToWatchlater,
-          data: data,
-          onload: function(response) {
-            try {
-              const note = btn.added ? '从稍后再看移除' : '添加到稍后再看'
-              if (JSON.parse(response.response).code == 0) {
-                btn.added = !btn.added
-                cb.checked = btn.added
-                self.api.message.create(note + '成功')
-              } else {
-                cb.checked = btn.added
-                self.api.message.create(`网络错误，${note}失败`)
-              }
-            } catch (e) {
-              console.error(gm.error.NETWORK)
-              console.error(e)
-            }
-          }
-        })
-      }
-
-      /**
-       * 获取 CSRF
-       */
-      const getCsrf = () => {
-        let cookies = document.cookie.split('; ')
-        cookies = cookies.reduce((prev, val) => {
-          const parts = val.split('=')
-          const key = parts[0]
-          const value = parts[1]
-          prev[key] = value
-          return prev
-        }, {})
-        const csrf = cookies.bili_jct
-        return csrf
-      }
-
-      /**
-       * 获取当前页面对应的 aid
-       */
-      const getAid = () => {
-        return unsafeWindow.aid || bus.playContainer.__vue__.playId
-      }
-
-      /**
-       * 创建 locationchange 事件
-       * @see {@link https://stackoverflow.com/a/52809105 How to detect if URL has changed after hash in JavaScript}
-       */
-      const createLocationchangeEvent = () => {
-        if (!unsafeWindow._createLocationchangeEvent) {
-          history.pushState = (f => function pushState() {
-            const ret = f.apply(this, arguments)
-            window.dispatchEvent(new Event('pushstate'))
-            window.dispatchEvent(new Event('locationchange'))
-            return ret
-          })(history.pushState)
-          history.replaceState = (f => function replaceState() {
-            const ret = f.apply(this, arguments)
-            window.dispatchEvent(new Event('replacestate'))
-            window.dispatchEvent(new Event('locationchange'))
-            return ret
-          })(history.replaceState)
-          window.addEventListener('popstate', () => {
-            window.dispatchEvent(new Event('locationchange'))
-          })
-          unsafeWindow._createLocationchangeEvent = true
+        const note = btn.added ? '从稍后再看移除' : '添加到稍后再看'
+        const success = await _self.method.switchVideoWatchlaterStatus(bus.aid, !btn.added)
+        if (success) {
+          btn.added = !btn.added
+          cb.checked = btn.added
+          _self.api.message.create(note + '成功')
+        } else {
+          cb.checked = btn.added
+          _self.api.message.create(`网络错误，${note}失败`)
         }
       }
-    }
-
-    /**
-     * 根据 aid 获取视频的稍后再看状态
-     * @async
-     * @param {number} aid AV号
-     * @returns {Promise<boolean>} 视频是否在稍后再看中
-     */
-    async getVideoWatchlaterStatusByAid(aid) {
-      // oVue.added 第一次取到的值总是 false，从页面无法获取到该视频是否已经在稍后再看列表中，需要使用API查询
-      return new Promise(resolve => {
-        GM_xmlhttpRequest({
-          method: 'GET',
-          url: gm.url.api_queryWatchlaterList,
-          onload: function(response) {
-            try {
-              const json = JSON.parse(response.responseText)
-              const watchlaterList = json.data.list || []
-              for (const e of watchlaterList) {
-                if (aid == e.aid) {
-                  resolve(true)
-                  return
-                }
-              }
-              resolve(false)
-            } catch (e) {
-              console.error(gm.error.NETWORK)
-              console.error(e)
-            }
-          }
-        })
-      })
     }
 
     /**
      * 处理列表页面点击视频时的行为
      */
-    fnOpenListVideo() {
+    processOpenListVideo() {
       if (gm.config.openListVideo == Enums.openListVideo.openInNew) {
         // 如果列表页面在新标签页打开视频
         const base = document.head.appendChild(document.createElement('base'))
@@ -1913,21 +2170,21 @@
     }
 
     /**
-     * 避免在当前列表非最新的情况下，点击链接打开 A 视频，却实际打开 B 视频的情况
+     * 对稍后再看列表页面的链接进行处理
      * @async
      */
-    async fnForceConsistentVideo() {
-      const self = this
+    async processWatchlaterListLink() {
+      const _self = this
       try {
-        const watchLaterList = await self.api.wait.waitForElementLoaded('.watch-later-list')
+        const watchLaterList = await _self.api.wait.waitForElementLoaded('.watch-later-list')
         let ob = new MutationObserver(async (records, observer) => {
           for (const record of records) {
             for (const addedNode of record.addedNodes) {
               if (addedNode.className == 'list-box') {
                 let watchlaterListData = gm.data.watchlaterListData
-                if (!watchlaterListData) {
-                  try {
-                    watchlaterListData = await self.api.wait.waitForConditionPassed({
+                if (gm.config.forceConsistentVideo) {
+                  if (!watchlaterListData) {
+                    watchlaterListData = await _self.api.wait.waitForConditionPassed({
                       condition: () => {
                         if (gm.data.watchlaterListData) {
                           return gm.data.watchlaterListData
@@ -1936,9 +2193,6 @@
                       interval: 50,
                       timeout: 2000,
                     })
-                  } catch (e) {
-                    console.error(gm.error.HTML_PARSING)
-                    console.error(e)
                   }
                 }
                 const listBox = addedNode
@@ -1946,14 +2200,13 @@
                 for (let i = 0; i < list.length; i++) {
                   const links = list[i].querySelectorAll('a:not([class=user])') // 排除 .user，那是指向 UP 主的链接
                   for (const link of links) {
-                    if (gm.config.redirect) {
-                      link.href = gm.url.page_videoNormalMode + '/' + watchlaterListData[i].bvid
-                    } else {
-                      const url = new URL(link.href)
-                      url.searchParams.set(`${gm.id}_bvid`, watchlaterListData[i].bvid)
-                      link.href = url.href
+                    if (gm.config.forceConsistentVideo) {
+                      processLink_forceConsistentVideo(link, watchlaterListData[i])
                     }
-                    link._bvlink = link.href
+                    if (gm.config.autoRemove != Enums.autoRemove.never) {
+                      processLink_autoRemove(link)
+                    }
+                    link._processedLink = link.href
                   }
                 }
                 observer.disconnect()
@@ -1967,7 +2220,7 @@
                   observer.disconnect() // 先把 ob 停一下，不然你自己改的时候也会被监听到，死循环了
                   for (const record of records) {
                     if (record.target.nodeName == 'A' && record.attributeName == 'href') {
-                      record.target.href = record.target._bvlink
+                      record.target.href = record.target._processedLink
                     }
                   }
                   observer.observe(listBox.firstChild, obCfg) // 继续
@@ -1980,8 +2233,65 @@
         })
         ob.observe(watchLaterList, { childList: true })
       } catch (e) {
-        console.error(gm.error.HTML_PARSING)
+        console.error(gm.error.DOM_PARSE)
         console.error()
+      }
+
+      /**
+       * 根据 `forceConsistentVideo` 处理链接
+       * @param {HTMLAnchorElement} link 链接元素
+       * @param {GMObject_data_item} itemData 对应项数据
+       */
+      const processLink_forceConsistentVideo = (link, itemData) => {
+        if (gm.config.redirect) {
+          link.href = gm.url.page_videoNormalMode + '/' + itemData.bvid
+        } else {
+          const url = new URL(link.href)
+          url.searchParams.set(`${gm.id}_bvid`, itemData.bvid)
+          link.href = url.href
+        }
+      }
+
+      /**
+       * 根据 `autoRemove` 处理链接
+       * @param {HTMLAnchorElement} link 链接元素
+       */
+      const processLink_autoRemove = link => {
+        if (gm.config.autoRemove == Enums.autoRemove.openFromList) {
+          const url = new URL(link.href)
+          url.searchParams.set(`${gm.id}_remove_from_list`, 'true')
+          link.href = url.href
+        }
+
+        let base = link
+        while (base.className.split(' ').indexOf('av-item') < 0) {
+          base = base.parentNode
+          if (!base) {
+            console.error(gm.error.DOM_PARSE)
+            return
+          }
+        }
+        link.addEventListener('mouseup', function(e) {
+          // 不能 mousedown，隐藏之后无法触发事件
+          if (e.button == 0 || e.button == 1) { // 左键或中键
+            base.style.display = 'none'
+          }
+        })
+      }
+    }
+
+    /**
+     * 根据 URL 上的查询参数作进一步处理
+     */
+    processSearchParams() {
+      const _self = this
+      if (urlMatch(gm.regex.page_videoNormalMode)) {
+        // 播放页面（正常模式）
+        _self.processAutoRemoveInNormalMode()
+      } else if (urlMatch(gm.regex.page_videoWatchlaterMode)) {
+        // 播放页面（稍后再看模式）
+        _self.forceConsistentVideoInWatchlaterMode()
+        _self.processAutoRemoveInWatchlaterMode()
       }
     }
 
@@ -1989,22 +2299,101 @@
      * 对于稍后再看模式播放页，根据 URL 上的查询参数，强制切换到准确的视频上
      */
     async forceConsistentVideoInWatchlaterMode() {
-      const self = this
-      const paramBvid = gm.searchParams.get(`${gm.id}_bvid`)
-      if (paramBvid) {
+      const _self = this
+      const spBvid = gm.searchParams.get(`${gm.id}_bvid`)
+      if (spBvid) {
         try {
-          const playlist = await self.api.wait.waitForElementLoaded('.player-auxiliary-collapse-playlist')
-          const targetItem = await self.api.wait.waitForElementLoaded(`[data-bvid=${paramBvid}]`, playlist)
+          const playlist = await _self.api.wait.waitForElementLoaded('.player-auxiliary-collapse-playlist')
+          const targetItem = await _self.api.wait.waitForElementLoaded(`[data-bvid=${spBvid}]`, playlist)
           const itemImg = targetItem.querySelector('.player-auxiliary-playlist-item-img')
           const playingImg = itemImg.querySelector('.player-auxiliary-playlist-item-img-playing')
           if (getComputedStyle(playingImg).display == 'none') {
             itemImg.click()
           }
         } catch (e) {
-          console.error(gm.error.HTML_PARSING)
+          console.error(gm.error.DOM_PARSE)
           console.error(e)
         }
       }
+    }
+
+    /**
+     * 对于正常模式播放页，根据用户配置或 URL 上的查询参数，将视频从稍后再看移除
+     * @async
+     * @returns {boolean} 执行后视频是否已经不在稍后再看中（可能是在本方法内被移除，也可能是本身就不在）
+     */
+    async processAutoRemoveInNormalMode() {
+      const alwaysAutoRemove = gm.config.autoRemove == Enums.autoRemove.always
+      const spRemove = gm.searchParams.get(`${gm.id}_remove_from_list`) === 'true'
+      if (alwaysAutoRemove || spRemove) {
+        const _self = this
+        const aid = _self.method.getAidInNormalMode()
+        if (alwaysAutoRemove) { // 如果总是自动移除，要检查视频是否已经在稍后再看中，确定在再移除
+          const status = await _self.method.getVideoWatchlaterStatusByAid(aid)
+          if (!status) {
+            return true
+          }
+        }
+        const success = await _self.method.switchVideoWatchlaterStatus(aid, false)
+        if (!success) {
+          _self.api.message.create('从稍后再看移除失败')
+        }
+        return success
+      }
+      return false
+    }
+
+    /**
+     * 对于稍后再看模式播放页，根据用户配置或 URL 上的查询参数，将视频从稍后再看移除
+     * @async
+     * @returns {boolean} 执行后视频是否已经不在稍后再看中（可能是在本方法内被移除，也可能是本身就不在）
+     */
+    async processAutoRemoveInWatchlaterMode() {
+      const alwaysAutoRemove = gm.config.autoRemove == Enums.autoRemove.always
+      const spRemove = gm.searchParams.get(`${gm.id}_remove_from_list`) === 'true'
+      if (alwaysAutoRemove || spRemove) {
+        const _self = this
+        let aid
+        const spBvid = gm.searchParams.get(`${gm.id}_bvid`)
+        if (spBvid) {
+          // 如果查询参数上存在 bvid，要作进一步处理
+          try {
+            const info = await _self.method.getVideoInfo(spBvid)
+            aid = String(info.aid)
+            // 必须要等到页面上的 aid 与之完全一致才行，那样说明已经切换到正确的视频上
+            // 否则，先将视频移除出稍后再看，那么根本就无法在稍后再看模式中观看该视频
+            await _self.api.wait.waitForConditionPassed({
+              condition: async () => {
+                const currentAid = await _self.method.getAidInWatchlaterMode()
+                if (aid == currentAid) {
+                  return aid
+                }
+              },
+            })
+          } catch (e) {
+            console.error(gm.error.NETWORK)
+            console.error(e)
+            return false
+          }
+        }
+        if (!aid) {
+          aid = await _self.method.getAidInWatchlaterMode()
+        }
+
+        if (alwaysAutoRemove) { // 如果总是自动移除，要检查视频是否已经在稍后再看中，确定在再移除
+          // 尽管从理论上来说，稍后再看模式中的视频必然是在稍后再看中的，但由于本脚本的功能，未必如此，还是要检查一遍
+          const status = await _self.method.getVideoWatchlaterStatusByAid(aid)
+          if (!status) {
+            return true
+          }
+        }
+        const success = await _self.method.switchVideoWatchlaterStatus(aid, false)
+        if (!success) {
+          _self.api.message.create('从稍后再看移除失败')
+        }
+        return success
+      }
+      return false
     }
 
     /**
@@ -2034,7 +2423,7 @@
             console.error(gm.error.NETWORK)
             console.error(e)
           }
-        }
+        },
       })
     }
 
@@ -2043,20 +2432,20 @@
      * @async
      */
     async adjustWatchlaterListUI() {
-      const self = this
-      const r_con = await self.api.wait.waitForElementLoaded('.watch-later-list.bili-wrapper header .r-con')
+      const _self = this
+      const r_con = await _self.api.wait.waitForElementLoaded('.watch-later-list.bili-wrapper header .r-con')
       if (gm.config.removeHistory) {
         // 在列表页面加入“移除记录”
         const removeHistoryButton = r_con.appendChild(document.createElement('div'))
         removeHistoryButton.innerText = '移除记录'
         removeHistoryButton.className = 's-btn'
-        removeHistoryButton.onclick = () => self.script.openRemoveHistory() // 要避免 MouseEvent 的传递
+        removeHistoryButton.onclick = () => _self.script.openRemoveHistory() // 要避免 MouseEvent 的传递
       }
       // 在列表页面加如“增强设置”
       const plusButton = r_con.appendChild(document.createElement('div'))
       plusButton.innerText = '增强设置'
       plusButton.className = 's-btn'
-      plusButton.onclick = () => self.script.openUserSetting() // 要避免 MouseEvent 的传递
+      plusButton.onclick = () => _self.script.openUserSetting() // 要避免 MouseEvent 的传递
       // 移除“一键清空”按钮
       if (gm.config.removeButton_removeAll) {
         r_con.children[1].style.display = 'none'
@@ -2077,24 +2466,27 @@
           // 目前在不借助 JavaScript 的情况下，无法完美实现类似于移动端滚动条浮动在内容上的效果。
           menuScrollbarStyle = `
 [role=tooltip] ::-webkit-scrollbar,
-#app > .out-container > .container::-webkit-scrollbar {
+#app>.out-container>.container::-webkit-scrollbar {
   width: 6px;
   height: 6px;
   background-color: #00000000;
 }
+
 [role=tooltip] ::-webkit-scrollbar-thumb,
-#app > .out-container > .container::-webkit-scrollbar-thumb {
+#app>.out-container>.container::-webkit-scrollbar-thumb {
   border-radius: 3px;
   background-color: #00000000;
 }
+
 [role=tooltip] :hover::-webkit-scrollbar-thumb,
-#app > .out-container > .container:hover::-webkit-scrollbar-thumb {
+#app>.out-container>.container:hover::-webkit-scrollbar-thumb {
   border-radius: 3px;
   background-color: #0000002b;
 }
+
 [role=tooltip] ::-webkit-scrollbar-corner,
-#app > .out-container > .container::-webkit-scrollbar-corner {
-background-color: #00000000;
+#app>.out-container>.container::-webkit-scrollbar-corner {
+  background-color: #00000000;
 }
         `
           break
@@ -2134,6 +2526,7 @@ background-color: #00000000;
   z-index: 10000;
   user-select: none;
 }
+
 #${gm.id} .gm-setting #gm-setting-page {
   background-color: #ffffff;
   border-radius: 10px;
@@ -2142,23 +2535,30 @@ background-color: #00000000;
   padding: 1em 1.4em;
   transition: top 100ms, left 100ms;
 }
+
 #${gm.id} .gm-setting #gm-maintitle {
   cursor: pointer;
 }
 #${gm.id} .gm-setting #gm-maintitle:hover {
   color: #0075FF;
 }
+
 #${gm.id} .gm-setting .gm-items {
-  margin: 0 2.2em;
+  margin: 0 0.4em;
+  padding: 0 1.6em 0 1.8em;
   font-size: 1.2em;
+  max-height: 66vh;
+  overflow-y: auto;
 }
+
 #${gm.id} .gm-setting .gm-item {
   display: block;
-  padding: 0.6em;
+  padding: 0.5em;
 }
 #${gm.id} .gm-setting .gm-item:hover {
 color: #0075FF;
 }
+
 #${gm.id} .gm-setting .gm-subitem {
   display: block;
   margin-left: 6em;
@@ -2170,6 +2570,7 @@ color: #0075FF;
 #${gm.id} .gm-setting .gm-subitem:hover:not([disabled]) {
   color: #0075FF;
 }
+
 #${gm.id} .gm-setting .gm-hint-option {
   font-size: 0.8em;
   color: gray;
@@ -2184,6 +2585,7 @@ color: #0075FF;
   color: gray;
   cursor: not-allowed;
 }
+
 #${gm.id} .gm-setting input[type=checkbox] {
   vertical-align: middle;
   margin: 3px 0 0 10px;
@@ -2197,14 +2599,17 @@ color: #0075FF;
   padding: 0 0.2em;
   margin-right: -0.2em;
 }
+
 #${gm.id} .gm-setting select {
   border-width: 0 0 1px 0;
   cursor: pointer;
 }
+
 #${gm.id} .gm-setting .gm-information {
   margin: 0 0.2em;
   cursor: pointer;
 }
+
 #${gm.id} .gm-setting .gm-warning {
   position: absolute;
   right: 1.4em;
@@ -2216,10 +2621,12 @@ color: #0075FF;
   display: none;
   cursor: pointer;
 }
+
 #${gm.id} .gm-setting .gm-bottom {
-  margin: 0.8em 2em 1.5em 2em;
+  margin: 1.4em 2em 1em 2em;
   text-align: center;
 }
+
 #${gm.id} .gm-setting .gm-bottom button {
   font-size: 1em;
   padding: 0.3em 1em;
@@ -2246,6 +2653,7 @@ color: #0075FF;
   z-index: 10000;
   user-select: none;
 }
+
 #${gm.id} .gm-history .gm-history-page {
   background-color: #ffffff;
   border-radius: 10px;
@@ -2256,6 +2664,7 @@ color: #0075FF;
   min-height: 50em;
   transition: top 100ms, left 100ms;
 }
+
 #${gm.id} .gm-history .gm-comment {
   margin: 0 2em;
   color: gray;
@@ -2272,6 +2681,7 @@ color: #0075FF;
   width: 3em;
   border-width: 0 0 1px 0;
 }
+
 #${gm.id} .gm-history .gm-content {
   margin: 1.6em 0.2em 2em 0.2em;
   padding: 0 1.8em;
@@ -2288,22 +2698,6 @@ color: #0075FF;
   transition: opacity ${gm.const.textFadeTime}ms ease-in-out;
   user-select: text;
 }
-#${gm.id} .gm-history .gm-content::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
-  background-color: #00000000;
-}
-#${gm.id} .gm-history .gm-content::-webkit-scrollbar-thumb {
-  border-radius: 3px;
-  background-color: #00000000;
-}
-#${gm.id} .gm-history .gm-content:hover::-webkit-scrollbar-thumb {
-  border-radius: 3px;
-  background-color: #0000002b;
-}
-#${gm.id} .gm-history .gm-content::-webkit-scrollbar-corner {
-background-color: #00000000;
-}
 #${gm.id} .gm-history .gm-content > div:hover {
   font-weight: bold;
 }
@@ -2316,14 +2710,16 @@ background-color: #00000000;
   color: #cfcfcf;
   cursor: pointer;
 }
+
 #${gm.id} #gm-changelog {
-position: absolute;
-right: 0;
-bottom: 1.8em;
-margin: 1em 1.6em;
-color: #cfcfcf;
-cursor: pointer;
+  position: absolute;
+  right: 0;
+  bottom: 1.8em;
+  margin: 1em 1.6em;
+  color: #cfcfcf;
+  cursor: pointer;
 }
+
 #${gm.id} #gm-reset:hover,
 #${gm.id} #gm-changelog:hover {
   color: #666666;
@@ -2357,10 +2753,12 @@ cursor: pointer;
 #${gm.id} label {
   cursor: pointer;
 }
+
 #${gm.id} input,
 #${gm.id} select {
   color: black;
 }
+
 #${gm.id} a {
 color: #0075FF
 }
@@ -2399,7 +2797,27 @@ color: #551a8b
   transition: opacity ${gm.const.fadeTime}ms ease-in-out;
   user-select: none;
 }
-    `)
+
+#${gm.id} .gm-setting .gm-items::-webkit-scrollbar,
+#${gm.id} .gm-history .gm-content::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+  background-color: #00000000;
+}
+#${gm.id} .gm-history .gm-content::-webkit-scrollbar-thumb {
+  border-radius: 3px;
+  background-color: #00000000;
+}
+#${gm.id} .gm-setting .gm-items::-webkit-scrollbar-thumb,
+#${gm.id} .gm-history .gm-content:hover::-webkit-scrollbar-thumb {
+  border-radius: 3px;
+  background-color: #0000002b;
+}
+#${gm.id} .gm-setting .gm-items::-webkit-scrollbar-corner,
+#${gm.id} .gm-history .gm-content::-webkit-scrollbar-corner {
+  background-color: #00000000;
+}
+      `)
     }
   }
 
@@ -2409,7 +2827,33 @@ color: #551a8b
   class API {
     constructor() {
       const api = this
+      /** DOM 相关 */
       this.dom = {
+        /**
+         * 创建 locationchange 事件
+         * @see {@link https://stackoverflow.com/a/52809105 How to detect if URL has changed after hash in JavaScript}
+         */
+        createLocationchangeEvent() {
+          if (!unsafeWindow._createLocationchangeEvent) {
+            history.pushState = (f => function pushState() {
+              const ret = f.apply(this, arguments)
+              window.dispatchEvent(new Event('pushstate'))
+              window.dispatchEvent(new Event('locationchange'))
+              return ret
+            })(history.pushState)
+            history.replaceState = (f => function replaceState() {
+              const ret = f.apply(this, arguments)
+              window.dispatchEvent(new Event('replacestate'))
+              window.dispatchEvent(new Event('locationchange'))
+              return ret
+            })(history.replaceState)
+            window.addEventListener('popstate', () => {
+              window.dispatchEvent(new Event('locationchange'))
+            })
+            unsafeWindow._createLocationchangeEvent = true
+          }
+        },
+
         /**
          * 将一个元素绝对居中
          * 
@@ -2490,6 +2934,7 @@ color: #551a8b
           }
         },
       }
+      /** 信息通知相关 */
       this.message = {
         /**
          * 创建信息
@@ -2572,7 +3017,7 @@ color: #551a8b
           }
           config = { ...defaultConfig, ...config }
 
-          const self = this
+          const _self = this
           el.show = false
           el.onmouseenter = function() {
             const htmlMsg = `
@@ -2581,7 +3026,7 @@ color: #551a8b
   <td>${msg}</td>
 </tr></table>
 `
-            this.msgbox = self.create(htmlMsg, { ...config, html: true, autoClose: false })
+            this.msgbox = _self.create(htmlMsg, { ...config, html: true, autoClose: false })
 
             // 可能信息框刚好生成覆盖在 elWarning 上，需要做一个处理
             this.msgbox.onmouseenter = function() {
@@ -2589,19 +3034,20 @@ color: #551a8b
             }
             // 从信息框出来也会关闭信息框，防止覆盖的情况下无法关闭
             this.msgbox.onmouseleave = function() {
-              self.close(this)
+              _self.close(this)
             }
           }
           el.onmouseleave = function() {
             setTimeout(() => {
               if (this.msgbox && !this.msgbox.mouseOver) {
                 this.msgbox.onmouseleave = null
-                self.close(this.msgbox)
+                _self.close(this.msgbox)
               }
             })
           }
         },
       }
+      /** 用于等待元素加载/条件达成再执行操作 */
       this.wait = {
         /**
          * 在条件满足后执行操作
@@ -2644,9 +3090,9 @@ color: #551a8b
           let tid
           let cnt = 0
           const maxCnt = (options.timeout - options.timePadding) / options.interval
-          const task = () => {
-            const result = options.condition()
-            const stopResult = options.stopCondition && options.stopCondition()
+          const task = async () => {
+            const result = await options.condition()
+            const stopResult = options.stopCondition && await options.stopCondition()
             if (stopResult) {
               clearInterval(tid)
               options.onStop && options.onStop.call(options)
