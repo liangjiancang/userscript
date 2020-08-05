@@ -1,11 +1,12 @@
 // ==UserScript==
 // @id              BilibiliCover@Laster2800
 // @name            B站封面获取
-// @version         4.5.3.20200731
+// @version         4.5.4.20200805
 // @namespace       laster2800
 // @author          Laster2800
 // @description     B站视频播放页（普通模式、稍后再看模式）、番剧播放页、直播间添加获取封面的按钮
 // @icon            https://www.bilibili.com/favicon.ico
+// @license         LGPL-3.0
 // @include         *://www.bilibili.com/video/*
 // @include         *://www.bilibili.com/bangumi/play/*
 // @include         *://www.bilibili.com/medialist/play/watchlater
