@@ -1,7 +1,7 @@
 // ==UserScript==
 // @id              BilibiliWatchlaterPlus@Laster2800
 // @name            B站稍后再看功能增强
-// @version         4.0.1.20200806
+// @version         4.0.2.20200806
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -151,7 +151,7 @@
     },
     url: {
       api_queryWatchlaterList: 'https://api.bilibili.com/x/v2/history/toview/web?jsonp=jsonp',
-      api_videoInfo: (id, type) => `http://api.bilibili.com/x/web-interface/view?${type}=${id}`,
+      api_videoInfo: (id, type) => `https://api.bilibili.com/x/web-interface/view?${type}=${id}`,
       page_videoNormalMode: 'https://www.bilibili.com/video',
       page_watchlaterList: 'https://www.bilibili.com/watchlater/#/list',
     },
