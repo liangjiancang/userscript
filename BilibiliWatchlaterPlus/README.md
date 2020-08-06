@@ -8,7 +8,9 @@
 
 1. 脚本包含 [B站“稍后再看”重定向](https://greasyfork.org/zh-CN/scripts/383441) 的功能，请勿重复安装。
 
-2. 基于 Microsoft Edge 开发，在 Google Chrome 可能会出现一些小问题，请提供反馈。
+2. 来都来了，不妨试一下 [B站封面获取](https://greasyfork.org/zh-CN/scripts/395575)，支持播放页、番剧、直播间封面的预览和获取，绝对是目前最好的B站封面脚本，之一💔。
+
+3. 基于 Microsoft Edge 开发，在 Google Chrome 可能会出现一些小问题，请提供反馈。
 
 ## 截图
 
