@@ -1,7 +1,7 @@
 // ==UserScript==
 // @id              BilibiliWatchlaterPlus@Laster2800
 // @name            B站稍后再看功能增强
-// @version         4.0.2.20200806
+// @version         4.0.3.20200806
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -2521,6 +2521,7 @@
 
 #${gm.id} .gm-setting {
   font-size: 12px;
+  line-height: normal;
   transition: opacity ${gm.const.fadeTime}ms ease-in-out;
   opacity: 0;
   display: none;
@@ -2649,6 +2650,8 @@ color: #0075FF;
 }
 
 #${gm.id} .gm-history {
+  font-size: 12px;
+  line-height: normal;
   transition: opacity ${gm.const.fadeTime}ms ease-in-out;
   opacity: 0;
   display: none;
