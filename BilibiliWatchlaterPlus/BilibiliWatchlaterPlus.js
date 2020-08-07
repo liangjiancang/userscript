@@ -1,7 +1,7 @@
 // ==UserScript==
 // @id              BilibiliWatchlaterPlus@Laster2800
 // @name            B站稍后再看功能增强
-// @version         4.0.3.20200806
+// @version         4.0.4.20200807
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -469,7 +469,7 @@
       gm.error = {
         ...gm.error,
         DOM_PARSE: `DOM解析错误。大部分情况下是由于网络加载速度不足造成的，不影响脚本工作；否则就是B站网页改版，请联系脚本作者修改：${GM_info.script.supportURL}`,
-        NETWORK: `网络连接错误，有可能是网络加载速度不足或者 B 站后台 API 修改。不排除是脚本内部数据出错造成的，初始化脚本或清空列表页面数据也许能解决问题。无法解决请联系脚本作者：${GM_info.script.supportURL}`,
+        NETWORK: `网络连接错误，出现这个问题有可能是因为网络加载速度不足或者B站后台API被改动。也不排除是脚本内部数据出错造成的，初始化脚本或清空列表页面数据也许能解决问题。无法解决请联系脚本作者：${GM_info.script.supportURL}`,
       }
     }
 
