@@ -1,7 +1,7 @@
 // ==UserScript==
 // @id              BilibiliWatchlaterPlus@Laster2800
 // @name            B站稍后再看功能增强
-// @version         4.0.4.20200807
+// @version         4.1.0.20200814
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -68,17 +68,26 @@
   /**
    * @callback removeHistoryData 通过懒加载方式获取 `removeHistoryData`
    * @param {boolean} [remove] 是否将 `removeHistoryData` 移除
-   * @returns {PushQueue} `removeHistoryData`
+   * @returns {PushQueue<GMObject_data_list>} `removeHistoryData`
    */
   /**
-   * @typedef GMObject_data
-   * @property {removeHistoryData} removeHistoryData 为生成移除记录而保存的列表页面数据
-   * @property {GMObject_data_item[]} watchlaterListData 当前列表页面的数据
+   * @async
+   * @callback watchlaterListData 通过懒加载方式获取当前稍后再看列表数据
+   * @param {boolean} [reload] 是否重新加载稍后再看列表数据
+   * @returns {Promise<GMObject_data_list>} 当前稍后再看数据
+   */
+  /**
+   * @typedef {GMObject_data_item[]} GMObject_data_list
    */
   /**
    * @typedef GMObject_data_item
    * @property {string} title 视频标题
    * @property {string} bvid 视频 `bvid`
+   */
+  /**
+   * @typedef GMObject_data
+   * @property {removeHistoryData} removeHistoryData 为生成移除记录而保存的稍后再看数据
+   * @property {watchlaterListData} watchlaterListData 当前稍后再看数据
    */
   /**
    * @callback api_videoInfo
@@ -108,11 +117,11 @@
    */
   /**
    * @typedef GMObject_const
-   * @property {number} rhsMin 列表页面数据最小保存次数
-   * @property {number} rhsMax 列表页面数据最大保存次数
-   * @property {number} defaultRhs 列表页面数据的默认保存次数
+   * @property {number} rhsMin 稍后再看数据最小保存次数
+   * @property {number} rhsMax 稍后再看数据最大保存次数
+   * @property {number} defaultRhs 稍后再看数据的默认保存次数
    * @property {number} defaultRhst 默认历史回溯深度
-   * @property {number} rhsWarning 列表页面数据保存数警告线
+   * @property {number} rhsWarning 稍后再看数据保存数警告线
    * @property {number} fadeTime UI 渐变时间
    * @property {number} textFadeTime 文字渐变时间
    * @property {number} messageTime 默认信息显示时间
@@ -246,7 +255,7 @@
       // 列表页面
       webpage.processOpenListVideo()
       webpage.adjustWatchlaterListUI()
-      if (gm.config.removeHistory || gm.config.forceConsistentVideo) {
+      if (gm.config.removeHistory) {
         webpage.saveWatchlaterListData()
       }
       if (gm.config.forceConsistentVideo || gm.config.autoRemove != Enums.autoRemove.never) {
@@ -320,7 +329,21 @@
     // 不要担心由于稍后再看列表在其他地方被改动，导致当前分 P 与实际位置对不上，从而导致重定向到另一个视频上。之所以
     // 这样说，不是因为这种情况不会发生，而是因为这是 B 站自己的问题，即使不做重定向，在这种情况下也必然会打开到另一
     // 个视频上。
-    // 为了彻底解决这种特殊情况，引入另一个功能“避免在特殊情况下，点击A视频却打开B视频的问题”。
+    // 为了彻底解决这种特殊情况，引入另一个功能“确保视频的一致性”。
+    const throwHandler = e => {
+      const errorInfo = gm.error.REDIRECT
+      console.error(errorInfo)
+      e && console.error(e)
+
+      const result = confirm(`【${GM_info.script.name}】\n\n${errorInfo}\n\n是否暂时关闭模式切换功能？`)
+      if (result) {
+        gm.config.redirect = false
+        GM_setValue('redirect', gm.config.redirect)
+        location.reload()
+      } else {
+        location.replace(gm.url.page_watchlaterList)
+      }
+    }
     GM_xmlhttpRequest({
       method: 'GET',
       url: gm.url.api_queryWatchlaterList,
@@ -334,20 +357,11 @@
           const watchlaterList = json.data.list || []
           location.replace(gm.url.page_videoNormalMode + '/' + watchlaterList[part - 1].bvid)
         } catch (e) {
-          const errorInfo = gm.error.REDIRECT
-          console.error(errorInfo)
-          console.error(e)
-
-          const rc = confirm(errorInfo + '\n\n是否暂时关闭模式切换功能？')
-          if (rc) {
-            gm.config.redirect = false
-            GM_setValue('redirect', gm.config.redirect)
-            location.reload()
-          } else {
-            location.replace(gm.url.page_watchlaterList)
-          }
+          throwHandler(e)
         }
       },
+      onerror: throwHandler,
+      ontimeout: throwHandler,
     })
   }
 
@@ -448,7 +462,53 @@
             return _.removeHistoryData
           }
         },
-        watchlaterListData: null,
+        watchlaterListData: async reload => {
+          const _ = gm.data._
+          if (!_.watchlaterListData || reload) {
+            if (_.watchlaterListData_loading) {
+              try {
+                return await this.api.wait.waitForConditionPassed({
+                  condition: () => {
+                    if (!_.watchlaterListData_loading) {
+                      return _.watchlaterListData
+                    }
+                  }
+                })
+              } catch (e) {
+                _.watchlaterListData_loading = false
+                console.error(gm.error.NETWORK)
+                console.error(e)
+                // 不要 return，继续执行，重新请求
+              }
+            }
+
+            _.watchlaterListData_loading = true
+            try {
+              const resp = await this.api.request({
+                method: 'GET',
+                url: gm.url.api_queryWatchlaterList,
+              })
+              const current = []
+              const json = JSON.parse(resp.responseText)
+              const watchlaterList = json.data.list || []
+              for (const e of watchlaterList) {
+                current.push({
+                  title: e.title,
+                  bvid: e.bvid,
+                })
+              }
+              _.watchlaterListData = current
+              return current
+            } catch (e) {
+              console.error(gm.error.NETWORK)
+              console.error(e)
+            } finally {
+              _.watchlaterListData_loading = false
+            }
+          } else {
+            return _.watchlaterListData
+          }
+        },
         _: {}, // 用于存储内部数据，不公开访问
       }
 
@@ -469,7 +529,7 @@
       gm.error = {
         ...gm.error,
         DOM_PARSE: `DOM解析错误。大部分情况下是由于网络加载速度不足造成的，不影响脚本工作；否则就是B站网页改版，请联系脚本作者修改：${GM_info.script.supportURL}`,
-        NETWORK: `网络连接错误，出现这个问题有可能是因为网络加载速度不足或者B站后台API被改动。也不排除是脚本内部数据出错造成的，初始化脚本或清空列表页面数据也许能解决问题。无法解决请联系脚本作者：${GM_info.script.supportURL}`,
+        NETWORK: `网络连接错误，出现这个问题有可能是因为网络加载速度不足或者B站后台API被改动。也不排除是脚本内部数据出错造成的，初始化脚本或清空稍后再看数据也许能解决问题。无法解决请联系脚本作者：${GM_info.script.supportURL}`,
       }
     }
 
@@ -610,8 +670,8 @@
       if (gm.config.removeHistory) {
         // 稍后再看移除记录
         GM_registerMenuCommand('稍后再看移除记录', () => _self.openRemoveHistory()) // 注意不要直接传函数对象，否则 this 不对
-        // 清空列表页面数据
-        GM_registerMenuCommand('清空列表页面数据', () => _self.cleanRemoveHistoryData())
+        // 清空稍后再看数据
+        GM_registerMenuCommand('清空稍后再看数据', () => _self.cleanRemoveHistoryData())
       }
       // 强制初始化
       GM_registerMenuCommand('初始化脚本', () => _self.resetScript())
@@ -725,7 +785,7 @@
     </label>
 
     <label class="gm-item" title="见弹出说明">
-      <span>【列表页面】避免在特殊情况下，点击A视频却打开B视频的问题</span>
+      <span>【列表页面】确保视频的一致性（避免点击A视频却打开B视频的问题）</span>
       <span id="gm-fcvInformation" class="gm-information" title="">💬</span>
       <input id="gm-forceConsistentVideo" type="checkbox">
     </label>
@@ -737,12 +797,12 @@
         <span id="gm-rhWarning" class="gm-warning" title="">⚠</span>
       </label>
       <div class="gm-subitem" title="较大的数值可能会带来较大的开销，经过性能测试，作者认为在设置在${gm.const.rhsWarning}以下时，即使在极限情况下也不会产生让人能察觉到的卡顿（存取总时不超过100ms），但在没有特殊要求的情况下依然不建议设置到这么大。该项修改后，会立即对过期记录进行清理，重新修改为原来的值无法还原被清除的记录，设置为比原来小的值需慎重！（范围：${gm.const.rhsMin} ~ ${gm.const.rhsMax}）">
-        <span>保存最近几次列表页面数据用于生成移除记录</span>
-        <span id="gm-cleanRemoveHistoryData" class="gm-hint-option" title="清理已保存的列表页面数据，不可恢复！">清空数据(0条)</span>
+        <span>保存最近几次稍后再看数据用于生成移除记录</span>
+        <span id="gm-cleanRemoveHistoryData" class="gm-hint-option" title="清理已保存的稍后再看数据，不可恢复！">清空数据(0条)</span>
         <input id="gm-removeHistorySaves" type="text">
         <span id="gm-rhsWarning" class="gm-warning" title="">⚠</span>
       </div>
-      <div class="gm-subitem" title="搜寻时在最近多少次列表页面数据中查找，设置较小的值能较好地定位最近移除的视频。设置较大的值几乎不会对性能造成影响，但不能大于最近列表页面数据保存次数。">
+      <div class="gm-subitem" title="搜寻时在最近多少次稍后再看数据中查找，设置较小的值能较好地定位最近移除的视频。设置较大的值几乎不会对性能造成影响，但不能大于最近稍后再看数据保存次数。">
         <span>默认历史回溯深度</span><input id="gm-removeHistorySearchTimes" type="text"></div>
     </div>
 
@@ -765,7 +825,7 @@
   <div class="gm-bottom">
     <button id="gm-save">保存</button><button id="gm-cancel">取消</button>
   </div>
-  <div id="gm-reset" title="重置脚本设置及内部数据，也许能解决脚本运行错误的问题。该操作不会清除已保存的列表页面数据，因此不会导致移除记录丢失。无法解决请联系脚本作者：${GM_info.script.supportURL}">初始化脚本</div>
+  <div id="gm-reset" title="重置脚本设置及内部数据，也许能解决脚本运行错误的问题。该操作不会清除已保存的稍后再看数据，因此不会导致移除记录丢失。无法解决请联系脚本作者：${GM_info.script.supportURL}">初始化脚本</div>
   <a id="gm-changelog" title="显示更新日志" href="${gm.url.gm_changelog}" target="_blank">更新日志</a>
 </div>
 <div class="gm-shadow"></div>`
@@ -800,11 +860,11 @@
 <div style="text-indent:2em;line-height:1.6em;">
   <p>从列表页面打开视频时，其URL使用该视频在列表中的位置来标识。假如列表在其他页面上被修改，这种定位方式就会出错。这是B站新版稍后再看播放页面的设计缺陷，本设置开启后能修复这个问题。</p>
   <p>假设先打开列表页面，此时列表的第1个视频是A，然后在其他页面将B视频添加到稍后再看，最后回到刚才列表页面点击A视频，结果播放的会是此时真正位于列表第1位的B视频。</p>
-  <p>在正常使用的情况下，这个问题出现的频率并不高；此外，如果没有开启模式切换功能，在修复成功后浏览器的历史回退功能会受到影响，且修复过程可能会伴随页面内容切换和不明显的URL变动。如果不希望见到这些问题，或者只是单纯不想在页面引入不必要的脚本操作，可以选择关闭。</p>
+  <p>在正常使用的情况下，这个问题出现的频率并不高；此外，如果没有开启模式切换功能，在修复成功后浏览器的历史回退功能会受到影响，且修复过程可能会伴随页面内容切换和不明显的URL变动。如果不希望见到这些问题，或者只是单纯不想在页面引入不必要的脚本操作，请选择关闭。</p>
 </div>
           `, '💬', { width: '36em', flagSize: '2em' }) // 谨慎地调这个宽度，不然又会引起字体发虚问题
           el.rhWarning = gm.el.setting.querySelector('#gm-rhWarning')
-          _self.api.message.advanced(el.rhWarning, '关闭移除记录，或将列表页面数据保存次数设置为比原来小的值，都会造成对内部过期历史数据的清理！', '⚠')
+          _self.api.message.advanced(el.rhWarning, '关闭移除记录，或将稍后再看数据保存次数设置为比原来小的值，都会造成对内部过期历史数据的清理！', '⚠')
           el.rhsWarning = gm.el.setting.querySelector('#gm-rhsWarning')
           _self.api.message.advanced(el.rhsWarning, `该项设置过大时，在极端情况下可能会造成明显的卡顿，一般不建议该项超过${gm.const.rhsWarning}。当然，如果对机器的读写性能自信，可以无视该警告。`, '⚠')
 
@@ -835,10 +895,10 @@
               el.disabled = !item.checked
             }
           }
-          el.headerButton.onchange = function() {
+          el.headerButton.init = el.headerButton.onchange = function() {
             subitemChange(this, [el.headerButtonOpL, el.headerButtonOpR, el.openHeaderMenuLink, el.menuScrollbarSetting])
           }
-          el.removeHistory.onchange = function() {
+          el.removeHistory.init = el.removeHistory.onchange = function() {
             subitemChange(this, [el.removeHistorySaves, el.removeHistorySearchTimes])
             setRhWaring()
           }
@@ -993,8 +1053,10 @@
             const attr = configMap[name].attr
             el[name][attr] = gm.config[name]
           }
-          el.headerButton.onchange()
-          el.removeHistory.onchange()
+          for (const name in configMap) {
+            // 需要等所有配置读取完成后再进行选项初始化
+            el[name].init && el[name].init()
+          }
 
           if (gm.config.removeHistory) {
             setTimeout(() => {
@@ -1038,14 +1100,14 @@
         const setRhWaring = () => {
           let warn = false
           const rh = el.removeHistory.checked
-          if (!rh) {
+          if (!rh && gm.config.removeHistory) {
             warn = true
           } else {
             let rhs = parseInt(el.removeHistorySaves.value)
             if (isNaN(rhs)) {
               rhs = 0
             }
-            if (rhs < gm.config.removeHistorySaves) {
+            if (rhs < gm.config.removeHistorySaves && gm.config.removeHistory) {
               warn = true
             }
           }
@@ -1129,7 +1191,7 @@
     <div>根据最近<span id="gm-save-times">0</span>次打开列表页面时获取到的<span id="gm-record-num">0</span>条不重复的记录生成（总计<span id="gm-record-num-repeat">0</span>条），共筛选出<span id="gm-remove-num">0</span>条移除记录。排序由视频最后一次加入到稍后再看的时间决定，与移除出稍后再看的时间无关。如果记录太多难以定位被误删的视频，请在下方设置减少历史回溯深度。鼠标移动到内容区域可向下滚动翻页，点击对话框以外的位置退出。</div>
     <div style="text-align:right;font-weight:bold">
       <span id="gm-history-sort" style="text-decoration:underline;cursor:pointer">倒序</span>
-      <span title="搜寻时在最近多少次列表页面数据中查找，设置较小的值能较好地定位最近移除的视频。按下回车键或输入框失去焦点时刷新数据，输入框为空时自动设为可取的最大值。">历史回溯深度：<input type="text" id="gm-search-times" value="0"></span>
+      <span title="搜寻时在最近多少次稍后再看数据中查找，设置较小的值能较好地定位最近移除的视频。按下回车键或输入框失去焦点时刷新数据，输入框为空时自动设为可取的最大值。">历史回溯深度：<input type="text" id="gm-search-times" value="0"></span>
     </div>
   </div>
 </div>
@@ -1207,8 +1269,9 @@
 
         /**
          * 移除记录打开时执行
+         * @async
          */
-        const onOpen = () => {
+        const onOpen = async () => {
           if (el.content) {
             const oldContent = el.content
             oldContent.style.opacity = '0'
@@ -1224,65 +1287,63 @@
             _self.api.dom.setAbsoluteCenter(el.historyPage)
           }, 10)
 
-          GM_xmlhttpRequest({
-            method: 'GET',
-            url: gm.url.api_queryWatchlaterList,
-            onload: function(response) {
-              try {
-                const bvid = []
-                const json = JSON.parse(response.responseText)
-                const watchlaterList = json.data.list || []
-                for (const e of watchlaterList) {
-                  bvid.push(e.bvid)
-                }
-                const map = new Map()
-                const removeData = gm.data.removeHistoryData().toArray(el.searchTimes.current)
-                el.saveTimes.innerText = removeData.length
-                let total = 0
-                // 升序时，假如视频 A 在早期就加入了稍后再看，但是很久都没有看
-                // 之后再次加入，这种情况下我们认为视频 A 是很晚才加入，而选择性忽略它早期就加入的事实
-                for (const records of removeData) {
-                  for (const record of records) {
-                    if (!map.has(record.bvid)) {
-                      map.set(record.bvid, record) // 往后是旧的信息，弃之不用
-                    }
-                  }
-                  total += records.length
-                }
-                el.recordNum.innerText = map.size
-                el.recordNumRepeat.innerText = total
-                for (const id of bvid) {
-                  map.delete(id)
-                }
-                const result = []
-                for (const rm of map.values()) {
-                  result.push(`<div><div>${rm.title}</div><a href="${gm.url.page_videoNormalMode}/${rm.bvid}" target="_blank">${rm.bvid}</a></div>`)
-                }
-                el.removeNum.innerText = result.length
-
-                setContentTop() // 在设置内容前设置好 top，这样看不出修改的痕迹
-                if (result.length > 0) {
-                  if (el.historySort.type === 1) {
-                    result.reverse()
-                  }
-                  el.content.innerHTML = result.join('<br>')
-                } else {
-                  el.content.innerText = `在最近 ${el.searchTimes.current} 次列表页面数据中没有找到被移除的记录，请尝试增大历史回溯深度`
-                  el.content.style.color = 'gray'
-                }
-                el.content.style.opacity = '1'
-              } catch (e) {
-                const errorInfo = gm.error.NETWORK
-                setContentTop() // 在设置内容前设置好 top，这样看不出修改的痕迹
-                el.content.innerHTML = errorInfo
-                el.content.style.opacity = '1'
-                el.content.style.color = 'gray'
-
-                console.error(errorInfo)
-                console.error(e)
-              }
+          try {
+            const resp = await _self.api.request({
+              method: 'GET',
+              url: gm.url.api_queryWatchlaterList,
+            })
+            const bvid = []
+            const json = JSON.parse(resp.responseText)
+            const watchlaterList = json.data.list || []
+            for (const e of watchlaterList) {
+              bvid.push(e.bvid)
             }
-          })
+            const map = new Map()
+            const removeData = gm.data.removeHistoryData().toArray(el.searchTimes.current)
+            el.saveTimes.innerText = removeData.length
+            let total = 0
+            // 升序时，假如视频 A 在早期就加入了稍后再看，但是很久都没有看
+            // 之后再次加入，这种情况下我们认为视频 A 是很晚才加入，而选择性忽略它早期就加入的事实
+            for (const records of removeData) {
+              for (const record of records) {
+                if (!map.has(record.bvid)) {
+                  map.set(record.bvid, record) // 往后是旧的信息，弃之不用
+                }
+              }
+              total += records.length
+            }
+            el.recordNum.innerText = map.size
+            el.recordNumRepeat.innerText = total
+            for (const id of bvid) {
+              map.delete(id)
+            }
+            const result = []
+            for (const rm of map.values()) {
+              result.push(`<div><div>${rm.title}</div><a href="${gm.url.page_videoNormalMode}/${rm.bvid}" target="_blank">${rm.bvid}</a></div>`)
+            }
+            el.removeNum.innerText = result.length
+
+            setContentTop() // 在设置内容前设置好 top，这样看不出修改的痕迹
+            if (result.length > 0) {
+              if (el.historySort.type === 1) {
+                result.reverse()
+              }
+              el.content.innerHTML = result.join('<br>')
+            } else {
+              el.content.innerText = `在最近 ${el.searchTimes.current} 次稍后再看数据中没有找到被移除的记录，请尝试增大历史回溯深度`
+              el.content.style.color = 'gray'
+            }
+            el.content.style.opacity = '1'
+          } catch (e) {
+            const errorInfo = gm.error.NETWORK
+            setContentTop() // 在设置内容前设置好 top，这样看不出修改的痕迹
+            el.content.innerHTML = errorInfo
+            el.content.style.opacity = '1'
+            el.content.style.color = 'gray'
+
+            console.error(errorInfo)
+            console.error(e)
+          }
         }
 
         const setContentTop = () => {
@@ -1297,7 +1358,7 @@
      * 初始化脚本
      */
     resetScript() {
-      const result = confirm('是否要初始化脚本？\n\n注意：本操作不会清理内部保存的列表页面数据，要清理列表页面数据请在用户设置中操作。')
+      const result = confirm('是否要初始化脚本？\n\n注意：本操作不会清理内部保存的稍后再看数据，要清理稍后再看数据请在用户设置中操作。')
       if (result) {
         const keyNoReset = { removeHistorySaves: true, removeHistoryData: true }
         const gmKeys = GM_listValues()
@@ -1317,7 +1378,7 @@
      * 清空 removeHistoryData
      */
     cleanRemoveHistoryData() {
-      const result = confirm('是否要清空列表页面数据？')
+      const result = confirm('是否要清空稍后再看数据？')
       if (result) {
         this.closeMenuItem('setting')
         GM_deleteValue('removeHistorySaves')
@@ -1391,12 +1452,12 @@
 
         /**
          * 获取 CSRF
-         * @param {boolean} [refresh] 是否重新从 Cookie 中获取
+         * @param {boolean} [reload] 是否重新从 Cookie 中获取
          * @returns {string} `csrf`
          */
-        getCSRF(refresh) {
+        getCSRF(reload) {
           const _ = this._
-          if (!_.csrf || refresh) {
+          if (!_.csrf || reload) {
             let cookies = document.cookie.split('; ')
             cookies = cookies.reduce((prev, val) => {
               const parts = val.split('=')
@@ -1424,33 +1485,28 @@
 
         /**
          * 获取视频信息
+         * @async
          * @param {String} id `aid` 或 `bvid`
          * @param {'aid' | 'bvid'} [type='bvid'] `id` 类型
-         * @returns {JSON} 视频信息
+         * @returns {Promise<JSON>} 视频信息
          */
         async getVideoInfo(id, type = 'bvid') {
-          return new Promise(resolve => {
-            GM_xmlhttpRequest({
+          try {
+            const resp = await webpage.api.request({
               method: 'GET',
               url: gm.url.api_videoInfo(id, type),
-              onload: function(response) {
-                try {
-                  const info = JSON.parse(response.responseText).data
-                  resolve(info)
-                } catch (e) {
-                  console.error(gm.error.NETWORK)
-                  console.error(e)
-                  resolve()
-                }
-              },
             })
-          })
+            return JSON.parse(resp.responseText).data
+          } catch (e) {
+            console.error(gm.error.NETWORK)
+            console.error(e)
+          }
         },
 
         /**
          * 在稍后再看模式播放页中获取当前页面对应的 `aid`
          * @async
-         * @returns {string} `aid`
+         * @returns {Promise<string>} `aid`
          */
         async getAidInWatchlaterMode() {
           if (unsafeWindow.aid) {
@@ -1483,35 +1539,30 @@
         },
 
         /**
-         * 根据 aid 获取视频的稍后再看状态
+         * 根据 `aid` 获取视频的稍后再看状态
          * @async
          * @param {number} aid AV号
          * @returns {Promise<boolean>} 视频是否在稍后再看中
          */
         async getVideoWatchlaterStatusByAid(aid) {
-          return new Promise(resolve => {
-            GM_xmlhttpRequest({
+          try {
+            const resp = await webpage.api.request({
               method: 'GET',
               url: gm.url.api_queryWatchlaterList,
-              onload: function(response) {
-                try {
-                  const json = JSON.parse(response.responseText)
-                  const watchlaterList = json.data.list || []
-                  for (const e of watchlaterList) {
-                    if (aid == e.aid) {
-                      resolve(true)
-                      return
-                    }
-                  }
-                  resolve(false)
-                } catch (e) {
-                  console.error(gm.error.NETWORK)
-                  console.error(e)
-                  resolve(false)
-                }
-              },
             })
-          })
+            const json = JSON.parse(resp.responseText)
+            const watchlaterList = json.data.list || []
+            for (const e of watchlaterList) {
+              if (aid == e.aid) {
+                return true
+              }
+            }
+            return false
+          } catch (e) {
+            console.error(gm.error.NETWORK)
+            console.error(e)
+            return false
+          }
         },
 
         /**
@@ -1519,32 +1570,24 @@
          * @async
          * @param {string} aid 视频 `aid`
          * @param {boolean} [status=true] 添加 `true` / 移除 `false`
-         * @returns {boolean} 操作是否成功
+         * @returns {Promise<boolean>} 操作是否成功
          */
         async switchVideoWatchlaterStatus(aid, status = true) {
-          const data = new FormData()
-          data.append('aid', aid)
-          data.append('csrf', this.getCSRF())
-          return new Promise(resolve => {
-            GM_xmlhttpRequest({
+          try {
+            const data = new FormData()
+            data.append('aid', aid)
+            data.append('csrf', this.getCSRF())
+            const resp = await webpage.api.request({
               method: 'POST',
               url: status ? gm.url.api_addToWatchlater : gm.url.api_removeFromWatchlater,
               data: data,
-              onload: function(response) {
-                try {
-                  if (JSON.parse(response.response).code == 0) {
-                    resolve(true)
-                  } else {
-                    resolve(false)
-                  }
-                } catch (e) {
-                  console.error(gm.error.NETWORK)
-                  console.error(e)
-                  resolve(false)
-                }
-              },
             })
-          })
+            return JSON.parse(resp.response).code == 0
+          } catch (e) {
+            console.error(gm.error.NETWORK)
+            console.error(e)
+            return false
+          }
         },
       }
     }
@@ -2183,19 +2226,9 @@
           for (const record of records) {
             for (const addedNode of record.addedNodes) {
               if (addedNode.className == 'list-box') {
-                let watchlaterListData = gm.data.watchlaterListData
+                let watchlaterListData = null
                 if (gm.config.forceConsistentVideo) {
-                  if (!watchlaterListData) {
-                    watchlaterListData = await _self.api.wait.waitForConditionPassed({
-                      condition: () => {
-                        if (gm.data.watchlaterListData) {
-                          return gm.data.watchlaterListData
-                        }
-                      },
-                      interval: 50,
-                      timeout: 2000,
-                    })
-                  }
+                  watchlaterListData = await gm.data.watchlaterListData()
                 }
                 const listBox = addedNode
                 const list = listBox.firstChild.children
@@ -2295,6 +2328,20 @@
         _self.forceConsistentVideoInWatchlaterMode()
         _self.processAutoRemoveInWatchlaterMode()
       }
+
+      // 移除 URL 上的查询参数
+      let removed = false
+      const url = new URL(location.href)
+      const searchParams = url.searchParams
+      gm.searchParams.forEach((value, key) => {
+        if (key.startsWith(gm.id)) {
+          searchParams.delete(key)
+          removed = true
+        }
+      })
+      if (removed) {
+        history.replaceState({}, null, url.href)
+      }
     }
 
     /**
@@ -2306,7 +2353,12 @@
       if (spBvid) {
         try {
           const playlist = await _self.api.wait.waitForElementLoaded('.player-auxiliary-collapse-playlist')
-          const targetItem = await _self.api.wait.waitForElementLoaded(`[data-bvid=${spBvid}]`, playlist)
+          const targetItem = await _self.api.wait.waitForElementLoaded({
+            selector: `[data-bvid=${spBvid}]`,
+            base: playlist,
+            interval: 50,
+            timeout: 800,
+          })
           const itemImg = targetItem.querySelector('.player-auxiliary-playlist-item-img')
           const playingImg = itemImg.querySelector('.player-auxiliary-playlist-item-img-playing')
           if (getComputedStyle(playingImg).display == 'none') {
@@ -2315,6 +2367,11 @@
         } catch (e) {
           console.error(gm.error.DOM_PARSE)
           console.error(e)
+
+          const result = confirm(`【${GM_info.script.name}】\n\n视频 ${spBvid} 不在稍后再看中，是否转到普通模式播放？`)
+          if (result) {
+            location.replace(`${gm.url.page_videoNormalMode}/${spBvid}`)
+          }
         }
       }
     }
@@ -2322,7 +2379,7 @@
     /**
      * 对于正常模式播放页，根据用户配置或 URL 上的查询参数，将视频从稍后再看移除
      * @async
-     * @returns {boolean} 执行后视频是否已经不在稍后再看中（可能是在本方法内被移除，也可能是本身就不在）
+     * @returns {Promise<boolean>} 执行后视频是否已经不在稍后再看中（可能是在本方法内被移除，也可能是本身就不在）
      */
     async processAutoRemoveInNormalMode() {
       const alwaysAutoRemove = gm.config.autoRemove == Enums.autoRemove.always
@@ -2348,7 +2405,7 @@
     /**
      * 对于稍后再看模式播放页，根据用户配置或 URL 上的查询参数，将视频从稍后再看移除
      * @async
-     * @returns {boolean} 执行后视频是否已经不在稍后再看中（可能是在本方法内被移除，也可能是本身就不在）
+     * @returns {Promise<boolean>} 执行后视频是否已经不在稍后再看中（可能是在本方法内被移除，也可能是本身就不在）
      */
     async processAutoRemoveInWatchlaterMode() {
       const alwaysAutoRemove = gm.config.autoRemove == Enums.autoRemove.always
@@ -2399,33 +2456,12 @@
     }
 
     /**
-     * 保存列表页面数据，用于后续操作
+     * 保存稍后再看数据，用于后续操作
      */
     saveWatchlaterListData() {
-      GM_xmlhttpRequest({
-        method: 'GET',
-        url: gm.url.api_queryWatchlaterList,
-        onload: function(response) {
-          const current = []
-          try {
-            const json = JSON.parse(response.responseText)
-            const watchlaterList = json.data.list || []
-            for (const e of watchlaterList) {
-              current.push({
-                title: e.title,
-                bvid: e.bvid,
-              })
-            }
-            gm.data.watchlaterListData = current
-            if (gm.config.removeHistory) {
-              gm.data.removeHistoryData().push(current)
-              GM_setValue('removeHistoryData', gm.data.removeHistoryData())
-            }
-          } catch (e) {
-            console.error(gm.error.NETWORK)
-            console.error(e)
-          }
-        },
+      gm.data.watchlaterListData().then(data => {
+        gm.data.removeHistoryData().push(data)
+        GM_setValue('removeHistoryData', gm.data.removeHistoryData())
       })
     }
 
@@ -2804,6 +2840,13 @@ color: #551a8b
   user-select: none;
 }
 
+.${gm.id}-msgbox .gm-advanced-table td {
+  vertical-align: middle;
+}
+.${gm.id}-msgbox .gm-advanced-table td:first-child {
+  padding-right: 0.6em;
+}
+
 #${gm.id} .gm-setting .gm-items::-webkit-scrollbar,
 #${gm.id} .gm-history .gm-content::-webkit-scrollbar {
   width: 6px;
@@ -3027,8 +3070,8 @@ color: #551a8b
           el.show = false
           el.onmouseenter = function() {
             const htmlMsg = `
-<table><tr>
-  <td style="font-size:${config.flagSize};line-height:${config.flagSize};padding-right:0.6em;">${flag}</td>
+<table class="gm-advanced-table"><tr>
+  <td style="font-size:${config.flagSize};line-height:${config.flagSize}">${flag}</td>
   <td>${msg}</td>
 </tr></table>
 `
@@ -3195,6 +3238,7 @@ color: #551a8b
          * @param {number} [options.stopTimeout=0] 终止条件二次判断期间的检测超时时间（单位：ms）
          * @param {number} [options.timePadding=0] 等待 `timePadding`ms 后才开始执行；包含在 `timeout` 中，因此不能大于 `timeout`
          * @returns {Promise} `result`
+         * @throws 当等待超时或者被终止时抛出
          */
         async waitForConditionPassed(options) {
           return new Promise((resolve, reject) => {
@@ -3219,6 +3263,8 @@ color: #551a8b
          * @see executeAfterElementLoaded
          * @param {string} selector 该选择器指定要等待加载的元素 `element`
          * @param {HTMLElement} [base=document] 基元素
+         * @returns {Promise<HTMLElement>} `element`
+         * @throws 当等待超时或者被终止时抛出
          */
         /**
          * 等待元素加载
@@ -3236,6 +3282,7 @@ color: #551a8b
          * @param {number} [options.stopTimeout=0] 终止条件二次判断期间的检测超时时间（单位：ms）
          * @param {number} [options.timePadding=0] 等待 `timePadding`ms 后才开始执行；包含在 `timeout` 中，因此不能大于 `timeout`
          * @returns {Promise<HTMLElement>} `element`
+         * @throws 当等待超时或者被终止时抛出
          */
         async waitForElementLoaded() {
           let options
@@ -3264,10 +3311,36 @@ color: #551a8b
         },
       }
     }
+
+    /** @typedef {Object} GM_xmlhttpRequest_details */
+    /** @typedef {Object} GM_xmlhttpRequest_response */
+    /**
+     * 发起网络请求
+     * @async
+     * @param {GM_xmlhttpRequest_details} details 定义及细节同 {@link GM_xmlhttpRequest} 的 `details`
+     * @returns {Promise<GM_xmlhttpRequest_response>} 响应对象
+     * @throws 当请求发生错误或者超时时抛出
+     * @see {@link https://www.tampermonkey.net/documentation.php#GM_xmlhttpRequest GM_xmlhttpRequest}
+     */
+    async request(details) {
+      if (details) {
+        return new Promise((resolve, reject) => {
+          const throwHandler = function(msg) {
+            console.error(gm.error.NETWORK)
+            reject(msg)
+          }
+          details.onerror = details.onerror || (() => throwHandler(['ERROR', 'request', details]))
+          details.ontimeout = details.ontimeout || (() => throwHandler(['TIMEOUT', 'request', details]))
+          details.onload = details.onload || (response => resolve(response))
+          GM_xmlhttpRequest(details)
+        })
+      }
+    }
   }
 
   /**
    * 推入队列，循环数组实现
+   * @template E 数据类型
    */
   class PushQueue {
     /**
@@ -3327,7 +3400,7 @@ color: #551a8b
 
     /**
      * 向队列中推入数据，若队列已达到最大长度，则舍弃末尾处数据
-     * @param {*} value 推入队列的数据
+     * @param {E} value 推入队列的数据
      */
     push(value) {
       this.data[this.index] = value
@@ -3349,7 +3422,7 @@ color: #551a8b
 
     /**
      * 将队列末位处的数据弹出
-     * @returns {*} 弹出的数据
+     * @returns {E} 弹出的数据
      */
     pop() {
       if (this.size > 0) {
@@ -3367,7 +3440,7 @@ color: #551a8b
     /**
      * 将推入队列以数组的形式返回
      * @param {number} [maxLength=size] 读取的最大长度
-     * @returns {Array} 队列数据的数组形式
+     * @returns {Array<E>} 队列数据的数组形式
      */
     toArray(maxLength) {
       if (typeof maxLength != 'number') {

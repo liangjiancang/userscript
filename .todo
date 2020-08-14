@@ -1,16 +1,22 @@
 Todo:
 
 BilibiliWatchlaterPlus:
+  ☐ 列表数据的保存不限于列表页面
+  ☐ 动态页刷新之后，页面中所有视频一律会显示没有加入稍后再看。其实主页还有其他别的很多地方也是这样，我怀疑B站本身根本没有办法直接获取某一个视频是否加入到稍后再看，所以视频返回的是不带稍后再看状态的。后面要做的就是用脚本把这些缺失的状态填充上去，但估计只会做动态页的，其他地方太多太杂了，告辞。
+    `document.querySelectorAll('.video-container').__vue__.seeLaterStatus`
 
 BilibiliCover:
 
-以后再说:
-  - 动态页刷新之后，页面中所有视频一律会显示没有加入稍后再看。其实主页还有其他别的很多地方也是这样，我怀疑B站本身根本没有办法直接获取某一个视频是否加入到稍后再看，所以视频返回的是不带稍后再看状态的。后面要做的就是用脚本把这些缺失的状态填充上去，但估计只会做动态页的，其他地方太多太杂了，告辞。
-  `document.querySelectorAll('.video-container').__vue__.seeLaterStatus`
-  - 顶栏的弹出菜单，如果能直接将视频移除出稍后再看就好了。
-  `aid = $0.__vue__._props.card.id`
-
 Archive:
+  ✔ 列表页面数据改为懒加载 @started(20-08-14 15:22) @done(20-08-14 19:56) @lasted(4h34m39s) @project(BilibiliWatchlaterPlus)
+  ✔ 移除 SearchParams @started(20-08-14 14:50) @done(20-08-14 15:21) @lasted(31m42s) @project(BilibiliWatchlaterPlus)
+  ✔ 异常处理机制 @started(20-08-14 18:51) @done(20-08-14 19:52) @lasted(1h1m16s) @project(BilibiliWatchlaterPlus)
+  ✔ 网络请求 API @started(20-08-14 18:51) @done(20-08-14 19:52) @lasted(1h1m15s) @project(BilibiliWatchlaterPlus)
+  ✔ 确保视频一致性功能打开，期打开稍后再看模式播放页时视频不在稍后再看中，询问是否跳转到普通模式播放 @started(20-08-14 19:28) @done(20-08-14 19:52) @lasted(24m12s) @project(BilibiliWatchlaterPlus)
+  ✔ 文档修正 @done(20-08-14 19:54) @project(BilibiliWatchlaterPlus)
+  ✔ 移除记录警告项 BUG 修复 @done(20-08-14 21:05) @project(BilibiliWatchlaterPlus)
+  ✘ 顶栏的弹出菜单，如果能直接将视频移除出稍后再看就好了。 @cancelled(20-08-14 20:01) @project(以后再说)
+    `aid = $0.__vue__._props.card.id`
   ✔ 设置页上的内容，支持中键点击打开 @started(20-08-06 01:41) @done(20-08-06 01:49) @lasted(8m5s) @project(BilibiliWatchlaterPlus)
   ✔ 自动同步，包括脚本和说明 @started(20-08-06 00:19) @done(20-08-06 00:41) @lasted(22m32s) @project(开源)
   ✔ 所有情况下，打开视频时将其移除出稍后再看 @done(20-08-05 01:12) @project(BilibiliWatchlaterPlus)
