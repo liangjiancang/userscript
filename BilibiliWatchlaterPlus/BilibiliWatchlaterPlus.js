@@ -1,7 +1,7 @@
 // ==UserScript==
 // @id              BilibiliWatchlaterPlus@Laster2800
 // @name            B站稍后再看功能增强
-// @version         4.2.0.20200816
+// @version         4.2.1.20200816
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -956,7 +956,7 @@
           _self.api.message.advanced(el.rhspInformation, `
 <div style="text-indent:2em;line-height:1.6em">
   <p>选择更多的保存时间点，可以提高移除记录的准确度，降低遗漏历史数据的情况。但是数据冲刷速度更快，数据利用率低，可能会导致真正有价值的记录被冲洗掉，并且增大IO和运算负担。无论选择哪一种方式，在同一个URL对应的页面下至多保存一次。</p>
-  <p>如果你习惯于先点开稍后再看列表页面，再点击视频观看，请选择第一项。如果你习惯于直接在顶栏弹出菜单中点击视频观看，请选择第二项。第三项性价比低，如果没有特别需求请不要选择。</p>
+  <p>如果你习惯于先点开稍后再看列表页面，再点击视频观看，建议选择第一项，当然选择第二项提高准确度也是合理的。如果你习惯于直接在顶栏弹出菜单中点击视频观看，请选择第二项。第三项性价比低，如果没有特别需求请不要选择。</p>
 </div>
           `, '💬', { width: '36em', flagSize: '2em', disabled: () => el.rhspInformation.parentNode.getAttribute('disabled') })
           el.fcvInformation = gm.el.setting.querySelector('#gm-fcvInformation')

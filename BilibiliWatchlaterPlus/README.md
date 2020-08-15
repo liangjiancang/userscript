@@ -1,6 +1,6 @@
 # [B站稍后再看功能增强](https://greasyfork.org/zh-CN/scripts/395456)
 
-功能如下，一图胜千言，无须多言。点击查看 [更新日志](https://gitee.com/liangjiancang/userscript/blob/master/BilibiliWatchlaterPlus/changelog.md)。
+功能如下，一图胜千言，无须多言。求好评，求收藏💔。点击查看 [更新日志](https://gitee.com/liangjiancang/userscript/blob/master/BilibiliWatchlaterPlus/changelog.md)。
 
 ![用户设置](https://gitee.com/liangjiancang/userscript/raw/master/BilibiliWatchlaterPlus/screenshot/用户设置.png)
 
