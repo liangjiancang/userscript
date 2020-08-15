@@ -1,7 +1,7 @@
 // ==UserScript==
 // @id              BilibiliWatchlaterPlus@Laster2800
 // @name            B站稍后再看功能增强
-// @version         4.1.0.20200814
+// @version         4.2.0.20200816
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -52,16 +52,17 @@
    * @property {headerButtonOp} headerButtonOpR 顶栏入口右击行为
    * @property {openHeaderMenuLink} openHeaderMenuLink 顶栏弹出菜单链接点击行为
    * @property {menuScrollbarSetting} menuScrollbarSetting 弹出菜单的滚动条设置
+   * @property {boolean} removeHistory 稍后再看移除记录
+   * @property {removeHistorySavePoint} removeHistorySavePoint 保存稍后再看数据的时间点
+   * @property {number} removeHistorySaves 列表页数数据保存次数
+   * @property {number} removeHistorySearchTimes 历史回溯深度
    * @property {boolean} videoButton 视频播放页稍后再看状态快速切换
    * @property {autoRemove} autoRemove 自动将视频从播放列表移除
    * @property {boolean} redirect 稍后再看模式重定向至普通模式播放
    * @property {openListVideo} openListVideo 列表页面视频点击行为
-   * @property {boolean} forceConsistentVideo 确保打开与列表页面一致的视频
-   * @property {boolean} removeHistory 稍后再看移除记录
-   * @property {number} removeHistorySaves 列表页数数据保存次数
-   * @property {number} removeHistorySearchTimes 历史回溯深度
-   * @property {boolean} removeButton_removeAll 移除“一键清空”按钮
-   * @property {boolean} removeButton_removeWatched 移除“移除已观看视频”按钮
+   * @property {boolean} forceConsistentVideo 确保视频的一致性
+   * @property {boolean} removeButton_removeAll 移除【一键清空】按钮
+   * @property {boolean} removeButton_removeWatched 移除【移除已观看视频】按钮
    * @property {boolean} openSettingAfterConfigUpdate 功能性更新后打开设置页面
    * @property {boolean} reloadAfterSetting 设置生效后刷新页面
    */
@@ -145,6 +146,7 @@
    * @property {string} DOM_PARSE HTML 解析错误
    * @property {string} NETWORK 网络错误
    * @property {string} REDIRECT 重定向错误
+   * @property {string} UNKNOWN 未知错误
    */
   /**
    * 全局对象
@@ -153,7 +155,7 @@
   const gm = {
     id: 'gm395456',
     configVersion: GM_getValue('configVersion'),
-    configUpdate: 20200805,
+    configUpdate: 20200815,
     searchParams: new URL(location.href).searchParams,
     config: {
       redirect: false,
@@ -210,6 +212,15 @@
      * @readonly
      * @enum {string}
      */
+    removeHistorySavePoint: {
+      list: 'list',
+      listAndMenu: 'listAndMenu',
+      anypage: 'anypage',
+    },
+    /**
+     * @readonly
+     * @enum {string}
+     */
     autoRemove: {
       always: 'always',
       openFromList: 'openFromList',
@@ -251,13 +262,14 @@
     if (gm.config.headerButton) {
       webpage.addHeaderButton()
     }
+    if (gm.config.removeHistory) {
+      webpage.processWatchlaterListDataSaving()
+    }
+
     if (urlMatch(gm.regex.page_watchlaterList)) {
       // 列表页面
       webpage.processOpenListVideo()
       webpage.adjustWatchlaterListUI()
-      if (gm.config.removeHistory) {
-        webpage.saveWatchlaterListData()
-      }
       if (gm.config.forceConsistentVideo || gm.config.autoRemove != Enums.autoRemove.never) {
         webpage.processWatchlaterListLink()
       }
@@ -427,13 +439,14 @@
         headerButtonOpR: Enums.headerButtonOp.openUserSetting,
         openHeaderMenuLink: Enums.openHeaderMenuLink.openInCurrent,
         menuScrollbarSetting: Enums.menuScrollbarSetting.beautify,
+        removeHistory: true,
+        removeHistorySavePoint: Enums.removeHistorySavePoint.listAndMenu,
+        removeHistorySaves: gm.const.defaultRhs,
+        removeHistorySearchTimes: gm.const.defaultRhst,
         videoButton: true,
         autoRemove: Enums.autoRemove.openFromList,
         openListVideo: Enums.openListVideo.openInCurrent,
         forceConsistentVideo: true,
-        removeHistory: true,
-        removeHistorySaves: gm.const.defaultRhs,
-        removeHistorySearchTimes: gm.const.defaultRhst,
         removeButton_removeAll: false,
         removeButton_removeWatched: false,
         openSettingAfterConfigUpdate: true,
@@ -530,6 +543,7 @@
         ...gm.error,
         DOM_PARSE: `DOM解析错误。大部分情况下是由于网络加载速度不足造成的，不影响脚本工作；否则就是B站网页改版，请联系脚本作者修改：${GM_info.script.supportURL}`,
         NETWORK: `网络连接错误，出现这个问题有可能是因为网络加载速度不足或者B站后台API被改动。也不排除是脚本内部数据出错造成的，初始化脚本或清空稍后再看数据也许能解决问题。无法解决请联系脚本作者：${GM_info.script.supportURL}`,
+        UNKNOWN: `未知错误，请联系脚本作者：${GM_info.script.supportURL}`,
       }
     }
 
@@ -687,21 +701,22 @@
         _self.openMenuItem('setting')
       } else {
         const el = {}
+        /** @type {{ [c: string]: { attr: string, manual: string, needNotReload: boolean } }} */
         const configMap = {
-          // { attr, manual, needNotReload }
           headerButton: { attr: 'checked' },
           openHeaderMenuLink: { attr: 'value' },
           menuScrollbarSetting: { attr: 'value' },
           headerButtonOpL: { attr: 'value' },
           headerButtonOpR: { attr: 'value' },
+          removeHistory: { attr: 'checked', manual: true },
+          removeHistorySavePoint: { attr: 'value' },
+          removeHistorySaves: { attr: 'value', manual: true, needNotReload: true },
+          removeHistorySearchTimes: { attr: 'value', manual: true, needNotReload: true },
           videoButton: { attr: 'checked' },
           autoRemove: { attr: 'value' },
           redirect: { attr: 'checked' },
           openListVideo: { attr: 'value' },
           forceConsistentVideo: { attr: 'checked' },
-          removeHistory: { attr: 'checked', manual: true },
-          removeHistorySaves: { attr: 'value', manual: true, needNotReload: true },
-          removeHistorySearchTimes: { attr: 'value', manual: true, needNotReload: true },
           removeButton_removeAll: { attr: 'checked' },
           removeButton_removeWatched: { attr: 'checked' },
           openSettingAfterConfigUpdate: { attr: 'checked', needNotReload: true },
@@ -730,97 +745,177 @@
     <div class="gm-subtitle">V${GM_info.script.version} by ${GM_info.script.author}</div>
   </div>
   <div class="gm-items">
-    <div class="gm-item">
-      <label title="在顶栏“动态”和“收藏”之间加入稍后再看入口，鼠标移至上方时弹出列表菜单，支持点击功能设置。">
-        <span>【所有页面】在顶栏中加入稍后再看入口</span><input id="gm-headerButton" type="checkbox">
-      </label>
-      <div class="gm-subitem" title="选择左键点击入口时执行的操作。">
-        <span>在入口上点击鼠标左键时</span>
-        <select id="gm-headerButtonOpL"></select>
-      </div>
-      <div class="gm-subitem" title="选择右键点击入口时执行的操作。">
-        <span>在入口上点击鼠标右键时</span>
-        <select id="gm-headerButtonOpR"></select>
-      </div>
-      <div class="gm-subitem" title="选择在弹出菜单中点击视频的行为。为了保持行为一致，这个选项也会影响弹出菜单中收藏夹视频的打开，但不影响“动态”、“历史”等其他弹出菜单中点击视频的行为。">
-        <span>在弹出菜单中点击视频时</span>
-        <select id="gm-openHeaderMenuLink">
-          <option value="${Enums.openHeaderMenuLink.openInCurrent}">在当前页面打开</option>
-          <option value="${Enums.openHeaderMenuLink.openInNew}">在新标签页打开</option>
-        </select>
-      </div>
-      <div class="gm-subitem" title="对弹出菜单中滚动条样式进行设置。为了保持行为一致，这个选项也会影响“动态”、“历史”等其他入口的弹出菜单。">
-        <span>对于弹出菜单中的滚动条</span>
-        <select id="gm-menuScrollbarSetting">
-          <option value="${Enums.menuScrollbarSetting.beautify}">修改其外观为扁平化风格</option>
-          <option value="${Enums.menuScrollbarSetting.hidden}">将其隐藏（不影响鼠标滚动）</option>
-          <option value="${Enums.menuScrollbarSetting.original}">维持官方的滚动条样式</option>
-        </select>
-      </div>
-    </div>
+    <table>
+      <tr class="gm-item" title="在顶栏“动态”和“收藏”之间加入稍后再看入口，鼠标移至上方时弹出列表菜单，支持点击功能设置。">
+        <td rowspan="5">全局功能</td>
+        <td>
+          <label>
+            <span>在顶栏中加入稍后再看入口</span><input id="gm-headerButton" type="checkbox">
+          </label>
+        </td>
+      </tr>
+      <tr class="gm-subitem" title="选择左键点击入口时执行的操作。">
+        <td>
+          <span>在入口上点击鼠标左键时</span>
+          <select id="gm-headerButtonOpL"></select>
+        </td>
+      </tr>
+      <tr class="gm-subitem" title="选择右键点击入口时执行的操作。">
+        <td>
+          <span>在入口上点击鼠标右键时</span>
+          <select id="gm-headerButtonOpR"></select>
+        </td>
+      </tr>
+      <tr class="gm-subitem" title="选择在弹出菜单中点击视频的行为。为了保持行为一致，这个选项也会影响弹出菜单中收藏夹视频的打开，但不影响“动态”、“历史”等其他弹出菜单中点击视频的行为。">
+        <td>
+          <span>在弹出菜单中点击视频时</span>
+          <select id="gm-openHeaderMenuLink">
+            <option value="${Enums.openHeaderMenuLink.openInCurrent}">在当前页面打开</option>
+            <option value="${Enums.openHeaderMenuLink.openInNew}">在新标签页打开</option>
+          </select>
+        </td>
+      </tr>
+      <tr class="gm-subitem" title="对弹出菜单中滚动条样式进行设置。为了保持行为一致，这个选项也会影响“动态”、“历史”等其他入口的弹出菜单。">
+        <td>
+          <span>对于弹出菜单中的滚动条</span>
+          <select id="gm-menuScrollbarSetting">
+            <option value="${Enums.menuScrollbarSetting.beautify}">修改其外观为扁平化风格</option>
+            <option value="${Enums.menuScrollbarSetting.hidden}">将其隐藏（不影响鼠标滚动）</option>
+            <option value="${Enums.menuScrollbarSetting.original}">维持官方的滚动条样式</option>
+          </select>
+        </td>
+      </tr>
 
-    <label class="gm-item" title="在播放页面（包括普通模式和稍后再看模式）中加入能将视频快速切换添加或移除出稍后再看列表的按钮。">
-      <span>【播放页面】加入快速切换视频稍后再看状态的按钮</span><input id="gm-videoButton" type="checkbox">
-    </label>
+      <tr class="gm-item" title="保留最近几次打开【${gm.url.page_watchlaterList}】页面时稍后再看列表的记录，以查找出这段时间内将哪些视频移除出稍后再看，用于防止误删操作。关闭该选项后，会将内部历史数据清除！">
+        <td rowspan="4">全局功能</td>
+        <td>
+          <label>
+            <span>开启稍后再看移除记录</span>
+            <input id="gm-removeHistory" type="checkbox">
+            <span id="gm-rhWarning" class="gm-warning" title="">⚠</span>
+          </label>
+        </td>
+      </tr>
+      <tr class="gm-subitem" title="选择在何时保存稍后再看数据。无论选择哪一种方式，在同一个URL对应的页面下至多保存一次。">
+          <td>
+            <span>为了生成移除记录，</span>
+            <select id="gm-removeHistorySavePoint">
+              <option value="${Enums.removeHistorySavePoint.list}">在打开列表页面时保存数据</option>
+              <option value="${Enums.removeHistorySavePoint.listAndMenu}">在打开列表页面或弹出入口菜单时保存数据</option>
+              <option value="${Enums.removeHistorySavePoint.anypage}">在打开任意相关页面时保存数据</option>
+            </select>
+            <span id="gm-rhspInformation" class="gm-information" title="">💬</span>
+          </td>
+      </tr>
+      <tr class="gm-subitem" title="较大的数值可能会带来较大的开销，经过性能测试，作者认为在设置在${gm.const.rhsWarning}以下时，即使在极限情况下也不会产生让人能察觉到的卡顿（存取总时不超过100ms），但在没有特殊要求的情况下依然不建议设置到这么大。该项修改后，会立即对过期记录进行清理，重新修改为原来的值无法还原被清除的记录，设置为比原来小的值需慎重！（范围：${gm.const.rhsMin} ~ ${gm.const.rhsMax}）">
+        <td>
+          <span>保存最近多少次稍后再看数据</span>
+          <span id="gm-cleanRemoveHistoryData" class="gm-hint-option" title="清理已保存的稍后再看数据，不可恢复！">清空数据(0条)</span>
+          <input id="gm-removeHistorySaves" type="text">
+          <span id="gm-rhsWarning" class="gm-warning" title="">⚠</span>
+        </td>
+      </tr>
+      <tr class="gm-subitem" title="搜寻时在最近多少次稍后再看数据中查找，设置较小的值能较好地定位最近移除的视频。设置较大的值几乎不会对性能造成影响，但不能大于最近稍后再看数据保存次数。">
+        <td>
+          <span>默认历史回溯深度</span>
+          <input id="gm-removeHistorySearchTimes" type="text">
+        </td>
+      </tr>
 
-    <div class="gm-item" title="打开播放页面时，自动将视频从稍后再看列表中移除，或在特定条件下执行自动移除。">
-      <span>【播放页面】打开视频时，</span>
-      <select id="gm-autoRemove">
-        <option value="${Enums.autoRemove.always}">总是自动移除出稍后再看（若在稍后再看中）</option>
-        <option value="${Enums.autoRemove.openFromList}" title="包括列表页面和弹出菜单列表">若从稍后再看列表点击进入，则自动移除出稍后再看</option>
-        <option value="${Enums.autoRemove.never}">从不自动移除出稍后再看</option>
-      </select>
-    </div>
+      <tr class="gm-item" title="在播放页面（包括普通模式和稍后再看模式）中加入能将视频快速切换添加或移除出稍后再看列表的按钮。">
+        <td>播放页面</td>
+        <td>
+          <label>
+            <span>加入快速切换视频稍后再看状态的按钮</span>
+            <input id="gm-videoButton" type="checkbox">
+          </label>
+        </td>
+      </tr>
 
-    <label class="gm-item" title="打开【${gm.url.page_videoWatchlaterMode}】页面时，自动切换至【${gm.url.page_videoNormalMode}】页面进行播放。">
-      <span>【播放页面】从稍后再看模式强制切换到普通模式播放</span><input id="gm-redirect" type="checkbox">
-    </label>
+      <tr class="gm-item" title="打开播放页面时，自动将视频从稍后再看列表中移除，或在特定条件下执行自动移除。">
+        <td>播放页面</td>
+        <td>
+          <span>打开页面时，</span>
+          <select id="gm-autoRemove">
+            <option value="${Enums.autoRemove.always}">若视频在稍后再看中，则移除出稍后再看</option>
+            <option value="${Enums.autoRemove.openFromList}">若是从列表页面或弹出菜单列表点击进入，则移除出稍后再看</option>
+            <option value="${Enums.autoRemove.never}">从不执行自动移除功能</option>
+          </select>
+        </td>
+      </tr>
 
-    <label class="gm-item" title="设置在【${gm.url.page_watchlaterList}】页面点击视频时的行为。">
-      <span>【列表页面】点击视频时</span>
-      <select id="gm-openListVideo">
-        <option value="${Enums.openListVideo.openInCurrent}">在当前页面打开</option>
-        <option value="${Enums.openListVideo.openInNew}">在新标签页打开</option>
-      </select>
-    </label>
+      <tr class="gm-item" title="打开【${gm.url.page_videoWatchlaterMode}】页面时，自动切换至【${gm.url.page_videoNormalMode}】页面进行播放。">
+        <td>播放页面</td>
+        <td>
+          <label>
+            <span>从稍后再看模式强制切换到普通模式播放</span>
+            <input id="gm-redirect" type="checkbox">
+          </label>
+        </td>
+      </tr>
 
-    <label class="gm-item" title="见弹出说明">
-      <span>【列表页面】确保视频的一致性（避免点击A视频却打开B视频的问题）</span>
-      <span id="gm-fcvInformation" class="gm-information" title="">💬</span>
-      <input id="gm-forceConsistentVideo" type="checkbox">
-    </label>
+      <tr class="gm-item" title="设置在【${gm.url.page_watchlaterList}】页面点击视频时的行为。">
+        <td>列表页面</td>
+        <td>
+          <span>点击视频时</span>
+          <select id="gm-openListVideo">
+            <option value="${Enums.openListVideo.openInCurrent}">在当前页面打开</option>
+            <option value="${Enums.openListVideo.openInNew}">在新标签页打开</option>
+          </select>
+        </td>
+      </tr>
 
-    <div class="gm-item">
-      <label title="保留最近几次打开【${gm.url.page_watchlaterList}】页面时稍后再看列表的记录，以查找出这段时间内将哪些视频移除出稍后再看，用于防止误删操作。关闭该选项后，会将内部历史数据清除！">
-        <span>【列表页面】开启稍后再看移除记录</span>
-        <input id="gm-removeHistory" type="checkbox">
-        <span id="gm-rhWarning" class="gm-warning" title="">⚠</span>
-      </label>
-      <div class="gm-subitem" title="较大的数值可能会带来较大的开销，经过性能测试，作者认为在设置在${gm.const.rhsWarning}以下时，即使在极限情况下也不会产生让人能察觉到的卡顿（存取总时不超过100ms），但在没有特殊要求的情况下依然不建议设置到这么大。该项修改后，会立即对过期记录进行清理，重新修改为原来的值无法还原被清除的记录，设置为比原来小的值需慎重！（范围：${gm.const.rhsMin} ~ ${gm.const.rhsMax}）">
-        <span>保存最近几次稍后再看数据用于生成移除记录</span>
-        <span id="gm-cleanRemoveHistoryData" class="gm-hint-option" title="清理已保存的稍后再看数据，不可恢复！">清空数据(0条)</span>
-        <input id="gm-removeHistorySaves" type="text">
-        <span id="gm-rhsWarning" class="gm-warning" title="">⚠</span>
-      </div>
-      <div class="gm-subitem" title="搜寻时在最近多少次稍后再看数据中查找，设置较小的值能较好地定位最近移除的视频。设置较大的值几乎不会对性能造成影响，但不能大于最近稍后再看数据保存次数。">
-        <span>默认历史回溯深度</span><input id="gm-removeHistorySearchTimes" type="text"></div>
-    </div>
+      <tr class="gm-item" title="见弹出说明">
+        <td>列表页面</td>
+        <td>
+          <label>
+            <span>确保视频的一致性（避免点击A视频却打开B视频的问题）</span>
+            <span id="gm-fcvInformation" class="gm-information" title="">💬</span>
+            <input id="gm-forceConsistentVideo" type="checkbox">
+          </label>
+        </td>
+      </tr>
 
-    <label class="gm-item" title="这个按钮太危险了……">
-      <span>【列表页面】移除 “一键清空” 按钮</span><input id="gm-removeButton_removeAll" type="checkbox">
-    </label>
+      <tr class="gm-item" title="这个按钮太危险了……">
+        <td>列表页面</td>
+        <td>
+          <label>
+            <span>移除 【一键清空】 按钮</span>
+            <input id="gm-removeButton_removeAll" type="checkbox">
+          </label>
+        </td>
+      </tr>
 
-    <label class="gm-item" title="这个按钮太危险了……">
-      <span>【列表页面】移除 “移除已观看视频” 按钮</span><input id="gm-removeButton_removeWatched" type="checkbox">
-    </label>
+      <tr class="gm-item" title="这个按钮太危险了……">
+        <td>列表页面</td>
+        <td>
+          <label>
+            <span>移除 【移除已观看视频】 按钮</span>
+            <input id="gm-removeButton_removeWatched" type="checkbox">
+          </label>
+        </td>
+      </tr>
 
-    <label class="gm-item" title="功能性更新后，是否打开用户设置？">
-      <span>【用户设置】功能性更新后打开用户设置</span><input id="gm-openSettingAfterConfigUpdate" type="checkbox">
-    </label>
+      <tr class="gm-item" title="功能性更新后，是否打开用户设置？">
+        <td>用户设置</td>
+        <td>
+          <label>
+            <span>功能性更新后打开用户设置</span>
+            <input id="gm-openSettingAfterConfigUpdate" type="checkbox">
+          </label>
+        </td>
+      </tr>
 
-    <label class="gm-item" title="勾选后，如果更改的配置需要重新加载才能生效，那么会在设置完成后重新加载页面。">
-      <span>【用户设置】必要时在设置完成后重新加载页面</span><input id="gm-reloadAfterSetting" type="checkbox">
-    </label>
+      <tr class="gm-item" title="勾选后，如果更改的配置需要重新加载才能生效，那么会在设置完成后重新加载页面。">
+        <td>用户设置</td>
+        <td>
+          <label>
+            <span>必要时在设置完成后重新加载页面</span>
+            <input id="gm-reloadAfterSetting" type="checkbox">
+          </label>
+        </td>
+      </tr>
+    </table>
   </div>
   <div class="gm-bottom">
     <button id="gm-save">保存</button><button id="gm-cancel">取消</button>
@@ -837,12 +932,14 @@
 
           el.settingPage = gm.el.setting.querySelector('#gm-setting-page')
           el.maintitle = gm.el.setting.querySelector('#gm-maintitle')
+          el.changelog = gm.el.setting.querySelector('#gm-changelog')
           switch (type) {
             case 1:
               el.maintitle.innerHTML += '<br><span style="font-size:0.8em">(初始化设置)</span>'
               break
             case 2:
               el.maintitle.innerHTML += '<br><span style="font-size:0.8em">(功能性更新设置)</span>'
+              el.changelog.className = 'gm-config-updated'
               break
           }
           el.save = gm.el.setting.querySelector('#gm-save')
@@ -855,9 +952,16 @@
             el.removeHistory.checked && _self.cleanRemoveHistoryData()
           }
 
+          el.rhspInformation = gm.el.setting.querySelector('#gm-rhspInformation')
+          _self.api.message.advanced(el.rhspInformation, `
+<div style="text-indent:2em;line-height:1.6em">
+  <p>选择更多的保存时间点，可以提高移除记录的准确度，降低遗漏历史数据的情况。但是数据冲刷速度更快，数据利用率低，可能会导致真正有价值的记录被冲洗掉，并且增大IO和运算负担。无论选择哪一种方式，在同一个URL对应的页面下至多保存一次。</p>
+  <p>如果你习惯于先点开稍后再看列表页面，再点击视频观看，请选择第一项。如果你习惯于直接在顶栏弹出菜单中点击视频观看，请选择第二项。第三项性价比低，如果没有特别需求请不要选择。</p>
+</div>
+          `, '💬', { width: '36em', flagSize: '2em', disabled: () => el.rhspInformation.parentNode.getAttribute('disabled') })
           el.fcvInformation = gm.el.setting.querySelector('#gm-fcvInformation')
           _self.api.message.advanced(el.fcvInformation, `
-<div style="text-indent:2em;line-height:1.6em;">
+<div style="text-indent:2em;line-height:1.6em">
   <p>从列表页面打开视频时，其URL使用该视频在列表中的位置来标识。假如列表在其他页面上被修改，这种定位方式就会出错。这是B站新版稍后再看播放页面的设计缺陷，本设置开启后能修复这个问题。</p>
   <p>假设先打开列表页面，此时列表的第1个视频是A，然后在其他页面将B视频添加到稍后再看，最后回到刚才列表页面点击A视频，结果播放的会是此时真正位于列表第1位的B视频。</p>
   <p>在正常使用的情况下，这个问题出现的频率并不高；此外，如果没有开启模式切换功能，在修复成功后浏览器的历史回退功能会受到影响，且修复过程可能会伴随页面内容切换和不明显的URL变动。如果不希望见到这些问题，或者只是单纯不想在页面引入不必要的脚本操作，请选择关闭。</p>
@@ -899,7 +1003,7 @@
             subitemChange(this, [el.headerButtonOpL, el.headerButtonOpR, el.openHeaderMenuLink, el.menuScrollbarSetting])
           }
           el.removeHistory.init = el.removeHistory.onchange = function() {
-            subitemChange(this, [el.removeHistorySaves, el.removeHistorySearchTimes])
+            subitemChange(this, [el.removeHistorySavePoint, el.removeHistorySaves, el.removeHistorySearchTimes])
             setRhWaring()
           }
 
@@ -1034,6 +1138,7 @@
             // 关闭特殊状态
             setTimeout(() => {
               el.maintitle.innerText = GM_info.script.name
+              el.changelog.className = ''
               el.cancel.disabled = false
               el.shadow.removeAttribute('disabled')
             }, gm.const.fadeTime)
@@ -1589,6 +1694,31 @@
             return false
           }
         },
+
+        /**
+         * 保存稍后再看数据，用于后续操作
+         * @param {boolean} [reload] 是否重新加载稍后再看列表数据
+         */
+        saveWatchlaterListData(reload) {
+          const _ = this._
+          if (gm.config.removeHistory) {
+            if (!_.watchLaterListData_saved || reload) {
+              if (!_.watchlaterListData_saving) {
+                _.watchlaterListData_saving = true
+                gm.data.watchlaterListData(reload).then(data => {
+                  gm.data.removeHistoryData().push(data)
+                  GM_setValue('removeHistoryData', gm.data.removeHistoryData())
+                  _.watchLaterListData_saved = true
+                }).catch(e => {
+                  console.error(gm.error.UNKNOWN)
+                  console.error(e)
+                }).finally(() => {
+                  _.watchlaterListData_saving = false
+                })
+              }
+            }
+          }
+        },
       }
     }
 
@@ -1767,6 +1897,10 @@
             console.error(e)
           }
           setMenuArrow()
+
+          if (gm.config.removeHistory && gm.config.removeHistorySavePoint == Enums.removeHistorySavePoint.listAndMenu) {
+            _self.method.saveWatchlaterListData()
+          }
         }
 
         /**
@@ -2001,6 +2135,10 @@
               const status = removed ? false : await _self.method.getVideoWatchlaterStatusByAid(bus.aid)
               btn.added = status
               cb.checked = status
+
+              if (gm.config.removeHistory && gm.config.removeHistorySavePoint == Enums.removeHistorySavePoint.anypage) {
+                _self.method.saveWatchlaterListData(true)
+              }
             } catch (e) {
               console.error(gm.error.DOM_PARSE)
               console.error(e)
@@ -2119,6 +2257,10 @@
               const status = removed ? false : await _self.method.getVideoWatchlaterStatusByAid(bus.aid)
               btn.added = status
               cb.checked = status
+
+              if (gm.config.removeHistory && gm.config.removeHistorySavePoint == Enums.removeHistorySavePoint.anypage) {
+                _self.method.saveWatchlaterListData(true)
+              }
             } catch (e) {
               console.error(gm.error.DOM_PARSE)
               console.error(e)
@@ -2456,13 +2598,24 @@
     }
 
     /**
-     * 保存稍后再看数据，用于后续操作
+     * 根据 `removeHistorySavePoint` 保存稍后再看数据
      */
-    saveWatchlaterListData() {
-      gm.data.watchlaterListData().then(data => {
-        gm.data.removeHistoryData().push(data)
-        GM_setValue('removeHistoryData', gm.data.removeHistoryData())
-      })
+    processWatchlaterListDataSaving() {
+      const _self = this
+      switch (gm.config.removeHistorySavePoint) {
+        case Enums.removeHistorySavePoint.list:
+        case Enums.removeHistorySavePoint.listAndMenu:
+        default:
+          if (urlMatch(gm.regex.page_watchlaterList)) {
+            _self.method.saveWatchlaterListData()
+          }
+          break
+        case Enums.removeHistorySavePoint.anypage:
+          if (!urlMatch(gm.regex.page_dynamicMenu)) {
+            _self.method.saveWatchlaterListData()
+          }
+          break
+      }
     }
 
     /**
@@ -2484,11 +2637,11 @@
       plusButton.innerText = '增强设置'
       plusButton.className = 's-btn'
       plusButton.onclick = () => _self.script.openUserSetting() // 要避免 MouseEvent 的传递
-      // 移除“一键清空”按钮
+      // 移除【一键清空】按钮
       if (gm.config.removeButton_removeAll) {
         r_con.children[1].style.display = 'none'
       }
-      // 移除“移除已观看视频”按钮
+      // 移除【移除已观看视频】按钮
       if (gm.config.removeButton_removeWatched) {
         r_con.children[2].style.display = 'none'
       }
@@ -2584,26 +2737,35 @@
 }
 
 #${gm.id} .gm-setting .gm-items {
-  margin: 0 0.4em;
-  padding: 0 1.6em 0 1.8em;
+  margin: 0 0.2em;
+  padding: 0 2em 0 2.2em;
   font-size: 1.2em;
   max-height: 66vh;
   overflow-y: auto;
 }
 
-#${gm.id} .gm-setting .gm-item {
-  display: block;
-  padding: 0.5em;
+#${gm.id} .gm-setting table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0 0.3em; /* 前列后行 */
 }
-#${gm.id} .gm-setting .gm-item:hover {
-color: #0075FF;
+#${gm.id} .gm-setting td {
+  position: relative;
+}
+#${gm.id} .gm-setting .gm-item td:first-child {
+  vertical-align: top;
+  padding-right: 0.4em;
+  font-weight: bold;
+  color: #3a3a3a;
+}
+#${gm.id} .gm-setting .gm-item:not(:first-child) td {
+  padding-top: 0.7em;
 }
 
-#${gm.id} .gm-setting .gm-subitem {
-  display: block;
-  margin-left: 6em;
-  margin-top: 0.3em;
+#${gm.id} .gm-setting .gm-item:hover {
+  color: #0075FF;
 }
+
 #${gm.id} .gm-setting .gm-subitem[disabled] {
   color: gray;
 }
@@ -2626,10 +2788,12 @@ color: #0075FF;
   cursor: not-allowed;
 }
 
+#${gm.id} .gm-setting label {
+  display: flex;
+  align-items: center;
+}
 #${gm.id} .gm-setting input[type=checkbox] {
-  vertical-align: middle;
-  margin: 3px 0 0 10px;
-  float: right;
+  margin-left: auto;
 }
 #${gm.id} .gm-setting input[type=text] {
   float: right;
@@ -2637,22 +2801,25 @@ color: #0075FF;
   width: 2.4em;
   text-align: right;
   padding: 0 0.2em;
-  margin-right: -0.2em;
+  margin: 0 -0.2em;
 }
-
 #${gm.id} .gm-setting select {
   border-width: 0 0 1px 0;
   cursor: pointer;
+  margin: 0 -0.2em;
 }
 
 #${gm.id} .gm-setting .gm-information {
   margin: 0 0.2em;
   cursor: pointer;
 }
+#${gm.id} .gm-setting [disabled] .gm-information {
+  cursor: not-allowed;
+}
 
 #${gm.id} .gm-setting .gm-warning {
   position: absolute;
-  right: 1.4em;
+  right: -1.2em;
   color: #e37100;
   font-size: 1.4em;
   line-height: 1em;
@@ -2749,7 +2916,7 @@ color: #0075FF;
   right: 0;
   bottom: 0;
   margin: 1em 1.6em;
-  color: #cfcfcf;
+  color: #999999;
   cursor: pointer;
 }
 
@@ -2758,13 +2925,20 @@ color: #0075FF;
   right: 0;
   bottom: 1.8em;
   margin: 1em 1.6em;
-  color: #cfcfcf;
+  color: #999999;
   cursor: pointer;
+}
+#${gm.id} #gm-changelog.gm-config-updated {
+  color: red;
+  font-weight: bold;
+}
+#${gm.id} #gm-changelog.gm-config-updated:hover {
+  color: red;
 }
 
 #${gm.id} #gm-reset:hover,
 #${gm.id} #gm-changelog:hover {
-  color: #666666;
+  color: #555555;
   text-decoration: underline;
 }
 
@@ -3058,6 +3232,7 @@ color: #551a8b
          * @param {string} [config.flagSize='1.8em'] 标志大小
          * @param {string} [config.width] 信息框的宽度，不设置的情况下根据内容决定，但有最小宽度和最大宽度的限制
          * @param {{top: string, left: string}} [config.position] 信息框的位置，不设置该项时，相当于设置为 `{ top: gm.const.messageTop, left: gm.const.messageLeft }`
+         * @param {() => boolean} [config.disabled] 是否处于禁用状态
          */
         advanced(el, msg, flag, config) {
           const defaultConfig = {
@@ -3069,6 +3244,10 @@ color: #551a8b
           const _self = this
           el.show = false
           el.onmouseenter = function() {
+            if (config.disabled && config.disabled()) {
+              return
+            }
+
             const htmlMsg = `
 <table class="gm-advanced-table"><tr>
   <td style="font-size:${config.flagSize};line-height:${config.flagSize}">${flag}</td>

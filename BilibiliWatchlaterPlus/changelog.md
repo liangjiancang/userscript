@@ -2,6 +2,11 @@
 
 本日志只记录用户友好的更新说明，影响不大的问题修复与修改不作记录，具体修改见 [提交记录](https://gitee.com/liangjiancang/userscript/commits/master/BilibiliWatchlaterPlus/BilibiliWatchlaterPlus.js)。
 
+## V4.2
+
+1. 脚本：设置页重做，采用更为合理的 DOM 结构，方便以后扩展。
+2. 移除记录：现在这个功能不再局限于列表页面，而是作为全局功能，用户可以设置在什么时间点保存稍后再看数据。
+
 ## V4.1
 
 1. 脚本：当前稍后再看数据的获取，改为懒加载方式，为后面要实现的功能开路。
