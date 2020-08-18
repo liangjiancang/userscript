@@ -2,6 +2,13 @@
 
 本日志只记录用户友好的更新说明，影响不大的问题修复与修改不作记录，具体修改见 [提交记录](https://gitee.com/liangjiancang/userscript/commits/master/BilibiliWatchlaterPlus/BilibiliWatchlaterPlus.js)。
 
+## V4.3
+
+1. 移除记录：修复数据获取失败时往数据库中写入错误数据，并进一步导致脚本运行错误的问题。
+2. UI：引入 CSS 变量进行样式标准化。
+3. API：引入 `logger` API 对日志输出进行标准化。
+4. 代码：从 V2 开始，脚本代码就存在 `document-start` 和 `document-idle` 两个运行时机，因而被强行割裂为两部分。之前个人一直不愿意将不必要的代码注入到 `document-start` 时期执行，这给脚本的编写带来非常多的麻烦。这个版本终于痛下决心，以几乎可以忽略的性能代价彻底解决了代码割裂的问题（其实对加载速度的影响大概也就 `0.1ms`，都不知道之前在纠结什么）。
+
 ## V4.2
 
 1. 脚本：设置页重做，采用更为合理的 DOM 结构，方便以后扩展。

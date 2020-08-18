@@ -1,7 +1,7 @@
 // ==UserScript==
 // @id              BilibiliWatchlaterPlus@Laster2800
 // @name            B站稍后再看功能增强
-// @version         4.2.1.20200816
+// @version         4.3.0.20200818
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -27,8 +27,642 @@
 // @run-at          document-start
 // ==/UserScript==
 
+/**
+ * API
+ */
+class API {
+  /**
+   * @param {Object} [options] 选项
+   * @param {string} [options.id='_0'] 标识符
+   * @param {number} [options.fadeTime=400] UI 渐变时间
+   */
+  constructor(options) {
+    const defaultOptions = {
+      id: '_0',
+      fadeTime: 400,
+    }
+    this.options = {
+      ...defaultOptions,
+      ...options,
+    }
+
+    if (window[`_api_${this.options.id}`]) {
+      return window[`_api_${this.options.id}`]
+    }
+    window[`_api_${this.options.id}`] = this
+
+    const api = this
+    /** DOM 相关 */
+    this.dom = {
+      /**
+       * 创建 locationchange 事件
+       * @see {@link https://stackoverflow.com/a/52809105 How to detect if URL has changed after hash in JavaScript}
+       */
+      createLocationchangeEvent() {
+        if (!unsafeWindow._createLocationchangeEvent) {
+          history.pushState = (f => function pushState() {
+            const ret = f.apply(this, arguments)
+            window.dispatchEvent(new Event('pushstate'))
+            window.dispatchEvent(new Event('locationchange'))
+            return ret
+          })(history.pushState)
+          history.replaceState = (f => function replaceState() {
+            const ret = f.apply(this, arguments)
+            window.dispatchEvent(new Event('replacestate'))
+            window.dispatchEvent(new Event('locationchange'))
+            return ret
+          })(history.replaceState)
+          window.addEventListener('popstate', () => {
+            window.dispatchEvent(new Event('locationchange'))
+          })
+          unsafeWindow._createLocationchangeEvent = true
+        }
+      },
+
+      /**
+       * 将一个元素绝对居中
+       * 
+       * 要求该元素此时可见且尺寸为确定值（一般要求为块状元素）。运行后会在 `target` 上附加 `_absoluteCenter` 方法，若该方法已存在，则无视 `config` 直接执行 `target._absoluteCenter()`。
+       * @param {HTMLElement} target 目标元素
+       * @param {Object} [config] 配置
+       * @param {string} [config.position='fixed'] 定位方式
+       * @param {string} [config.top='50%'] `style.top`
+       * @param {string} [config.left='50%'] `style.left`
+       */
+      setAbsoluteCenter(target, config) {
+        if (!target._absoluteCenter) {
+          const defaultConfig = {
+            position: 'fixed',
+            top: '50%',
+            left: '50%',
+          }
+          config = { ...defaultConfig, ...config }
+          target._absoluteCenter = () => {
+            const style = getComputedStyle(target)
+            const top = (parseFloat(style.height) + parseFloat(style.paddingTop) + parseFloat(style.paddingBottom)) / 2
+            const left = (parseFloat(style.width) + parseFloat(style.paddingLeft) + parseFloat(style.paddingRight)) / 2
+            target.style.top = `calc(${config.top} - ${top}px)`
+            target.style.left = `calc(${config.left} - ${left}px)`
+            target.style.position = config.position
+          }
+
+          // 实现一个简单的 debounce 来响应 resize 事件
+          let tid
+          window.addEventListener('resize', function() {
+            if (target._absoluteCenter) {
+              if (tid) {
+                clearTimeout(tid)
+                tid = null
+              }
+              tid = setTimeout(() => {
+                target._absoluteCenter()
+              }, 500)
+            }
+          })
+        }
+        target._absoluteCenter()
+      },
+
+      /**
+       * 处理 HTML 元素的渐显和渐隐
+       * @param {boolean} inOut 渐显/渐隐
+       * @param {HTMLElement} target HTML 元素
+       * @param {() => void} [callback] 处理完成的回调函数
+       */
+      fade(inOut, target, callback) {
+        // fadeId 等同于当前时间戳，其意义在于保证对于同一元素，后执行的操作必将覆盖前的操作
+        const fadeId = new Date().getTime()
+        target._fadeId = fadeId
+        if (inOut) { // 渐显
+          // 只有 display 可视情况下修改 opacity 才会触发 transition
+          if (getComputedStyle(target).display == 'none') {
+            target.style.display = 'unset'
+          }
+          setTimeout(() => {
+            let success = false
+            if (target._fadeId <= fadeId) {
+              target.style.opacity = '1'
+              success = true
+            }
+            callback && callback(success)
+          }, 10) // 此处的 10ms 是为了保证修改 display 后在浏览器上真正生效，按 HTML5 定义，浏览器需保证 display 在修改 4ms 后保证生效，但实际上大部分浏览器貌似做不到，等个 10ms 再修改 opacity
+        } else { // 渐隐
+          target.style.opacity = '0'
+          setTimeout(() => {
+            let success = false
+            if (target._fadeId <= fadeId) {
+              target.style.display = 'none'
+              success = true
+            }
+            callback && callback(success)
+          }, api.options.fadeTime)
+        }
+      },
+    }
+    /** 信息通知相关 */
+    this.message = {
+      /**
+       * 创建信息
+       * @param {string} msg 信息
+       * @param {Object} [config] 设置
+       * @param {boolean} [config.autoClose=true] 是否自动关闭信息，配合 `config.ms` 使用
+       * @param {number} [config.ms=gm.const.messageTime] 显示时间（单位：ms，不含渐显/渐隐时间）
+       * @param {boolean} [config.html=false] 是否将 `msg` 理解为 HTML
+       * @param {string} [config.width] 信息框的宽度，不设置的情况下根据内容决定，但有最小宽度和最大宽度的限制
+       * @param {{top: string, left: string}} [config.position] 信息框的位置，不设置该项时，相当于设置为 `{ top: '70%', left: '50%' }`
+       * @return {HTMLElement} 信息框元素
+       */
+      create(msg, config) {
+        const defaultConfig = {
+          autoClose: true,
+          ms: 1200,
+          html: false,
+          width: null,
+          position: {
+            top: '70%',
+            left: '50%',
+          },
+        }
+        config = { ...defaultConfig, ...config }
+
+        const msgbox = document.body.appendChild(document.createElement('div'))
+        msgbox.className = `${api.options.id}-msgbox`
+        if (config.width) {
+          msgbox.style.minWidth = 'auto' // 为什么一个是 auto 一个是 none？真是神奇的设计
+          msgbox.style.maxWidth = 'none'
+          msgbox.style.width = config.width
+        }
+
+        msgbox.style.display = 'block'
+        setTimeout(() => {
+          api.dom.setAbsoluteCenter(msgbox, config.position)
+        }, 10)
+
+        if (config.html) {
+          msgbox.innerHTML = msg
+        } else {
+          msgbox.innerText = msg
+        }
+        api.dom.fade(true, msgbox, () => {
+          if (config.autoClose) {
+            setTimeout(() => {
+              this.close(msgbox)
+            }, config.ms)
+          }
+        })
+        return msgbox
+      },
+
+      /**
+       * 关闭信息
+       * @param {HTMLElement} msgbox 信息框元素
+       */
+      close(msgbox) {
+        if (msgbox) {
+          api.dom.fade(false, msgbox, () => {
+            msgbox && msgbox.remove()
+          })
+        }
+      },
+
+      /**
+       * 创建高级信息
+       * @param {HTMLElement} el 启动元素
+       * @param {string} msg 信息
+       * @param {string} flag 标志信息
+       * @param {Object} [config] 设置
+       * @param {string} [config.flagSize='1.8em'] 标志大小
+       * @param {string} [config.width] 信息框的宽度，不设置的情况下根据内容决定，但有最小宽度和最大宽度的限制
+       * @param {{top: string, left: string}} [config.position] 信息框的位置，不设置该项时，相当于设置为 `{ top: gm.const.messageTop, left: gm.const.messageLeft }`
+       * @param {() => boolean} [config.disabled] 是否处于禁用状态
+       */
+      advanced(el, msg, flag, config) {
+        const defaultConfig = {
+          flagSize: '1.8em',
+          // 不能把数据列出，否则解构的时候会出问题
+        }
+        config = { ...defaultConfig, ...config }
+
+        const _self = this
+        el.show = false
+        el.onmouseenter = function() {
+          if (config.disabled && config.disabled()) {
+            return
+          }
+
+          const htmlMsg = `
+              <table class="gm-advanced-table"><tr>
+                <td style="font-size:${config.flagSize};line-height:${config.flagSize}">${flag}</td>
+                <td>${msg}</td>
+              </tr></table>
+            `
+          this.msgbox = _self.create(htmlMsg, { ...config, html: true, autoClose: false })
+
+          // 可能信息框刚好生成覆盖在 elWarning 上，需要做一个处理
+          this.msgbox.onmouseenter = function() {
+            this.mouseOver = true
+          }
+          // 从信息框出来也会关闭信息框，防止覆盖的情况下无法关闭
+          this.msgbox.onmouseleave = function() {
+            _self.close(this)
+          }
+        }
+        el.onmouseleave = function() {
+          setTimeout(() => {
+            if (this.msgbox && !this.msgbox.mouseOver) {
+              this.msgbox.onmouseleave = null
+              _self.close(this.msgbox)
+            }
+          })
+        }
+      },
+    }
+    /** 用于等待元素加载/条件达成再执行操作 */
+    this.wait = {
+      /**
+       * 在条件满足后执行操作
+       *
+       * 当条件满足后，如果不存在终止条件，那么直接执行 `callback(result)`。
+       *
+       * 当条件满足后，如果存在终止条件，且 `stopTimeout` 大于 0，则还会在接下来的 `stopTimeout` 时间内判断是否满足终止条件，称为终止条件的二次判断。
+       * 如果在此期间，终止条件通过，则表示依然不满足条件，故执行 `onStop()` 而非 `callback(result)`。
+       * 如果在此期间，终止条件一直失败，则顺利通过检测，执行 `callback(result)`。
+       *
+       * @param {Object} options 选项
+       * @param {() => *} options.condition 条件，当 `condition()` 返回的 `result` 为真值时满足条件
+       * @param {(result) => void} [options.callback] 当满足条件时执行 `callback(result)`
+       * @param {number} [options.interval=100] 检测时间间隔（单位：ms）
+       * @param {number} [options.timeout=5000] 检测超时时间，检测时间超过该值时终止检测（单位：ms）
+       * @param {() => void} [options.onTimeout] 检测超时时执行 `onTimeout()`
+       * @param {() => *} [options.stopCondition] 终止条件，当 `stopCondition()` 返回的 `stopResult` 为真值时终止检测
+       * @param {() => void} [options.onStop] 终止条件达成时执行 `onStop()`（包括终止条件的二次判断达成）
+       * @param {number} [options.stopInterval=50] 终止条件二次判断期间的检测时间间隔（单位：ms）
+       * @param {number} [options.stopTimeout=0] 终止条件二次判断期间的检测超时时间（单位：ms）
+       * @param {number} [options.timePadding=0] 等待 `timePadding`ms 后才开始执行；包含在 `timeout` 中，因此不能大于 `timeout`
+       */
+      executeAfterConditionPassed(options) {
+        const defaultOptions = {
+          callback: result => api.logger.info(result),
+          interval: 100,
+          timeout: 5000,
+          onTimeout: null,
+          stopCondition: null,
+          onStop: null,
+          stopInterval: 50,
+          stopTimeout: 0,
+          timePadding: 0,
+        }
+        options = {
+          ...defaultOptions,
+          ...options,
+        }
+
+        let tid
+        let cnt = 0
+        const maxCnt = (options.timeout - options.timePadding) / options.interval
+        const task = async () => {
+          const result = await options.condition()
+          const stopResult = options.stopCondition && await options.stopCondition()
+          if (stopResult) {
+            clearInterval(tid)
+            options.onStop && options.onStop.call(options)
+          } else if (++cnt > maxCnt) {
+            clearInterval(tid)
+            options.onTimeout && options.onTimeout.call(options)
+          } else if (result) {
+            clearInterval(tid)
+            if (options.stopCondition && options.stopTimeout > 0) {
+              this.executeAfterConditionPassed({
+                condition: options.stopCondition,
+                callback: options.onStop,
+                interval: options.stopInterval,
+                timeout: options.stopTimeout,
+                onTimeout: () => options.callback.call(options, result)
+              })
+            } else {
+              options.callback.call(options, result)
+            }
+          }
+        }
+        setTimeout(() => {
+          tid = setInterval(task, options.interval)
+          task()
+        }, options.timePadding)
+      },
+
+      /**
+       * 在元素加载完成后执行操作
+       *
+       * 当条件满足后，如果不存在终止条件，那么直接执行 `callback(element)`。
+       *
+       * 当条件满足后，如果存在终止条件，且 `stopTimeout` 大于 `0`，则还会在接下来的 `stopTimeout` 时间内判断是否满足终止条件，称为终止条件的二次判断。
+       * 如果在此期间，终止条件通过，则表示依然不满足条件，故执行 `onStop()` 而非 `callback(element)`。
+       * 如果在此期间，终止条件一直失败，则顺利通过检测，执行 `callback(element)`。
+       *
+       * @param {Object} options 选项
+       * @param {string} options.selector 该选择器指定要等待加载的元素 `element`
+       * @param {HTMLElement} [options.base=document] 基元素
+       * @param {(element: HTMLElement) => void} [options.callback] 当 `element` 加载成功时执行 `callback(element)`
+       * @param {number} [options.interval=100] 检测时间间隔（单位：ms）
+       * @param {number} [options.timeout=5000] 检测超时时间，检测时间超过该值时终止检测（单位：ms）
+       * @param {() => void} [options.onTimeout] 检测超时时执行 `onTimeout()`
+       * @param {string | (() => *)} [options.stopCondition] 终止条件。若为函数，当 `stopCondition()` 返回的 `stopResult` 为真值时终止检测；若为字符串，则作为元素选择器指定终止元素 `stopElement`，若该元素加载成功则终止检测
+       * @param {() => void} [options.onStop] 终止条件达成时执行 `onStop()`（包括终止条件的二次判断达成）
+       * @param {number} [options.stopInterval=50] 终止条件二次判断期间的检测时间间隔（单位：ms）
+       * @param {number} [options.stopTimeout=0] 终止条件二次判断期间的检测超时时间（单位：ms）
+       * @param {number} [options.timePadding=0] 等待 `timePadding`ms 后才开始执行；包含在 `timeout` 中，因此不能大于 `timeout`
+       */
+      executeAfterElementLoaded(options) {
+        const defaultOptions = {
+          base: document,
+          callback: el => api.logger.info(el),
+          interval: 100,
+          timeout: 5000,
+          onTimeout: null,
+          stopCondition: null,
+          onStop: null,
+          stopInterval: 50,
+          stopTimeout: 0,
+          timePadding: 0,
+        }
+        options = {
+          ...defaultOptions,
+          ...options,
+        }
+        this.executeAfterConditionPassed({
+          ...options,
+          condition: () => options.base.querySelector(options.selector),
+          stopCondition: () => {
+            if (options.stopCondition) {
+              if (options.stopCondition) {
+                return options.stopCondition()
+              } else if (typeof options.stopCondition == 'string') {
+                return document.querySelector(options.stopCondition)
+              }
+            }
+          },
+        })
+      },
+
+      /**
+       * 等待条件满足
+       * 
+       * 执行细节类似于 {@link executeAfterConditionPassed}。在原来执行 `callback(result)` 的地方执行 `resolve(result)`，被终止或超时执行 `reject()`。
+       * @async
+       * @see executeAfterConditionPassed
+       * @param {Object} options 选项
+       * @param {() => *} options.condition 条件，当 `condition()` 返回的 `result` 为真值时满足条件
+       * @param {number} [options.interval=100] 检测时间间隔（单位：ms）
+       * @param {number} [options.timeout=5000] 检测超时时间，检测时间超过该值时终止检测（单位：ms）
+       * @param {() => *} [options.stopCondition] 终止条件，当 `stopCondition()` 返回的 `stopResult` 为真值时终止检测
+       * @param {number} [options.stopInterval=50] 终止条件二次判断期间的检测时间间隔（单位：ms）
+       * @param {number} [options.stopTimeout=0] 终止条件二次判断期间的检测超时时间（单位：ms）
+       * @param {number} [options.timePadding=0] 等待 `timePadding`ms 后才开始执行；包含在 `timeout` 中，因此不能大于 `timeout`
+       * @returns {Promise} `result`
+       * @throws 当等待超时或者被终止时抛出
+       */
+      async waitForConditionPassed(options) {
+        return new Promise((resolve, reject) => {
+          this.executeAfterConditionPassed({
+            ...options,
+            callback: result => resolve(result),
+            onTimeout: function() {
+              reject(['TIMEOUT', 'waitForConditionPassed', this])
+            },
+            onStop: function() {
+              reject(['STOP', 'waitForConditionPassed', this])
+            },
+          })
+        })
+      },
+
+      /**
+       * 等待元素加载
+       * 
+       * 执行细节类似于 {@link executeAfterElementLoaded}。在原来执行 `callback(element)` 的地方执行 `resolve(element)`，被终止或超时执行 `reject()`。
+       * @async
+       * @see executeAfterElementLoaded
+       * @param {string} selector 该选择器指定要等待加载的元素 `element`
+       * @param {HTMLElement} [base=document] 基元素
+       * @returns {Promise<HTMLElement>} `element`
+       * @throws 当等待超时或者被终止时抛出
+       */
+      /**
+       * 等待元素加载
+       * 
+       * 执行细节类似于 {@link executeAfterElementLoaded}。在原来执行 `callback(element)` 的地方执行 `resolve(element)`，被终止或超时执行 `reject()`。
+       * @async
+       * @see executeAfterElementLoaded
+       * @param {Object} options 选项
+       * @param {string} options.selector 该选择器指定要等待加载的元素 `element`
+       * @param {HTMLElement} [options.base=document] 基元素
+       * @param {number} [options.interval=100] 检测时间间隔（单位：ms）
+       * @param {number} [options.timeout=5000] 检测超时时间，检测时间超过该值时终止检测（单位：ms）
+       * @param {string | (() => *)} [options.stopCondition] 终止条件。若为函数，当 `stopCondition()` 返回的 `stopResult` 为真值时终止检测；若为字符串，则作为元素选择器指定终止元素 `stopElement`，若该元素加载成功则终止检测
+       * @param {number} [options.stopInterval=50] 终止条件二次判断期间的检测时间间隔（单位：ms）
+       * @param {number} [options.stopTimeout=0] 终止条件二次判断期间的检测超时时间（单位：ms）
+       * @param {number} [options.timePadding=0] 等待 `timePadding`ms 后才开始执行；包含在 `timeout` 中，因此不能大于 `timeout`
+       * @returns {Promise<HTMLElement>} `element`
+       * @throws 当等待超时或者被终止时抛出
+       */
+      async waitForElementLoaded() {
+        let options
+        if (arguments.length > 0) {
+          if (typeof arguments[0] == 'string') {
+            options = { selector: arguments[0] }
+            if (arguments[1]) {
+              options.base = arguments[1]
+            }
+          } else {
+            options = arguments[0]
+          }
+        }
+        return new Promise((resolve, reject) => {
+          this.executeAfterElementLoaded({
+            ...options,
+            callback: element => resolve(element),
+            onTimeout: function() {
+              reject(['TIMEOUT', 'waitForElementLoaded', this])
+            },
+            onStop: function() {
+              reject(['STOP', 'waitForElementLoaded', this])
+            },
+          })
+        })
+      },
+    }
+    /** 网络相关 */
+    this.web = {
+      /** @typedef {Object} GM_xmlhttpRequest_details */
+      /** @typedef {Object} GM_xmlhttpRequest_response */
+      /**
+       * 发起网络请求
+       * @async
+       * @param {GM_xmlhttpRequest_details} details 定义及细节同 {@link GM_xmlhttpRequest} 的 `details`
+       * @returns {Promise<GM_xmlhttpRequest_response>} 响应对象
+       * @throws 当请求发生错误或者超时时抛出
+       * @see {@link https://www.tampermonkey.net/documentation.php#GM_xmlhttpRequest GM_xmlhttpRequest}
+       */
+      async request(details) {
+        if (details) {
+          return new Promise((resolve, reject) => {
+            const throwHandler = function(msg) {
+              api.logger.error('NETWORK REQUEST ERROR')
+              reject(msg)
+            }
+            details.onerror = details.onerror || (() => throwHandler(['ERROR', 'request', details]))
+            details.ontimeout = details.ontimeout || (() => throwHandler(['TIMEOUT', 'request', details]))
+            details.onload = details.onload || (response => resolve(response))
+            GM_xmlhttpRequest(details)
+          })
+        }
+      },
+
+      /**
+       * 判断当前 URL 是否匹配
+       * @param {RegExp} reg 用于判断是否匹配的正则表达式
+       * @returns {boolean} 是否匹配
+       */
+      urlMatch(reg) {
+        return reg.test(location.href)
+      },
+    }
+    /**
+     * 日志
+     */
+    this.logger = {
+      /**
+       * 打印格式化日志
+       * @param {*} message 日志信息
+       * @param {string} label 日志标签
+       * @param {boolean} [error] 是否错误信息
+       */
+      log(message, label, error) {
+        const css = `
+            background-color: black;
+            color: white;
+            border-radius: 2px;
+            padding: 2px;
+            margin-right: 2px;
+          `
+        const output = console[error ? 'error' : 'log']
+        const type = typeof message == 'string' ? '%s' : '%o'
+        output(`%c${label}%c${type}`, css, '', message)
+      },
+
+      /**
+       * 打印日志
+       * @param {*} message 日志信息
+       */
+      info(message) {
+        this.log(message, GM_info.script.name)
+      },
+
+      /**
+       * 打印错误日志
+       * @param {*} message 错误日志信息
+       */
+      error(message) {
+        this.log(message, GM_info.script.name, true)
+      },
+    }
+
+    GM_addStyle(`
+      :root {
+        --light-text-color: white;
+        --shadow-color: #000000bf;
+      }
+
+      .${api.options.id}-msgbox {
+        z-index: 65535;
+        background-color: var(--shadow-color);
+        font-size: 16px;
+        max-width: 24em;
+        min-width: 2em;
+        color: var(--light-text-color);
+        padding: 0.5em 1em;
+        border-radius: 0.6em;
+        opacity: 0;
+        transition: opacity ${api.options.fadeTime}ms ease-in-out;
+        user-select: none;
+      }
+
+      .${api.options.id}-msgbox .gm-advanced-table td {
+        vertical-align: middle;
+      }
+      .${api.options.id}-msgbox .gm-advanced-table td:first-child {
+        padding-right: 0.6em;
+      }
+    `)
+  }
+}
+
 (function() {
   'use strict'
+
+  /**
+   * 脚本内用到的枚举定义
+   */
+  const Enums = {
+    /**
+     * @readonly
+     * @enum {string}
+     */
+    headerButtonOp: {
+      openListInCurrent: 'openListInCurrent',
+      openListInNew: 'openListInNew',
+      playAllInCurrent: 'playAllInCurrent',
+      playAllInNew: 'playAllInNew',
+      openUserSetting: 'openUserSetting',
+      openRemoveHistory: 'openRemoveHistory',
+      noOperation: 'noOperation',
+    },
+    /**
+     * @readonly
+     * @enum {string}
+     */
+    openHeaderMenuLink: {
+      openInCurrent: 'openInCurrent',
+      openInNew: 'openInNew',
+    },
+    /**
+     * @readonly
+     * @enum {string}
+     */
+    menuScrollbarSetting: {
+      beautify: 'beautify',
+      hidden: 'hidden',
+      original: 'original',
+    },
+    /**
+     * @readonly
+     * @enum {string}
+     */
+    removeHistorySavePoint: {
+      list: 'list',
+      listAndMenu: 'listAndMenu',
+      anypage: 'anypage',
+    },
+    /**
+     * @readonly
+     * @enum {string}
+     */
+    autoRemove: {
+      always: 'always',
+      openFromList: 'openFromList',
+      never: 'never',
+    },
+    /**
+     * @readonly
+     * @enum {string}
+     */
+    openListVideo: {
+      openInCurrent: 'openInCurrent',
+      openInNew: 'openInNew',
+    },
+  }
+  // 将名称不完全对应的补上，这样校验才能生效
+  Enums.headerButtonOpL = Enums.headerButtonOpR = Enums.headerButtonOp
 
   /**
    * @typedef GMObject
@@ -111,9 +745,9 @@
    */
   /**
    * @typedef GMObject_regex
+   * @property {RegExp} page_watchlaterList 匹配列表页面
    * @property {RegExp} page_videoNormalMode 匹配正常模式播放页
    * @property {RegExp} page_videoWatchlaterMode 匹配稍后再看播放页
-   * @property {RegExp} page_watchlaterList 匹配列表页面
    * @property {RegExp} page_dynamicMenu 匹配顶栏动态入口菜单
    */
   /**
@@ -125,9 +759,6 @@
    * @property {number} rhsWarning 稍后再看数据保存数警告线
    * @property {number} fadeTime UI 渐变时间
    * @property {number} textFadeTime 文字渐变时间
-   * @property {number} messageTime 默认信息显示时间
-   * @property {string} messageTop 信息显示默认 `style.top`
-   * @property {string} messageLeft 信息显示默认 `style.left`
    */
   /**
    * @typedef GMObject_menu
@@ -158,302 +789,149 @@
     configUpdate: 20200815,
     searchParams: new URL(location.href).searchParams,
     config: {
+      headerButton: true,
+      headerButtonOpL: Enums.headerButtonOp.openListInCurrent,
+      headerButtonOpR: Enums.headerButtonOp.openUserSetting,
+      openHeaderMenuLink: Enums.openHeaderMenuLink.openInCurrent,
+      menuScrollbarSetting: Enums.menuScrollbarSetting.beautify,
+      removeHistory: true,
+      removeHistorySavePoint: Enums.removeHistorySavePoint.listAndMenu,
+      removeHistorySaves: null,
+      removeHistorySearchTimes: null,
+      videoButton: true,
+      autoRemove: Enums.autoRemove.openFromList,
       redirect: false,
+      openListVideo: Enums.openListVideo.openInCurrent,
+      forceConsistentVideo: true,
+      removeButton_removeAll: false,
+      removeButton_removeWatched: false,
+      openSettingAfterConfigUpdate: true,
+      reloadAfterSetting: true,
+    },
+    data: {
+      removeHistoryData: null,
+      watchlaterListData: null,
     },
     url: {
       api_queryWatchlaterList: 'https://api.bilibili.com/x/v2/history/toview/web?jsonp=jsonp',
       api_videoInfo: (id, type) => `https://api.bilibili.com/x/web-interface/view?${type}=${id}`,
-      page_videoNormalMode: 'https://www.bilibili.com/video',
+      api_addToWatchlater: 'https://api.bilibili.com/x/v2/history/toview/add',
+      api_removeFromWatchlater: 'https://api.bilibili.com/x/v2/history/toview/del',
       page_watchlaterList: 'https://www.bilibili.com/watchlater/#/list',
+      page_videoNormalMode: 'https://www.bilibili.com/video',
+      page_videoWatchlaterMode: 'https://www.bilibili.com/medialist/play/watchlater',
+      page_watchlaterPlayAll: 'https://www.bilibili.com/medialist/play/watchlater/p1',
+      gm_changelog: 'https://gitee.com/liangjiancang/userscript/blob/master/BilibiliWatchlaterPlus/changelog.md',
+      noop: 'javascript:void(0)',
     },
     regex: {
+      page_watchlaterList: /\.com\/watchlater\/.*#.*\/list(?=\/|$)/,
+      page_videoNormalMode: /\.com\/video(?=\/|$)/,
       page_videoWatchlaterMode: /bilibili.com\/medialist\/play\/watchlater(?=\/|$)/,
+      page_dynamicMenu: /\.com\/pages\/nav\/index_new#(?=\/|$)/,
+    },
+    const: {
+      rhsMin: 1,
+      rhsMax: 1024, // 经过性能测试，放宽到 1024 应该没有太大问题
+      defaultRhs: 64, // 就目前的PC运算力，即使达到 gm.const.rhsWarning 且在极限情况下也不会有明显的卡顿
+      defaultRhst: 16,
+      rhsWarning: 256,
+      fadeTime: 400,
+      textFadeTime: 100,
+    },
+    menu: {
+      setting: { state: false },
+      history: { state: false },
+    },
+    el: {
+      gmRoot: null,
+      setting: null,
+      history: null,
     },
     error: {
+      DOM_PARSE: `DOM解析错误。大部分情况下是由于网络加载速度不足造成的，不影响脚本工作；否则就是B站网页改版，请联系脚本作者修改：${GM_info.script.supportURL}`,
+      NETWORK: `网络连接错误，出现这个问题有可能是因为网络加载速度不足或者B站后台API被改动。也不排除是脚本内部数据出错造成的，初始化脚本或清空稍后再看数据也许能解决问题。无法解决请联系脚本作者：${GM_info.script.supportURL}`,
       REDIRECT: `重定向错误，可能是网络问题，如果重新加载页面依然出错请联系脚本作者：${GM_info.script.supportURL}`,
+      UNKNOWN: `未知错误，请联系脚本作者：${GM_info.script.supportURL}`,
     },
   }
 
-  /**
-   * 脚本内用到的枚举定义
-   */
-  const Enums = {
-    /**
-     * @readonly
-     * @enum {string}
-     */
-    headerButtonOp: {
-      openListInCurrent: 'openListInCurrent',
-      openListInNew: 'openListInNew',
-      playAllInCurrent: 'playAllInCurrent',
-      playAllInNew: 'playAllInNew',
-      openUserSetting: 'openUserSetting',
-      openRemoveHistory: 'openRemoveHistory',
-      noOperation: 'noOperation',
-    },
-    /**
-     * @readonly
-     * @enum {string}
-     */
-    openHeaderMenuLink: {
-      openInCurrent: 'openInCurrent',
-      openInNew: 'openInNew',
-    },
-    /**
-     * @readonly
-     * @enum {string}
-     */
-    menuScrollbarSetting: {
-      beautify: 'beautify',
-      hidden: 'hidden',
-      original: 'original',
-    },
-    /**
-     * @readonly
-     * @enum {string}
-     */
-    removeHistorySavePoint: {
-      list: 'list',
-      listAndMenu: 'listAndMenu',
-      anypage: 'anypage',
-    },
-    /**
-     * @readonly
-     * @enum {string}
-     */
-    autoRemove: {
-      always: 'always',
-      openFromList: 'openFromList',
-      never: 'never',
-    },
-    /**
-     * @readonly
-     * @enum {string}
-     */
-    openListVideo: {
-      openInCurrent: 'openInCurrent',
-      openInNew: 'openInNew',
-    },
-  }
-  // 将名称不完全对应的补上，这样校验才能生效
-  Enums.headerButtonOpL = Enums.headerButtonOpR = Enums.headerButtonOp
-
-  // 为了保证重定向的效率，外层函数不作封装处理
-  // 鱼和熊掌不可兼得，OOP 就是个锤子
-  documentStartInit()
-  if (urlMatch(gm.regex.page_videoWatchlaterMode)) {
-    if (gm.config.redirect) { // 重定向，document-start 就执行，尽可能快地将原页面掩盖过去
-      fnRedirect()
-      return // 必须 return，否则后面的内容还会执行使得加载速度超级慢
-    }
-  }
-
-  // 脚本的其他部分推迟至 DOMContentLoaded 执行
-  document.addEventListener('DOMContentLoaded', function() {
-    const script = new Script()
-    const webpage = new Webpage()
-
-    script.init()
-    script.updateVersion()
-    script.readConfig()
-    script.addScriptMenu()
-
-    // 所有页面
-    if (gm.config.headerButton) {
-      webpage.addHeaderButton()
-    }
-    if (gm.config.removeHistory) {
-      webpage.processWatchlaterListDataSaving()
-    }
-
-    if (urlMatch(gm.regex.page_watchlaterList)) {
-      // 列表页面
-      webpage.processOpenListVideo()
-      webpage.adjustWatchlaterListUI()
-      if (gm.config.forceConsistentVideo || gm.config.autoRemove != Enums.autoRemove.never) {
-        webpage.processWatchlaterListLink()
-      }
-    } else if (urlMatch(gm.regex.page_videoNormalMode)) {
-      // 播放页面（正常模式）
-      if (gm.config.videoButton) {
-        webpage.addVideoButton_Normal()
-      }
-    } else if (urlMatch(gm.regex.page_videoWatchlaterMode)) {
-      // 播放页面（稍后再看模式）
-      if (gm.config.videoButton) {
-        webpage.addVideoButton_Watchlater()
-      }
-    } else if (urlMatch(gm.regex.page_dynamicMenu)) {
-      // 动态入口弹出菜单页面的处理
-      webpage.addMenuScrollbarStyle()
-      return
-    }
-    webpage.processSearchParams()
-    webpage.addStyle()
+  const api = new API({
+    id: gm.id,
+    fadeTime: gm.const.fadeTime,
   })
-
-  /* ----- END ----- */
-
-  /**
-   * GM 读取流程
-   *
-   * 一般情况下，读取用户配置；如果配置出错，则沿用默认值，并将默认值写入配置中
-   *
-   * @param {string} gmKey 键名
-   * @param {*} defaultValue 默认值
-   * @param {boolean} [writeback=true] 配置出错时是否将默认值回写入配置中
-   * @returns {*} 通过校验时是配置值，不能通过校验时是默认值
-   */
-  function gmValidate(gmKey, defaultValue, writeback = true) {
-    const value = GM_getValue(gmKey)
-    if (Enums && gmKey in Enums) {
-      if (Enums[gmKey][value]) {
-        return value
-      }
-    } else if (typeof value == typeof defaultValue) { // typeof null == 'object'，对象默认值赋 null 无需额外处理
-      return value
-    }
-
-    if (writeback) {
-      GM_setValue(gmKey, defaultValue)
-    }
-    return defaultValue
-  }
-
-  /**
-   * document-start 级别初始化
-   */
-  function documentStartInit() {
-    // document-start 级用户配置读取
-    if (gm.configVersion > 0) {
-      gm.config.redirect = gmValidate('redirect', gm.config.redirect)
-    } else {
-      GM_setValue('redirect', gm.config.redirect)
-    }
-  }
-
-  /**
-   * 稍后再看模式重定向至正常模式播放
-   */
-  function fnRedirect() {
-    window.stop() // 停止原页面的加载
-    // 这里不能用读取页面 Vue 或者 window.aid 的方式来直接获取目标 URL，那样太慢了，直接从 URL 反推才是最快的。
-    // 不要担心由于稍后再看列表在其他地方被改动，导致当前分 P 与实际位置对不上，从而导致重定向到另一个视频上。之所以
-    // 这样说，不是因为这种情况不会发生，而是因为这是 B 站自己的问题，即使不做重定向，在这种情况下也必然会打开到另一
-    // 个视频上。
-    // 为了彻底解决这种特殊情况，引入另一个功能“确保视频的一致性”。
-    const throwHandler = e => {
-      const errorInfo = gm.error.REDIRECT
-      console.error(errorInfo)
-      e && console.error(e)
-
-      const result = confirm(`【${GM_info.script.name}】\n\n${errorInfo}\n\n是否暂时关闭模式切换功能？`)
-      if (result) {
-        gm.config.redirect = false
-        GM_setValue('redirect', gm.config.redirect)
-        location.reload()
-      } else {
-        location.replace(gm.url.page_watchlaterList)
-      }
-    }
-    GM_xmlhttpRequest({
-      method: 'GET',
-      url: gm.url.api_queryWatchlaterList,
-      onload: function(response) {
-        try {
-          let part = 1
-          if (urlMatch(/watchlater\/p\d+/)) {
-            part = parseInt(location.href.match(/(?<=\/watchlater\/p)\d+(?=\/?)/)[0])
-          } // 如果匹配不上，就是以 watchlater/ 直接结尾，等同于 watchlater/p1
-          const json = JSON.parse(response.responseText)
-          const watchlaterList = json.data.list || []
-          location.replace(gm.url.page_videoNormalMode + '/' + watchlaterList[part - 1].bvid)
-        } catch (e) {
-          throwHandler(e)
-        }
-      },
-      onerror: throwHandler,
-      ontimeout: throwHandler,
-    })
-  }
-
-  /**
-   * 判断当前 URL 是否匹配
-   * @param {RegExp} reg 用于判断是否匹配的正则表达式
-   * @returns {boolean} 是否匹配
-   */
-  function urlMatch(reg) {
-    return reg.test(location.href)
-  }
 
   /**
    * 脚本运行的抽象，脚本独立于网站、为脚本本身服务的部分
    */
   class Script {
     constructor() {
-      this.api = new API()
+      /**
+       * 通用方法
+       */
+      this.method = {
+        /**
+         * GM 读取流程
+         *
+         * 一般情况下，读取用户配置；如果配置出错，则沿用默认值，并将默认值写入配置中
+         *
+         * @param {string} gmKey 键名
+         * @param {*} defaultValue 默认值
+         * @param {boolean} [writeback=true] 配置出错时是否将默认值回写入配置中
+         * @returns {*} 通过校验时是配置值，不能通过校验时是默认值
+         */
+        gmValidate(gmKey, defaultValue, writeback = true) {
+          const value = GM_getValue(gmKey)
+          if (Enums && gmKey in Enums) {
+            if (Enums[gmKey][value]) {
+              return value
+            }
+          } else if (typeof value == typeof defaultValue) { // typeof null == 'object'，对象默认值赋 null 无需额外处理
+            return value
+          }
+
+          if (writeback) {
+            GM_setValue(gmKey, defaultValue)
+          }
+          return defaultValue
+        },
+      }
+    }
+
+
+    /**
+     * document-start 级别初始化
+     */
+    initAtDocumentStart() {
+      // document-start 级用户配置读取
+      if (gm.configVersion > 0) {
+        gm.config.redirect = this.method.gmValidate('redirect', gm.config.redirect)
+      } else {
+        GM_setValue('redirect', gm.config.redirect)
+      }
     }
 
     /**
      * 初始化
      */
     init() {
-      gm.url = {
-        ...gm.url,
-        api_addToWatchlater: 'https://api.bilibili.com/x/v2/history/toview/add',
-        api_removeFromWatchlater: 'https://api.bilibili.com/x/v2/history/toview/del',
-        page_videoWatchlaterMode: 'https://www.bilibili.com/medialist/play/watchlater',
-        page_watchlaterPlayAll: 'https://www.bilibili.com/medialist/play/watchlater/p1',
-        gm_changelog: 'https://gitee.com/liangjiancang/userscript/blob/master/BilibiliWatchlaterPlus/changelog.md',
-        noop: 'javascript:void(0)',
-      }
+      this.initGMObject()
+      this.updateVersion()
+      this.readConfig()
+    }
 
-      gm.regex = {
-        ...gm.regex,
-        page_videoNormalMode: /\.com\/video(?=\/|$)/,
-        page_watchlaterList: /\.com\/watchlater\/.*#.*\/list(?=\/|$)/,
-        page_dynamicMenu: /\.com\/pages\/nav\/index_new#(?=\/|$)/,
-      }
-
-      gm.const = {
-        ...gm.const,
-        // 移除记录保存相关
-        rhsMin: 1,
-        rhsMax: 1024, // 经过性能测试，放宽到 1024 应该没有太大问题
-        defaultRhs: 64, // 就目前的PC运算力，即使达到 gm.const.rhsWarning 且在极限情况下也不会有明显的卡顿
-        defaultRhst: 16,
-        rhsWarning: 256,
-        // 渐变时间
-        fadeTime: 400,
-        textFadeTime: 100,
-        // 信息框
-        messageTime: 1200,
-        messageTop: '70%',
-        messageLeft: '50%',
-      }
-
+    /**
+     * 初始化全局对象
+     */
+    initGMObject() {
       gm.config = {
         ...gm.config,
-        headerButton: true,
-        headerButtonOpL: Enums.headerButtonOp.openListInCurrent,
-        headerButtonOpR: Enums.headerButtonOp.openUserSetting,
-        openHeaderMenuLink: Enums.openHeaderMenuLink.openInCurrent,
-        menuScrollbarSetting: Enums.menuScrollbarSetting.beautify,
-        removeHistory: true,
-        removeHistorySavePoint: Enums.removeHistorySavePoint.listAndMenu,
         removeHistorySaves: gm.const.defaultRhs,
         removeHistorySearchTimes: gm.const.defaultRhst,
-        videoButton: true,
-        autoRemove: Enums.autoRemove.openFromList,
-        openListVideo: Enums.openListVideo.openInCurrent,
-        forceConsistentVideo: true,
-        removeButton_removeAll: false,
-        removeButton_removeWatched: false,
-        openSettingAfterConfigUpdate: true,
-        reloadAfterSetting: true,
       }
 
       gm.data = {
+        ...gm.data,
         removeHistoryData: remove => {
           const _ = gm.data._
           if (remove) {
@@ -480,7 +958,7 @@
           if (!_.watchlaterListData || reload) {
             if (_.watchlaterListData_loading) {
               try {
-                return await this.api.wait.waitForConditionPassed({
+                return await api.wait.waitForConditionPassed({
                   condition: () => {
                     if (!_.watchlaterListData_loading) {
                       return _.watchlaterListData
@@ -489,15 +967,15 @@
                 })
               } catch (e) {
                 _.watchlaterListData_loading = false
-                console.error(gm.error.NETWORK)
-                console.error(e)
+                api.logger.error(gm.error.NETWORK)
+                api.logger.error(e)
                 // 不要 return，继续执行，重新请求
               }
             }
 
             _.watchlaterListData_loading = true
             try {
-              const resp = await this.api.request({
+              const resp = await api.web.request({
                 method: 'GET',
                 url: gm.url.api_queryWatchlaterList,
               })
@@ -513,8 +991,8 @@
               _.watchlaterListData = current
               return current
             } catch (e) {
-              console.error(gm.error.NETWORK)
-              console.error(e)
+              api.logger.error(gm.error.NETWORK)
+              api.logger.error(e)
             } finally {
               _.watchlaterListData_loading = false
             }
@@ -525,37 +1003,23 @@
         _: {}, // 用于存储内部数据，不公开访问
       }
 
-      gm.menu = {
-        ...gm.menu,
-        setting: { state: false },
-        history: { state: false },
-      }
-
       gm.el = {
         ...gm.el,
         gmRoot: document.body.appendChild(document.createElement('div')),
-        setting: null,
-        history: null,
       }
       gm.el.gmRoot.id = gm.id
-
-      gm.error = {
-        ...gm.error,
-        DOM_PARSE: `DOM解析错误。大部分情况下是由于网络加载速度不足造成的，不影响脚本工作；否则就是B站网页改版，请联系脚本作者修改：${GM_info.script.supportURL}`,
-        NETWORK: `网络连接错误，出现这个问题有可能是因为网络加载速度不足或者B站后台API被改动。也不排除是脚本内部数据出错造成的，初始化脚本或清空稍后再看数据也许能解决问题。无法解决请联系脚本作者：${GM_info.script.supportURL}`,
-        UNKNOWN: `未知错误，请联系脚本作者：${GM_info.script.supportURL}`,
-      }
     }
 
     /**
      * 版本更新处理
      */
     updateVersion() {
+      const _self = this
       // 该项与更新相关，在此处处理
-      gm.config.openSettingAfterConfigUpdate = gmValidate('openSettingAfterConfigUpdate', gm.config.openSettingAfterConfigUpdate)
+      gm.config.openSettingAfterConfigUpdate = _self.method.gmValidate('openSettingAfterConfigUpdate', gm.config.openSettingAfterConfigUpdate)
       if (gm.configVersion !== 0 && gm.configVersion !== gm.configUpdate) {
         if (gm.config.openSettingAfterConfigUpdate) {
-          this.openUserSetting(2)
+          _self.openUserSetting(2)
         }
 
         if (gm.configVersion < gm.configUpdate) {
@@ -586,7 +1050,7 @@
 
           // 3.0.0.20200721
           if (gm.configVersion < 20200721) {
-            const openHeaderMenuLink = gmValidate('openHeaderDropdownLink', gm.config.openHeaderMenuLink, false)
+            const openHeaderMenuLink = _self.method.gmValidate('openHeaderDropdownLink', gm.config.openHeaderMenuLink, false)
             GM_setValue('openHeaderMenuLink', openHeaderMenuLink)
             GM_deleteValue('openHeaderDropdownLink')
 
@@ -635,6 +1099,7 @@
      * 用户配置读取
      */
     readConfig() {
+      const _self = this
       const cfgDocumentStart = { redirect: true } // document-start 时期就处理过的配置
       if (gm.configVersion > 0) {
         // 对配置进行校验
@@ -642,7 +1107,7 @@
         const cfgNoWriteback = { removeHistorySearchTimes: true } // 不进行回写的配置
         for (const name in gm.config) {
           if (!cfgDocumentStart[name] && !cfgManual[name]) {
-            gm.config[name] = gmValidate(name, gm.config[name], !cfgNoWriteback[name])
+            gm.config[name] = _self.method.gmValidate(name, gm.config[name], !cfgNoWriteback[name])
           }
         }
         // 特殊处理
@@ -662,7 +1127,7 @@
 
         // 特殊处理
         // removeHistorySaves 读取旧值
-        gm.config.removeHistorySaves = gmValidate('removeHistorySaves', gm.config.removeHistorySaves, true)
+        gm.config.removeHistorySaves = _self.method.gmValidate('removeHistorySaves', gm.config.removeHistorySaves, true)
         // removeHistorySearchTimes 使用默认值，但不能比 removeHistorySaves 大
         if (gm.config.removeHistorySearchTimes > gm.config.removeHistorySaves) {
           gm.config.removeHistorySearchTimes = gm.config.removeHistorySaves
@@ -737,193 +1202,194 @@
           gm.menu.setting.el = gm.el.setting
           gm.el.setting.className = 'gm-setting'
           gm.el.setting.innerHTML = `
-<div id="gm-setting-page">
-  <div class="gm-title">
-    <div id="gm-maintitle" title="${GM_info.script.homepage}">
-      <a href="${GM_info.script.homepage}" target="_blank">${GM_info.script.name}</a>
-    </div>
-    <div class="gm-subtitle">V${GM_info.script.version} by ${GM_info.script.author}</div>
-  </div>
-  <div class="gm-items">
-    <table>
-      <tr class="gm-item" title="在顶栏“动态”和“收藏”之间加入稍后再看入口，鼠标移至上方时弹出列表菜单，支持点击功能设置。">
-        <td rowspan="5">全局功能</td>
-        <td>
-          <label>
-            <span>在顶栏中加入稍后再看入口</span><input id="gm-headerButton" type="checkbox">
-          </label>
-        </td>
-      </tr>
-      <tr class="gm-subitem" title="选择左键点击入口时执行的操作。">
-        <td>
-          <span>在入口上点击鼠标左键时</span>
-          <select id="gm-headerButtonOpL"></select>
-        </td>
-      </tr>
-      <tr class="gm-subitem" title="选择右键点击入口时执行的操作。">
-        <td>
-          <span>在入口上点击鼠标右键时</span>
-          <select id="gm-headerButtonOpR"></select>
-        </td>
-      </tr>
-      <tr class="gm-subitem" title="选择在弹出菜单中点击视频的行为。为了保持行为一致，这个选项也会影响弹出菜单中收藏夹视频的打开，但不影响“动态”、“历史”等其他弹出菜单中点击视频的行为。">
-        <td>
-          <span>在弹出菜单中点击视频时</span>
-          <select id="gm-openHeaderMenuLink">
-            <option value="${Enums.openHeaderMenuLink.openInCurrent}">在当前页面打开</option>
-            <option value="${Enums.openHeaderMenuLink.openInNew}">在新标签页打开</option>
-          </select>
-        </td>
-      </tr>
-      <tr class="gm-subitem" title="对弹出菜单中滚动条样式进行设置。为了保持行为一致，这个选项也会影响“动态”、“历史”等其他入口的弹出菜单。">
-        <td>
-          <span>对于弹出菜单中的滚动条</span>
-          <select id="gm-menuScrollbarSetting">
-            <option value="${Enums.menuScrollbarSetting.beautify}">修改其外观为扁平化风格</option>
-            <option value="${Enums.menuScrollbarSetting.hidden}">将其隐藏（不影响鼠标滚动）</option>
-            <option value="${Enums.menuScrollbarSetting.original}">维持官方的滚动条样式</option>
-          </select>
-        </td>
-      </tr>
+            <div id="gm-setting-page">
+              <div class="gm-title">
+                <div id="gm-maintitle" title="${GM_info.script.homepage}">
+                  <a href="${GM_info.script.homepage}" target="_blank">${GM_info.script.name}</a>
+                </div>
+                <div class="gm-subtitle">V${GM_info.script.version} by ${GM_info.script.author}</div>
+              </div>
+              <div class="gm-items">
+                <table>
+                  <tr class="gm-item" title="在顶栏“动态”和“收藏”之间加入稍后再看入口，鼠标移至上方时弹出列表菜单，支持点击功能设置。">
+                    <td rowspan="5">全局功能</td>
+                    <td>
+                      <label>
+                        <span>在顶栏中加入稍后再看入口</span><input id="gm-headerButton" type="checkbox">
+                      </label>
+                    </td>
+                  </tr>
+                  <tr class="gm-subitem" title="选择左键点击入口时执行的操作。">
+                    <td>
+                      <span>在入口上点击鼠标左键时</span>
+                      <select id="gm-headerButtonOpL"></select>
+                    </td>
+                  </tr>
+                  <tr class="gm-subitem" title="选择右键点击入口时执行的操作。">
+                    <td>
+                      <span>在入口上点击鼠标右键时</span>
+                      <select id="gm-headerButtonOpR"></select>
+                    </td>
+                  </tr>
+                  <tr class="gm-subitem" title="选择在弹出菜单中点击视频的行为。为了保持行为一致，这个选项也会影响弹出菜单中收藏夹视频的打开，但不影响“动态”、“历史”等其他弹出菜单中点击视频的行为。">
+                    <td>
+                      <span>在弹出菜单中点击视频时</span>
+                      <select id="gm-openHeaderMenuLink">
+                        <option value="${Enums.openHeaderMenuLink.openInCurrent}">在当前页面打开</option>
+                        <option value="${Enums.openHeaderMenuLink.openInNew}">在新标签页打开</option>
+                      </select>
+                    </td>
+                  </tr>
+                  <tr class="gm-subitem" title="对弹出菜单中滚动条样式进行设置。为了保持行为一致，这个选项也会影响“动态”、“历史”等其他入口的弹出菜单。">
+                    <td>
+                      <span>对于弹出菜单中的滚动条</span>
+                      <select id="gm-menuScrollbarSetting">
+                        <option value="${Enums.menuScrollbarSetting.beautify}">修改其外观为扁平化风格</option>
+                        <option value="${Enums.menuScrollbarSetting.hidden}">将其隐藏（不影响鼠标滚动）</option>
+                        <option value="${Enums.menuScrollbarSetting.original}">维持官方的滚动条样式</option>
+                      </select>
+                    </td>
+                  </tr>
 
-      <tr class="gm-item" title="保留最近几次打开【${gm.url.page_watchlaterList}】页面时稍后再看列表的记录，以查找出这段时间内将哪些视频移除出稍后再看，用于防止误删操作。关闭该选项后，会将内部历史数据清除！">
-        <td rowspan="4">全局功能</td>
-        <td>
-          <label>
-            <span>开启稍后再看移除记录</span>
-            <input id="gm-removeHistory" type="checkbox">
-            <span id="gm-rhWarning" class="gm-warning" title="">⚠</span>
-          </label>
-        </td>
-      </tr>
-      <tr class="gm-subitem" title="选择在何时保存稍后再看数据。无论选择哪一种方式，在同一个URL对应的页面下至多保存一次。">
-          <td>
-            <span>为了生成移除记录，</span>
-            <select id="gm-removeHistorySavePoint">
-              <option value="${Enums.removeHistorySavePoint.list}">在打开列表页面时保存数据</option>
-              <option value="${Enums.removeHistorySavePoint.listAndMenu}">在打开列表页面或弹出入口菜单时保存数据</option>
-              <option value="${Enums.removeHistorySavePoint.anypage}">在打开任意相关页面时保存数据</option>
-            </select>
-            <span id="gm-rhspInformation" class="gm-information" title="">💬</span>
-          </td>
-      </tr>
-      <tr class="gm-subitem" title="较大的数值可能会带来较大的开销，经过性能测试，作者认为在设置在${gm.const.rhsWarning}以下时，即使在极限情况下也不会产生让人能察觉到的卡顿（存取总时不超过100ms），但在没有特殊要求的情况下依然不建议设置到这么大。该项修改后，会立即对过期记录进行清理，重新修改为原来的值无法还原被清除的记录，设置为比原来小的值需慎重！（范围：${gm.const.rhsMin} ~ ${gm.const.rhsMax}）">
-        <td>
-          <span>保存最近多少次稍后再看数据</span>
-          <span id="gm-cleanRemoveHistoryData" class="gm-hint-option" title="清理已保存的稍后再看数据，不可恢复！">清空数据(0条)</span>
-          <input id="gm-removeHistorySaves" type="text">
-          <span id="gm-rhsWarning" class="gm-warning" title="">⚠</span>
-        </td>
-      </tr>
-      <tr class="gm-subitem" title="搜寻时在最近多少次稍后再看数据中查找，设置较小的值能较好地定位最近移除的视频。设置较大的值几乎不会对性能造成影响，但不能大于最近稍后再看数据保存次数。">
-        <td>
-          <span>默认历史回溯深度</span>
-          <input id="gm-removeHistorySearchTimes" type="text">
-        </td>
-      </tr>
+                  <tr class="gm-item" title="保留最近几次打开【${gm.url.page_watchlaterList}】页面时稍后再看列表的记录，以查找出这段时间内将哪些视频移除出稍后再看，用于防止误删操作。关闭该选项后，会将内部历史数据清除！">
+                    <td rowspan="4">全局功能</td>
+                    <td>
+                      <label>
+                        <span>开启稍后再看移除记录</span>
+                        <input id="gm-removeHistory" type="checkbox">
+                        <span id="gm-rhWarning" class="gm-warning" title="">⚠</span>
+                      </label>
+                    </td>
+                  </tr>
+                  <tr class="gm-subitem" title="选择在何时保存稍后再看数据。无论选择哪一种方式，在同一个URL对应的页面下至多保存一次。">
+                      <td>
+                        <span>为了生成移除记录，</span>
+                        <select id="gm-removeHistorySavePoint">
+                          <option value="${Enums.removeHistorySavePoint.list}">在打开列表页面时保存数据</option>
+                          <option value="${Enums.removeHistorySavePoint.listAndMenu}">在打开列表页面或弹出入口菜单时保存数据</option>
+                          <option value="${Enums.removeHistorySavePoint.anypage}">在打开任意相关页面时保存数据</option>
+                        </select>
+                        <span id="gm-rhspInformation" class="gm-information" title="">💬</span>
+                      </td>
+                  </tr>
+                  <tr class="gm-subitem" title="较大的数值可能会带来较大的开销，经过性能测试，作者认为在设置在${gm.const.rhsWarning}以下时，即使在极限情况下也不会产生让人能察觉到的卡顿（存取总时不超过100ms），但在没有特殊要求的情况下依然不建议设置到这么大。该项修改后，会立即对过期记录进行清理，重新修改为原来的值无法还原被清除的记录，设置为比原来小的值需慎重！（范围：${gm.const.rhsMin} ~ ${gm.const.rhsMax}）">
+                    <td>
+                      <span>保存最近多少次稍后再看数据</span>
+                      <span id="gm-cleanRemoveHistoryData" class="gm-hint-option" title="清理已保存的稍后再看数据，不可恢复！">清空数据(0条)</span>
+                      <input id="gm-removeHistorySaves" type="text">
+                      <span id="gm-rhsWarning" class="gm-warning" title="">⚠</span>
+                    </td>
+                  </tr>
+                  <tr class="gm-subitem" title="搜寻时在最近多少次稍后再看数据中查找，设置较小的值能较好地定位最近移除的视频。设置较大的值几乎不会对性能造成影响，但不能大于最近稍后再看数据保存次数。">
+                    <td>
+                      <span>默认历史回溯深度</span>
+                      <input id="gm-removeHistorySearchTimes" type="text">
+                    </td>
+                  </tr>
 
-      <tr class="gm-item" title="在播放页面（包括普通模式和稍后再看模式）中加入能将视频快速切换添加或移除出稍后再看列表的按钮。">
-        <td>播放页面</td>
-        <td>
-          <label>
-            <span>加入快速切换视频稍后再看状态的按钮</span>
-            <input id="gm-videoButton" type="checkbox">
-          </label>
-        </td>
-      </tr>
+                  <tr class="gm-item" title="在播放页面（包括普通模式和稍后再看模式）中加入能将视频快速切换添加或移除出稍后再看列表的按钮。">
+                    <td>播放页面</td>
+                    <td>
+                      <label>
+                        <span>加入快速切换视频稍后再看状态的按钮</span>
+                        <input id="gm-videoButton" type="checkbox">
+                      </label>
+                    </td>
+                  </tr>
 
-      <tr class="gm-item" title="打开播放页面时，自动将视频从稍后再看列表中移除，或在特定条件下执行自动移除。">
-        <td>播放页面</td>
-        <td>
-          <span>打开页面时，</span>
-          <select id="gm-autoRemove">
-            <option value="${Enums.autoRemove.always}">若视频在稍后再看中，则移除出稍后再看</option>
-            <option value="${Enums.autoRemove.openFromList}">若是从列表页面或弹出菜单列表点击进入，则移除出稍后再看</option>
-            <option value="${Enums.autoRemove.never}">从不执行自动移除功能</option>
-          </select>
-        </td>
-      </tr>
+                  <tr class="gm-item" title="打开播放页面时，自动将视频从稍后再看列表中移除，或在特定条件下执行自动移除。">
+                    <td>播放页面</td>
+                    <td>
+                      <span>打开页面时，</span>
+                      <select id="gm-autoRemove">
+                        <option value="${Enums.autoRemove.always}">若视频在稍后再看中，则移除出稍后再看</option>
+                        <option value="${Enums.autoRemove.openFromList}">若是从列表页面或弹出菜单列表点击进入，则移除出稍后再看</option>
+                        <option value="${Enums.autoRemove.never}">从不执行自动移除功能</option>
+                      </select>
+                    </td>
+                  </tr>
 
-      <tr class="gm-item" title="打开【${gm.url.page_videoWatchlaterMode}】页面时，自动切换至【${gm.url.page_videoNormalMode}】页面进行播放。">
-        <td>播放页面</td>
-        <td>
-          <label>
-            <span>从稍后再看模式强制切换到普通模式播放</span>
-            <input id="gm-redirect" type="checkbox">
-          </label>
-        </td>
-      </tr>
+                  <tr class="gm-item" title="打开【${gm.url.page_videoWatchlaterMode}】页面时，自动切换至【${gm.url.page_videoNormalMode}】页面进行播放。">
+                    <td>播放页面</td>
+                    <td>
+                      <label>
+                        <span>从稍后再看模式强制切换到普通模式播放</span>
+                        <input id="gm-redirect" type="checkbox">
+                      </label>
+                    </td>
+                  </tr>
 
-      <tr class="gm-item" title="设置在【${gm.url.page_watchlaterList}】页面点击视频时的行为。">
-        <td>列表页面</td>
-        <td>
-          <span>点击视频时</span>
-          <select id="gm-openListVideo">
-            <option value="${Enums.openListVideo.openInCurrent}">在当前页面打开</option>
-            <option value="${Enums.openListVideo.openInNew}">在新标签页打开</option>
-          </select>
-        </td>
-      </tr>
+                  <tr class="gm-item" title="设置在【${gm.url.page_watchlaterList}】页面点击视频时的行为。">
+                    <td>列表页面</td>
+                    <td>
+                      <span>点击视频时</span>
+                      <select id="gm-openListVideo">
+                        <option value="${Enums.openListVideo.openInCurrent}">在当前页面打开</option>
+                        <option value="${Enums.openListVideo.openInNew}">在新标签页打开</option>
+                      </select>
+                    </td>
+                  </tr>
 
-      <tr class="gm-item" title="见弹出说明">
-        <td>列表页面</td>
-        <td>
-          <label>
-            <span>确保视频的一致性（避免点击A视频却打开B视频的问题）</span>
-            <span id="gm-fcvInformation" class="gm-information" title="">💬</span>
-            <input id="gm-forceConsistentVideo" type="checkbox">
-          </label>
-        </td>
-      </tr>
+                  <tr class="gm-item" title="见弹出说明">
+                    <td>列表页面</td>
+                    <td>
+                      <label>
+                        <span>确保视频的一致性（避免点击A视频却打开B视频的问题）</span>
+                        <span id="gm-fcvInformation" class="gm-information" title="">💬</span>
+                        <input id="gm-forceConsistentVideo" type="checkbox">
+                      </label>
+                    </td>
+                  </tr>
 
-      <tr class="gm-item" title="这个按钮太危险了……">
-        <td>列表页面</td>
-        <td>
-          <label>
-            <span>移除 【一键清空】 按钮</span>
-            <input id="gm-removeButton_removeAll" type="checkbox">
-          </label>
-        </td>
-      </tr>
+                  <tr class="gm-item" title="这个按钮太危险了……">
+                    <td>列表页面</td>
+                    <td>
+                      <label>
+                        <span>移除 【一键清空】 按钮</span>
+                        <input id="gm-removeButton_removeAll" type="checkbox">
+                      </label>
+                    </td>
+                  </tr>
 
-      <tr class="gm-item" title="这个按钮太危险了……">
-        <td>列表页面</td>
-        <td>
-          <label>
-            <span>移除 【移除已观看视频】 按钮</span>
-            <input id="gm-removeButton_removeWatched" type="checkbox">
-          </label>
-        </td>
-      </tr>
+                  <tr class="gm-item" title="这个按钮太危险了……">
+                    <td>列表页面</td>
+                    <td>
+                      <label>
+                        <span>移除 【移除已观看视频】 按钮</span>
+                        <input id="gm-removeButton_removeWatched" type="checkbox">
+                      </label>
+                    </td>
+                  </tr>
 
-      <tr class="gm-item" title="功能性更新后，是否打开用户设置？">
-        <td>用户设置</td>
-        <td>
-          <label>
-            <span>功能性更新后打开用户设置</span>
-            <input id="gm-openSettingAfterConfigUpdate" type="checkbox">
-          </label>
-        </td>
-      </tr>
+                  <tr class="gm-item" title="功能性更新后，是否打开用户设置？">
+                    <td>用户设置</td>
+                    <td>
+                      <label>
+                        <span>功能性更新后打开用户设置</span>
+                        <input id="gm-openSettingAfterConfigUpdate" type="checkbox">
+                      </label>
+                    </td>
+                  </tr>
 
-      <tr class="gm-item" title="勾选后，如果更改的配置需要重新加载才能生效，那么会在设置完成后重新加载页面。">
-        <td>用户设置</td>
-        <td>
-          <label>
-            <span>必要时在设置完成后重新加载页面</span>
-            <input id="gm-reloadAfterSetting" type="checkbox">
-          </label>
-        </td>
-      </tr>
-    </table>
-  </div>
-  <div class="gm-bottom">
-    <button id="gm-save">保存</button><button id="gm-cancel">取消</button>
-  </div>
-  <div id="gm-reset" title="重置脚本设置及内部数据，也许能解决脚本运行错误的问题。该操作不会清除已保存的稍后再看数据，因此不会导致移除记录丢失。无法解决请联系脚本作者：${GM_info.script.supportURL}">初始化脚本</div>
-  <a id="gm-changelog" title="显示更新日志" href="${gm.url.gm_changelog}" target="_blank">更新日志</a>
-</div>
-<div class="gm-shadow"></div>`
+                  <tr class="gm-item" title="勾选后，如果更改的配置需要重新加载才能生效，那么会在设置完成后重新加载页面。">
+                    <td>用户设置</td>
+                    <td>
+                      <label>
+                        <span>必要时在设置完成后重新加载页面</span>
+                        <input id="gm-reloadAfterSetting" type="checkbox">
+                      </label>
+                    </td>
+                  </tr>
+                </table>
+              </div>
+              <div class="gm-bottom">
+                <button id="gm-save">保存</button><button id="gm-cancel">取消</button>
+              </div>
+              <div id="gm-reset" title="重置脚本设置及内部数据，也许能解决脚本运行错误的问题。该操作不会清除已保存的稍后再看数据，因此不会导致移除记录丢失。无法解决请联系脚本作者：${GM_info.script.supportURL}">初始化脚本</div>
+              <a id="gm-changelog" title="显示更新日志" href="${gm.url.gm_changelog}" target="_blank">更新日志</a>
+            </div>
+            <div class="gm-shadow"></div>
+          `
 
           // 找出配置对应的元素
           for (const name in gm.config) {
@@ -953,34 +1419,34 @@
           }
 
           el.rhspInformation = gm.el.setting.querySelector('#gm-rhspInformation')
-          _self.api.message.advanced(el.rhspInformation, `
-<div style="text-indent:2em;line-height:1.6em">
-  <p>选择更多的保存时间点，可以提高移除记录的准确度，降低遗漏历史数据的情况。但是数据冲刷速度更快，数据利用率低，可能会导致真正有价值的记录被冲洗掉，并且增大IO和运算负担。无论选择哪一种方式，在同一个URL对应的页面下至多保存一次。</p>
-  <p>如果你习惯于先点开稍后再看列表页面，再点击视频观看，建议选择第一项，当然选择第二项提高准确度也是合理的。如果你习惯于直接在顶栏弹出菜单中点击视频观看，请选择第二项。第三项性价比低，如果没有特别需求请不要选择。</p>
-</div>
+          api.message.advanced(el.rhspInformation, `
+            <div style="text-indent:2em;line-height:1.6em">
+              <p>选择更多的保存时间点，可以提高移除记录的准确度，降低遗漏历史数据的情况。但是数据冲刷速度更快，数据利用率低，可能会导致真正有价值的记录被冲洗掉，并且增大IO和运算负担。无论选择哪一种方式，在同一个URL对应的页面下至多保存一次。</p>
+              <p>如果你习惯于先点开稍后再看列表页面，再点击视频观看，建议选择第一项，当然选择第二项提高准确度也是合理的。如果你习惯于直接在顶栏弹出菜单中点击视频观看，请选择第二项。第三项性价比低，如果没有特别需求请不要选择。</p>
+            </div>
           `, '💬', { width: '36em', flagSize: '2em', disabled: () => el.rhspInformation.parentNode.getAttribute('disabled') })
           el.fcvInformation = gm.el.setting.querySelector('#gm-fcvInformation')
-          _self.api.message.advanced(el.fcvInformation, `
-<div style="text-indent:2em;line-height:1.6em">
-  <p>从列表页面打开视频时，其URL使用该视频在列表中的位置来标识。假如列表在其他页面上被修改，这种定位方式就会出错。这是B站新版稍后再看播放页面的设计缺陷，本设置开启后能修复这个问题。</p>
-  <p>假设先打开列表页面，此时列表的第1个视频是A，然后在其他页面将B视频添加到稍后再看，最后回到刚才列表页面点击A视频，结果播放的会是此时真正位于列表第1位的B视频。</p>
-  <p>在正常使用的情况下，这个问题出现的频率并不高；此外，如果没有开启模式切换功能，在修复成功后浏览器的历史回退功能会受到影响，且修复过程可能会伴随页面内容切换和不明显的URL变动。如果不希望见到这些问题，或者只是单纯不想在页面引入不必要的脚本操作，请选择关闭。</p>
-</div>
+          api.message.advanced(el.fcvInformation, `
+            <div style="text-indent:2em;line-height:1.6em">
+              <p>从列表页面打开视频时，其URL使用该视频在列表中的位置来标识。假如列表在其他页面上被修改，这种定位方式就会出错。这是B站新版稍后再看播放页面的设计缺陷，本设置开启后能修复这个问题。</p>
+              <p>假设先打开列表页面，此时列表的第1个视频是A，然后在其他页面将B视频添加到稍后再看，最后回到刚才列表页面点击A视频，结果播放的会是此时真正位于列表第1位的B视频。</p>
+              <p>在正常使用的情况下，这个问题出现的频率并不高；此外，如果没有开启模式切换功能，在修复成功后浏览器的历史回退功能会受到影响，且修复过程可能会伴随页面内容切换和不明显的URL变动。如果不希望见到这些问题，或者只是单纯不想在页面引入不必要的脚本操作，请选择关闭。</p>
+            </div>
           `, '💬', { width: '36em', flagSize: '2em' }) // 谨慎地调这个宽度，不然又会引起字体发虚问题
           el.rhWarning = gm.el.setting.querySelector('#gm-rhWarning')
-          _self.api.message.advanced(el.rhWarning, '关闭移除记录，或将稍后再看数据保存次数设置为比原来小的值，都会造成对内部过期历史数据的清理！', '⚠')
+          api.message.advanced(el.rhWarning, '关闭移除记录，或将稍后再看数据保存次数设置为比原来小的值，都会造成对内部过期历史数据的清理！', '⚠')
           el.rhsWarning = gm.el.setting.querySelector('#gm-rhsWarning')
-          _self.api.message.advanced(el.rhsWarning, `该项设置过大时，在极端情况下可能会造成明显的卡顿，一般不建议该项超过${gm.const.rhsWarning}。当然，如果对机器的读写性能自信，可以无视该警告。`, '⚠')
+          api.message.advanced(el.rhsWarning, `该项设置过大时，在极端情况下可能会造成明显的卡顿，一般不建议该项超过${gm.const.rhsWarning}。当然，如果对机器的读写性能自信，可以无视该警告。`, '⚠')
 
           el.headerButtonOpL.innerHTML = el.headerButtonOpR.innerHTML = `
-<option value="${Enums.headerButtonOp.openListInCurrent}">在当前页面打开列表页面</option>
-<option value="${Enums.headerButtonOp.openListInNew}">在新标签页打开列表页面</option>
-<option value="${Enums.headerButtonOp.playAllInCurrent}">在当前页面播放全部</option>
-<option value="${Enums.headerButtonOp.playAllInNew}">在新标签页播放全部</option>
-<option value="${Enums.headerButtonOp.openUserSetting}">打开用户设置</option>
-<option value="${Enums.headerButtonOp.openRemoveHistory}">打开稍后再看移除记录</option>
-<option value="${Enums.headerButtonOp.noOperation}">不执行操作</option>
-      `
+            <option value="${Enums.headerButtonOp.openListInCurrent}">在当前页面打开列表页面</option>
+            <option value="${Enums.headerButtonOp.openListInNew}">在新标签页打开列表页面</option>
+            <option value="${Enums.headerButtonOp.playAllInCurrent}">在当前页面播放全部</option>
+            <option value="${Enums.headerButtonOp.playAllInNew}">在新标签页播放全部</option>
+            <option value="${Enums.headerButtonOp.openUserSetting}">打开用户设置</option>
+            <option value="${Enums.headerButtonOp.openRemoveHistory}">打开稍后再看移除记录</option>
+            <option value="${Enums.headerButtonOp.noOperation}">不执行操作</option>
+          `
         }
 
         /**
@@ -1179,7 +1645,7 @@
 
           el.settingPage.parentNode.style.display = 'block'
           setTimeout(() => {
-            _self.api.dom.setAbsoluteCenter(el.settingPage)
+            api.dom.setAbsoluteCenter(el.settingPage)
           }, 10)
         }
 
@@ -1219,12 +1685,12 @@
 
           if (el.rhWarning.show) {
             if (!warn) {
-              _self.api.dom.fade(false, el.rhWarning)
+              api.dom.fade(false, el.rhWarning)
               el.rhWarning.show = false
             }
           } else {
             if (warn) {
-              _self.api.dom.fade(true, el.rhWarning)
+              api.dom.fade(true, el.rhWarning)
               el.rhWarning.show = true
             }
           }
@@ -1240,12 +1706,12 @@
           }
           if (el.rhsWarning.show) {
             if (value <= gm.const.rhsWarning) {
-              _self.api.dom.fade(false, el.rhsWarning)
+              api.dom.fade(false, el.rhsWarning)
               el.rhsWarning.show = false
             }
           } else {
             if (value > gm.const.rhsWarning) {
-              _self.api.dom.fade(true, el.rhsWarning)
+              api.dom.fade(true, el.rhsWarning)
               el.rhsWarning.show = true
             }
           }
@@ -1259,7 +1725,7 @@
     openRemoveHistory() {
       const _self = this
       if (!gm.config.removeHistory) {
-        _self.api.message.create('请在设置中开启稍后再看移除记录')
+        api.message.create('请在设置中开启稍后再看移除记录')
         return
       }
 
@@ -1290,17 +1756,18 @@
           gm.menu.history.el = gm.el.history
           gm.el.history.className = 'gm-history'
           gm.el.history.innerHTML = `
-<div class="gm-history-page">
-  <div class="gm-title">稍后再看移除记录</div>
-  <div class="gm-comment">
-    <div>根据最近<span id="gm-save-times">0</span>次打开列表页面时获取到的<span id="gm-record-num">0</span>条不重复的记录生成（总计<span id="gm-record-num-repeat">0</span>条），共筛选出<span id="gm-remove-num">0</span>条移除记录。排序由视频最后一次加入到稍后再看的时间决定，与移除出稍后再看的时间无关。如果记录太多难以定位被误删的视频，请在下方设置减少历史回溯深度。鼠标移动到内容区域可向下滚动翻页，点击对话框以外的位置退出。</div>
-    <div style="text-align:right;font-weight:bold">
-      <span id="gm-history-sort" style="text-decoration:underline;cursor:pointer">倒序</span>
-      <span title="搜寻时在最近多少次稍后再看数据中查找，设置较小的值能较好地定位最近移除的视频。按下回车键或输入框失去焦点时刷新数据，输入框为空时自动设为可取的最大值。">历史回溯深度：<input type="text" id="gm-search-times" value="0"></span>
-    </div>
-  </div>
-</div>
-<div class="gm-shadow"></div>`
+            <div class="gm-history-page">
+              <div class="gm-title">稍后再看移除记录</div>
+              <div class="gm-comment">
+                <div>根据最近<span id="gm-save-times">0</span>次打开列表页面时获取到的<span id="gm-record-num">0</span>条不重复的记录生成（总计<span id="gm-record-num-repeat">0</span>条），共筛选出<span id="gm-remove-num">0</span>条移除记录。排序由视频最后一次加入到稍后再看的时间决定，与移除出稍后再看的时间无关。如果记录太多难以定位被误删的视频，请在下方设置减少历史回溯深度。鼠标移动到内容区域可向下滚动翻页，点击对话框以外的位置退出。</div>
+                <div style="text-align:right;font-weight:bold">
+                  <span id="gm-history-sort" style="text-decoration:underline;cursor:pointer">倒序</span>
+                  <span title="搜寻时在最近多少次稍后再看数据中查找，设置较小的值能较好地定位最近移除的视频。按下回车键或输入框失去焦点时刷新数据，输入框为空时自动设为可取的最大值。">历史回溯深度：<input type="text" id="gm-search-times" value="0"></span>
+                </div>
+              </div>
+            </div>
+            <div class="gm-shadow"></div>
+          `
           el.historyPage = gm.el.history.querySelector('.gm-history-page')
           el.comment = gm.el.history.querySelector('.gm-comment')
           el.content = null
@@ -1389,11 +1856,11 @@
 
           el.historyPage.parentNode.style.display = 'block'
           setTimeout(() => {
-            _self.api.dom.setAbsoluteCenter(el.historyPage)
+            api.dom.setAbsoluteCenter(el.historyPage)
           }, 10)
 
           try {
-            const resp = await _self.api.request({
+            const resp = await api.web.request({
               method: 'GET',
               url: gm.url.api_queryWatchlaterList,
             })
@@ -1446,8 +1913,8 @@
             el.content.style.opacity = '1'
             el.content.style.color = 'gray'
 
-            console.error(errorInfo)
-            console.error(e)
+            api.logger.error(errorInfo)
+            api.logger.error(e)
           }
         }
 
@@ -1513,7 +1980,7 @@
           if (key == name) {
             menu.state = true
             menu.openHandler && menu.openHandler.call(menu)
-            _self.api.dom.fade(true, menu.el, callback)
+            api.dom.fade(true, menu.el, callback)
           } else {
             if (menu.state) {
               _self.closeMenuItem(key)
@@ -1533,7 +2000,7 @@
       const menu = gm.menu[name]
       if (menu.state) {
         menu.state = false
-        this.api.dom.fade(false, menu.el, () => {
+        api.dom.fade(false, menu.el, () => {
           menu.closeHandler && menu.closeHandler.call(menu)
           callback && callback.call(menu)
         })
@@ -1546,11 +2013,9 @@
    */
   class Webpage {
     constructor() {
-      const webpage = this
       this.script = new Script()
-      this.api = new API()
 
-      /** 内部通用方法 */
+      /** 通用方法 */
       this.method = {
         /** 内部数据 */
         _: {},
@@ -1584,7 +2049,7 @@
           if (unsafeWindow.aid) {
             return String(unsafeWindow.aid)
           } else {
-            console.error(gm.error.DOM_PARSE)
+            api.logger.error(gm.error.DOM_PARSE)
           }
         },
 
@@ -1597,14 +2062,14 @@
          */
         async getVideoInfo(id, type = 'bvid') {
           try {
-            const resp = await webpage.api.request({
+            const resp = await api.web.request({
               method: 'GET',
               url: gm.url.api_videoInfo(id, type),
             })
             return JSON.parse(resp.responseText).data
           } catch (e) {
-            console.error(gm.error.NETWORK)
-            console.error(e)
+            api.logger.error(gm.error.NETWORK)
+            api.logger.error(e)
           }
         },
 
@@ -1621,7 +2086,7 @@
           const _ = this._
           try {
             if (!_.playContainer) {
-              _.playContainer = await webpage.api.wait.waitForConditionPassed({
+              _.playContainer = await api.wait.waitForConditionPassed({
                 condition: () => {
                   const app = document.querySelector('#app')
                   const vueLoad = app && app.__vue__
@@ -1637,8 +2102,8 @@
               })
             }
           } catch (e) {
-            console.error(gm.error.DOM_PARSE)
-            console.error(e)
+            api.logger.error(gm.error.DOM_PARSE)
+            api.logger.error(e)
           }
           return String(_.playContainer.__vue__.playId)
         },
@@ -1651,7 +2116,7 @@
          */
         async getVideoWatchlaterStatusByAid(aid) {
           try {
-            const resp = await webpage.api.request({
+            const resp = await api.web.request({
               method: 'GET',
               url: gm.url.api_queryWatchlaterList,
             })
@@ -1664,8 +2129,8 @@
             }
             return false
           } catch (e) {
-            console.error(gm.error.NETWORK)
-            console.error(e)
+            api.logger.error(gm.error.NETWORK)
+            api.logger.error(e)
             return false
           }
         },
@@ -1682,15 +2147,15 @@
             const data = new FormData()
             data.append('aid', aid)
             data.append('csrf', this.getCSRF())
-            const resp = await webpage.api.request({
+            const resp = await api.web.request({
               method: 'POST',
               url: status ? gm.url.api_addToWatchlater : gm.url.api_removeFromWatchlater,
               data: data,
             })
             return JSON.parse(resp.response).code == 0
           } catch (e) {
-            console.error(gm.error.NETWORK)
-            console.error(e)
+            api.logger.error(gm.error.NETWORK)
+            api.logger.error(e)
             return false
           }
         },
@@ -1706,12 +2171,14 @@
               if (!_.watchlaterListData_saving) {
                 _.watchlaterListData_saving = true
                 gm.data.watchlaterListData(reload).then(data => {
-                  gm.data.removeHistoryData().push(data)
-                  GM_setValue('removeHistoryData', gm.data.removeHistoryData())
-                  _.watchLaterListData_saved = true
+                  if (data && data.length > 0) {
+                    gm.data.removeHistoryData().push(data)
+                    GM_setValue('removeHistoryData', gm.data.removeHistoryData())
+                    _.watchLaterListData_saved = true
+                  }
                 }).catch(e => {
-                  console.error(gm.error.UNKNOWN)
-                  console.error(e)
+                  api.logger.error(gm.error.UNKNOWN)
+                  api.logger.error(e)
                 }).finally(() => {
                   _.watchlaterListData_saving = false
                 })
@@ -1727,7 +2194,7 @@
      */
     addHeaderButton() {
       const _self = this
-      _self.api.wait.executeAfterElementLoaded({
+      api.wait.executeAfterElementLoaded({
         selector: '.user-con.signin',
         callback: header => {
           if (header) {
@@ -1886,15 +2353,15 @@
             }
             // 等待弹出菜单的状态变为“打开”再操作，会比较安全，虽然此时 DOM 上的菜单可能没有真正打开
             // 时间可以给长一点，否则有时候加载得比较慢会 timeout
-            const watchlaterPanelChild = await _self.api.wait.waitForElementLoaded({
+            const watchlaterPanelChild = await api.wait.waitForElementLoaded({
               selector: watchlaterPanelChildSelector(true),
               interval: 50,
               timeout: 2000,
             })
             watchlaterPanelChild.parentNode.click()
           } catch (e) {
-            console.error(gm.error.DOM_PARSE)
-            console.error(e)
+            api.logger.error(gm.error.DOM_PARSE)
+            api.logger.error(e)
           }
           setMenuArrow()
 
@@ -1924,7 +2391,7 @@
           this.mouseOver = true
           addHeaderMenuLinkObserver()
           try {
-            const activePanel = await _self.api.wait.waitForElementLoaded({
+            const activePanel = await api.wait.waitForElementLoaded({
               selector: activePanelSelector(true),
               interval: 50,
               timeout: 1500,
@@ -1933,7 +2400,7 @@
             if (activeTitle == '稍后再看') {
               if (!collect._activePanel || collect._activeTitle == '稍后再看') {
                 // 一般来说，只有当打开页面后直接通过稍后再看入口打开弹出菜单，然后再将鼠标移动到收藏入口上，才会执行进来
-                const defaultCollectPanelChild = await _self.api.wait.waitForElementLoaded({
+                const defaultCollectPanelChild = await api.wait.waitForElementLoaded({
                   selector: defaultCollectPanelChildSelector(true),
                   interval: 50,
                   timeout: 1500,
@@ -1944,8 +2411,8 @@
               collect._activePanel.click()
             }
           } catch (e) {
-            console.error(gm.error.DOM_PARSE)
-            console.error(e)
+            api.logger.error(gm.error.DOM_PARSE)
+            api.logger.error(e)
           }
           setMenuArrow()
         }
@@ -1970,7 +2437,7 @@
               try {
                 // 目前默认原来是 _blank，如果以后 B 站改成默认 _self，那要反过来
                 // const target = gm.config.openHeaderMenuLink == enums.openHeaderMenuLink.openInNew ? '_blank' : '_self'
-                const videoPanel = await _self.api.wait.waitForElementLoaded(videoPanelSelector())
+                const videoPanel = await api.wait.waitForElementLoaded(videoPanelSelector())
                 // 添加一个 ob，在给右边视频面板添加链接时，对其进行处理
                 const ob = new MutationObserver(records => {
                   for (const record of records) {
@@ -2002,8 +2469,8 @@
                 ob.observe(videoPanel.firstChild, { childList: true })
               } catch (e) {
                 menu._addLinkObserver = false
-                console.error(gm.error.DOM_PARSE)
-                console.error(e)
+                api.logger.error(gm.error.DOM_PARSE)
+                api.logger.error(e)
               }
             }
           }
@@ -2096,7 +2563,7 @@
         }
       }
 
-      _self.api.wait.executeAfterConditionPassed({
+      api.wait.executeAfterConditionPassed({
         condition: executeCondition,
         callback: ({ atr, original }) => {
           const btn = document.createElement('label')
@@ -2118,10 +2585,10 @@
           initButtonStatus()
           original.parentNode.style.display = 'none'
 
-          _self.api.dom.createLocationchangeEvent()
+          api.dom.createLocationchangeEvent()
           window.addEventListener('locationchange', async function() {
             try {
-              bus.aid = await _self.api.wait.waitForConditionPassed({
+              bus.aid = await api.wait.waitForConditionPassed({
                 condition: async () => {
                   // 要等 aid 跟之前存的不一样，才能说明是切换成功后获取到的 aid
                   const aid = await _self.method.getAidInWatchlaterMode()
@@ -2140,8 +2607,8 @@
                 _self.method.saveWatchlaterListData(true)
               }
             } catch (e) {
-              console.error(gm.error.DOM_PARSE)
-              console.error(e)
+              api.logger.error(gm.error.DOM_PARSE)
+              api.logger.error(e)
             }
           })
         },
@@ -2179,10 +2646,50 @@
         if (success) {
           btn.added = !btn.added
           cb.checked = btn.added
-          _self.api.message.create(note + '成功')
+          api.message.create(note + '成功')
         } else {
           cb.checked = btn.added
-          _self.api.message.create(`网络错误，${note}失败`)
+          api.message.create(`网络错误，${note}失败`)
+        }
+      }
+    }
+
+    /**
+     * 稍后再看模式重定向至正常模式播放
+     * @async
+     */
+    async redirect() {
+      window.stop() // 停止原页面的加载
+      // 这里不能用读取页面 Vue 或者 window.aid 的方式来直接获取目标 URL，那样太慢了，直接从 URL 反推才是最快的。
+      // 不要担心由于稍后再看列表在其他地方被改动，导致当前分 P 与实际位置对不上，从而导致重定向到另一个视频上。之所以
+      // 这样说，不是因为这种情况不会发生，而是因为这是 B 站自己的问题，即使不做重定向，在这种情况下也必然会打开到另一
+      // 个视频上。
+      // 为了彻底解决这种特殊情况，引入另一个功能“确保视频的一致性”。
+      try {
+        const resp = await api.web.request({
+          method: 'GET',
+          url: gm.url.api_queryWatchlaterList,
+        })
+        let part = 1
+        if (api.web.urlMatch(/watchlater\/p\d+/)) {
+          part = parseInt(location.href.match(/(?<=\/watchlater\/p)\d+(?=\/?)/)[0])
+        } // 如果匹配不上，就是以 watchlater/ 直接结尾，等同于 watchlater/p1
+        const json = JSON.parse(resp.responseText)
+        const watchlaterList = json.data.list || []
+        location.replace(gm.url.page_videoNormalMode + '/' + watchlaterList[part - 1].bvid)
+      } catch (e) {
+        const errorInfo = gm.error.REDIRECT
+        api.logger.error(errorInfo)
+        e && api.logger.error(e)
+
+        alert(`【${GM_info.script.name}】\n\n${errorInfo}`)
+        const result = confirm(`【${GM_info.script.name}】\n\n是否暂时关闭模式切换功能？`)
+        if (result) {
+          gm.config.redirect = false
+          GM_setValue('redirect', gm.config.redirect)
+          location.reload()
+        } else {
+          location.replace(gm.url.page_watchlaterList)
         }
       }
     }
@@ -2211,7 +2718,7 @@
         }
       }
 
-      _self.api.wait.executeAfterConditionPassed({
+      api.wait.executeAfterConditionPassed({
         condition: executeCondition,
         callback: async playContainer => {
           const more = playContainer.querySelector('#playContainer .left-container .play-options .play-options-more')
@@ -2240,10 +2747,10 @@
           initButtonStatus()
 
           // 切换视频时的处理
-          _self.api.dom.createLocationchangeEvent()
+          api.dom.createLocationchangeEvent()
           window.addEventListener('locationchange', async function() {
             try {
-              bus.aid = await _self.api.wait.waitForConditionPassed({
+              bus.aid = await api.wait.waitForConditionPassed({
                 condition: async () => {
                   // 要等 aid 跟之前存的不一样，才能说明是切换成功后获取到的 aid
                   const aid = await _self.method.getAidInWatchlaterMode()
@@ -2262,8 +2769,8 @@
                 _self.method.saveWatchlaterListData(true)
               }
             } catch (e) {
-              console.error(gm.error.DOM_PARSE)
-              console.error(e)
+              api.logger.error(gm.error.DOM_PARSE)
+              api.logger.error(e)
             }
           })
         },
@@ -2294,7 +2801,7 @@
               const info = await _self.method.getVideoInfo(spBvid)
               aid = String(info.aid)
               // 必须要等到页面上的 aid 与之完全一致才行，那样说明已经切换到正确的视频上，然后再进行处理
-              await _self.api.wait.waitForConditionPassed({
+              await api.wait.waitForConditionPassed({
                 condition: async () => {
                   const currentAid = await _self.method.getAidInWatchlaterMode()
                   if (aid == currentAid) {
@@ -2303,8 +2810,8 @@
                 },
               })
             } catch (e) {
-              console.error(gm.error.NETWORK)
-              console.error(e)
+              api.logger.error(gm.error.NETWORK)
+              api.logger.error(e)
               // 说明当前播放视频并非所寻的与 spBvid 对应的视频，则继续处理
               setStatus()
             }
@@ -2328,7 +2835,7 @@
         bus.aid = await _self.method.getAidInWatchlaterMode()
         if (!bus.aid) {
           cb.checked = btn.added
-          _self.api.message.create('网络错误，操作失败')
+          api.message.create('网络错误，操作失败')
           return
         }
         const note = btn.added ? '从稍后再看移除' : '添加到稍后再看'
@@ -2336,10 +2843,10 @@
         if (success) {
           btn.added = !btn.added
           cb.checked = btn.added
-          _self.api.message.create(note + '成功')
+          api.message.create(note + '成功')
         } else {
           cb.checked = btn.added
-          _self.api.message.create(`网络错误，${note}失败`)
+          api.message.create(`网络错误，${note}失败`)
         }
       }
     }
@@ -2361,9 +2868,8 @@
      * @async
      */
     async processWatchlaterListLink() {
-      const _self = this
       try {
-        const watchLaterList = await _self.api.wait.waitForElementLoaded('.watch-later-list')
+        const watchLaterList = await api.wait.waitForElementLoaded('.watch-later-list')
         let ob = new MutationObserver(async (records, observer) => {
           for (const record of records) {
             for (const addedNode of record.addedNodes) {
@@ -2410,8 +2916,8 @@
         })
         ob.observe(watchLaterList, { childList: true })
       } catch (e) {
-        console.error(gm.error.DOM_PARSE)
-        console.error()
+        api.logger.error(gm.error.DOM_PARSE)
+        api.logger.error()
       }
 
       /**
@@ -2444,7 +2950,7 @@
         while (base.className.split(' ').indexOf('av-item') < 0) {
           base = base.parentNode
           if (!base) {
-            console.error(gm.error.DOM_PARSE)
+            api.logger.error(gm.error.DOM_PARSE)
             return
           }
         }
@@ -2462,10 +2968,10 @@
      */
     processSearchParams() {
       const _self = this
-      if (urlMatch(gm.regex.page_videoNormalMode)) {
+      if (api.web.urlMatch(gm.regex.page_videoNormalMode)) {
         // 播放页面（正常模式）
         _self.processAutoRemoveInNormalMode()
-      } else if (urlMatch(gm.regex.page_videoWatchlaterMode)) {
+      } else if (api.web.urlMatch(gm.regex.page_videoWatchlaterMode)) {
         // 播放页面（稍后再看模式）
         _self.forceConsistentVideoInWatchlaterMode()
         _self.processAutoRemoveInWatchlaterMode()
@@ -2490,12 +2996,11 @@
      * 对于稍后再看模式播放页，根据 URL 上的查询参数，强制切换到准确的视频上
      */
     async forceConsistentVideoInWatchlaterMode() {
-      const _self = this
       const spBvid = gm.searchParams.get(`${gm.id}_bvid`)
       if (spBvid) {
         try {
-          const playlist = await _self.api.wait.waitForElementLoaded('.player-auxiliary-collapse-playlist')
-          const targetItem = await _self.api.wait.waitForElementLoaded({
+          const playlist = await api.wait.waitForElementLoaded('.player-auxiliary-collapse-playlist')
+          const targetItem = await api.wait.waitForElementLoaded({
             selector: `[data-bvid=${spBvid}]`,
             base: playlist,
             interval: 50,
@@ -2507,8 +3012,8 @@
             itemImg.click()
           }
         } catch (e) {
-          console.error(gm.error.DOM_PARSE)
-          console.error(e)
+          api.logger.error(gm.error.DOM_PARSE)
+          api.logger.error(e)
 
           const result = confirm(`【${GM_info.script.name}】\n\n视频 ${spBvid} 不在稍后再看中，是否转到普通模式播放？`)
           if (result) {
@@ -2537,7 +3042,7 @@
         }
         const success = await _self.method.switchVideoWatchlaterStatus(aid, false)
         if (!success) {
-          _self.api.message.create('从稍后再看移除失败')
+          api.message.create('从稍后再看移除失败')
         }
         return success
       }
@@ -2563,7 +3068,7 @@
             aid = String(info.aid)
             // 必须要等到页面上的 aid 与之完全一致才行，那样说明已经切换到正确的视频上
             // 否则，先将视频移除出稍后再看，那么根本就无法在稍后再看模式中观看该视频
-            await _self.api.wait.waitForConditionPassed({
+            await api.wait.waitForConditionPassed({
               condition: async () => {
                 const currentAid = await _self.method.getAidInWatchlaterMode()
                 if (aid == currentAid) {
@@ -2572,8 +3077,8 @@
               },
             })
           } catch (e) {
-            console.error(gm.error.NETWORK)
-            console.error(e)
+            api.logger.error(gm.error.NETWORK)
+            api.logger.error(e)
             return false
           }
         }
@@ -2590,7 +3095,7 @@
         }
         const success = await _self.method.switchVideoWatchlaterStatus(aid, false)
         if (!success) {
-          _self.api.message.create('从稍后再看移除失败')
+          api.message.create('从稍后再看移除失败')
         }
         return success
       }
@@ -2606,12 +3111,12 @@
         case Enums.removeHistorySavePoint.list:
         case Enums.removeHistorySavePoint.listAndMenu:
         default:
-          if (urlMatch(gm.regex.page_watchlaterList)) {
+          if (api.web.urlMatch(gm.regex.page_watchlaterList)) {
             _self.method.saveWatchlaterListData()
           }
           break
         case Enums.removeHistorySavePoint.anypage:
-          if (!urlMatch(gm.regex.page_dynamicMenu)) {
+          if (!api.web.urlMatch(gm.regex.page_dynamicMenu)) {
             _self.method.saveWatchlaterListData()
           }
           break
@@ -2624,7 +3129,7 @@
      */
     async adjustWatchlaterListUI() {
       const _self = this
-      const r_con = await _self.api.wait.waitForElementLoaded('.watch-later-list.bili-wrapper header .r-con')
+      const r_con = await api.wait.waitForElementLoaded('.watch-later-list.bili-wrapper header .r-con')
       if (gm.config.removeHistory) {
         // 在列表页面加入“移除记录”
         const removeHistoryButton = r_con.appendChild(document.createElement('div'))
@@ -2656,38 +3161,43 @@
         case Enums.menuScrollbarSetting.beautify:
           // 目前在不借助 JavaScript 的情况下，无法完美实现类似于移动端滚动条浮动在内容上的效果。
           menuScrollbarStyle = `
-[role=tooltip] ::-webkit-scrollbar,
-#app>.out-container>.container::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
-  background-color: #00000000;
-}
+            :root {
+              --scrollbar-background-color: transparent;
+              --scrollbar-thumb-color: #0000002b;
+            }
 
-[role=tooltip] ::-webkit-scrollbar-thumb,
-#app>.out-container>.container::-webkit-scrollbar-thumb {
-  border-radius: 3px;
-  background-color: #00000000;
-}
+            [role=tooltip] ::-webkit-scrollbar,
+            #app>.out-container>.container::-webkit-scrollbar {
+              width: 6px;
+              height: 6px;
+              background-color: var(--scrollbar-background-color);
+            }
 
-[role=tooltip] :hover::-webkit-scrollbar-thumb,
-#app>.out-container>.container:hover::-webkit-scrollbar-thumb {
-  border-radius: 3px;
-  background-color: #0000002b;
-}
+            [role=tooltip] ::-webkit-scrollbar-thumb,
+            #app>.out-container>.container::-webkit-scrollbar-thumb {
+              border-radius: 3px;
+              background-color: var(--scrollbar-background-color);
+            }
 
-[role=tooltip] ::-webkit-scrollbar-corner,
-#app>.out-container>.container::-webkit-scrollbar-corner {
-  background-color: #00000000;
-}
-        `
+            [role=tooltip] :hover::-webkit-scrollbar-thumb,
+            #app>.out-container>.container:hover::-webkit-scrollbar-thumb {
+              border-radius: 3px;
+              background-color: var(--scrollbar-thumb-color);
+            }
+
+            [role=tooltip] ::-webkit-scrollbar-corner,
+            #app>.out-container>.container::-webkit-scrollbar-corner {
+              background-color: var(--scrollbar-background-color);
+            }
+          `
           break
         case Enums.menuScrollbarSetting.hidden:
           menuScrollbarStyle = `
-[role=tooltip] ::-webkit-scrollbar,
-#app > .out-container > .container::-webkit-scrollbar {
-  display: none;
-}
-        `
+            [role=tooltip] ::-webkit-scrollbar,
+            #app > .out-container > .container::-webkit-scrollbar {
+              display: none;
+            }
+          `
           break
         case Enums.menuScrollbarSetting.original:
         default:
@@ -2704,816 +3214,344 @@
       this.addMenuScrollbarStyle()
       // 通用样式
       GM_addStyle(`
-#${gm.id} {
-  color: black;
-}
+        :root {
+          --text-color: black;
+          --text-bold-color: #3a3a3a;
+          --light-text-color: white;
+          --hint-text-color: gray;
+          --hint-text-emphasis-color: #666666;
+          --hint-text-hightlight-color: #555555;
+          --background-color: white;
+          --background-hightlight-color: #ebebeb;
+          --border-color: black;
+          --shadow-color: #000000bf;
+          --hightlight-color: #0075FF;
+          --important-color: red;
+          --warn-color: #e37100;
+          --disabled-color: gray;
+          --link-visited-color: #551a8b;
+          --scrollbar-background-color: transparent;
+          --scrollbar-thumb-color: #0000002b;
+          --opacity-fade-transition: opacity ${gm.const.fadeTime}ms ease-in-out;
+        }
 
-#${gm.id} .gm-setting {
-  font-size: 12px;
-  line-height: normal;
-  transition: opacity ${gm.const.fadeTime}ms ease-in-out;
-  opacity: 0;
-  display: none;
-  position: fixed;
-  z-index: 10000;
-  user-select: none;
-}
+        #${gm.id} {
+          color: var(--text-color);
+        }
 
-#${gm.id} .gm-setting #gm-setting-page {
-  background-color: #ffffff;
-  border-radius: 10px;
-  z-index: 65535;
-  min-width: 53em;
-  padding: 1em 1.4em;
-  transition: top 100ms, left 100ms;
-}
+        #${gm.id} .gm-setting {
+          font-size: 12px;
+          line-height: normal;
+          transition: var(--opacity-fade-transition);
+          opacity: 0;
+          display: none;
+          position: fixed;
+          z-index: 10000;
+          user-select: none;
+        }
 
-#${gm.id} .gm-setting #gm-maintitle * {
-  cursor: pointer;
-  color: black;
-}
-#${gm.id} .gm-setting #gm-maintitle:hover * {
-  color: #0075FF;
-}
+        #${gm.id} .gm-setting #gm-setting-page {
+          background-color: var(--background-color);
+          border-radius: 10px;
+          z-index: 65535;
+          min-width: 53em;
+          padding: 1em 1.4em;
+          transition: top 100ms, left 100ms;
+        }
 
-#${gm.id} .gm-setting .gm-items {
-  margin: 0 0.2em;
-  padding: 0 2em 0 2.2em;
-  font-size: 1.2em;
-  max-height: 66vh;
-  overflow-y: auto;
-}
+        #${gm.id} .gm-setting #gm-maintitle * {
+          cursor: pointer;
+          color: var(--text-color);
+        }
+        #${gm.id} .gm-setting #gm-maintitle:hover * {
+          color: var(--hightlight-color);
+        }
 
-#${gm.id} .gm-setting table {
-  width: 100%;
-  border-collapse: separate;
-  border-spacing: 0 0.3em; /* 前列后行 */
-}
-#${gm.id} .gm-setting td {
-  position: relative;
-}
-#${gm.id} .gm-setting .gm-item td:first-child {
-  vertical-align: top;
-  padding-right: 0.4em;
-  font-weight: bold;
-  color: #3a3a3a;
-}
-#${gm.id} .gm-setting .gm-item:not(:first-child) td {
-  padding-top: 0.7em;
-}
+        #${gm.id} .gm-setting .gm-items {
+          margin: 0 0.2em;
+          padding: 0 2em 0 2.2em;
+          font-size: 1.2em;
+          max-height: 66vh;
+          overflow-y: auto;
+        }
 
-#${gm.id} .gm-setting .gm-item:hover {
-  color: #0075FF;
-}
+        #${gm.id} .gm-setting table {
+          width: 100%;
+          border-collapse: separate;
+          border-spacing: 0 0.3em; /* 前列后行 */
+        }
+        #${gm.id} .gm-setting td {
+          position: relative;
+        }
+        #${gm.id} .gm-setting .gm-item td:first-child {
+          vertical-align: top;
+          padding-right: 0.8em;
+          font-weight: bold;
+          color: var(--text-bold-color);
+        }
+        #${gm.id} .gm-setting .gm-item:not(:first-child) td {
+          padding-top: 0.7em;
+        }
 
-#${gm.id} .gm-setting .gm-subitem[disabled] {
-  color: gray;
-}
-#${gm.id} .gm-setting .gm-subitem:hover:not([disabled]) {
-  color: #0075FF;
-}
+        #${gm.id} .gm-setting .gm-item:hover {
+          color: var(--hightlight-color);
+        }
 
-#${gm.id} .gm-setting .gm-hint-option {
-  font-size: 0.8em;
-  color: gray;
-  text-decoration: underline;
-  padding: 0 0.2em;
-  cursor: pointer;
-}
-#${gm.id} .gm-setting .gm-hint-option:hover {
-  color: #ca0000;
-}
-#${gm.id} .gm-setting [disabled] .gm-hint-option {
-  color: gray;
-  cursor: not-allowed;
-}
+        #${gm.id} .gm-setting .gm-subitem[disabled] {
+          color: var(--disabled-color);
+        }
+        #${gm.id} .gm-setting .gm-subitem:hover:not([disabled]) {
+          color: var(--hightlight-color);
+        }
 
-#${gm.id} .gm-setting label {
-  display: flex;
-  align-items: center;
-}
-#${gm.id} .gm-setting input[type=checkbox] {
-  margin-left: auto;
-}
-#${gm.id} .gm-setting input[type=text] {
-  float: right;
-  border-width: 0 0 1px 0;
-  width: 2.4em;
-  text-align: right;
-  padding: 0 0.2em;
-  margin: 0 -0.2em;
-}
-#${gm.id} .gm-setting select {
-  border-width: 0 0 1px 0;
-  cursor: pointer;
-  margin: 0 -0.2em;
-}
+        #${gm.id} .gm-setting .gm-hint-option {
+          font-size: 0.8em;
+          color: var(--hint-text-color);
+          text-decoration: underline;
+          padding: 0 0.2em;
+          cursor: pointer;
+        }
+        #${gm.id} .gm-setting .gm-hint-option:hover {
+          color: var(--important-color);
+        }
+        #${gm.id} .gm-setting [disabled] .gm-hint-option {
+          color: var(--disabled-color);
+          cursor: not-allowed;
+        }
 
-#${gm.id} .gm-setting .gm-information {
-  margin: 0 0.2em;
-  cursor: pointer;
-}
-#${gm.id} .gm-setting [disabled] .gm-information {
-  cursor: not-allowed;
-}
+        #${gm.id} .gm-setting label {
+          display: flex;
+          align-items: center;
+        }
+        #${gm.id} .gm-setting input[type=checkbox] {
+          margin-left: auto;
+        }
+        #${gm.id} .gm-setting input[type=text] {
+          float: right;
+          border-width: 0 0 1px 0;
+          width: 2.4em;
+          text-align: right;
+          padding: 0 0.2em;
+          margin: 0 -0.2em;
+        }
+        #${gm.id} .gm-setting select {
+          border-width: 0 0 1px 0;
+          cursor: pointer;
+          margin: 0 -0.2em;
+        }
 
-#${gm.id} .gm-setting .gm-warning {
-  position: absolute;
-  right: -1.2em;
-  color: #e37100;
-  font-size: 1.4em;
-  line-height: 1em;
-  transition: opacity ${gm.const.fadeTime}ms ease-in-out;
-  opacity: 0;
-  display: none;
-  cursor: pointer;
-}
+        #${gm.id} .gm-setting .gm-information {
+          margin: 0 0.2em;
+          cursor: pointer;
+        }
+        #${gm.id} .gm-setting [disabled] .gm-information {
+          cursor: not-allowed;
+        }
 
-#${gm.id} .gm-setting .gm-bottom {
-  margin: 1.4em 2em 1em 2em;
-  text-align: center;
-}
+        #${gm.id} .gm-setting .gm-warning {
+          position: absolute;
+          right: -1.2em;
+          color: var(--warn-color);
+          font-size: 1.4em;
+          line-height: 1em;
+          transition: var(--opacity-fade-transition);
+          opacity: 0;
+          display: none;
+          cursor: pointer;
+        }
 
-#${gm.id} .gm-setting .gm-bottom button {
-  font-size: 1em;
-  padding: 0.3em 1em;
-  margin: 0 0.8em;
-  cursor: pointer;
-  background-color: white;
-  border: 1px solid black;
-  border-radius: 2px;
-}
-#${gm.id} .gm-setting .gm-bottom button:hover {
-  background-color: #ebebeb;
-}
-#${gm.id} .gm-setting .gm-bottom button[disabled] {
-  cursor: not-allowed;
-  border-color: gray;
-  background-color: white;
-}
+        #${gm.id} .gm-setting .gm-bottom {
+          margin: 1.4em 2em 1em 2em;
+          text-align: center;
+        }
 
-#${gm.id} .gm-history {
-  font-size: 12px;
-  line-height: normal;
-  transition: opacity ${gm.const.fadeTime}ms ease-in-out;
-  opacity: 0;
-  display: none;
-  position: fixed;
-  z-index: 10000;
-  user-select: none;
-}
+        #${gm.id} .gm-setting .gm-bottom button {
+          font-size: 1em;
+          padding: 0.3em 1em;
+          margin: 0 0.8em;
+          cursor: pointer;
+          background-color: var(--background-color);
+          border: 1px solid var(--border-color);
+          border-radius: 2px;
+        }
+        #${gm.id} .gm-setting .gm-bottom button:hover {
+          background-color: var(--background-hightlight-color);
+        }
+        #${gm.id} .gm-setting .gm-bottom button[disabled] {
+          cursor: not-allowed;
+          border-color: var(--disabled-color);
+          background-color: var(--background-color);
+        }
 
-#${gm.id} .gm-history .gm-history-page {
-  background-color: #ffffff;
-  border-radius: 10px;
-  z-index: 65535;
-  height: 75vh;
-  width: 60vw;
-  min-width: 40em;
-  min-height: 50em;
-  transition: top 100ms, left 100ms;
-}
+        #${gm.id} .gm-history {
+          font-size: 12px;
+          line-height: normal;
+          transition: var(--opacity-fade-transition);
+          opacity: 0;
+          display: none;
+          position: fixed;
+          z-index: 10000;
+          user-select: none;
+        }
 
-#${gm.id} .gm-history .gm-comment {
-  margin: 0 2em;
-  color: gray;
-  text-indent: 2em;
-}
-#${gm.id} .gm-history .gm-comment span,
-#${gm.id} .gm-history .gm-comment input {
-  padding: 0 0.2em;
-  font-weight: bold;
-  color: #666666;
-}
-#${gm.id} .gm-history .gm-comment input{
-  text-align: center;
-  width: 3em;
-  border-width: 0 0 1px 0;
-}
+        #${gm.id} .gm-history .gm-history-page {
+          background-color: var(--background-color);
+          border-radius: 10px;
+          z-index: 65535;
+          height: 75vh;
+          width: 60vw;
+          min-width: 40em;
+          min-height: 50em;
+          transition: top 100ms, left 100ms;
+        }
 
-#${gm.id} .gm-history .gm-content {
-  margin: 1.6em 0.2em 2em 0.2em;
-  padding: 0 1.8em;
-  font-size: 1.2em;
-  text-align: center;
-  line-height: 1.6em;
-  overflow-y: auto;
-  position: absolute;
-  top: 8em;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  opacity: 0;
-  transition: opacity ${gm.const.textFadeTime}ms ease-in-out;
-  user-select: text;
-}
-#${gm.id} .gm-history .gm-content > div:hover {
-  font-weight: bold;
-}
+        #${gm.id} .gm-history .gm-comment {
+          margin: 0 2em;
+          color: var(--hint-text-color);
+          text-indent: 2em;
+        }
+        #${gm.id} .gm-history .gm-comment span,
+        #${gm.id} .gm-history .gm-comment input {
+          padding: 0 0.2em;
+          font-weight: bold;
+          color: var(--hint-text-emphasis-color);
+        }
+        #${gm.id} .gm-history .gm-comment input{
+          text-align: center;
+          width: 3em;
+          border-width: 0 0 1px 0;
+        }
 
-#${gm.id} #gm-reset {
-  position: absolute;
-  right: 0;
-  bottom: 0;
-  margin: 1em 1.6em;
-  color: #999999;
-  cursor: pointer;
-}
+        #${gm.id} .gm-history .gm-content {
+          margin: 1.6em 0.2em 2em 0.2em;
+          padding: 0 1.8em;
+          font-size: 1.2em;
+          text-align: center;
+          line-height: 1.6em;
+          overflow-y: auto;
+          position: absolute;
+          top: 8em;
+          bottom: 0;
+          left: 0;
+          right: 0;
+          opacity: 0;
+          transition: opacity ${gm.const.textFadeTime}ms ease-in-out;
+          user-select: text;
+        }
+        #${gm.id} .gm-history .gm-content > div:hover {
+          font-weight: bold;
+          color: var(--text-bold-color);
+        }
 
-#${gm.id} #gm-changelog {
-  position: absolute;
-  right: 0;
-  bottom: 1.8em;
-  margin: 1em 1.6em;
-  color: #999999;
-  cursor: pointer;
-}
-#${gm.id} #gm-changelog.gm-config-updated {
-  color: red;
-  font-weight: bold;
-}
-#${gm.id} #gm-changelog.gm-config-updated:hover {
-  color: red;
-}
+        #${gm.id} #gm-reset {
+          position: absolute;
+          right: 0;
+          bottom: 0;
+          margin: 1em 1.6em;
+          color: var(--hint-text-color);
+          cursor: pointer;
+        }
 
-#${gm.id} #gm-reset:hover,
-#${gm.id} #gm-changelog:hover {
-  color: #555555;
-  text-decoration: underline;
-}
+        #${gm.id} #gm-changelog {
+          position: absolute;
+          right: 0;
+          bottom: 1.8em;
+          margin: 1em 1.6em;
+          color: var(--hint-text-color);
+          cursor: pointer;
+        }
+        #${gm.id} #gm-changelog.gm-config-updated {
+          font-weight: bold;
+          color: var(--important-color);
+        }
+        #${gm.id} #gm-changelog.gm-config-updated:hover {
+          color: var(--important-color);
+        }
 
-#${gm.id} .gm-title {
-  font-size: 1.6em;
-  margin: 1.6em 0.8em 0.8em 0.8em;
-  text-align: center;
-}
+        #${gm.id} #gm-reset:hover,
+        #${gm.id} #gm-changelog:hover {
+          color: var(--hint-text-hightlight-color);
+          text-decoration: underline;
+        }
 
-#${gm.id} .gm-subtitle {
-  font-size: 0.4em;
-  margin-top: 0.4em;
-}
+        #${gm.id} .gm-title {
+          font-size: 1.6em;
+          margin: 1.6em 0.8em 0.8em 0.8em;
+          text-align: center;
+        }
 
-#${gm.id} .gm-shadow {
-  background: #000000b0;
-  position: fixed;
-  top: 0%;
-  left: 0%;
-  z-index: 10000;
-  width: 100%;
-  height: 100%;
-}
-#${gm.id} .gm-shadow[disabled] {
-  cursor: auto;
-}
+        #${gm.id} .gm-subtitle {
+          font-size: 0.4em;
+          margin-top: 0.4em;
+        }
 
-#${gm.id} label {
-  cursor: pointer;
-}
+        #${gm.id} .gm-shadow {
+          background-color: var(--shadow-color);
+          position: fixed;
+          top: 0%;
+          left: 0%;
+          z-index: 10000;
+          width: 100%;
+          height: 100%;
+        }
+        #${gm.id} .gm-shadow[disabled] {
+          cursor: auto;
+        }
 
-#${gm.id} input,
-#${gm.id} select {
-  color: black;
-}
+        #${gm.id} label {
+          cursor: pointer;
+        }
 
-#${gm.id} a {
-color: #0075FF
-}
-#${gm.id} a:visited {
-color: #551a8b
-}
+        #${gm.id} input,
+        #${gm.id} select {
+          color: var(--text-color);
+        }
 
-#${gm.id} [disabled],
-#${gm.id} [disabled] input,
-#${gm.id} [disabled] select {
-  cursor: not-allowed;
-  color: gray;
-}
+        #${gm.id} a {
+        color: var(--hightlight-color)
+        }
+        #${gm.id} a:visited {
+        color: var(--link-visited-color)
+        }
 
-#${gm.id}-watchlater-video-btn {
-  margin-right: 1em;
-  cursor: pointer;
-  font-size: 12px;
-}
-#${gm.id}-normal-video-btn input[type=checkbox],
-#${gm.id}-watchlater-video-btn input[type=checkbox] {
-  vertical-align: middle;
-  margin: 0 2px 2px 0;
-}
+        #${gm.id} [disabled],
+        #${gm.id} [disabled] input,
+        #${gm.id} [disabled] select {
+          cursor: not-allowed;
+          color: var(--disabled-color);
+        }
 
-.${gm.id}-msgbox {
-  z-index: 65535;
-  background-color: #000000bf;
-  font-size: 16px;
-  max-width: 24em;
-  min-width: 2em;
-  color: white;
-  padding: 0.5em 1em;
-  border-radius: 0.6em;
-  opacity: 0;
-  transition: opacity ${gm.const.fadeTime}ms ease-in-out;
-  user-select: none;
-}
+        #${gm.id}-watchlater-video-btn {
+          margin-right: 1em;
+          cursor: pointer;
+          font-size: 12px;
+        }
+        #${gm.id}-normal-video-btn input[type=checkbox],
+        #${gm.id}-watchlater-video-btn input[type=checkbox] {
+          vertical-align: middle;
+          margin: 0 2px 2px 0;
+        }
 
-.${gm.id}-msgbox .gm-advanced-table td {
-  vertical-align: middle;
-}
-.${gm.id}-msgbox .gm-advanced-table td:first-child {
-  padding-right: 0.6em;
-}
-
-#${gm.id} .gm-setting .gm-items::-webkit-scrollbar,
-#${gm.id} .gm-history .gm-content::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
-  background-color: #00000000;
-}
-#${gm.id} .gm-history .gm-content::-webkit-scrollbar-thumb {
-  border-radius: 3px;
-  background-color: #00000000;
-}
-#${gm.id} .gm-setting .gm-items::-webkit-scrollbar-thumb,
-#${gm.id} .gm-history .gm-content:hover::-webkit-scrollbar-thumb {
-  border-radius: 3px;
-  background-color: #0000002b;
-}
-#${gm.id} .gm-setting .gm-items::-webkit-scrollbar-corner,
-#${gm.id} .gm-history .gm-content::-webkit-scrollbar-corner {
-  background-color: #00000000;
-}
+        #${gm.id} .gm-setting .gm-items::-webkit-scrollbar,
+        #${gm.id} .gm-history .gm-content::-webkit-scrollbar {
+          width: 6px;
+          height: 6px;
+          background-color: var(--scrollbar-background-color);
+        }
+        #${gm.id} .gm-history .gm-content::-webkit-scrollbar-thumb {
+          border-radius: 3px;
+          background-color: var(--scrollbar-background-color);
+        }
+        #${gm.id} .gm-setting .gm-items::-webkit-scrollbar-thumb,
+        #${gm.id} .gm-history .gm-content:hover::-webkit-scrollbar-thumb {
+          border-radius: 3px;
+          background-color: var(--scrollbar-thumb-color);
+        }
+        #${gm.id} .gm-setting .gm-items::-webkit-scrollbar-corner,
+        #${gm.id} .gm-history .gm-content::-webkit-scrollbar-corner {
+          background-color: var(--scrollbar-background-color);
+        }
       `)
-    }
-  }
-
-  /**
-   * API
-   */
-  class API {
-    constructor() {
-      const api = this
-      /** DOM 相关 */
-      this.dom = {
-        /**
-         * 创建 locationchange 事件
-         * @see {@link https://stackoverflow.com/a/52809105 How to detect if URL has changed after hash in JavaScript}
-         */
-        createLocationchangeEvent() {
-          if (!unsafeWindow._createLocationchangeEvent) {
-            history.pushState = (f => function pushState() {
-              const ret = f.apply(this, arguments)
-              window.dispatchEvent(new Event('pushstate'))
-              window.dispatchEvent(new Event('locationchange'))
-              return ret
-            })(history.pushState)
-            history.replaceState = (f => function replaceState() {
-              const ret = f.apply(this, arguments)
-              window.dispatchEvent(new Event('replacestate'))
-              window.dispatchEvent(new Event('locationchange'))
-              return ret
-            })(history.replaceState)
-            window.addEventListener('popstate', () => {
-              window.dispatchEvent(new Event('locationchange'))
-            })
-            unsafeWindow._createLocationchangeEvent = true
-          }
-        },
-
-        /**
-         * 将一个元素绝对居中
-         * 
-         * 要求该元素此时可见且尺寸为确定值（一般要求为块状元素）。运行后会在 `target` 上附加 `_absoluteCenter` 方法，若该方法已存在，则无视 `config` 直接执行 `target._absoluteCenter()`。
-         * @param {HTMLElement} target 目标元素
-         * @param {Object} [config] 配置
-         * @param {string} [config.position='fixed'] 定位方式
-         * @param {string} [config.top='50%'] `style.top`
-         * @param {string} [config.left='50%'] `style.left`
-         */
-        setAbsoluteCenter(target, config) {
-          if (!target._absoluteCenter) {
-            const defaultConfig = {
-              position: 'fixed',
-              top: '50%',
-              left: '50%',
-            }
-            config = { ...defaultConfig, ...config }
-            target._absoluteCenter = () => {
-              const style = getComputedStyle(target)
-              const top = (parseFloat(style.height) + parseFloat(style.paddingTop) + parseFloat(style.paddingBottom)) / 2
-              const left = (parseFloat(style.width) + parseFloat(style.paddingLeft) + parseFloat(style.paddingRight)) / 2
-              target.style.top = `calc(${config.top} - ${top}px)`
-              target.style.left = `calc(${config.left} - ${left}px)`
-              target.style.position = config.position
-            }
-
-            // 实现一个简单的 debounce 来响应 resize 事件
-            let tid
-            window.addEventListener('resize', function() {
-              if (target._absoluteCenter) {
-                if (tid) {
-                  clearTimeout(tid)
-                  tid = null
-                }
-                tid = setTimeout(() => {
-                  target._absoluteCenter()
-                }, 500)
-              }
-            })
-          }
-          target._absoluteCenter()
-        },
-
-        /**
-         * 处理 HTML 元素的渐显和渐隐
-         * @param {boolean} inOut 渐显/渐隐
-         * @param {HTMLElement} target HTML 元素
-         * @param {() => void} [callback] 处理完成的回调函数
-         */
-        fade(inOut, target, callback) {
-          // fadeId 等同于当前时间戳，其意义在于保证对于同一元素，后执行的操作必将覆盖前的操作
-          const fadeId = new Date().getTime()
-          target._fadeId = fadeId
-          if (inOut) { // 渐显
-            // 只有 display 可视情况下修改 opacity 才会触发 transition
-            if (getComputedStyle(target).display == 'none') {
-              target.style.display = 'unset'
-            }
-            setTimeout(() => {
-              let success = false
-              if (target._fadeId <= fadeId) {
-                target.style.opacity = '1'
-                success = true
-              }
-              callback && callback(success)
-            }, 10) // 此处的 10ms 是为了保证修改 display 后在浏览器上真正生效，按 HTML5 定义，浏览器需保证 display 在修改 4ms 后保证生效，但实际上大部分浏览器貌似做不到，等个 10ms 再修改 opacity
-          } else { // 渐隐
-            target.style.opacity = '0'
-            setTimeout(() => {
-              let success = false
-              if (target._fadeId <= fadeId) {
-                target.style.display = 'none'
-                success = true
-              }
-              callback && callback(success)
-            }, gm.const.fadeTime)
-          }
-        },
-      }
-      /** 信息通知相关 */
-      this.message = {
-        /**
-         * 创建信息
-         * @param {string} msg 信息
-         * @param {Object} [config] 设置
-         * @param {boolean} [config.autoClose=true] 是否自动关闭信息，配合 `config.ms` 使用
-         * @param {number} [config.ms=gm.const.messageTime] 显示时间（单位：ms，不含渐显/渐隐时间）
-         * @param {boolean} [config.html=false] 是否将 `msg` 理解为 HTML
-         * @param {string} [config.width] 信息框的宽度，不设置的情况下根据内容决定，但有最小宽度和最大宽度的限制
-         * @param {{top: string, left: string}} [config.position] 信息框的位置，不设置该项时，相当于设置为 `{ top: gm.const.messageTop, left: gm.const.messageLeft }`
-         * @return {HTMLElement} 信息框元素
-         */
-        create(msg, config) {
-          const defaultConfig = {
-            autoClose: true,
-            ms: gm.const.messageTime,
-            html: false,
-            width: null,
-            position: {
-              top: gm.const.messageTop,
-              left: gm.const.messageLeft,
-            },
-          }
-          config = { ...defaultConfig, ...config }
-
-          const msgbox = document.body.appendChild(document.createElement('div'))
-          msgbox.className = `${gm.id}-msgbox`
-          if (config.width) {
-            msgbox.style.minWidth = 'auto' // 为什么一个是 auto 一个是 none？真是神奇的设计
-            msgbox.style.maxWidth = 'none'
-            msgbox.style.width = config.width
-          }
-
-          msgbox.style.display = 'block'
-          setTimeout(() => {
-            api.dom.setAbsoluteCenter(msgbox, config.position)
-          }, 10)
-
-          if (config.html) {
-            msgbox.innerHTML = msg
-          } else {
-            msgbox.innerText = msg
-          }
-          api.dom.fade(true, msgbox, () => {
-            if (config.autoClose) {
-              setTimeout(() => {
-                this.close(msgbox)
-              }, config.ms)
-            }
-          })
-          return msgbox
-        },
-
-        /**
-         * 关闭信息
-         * @param {HTMLElement} msgbox 信息框元素
-         */
-        close(msgbox) {
-          if (msgbox) {
-            api.dom.fade(false, msgbox, () => {
-              msgbox && msgbox.remove()
-            })
-          }
-        },
-
-        /**
-         * 创建高级信息
-         * @param {HTMLElement} el 启动元素
-         * @param {string} msg 信息
-         * @param {string} flag 标志信息
-         * @param {Object} [config] 设置
-         * @param {string} [config.flagSize='1.8em'] 标志大小
-         * @param {string} [config.width] 信息框的宽度，不设置的情况下根据内容决定，但有最小宽度和最大宽度的限制
-         * @param {{top: string, left: string}} [config.position] 信息框的位置，不设置该项时，相当于设置为 `{ top: gm.const.messageTop, left: gm.const.messageLeft }`
-         * @param {() => boolean} [config.disabled] 是否处于禁用状态
-         */
-        advanced(el, msg, flag, config) {
-          const defaultConfig = {
-            flagSize: '1.8em',
-            // 不能把数据列出，否则解构的时候会出问题
-          }
-          config = { ...defaultConfig, ...config }
-
-          const _self = this
-          el.show = false
-          el.onmouseenter = function() {
-            if (config.disabled && config.disabled()) {
-              return
-            }
-
-            const htmlMsg = `
-<table class="gm-advanced-table"><tr>
-  <td style="font-size:${config.flagSize};line-height:${config.flagSize}">${flag}</td>
-  <td>${msg}</td>
-</tr></table>
-`
-            this.msgbox = _self.create(htmlMsg, { ...config, html: true, autoClose: false })
-
-            // 可能信息框刚好生成覆盖在 elWarning 上，需要做一个处理
-            this.msgbox.onmouseenter = function() {
-              this.mouseOver = true
-            }
-            // 从信息框出来也会关闭信息框，防止覆盖的情况下无法关闭
-            this.msgbox.onmouseleave = function() {
-              _self.close(this)
-            }
-          }
-          el.onmouseleave = function() {
-            setTimeout(() => {
-              if (this.msgbox && !this.msgbox.mouseOver) {
-                this.msgbox.onmouseleave = null
-                _self.close(this.msgbox)
-              }
-            })
-          }
-        },
-      }
-      /** 用于等待元素加载/条件达成再执行操作 */
-      this.wait = {
-        /**
-         * 在条件满足后执行操作
-         *
-         * 当条件满足后，如果不存在终止条件，那么直接执行 `callback(result)`。
-         *
-         * 当条件满足后，如果存在终止条件，且 `stopTimeout` 大于 0，则还会在接下来的 `stopTimeout` 时间内判断是否满足终止条件，称为终止条件的二次判断。
-         * 如果在此期间，终止条件通过，则表示依然不满足条件，故执行 `onStop()` 而非 `callback(result)`。
-         * 如果在此期间，终止条件一直失败，则顺利通过检测，执行 `callback(result)`。
-         *
-         * @param {Object} options 选项
-         * @param {() => *} options.condition 条件，当 `condition()` 返回的 `result` 为真值时满足条件
-         * @param {(result) => void} [options.callback] 当满足条件时执行 `callback(result)`
-         * @param {number} [options.interval=100] 检测时间间隔（单位：ms）
-         * @param {number} [options.timeout=5000] 检测超时时间，检测时间超过该值时终止检测（单位：ms）
-         * @param {() => void} [options.onTimeout] 检测超时时执行 `onTimeout()`
-         * @param {() => *} [options.stopCondition] 终止条件，当 `stopCondition()` 返回的 `stopResult` 为真值时终止检测
-         * @param {() => void} [options.onStop] 终止条件达成时执行 `onStop()`（包括终止条件的二次判断达成）
-         * @param {number} [options.stopInterval=50] 终止条件二次判断期间的检测时间间隔（单位：ms）
-         * @param {number} [options.stopTimeout=0] 终止条件二次判断期间的检测超时时间（单位：ms）
-         * @param {number} [options.timePadding=0] 等待 `timePadding`ms 后才开始执行；包含在 `timeout` 中，因此不能大于 `timeout`
-         */
-        executeAfterConditionPassed(options) {
-          const defaultOptions = {
-            callback: result => console.log(result),
-            interval: 100,
-            timeout: 5000,
-            onTimeout: null,
-            stopCondition: null,
-            onStop: null,
-            stopInterval: 50,
-            stopTimeout: 0,
-            timePadding: 0,
-          }
-          options = {
-            ...defaultOptions,
-            ...options
-          }
-
-          let tid
-          let cnt = 0
-          const maxCnt = (options.timeout - options.timePadding) / options.interval
-          const task = async () => {
-            const result = await options.condition()
-            const stopResult = options.stopCondition && await options.stopCondition()
-            if (stopResult) {
-              clearInterval(tid)
-              options.onStop && options.onStop.call(options)
-            } else if (++cnt > maxCnt) {
-              clearInterval(tid)
-              options.onTimeout && options.onTimeout.call(options)
-            } else if (result) {
-              clearInterval(tid)
-              if (options.stopCondition && options.stopTimeout > 0) {
-                this.executeAfterConditionPassed({
-                  condition: options.stopCondition,
-                  callback: options.onStop,
-                  interval: options.stopInterval,
-                  timeout: options.stopTimeout,
-                  onTimeout: () => options.callback.call(options, result)
-                })
-              } else {
-                options.callback.call(options, result)
-              }
-            }
-          }
-          setTimeout(() => {
-            tid = setInterval(task, options.interval)
-            task()
-          }, options.timePadding)
-        },
-
-        /**
-         * 在元素加载完成后执行操作
-         *
-         * 当条件满足后，如果不存在终止条件，那么直接执行 `callback(element)`。
-         *
-         * 当条件满足后，如果存在终止条件，且 `stopTimeout` 大于 `0`，则还会在接下来的 `stopTimeout` 时间内判断是否满足终止条件，称为终止条件的二次判断。
-         * 如果在此期间，终止条件通过，则表示依然不满足条件，故执行 `onStop()` 而非 `callback(element)`。
-         * 如果在此期间，终止条件一直失败，则顺利通过检测，执行 `callback(element)`。
-         *
-         * @param {Object} options 选项
-         * @param {string} options.selector 该选择器指定要等待加载的元素 `element`
-         * @param {HTMLElement} [options.base=document] 基元素
-         * @param {(element: HTMLElement) => void} [options.callback] 当 `element` 加载成功时执行 `callback(element)`
-         * @param {number} [options.interval=100] 检测时间间隔（单位：ms）
-         * @param {number} [options.timeout=5000] 检测超时时间，检测时间超过该值时终止检测（单位：ms）
-         * @param {() => void} [options.onTimeout] 检测超时时执行 `onTimeout()`
-         * @param {string | (() => *)} [options.stopCondition] 终止条件。若为函数，当 `stopCondition()` 返回的 `stopResult` 为真值时终止检测；若为字符串，则作为元素选择器指定终止元素 `stopElement`，若该元素加载成功则终止检测
-         * @param {() => void} [options.onStop] 终止条件达成时执行 `onStop()`（包括终止条件的二次判断达成）
-         * @param {number} [options.stopInterval=50] 终止条件二次判断期间的检测时间间隔（单位：ms）
-         * @param {number} [options.stopTimeout=0] 终止条件二次判断期间的检测超时时间（单位：ms）
-         * @param {number} [options.timePadding=0] 等待 `timePadding`ms 后才开始执行；包含在 `timeout` 中，因此不能大于 `timeout`
-         */
-        executeAfterElementLoaded(options) {
-          const defaultOptions = {
-            base: document,
-            callback: el => console.log(el),
-            interval: 100,
-            timeout: 5000,
-            onTimeout: null,
-            stopCondition: null,
-            onStop: null,
-            stopInterval: 50,
-            stopTimeout: 0,
-            timePadding: 0,
-          }
-          options = {
-            ...defaultOptions,
-            ...options
-          }
-          this.executeAfterConditionPassed({
-            ...options,
-            condition: () => options.base.querySelector(options.selector),
-            stopCondition: () => {
-              if (options.stopCondition) {
-                if (options.stopCondition) {
-                  return options.stopCondition()
-                } else if (typeof options.stopCondition == 'string') {
-                  return document.querySelector(options.stopCondition)
-                }
-              }
-            },
-          })
-        },
-
-        /**
-         * 等待条件满足
-         * 
-         * 执行细节类似于 {@link executeAfterConditionPassed}。在原来执行 `callback(result)` 的地方执行 `resolve(result)`，被终止或超时执行 `reject()`。
-         * @async
-         * @see executeAfterConditionPassed
-         * @param {Object} options 选项
-         * @param {() => *} options.condition 条件，当 `condition()` 返回的 `result` 为真值时满足条件
-         * @param {number} [options.interval=100] 检测时间间隔（单位：ms）
-         * @param {number} [options.timeout=5000] 检测超时时间，检测时间超过该值时终止检测（单位：ms）
-         * @param {() => *} [options.stopCondition] 终止条件，当 `stopCondition()` 返回的 `stopResult` 为真值时终止检测
-         * @param {number} [options.stopInterval=50] 终止条件二次判断期间的检测时间间隔（单位：ms）
-         * @param {number} [options.stopTimeout=0] 终止条件二次判断期间的检测超时时间（单位：ms）
-         * @param {number} [options.timePadding=0] 等待 `timePadding`ms 后才开始执行；包含在 `timeout` 中，因此不能大于 `timeout`
-         * @returns {Promise} `result`
-         * @throws 当等待超时或者被终止时抛出
-         */
-        async waitForConditionPassed(options) {
-          return new Promise((resolve, reject) => {
-            this.executeAfterConditionPassed({
-              ...options,
-              callback: result => resolve(result),
-              onTimeout: function() {
-                reject(['TIMEOUT', 'waitForConditionPassed', this])
-              },
-              onStop: function() {
-                reject(['STOP', 'waitForConditionPassed', this])
-              },
-            })
-          })
-        },
-
-        /**
-         * 等待元素加载
-         * 
-         * 执行细节类似于 {@link executeAfterElementLoaded}。在原来执行 `callback(element)` 的地方执行 `resolve(element)`，被终止或超时执行 `reject()`。
-         * @async
-         * @see executeAfterElementLoaded
-         * @param {string} selector 该选择器指定要等待加载的元素 `element`
-         * @param {HTMLElement} [base=document] 基元素
-         * @returns {Promise<HTMLElement>} `element`
-         * @throws 当等待超时或者被终止时抛出
-         */
-        /**
-         * 等待元素加载
-         * 
-         * 执行细节类似于 {@link executeAfterElementLoaded}。在原来执行 `callback(element)` 的地方执行 `resolve(element)`，被终止或超时执行 `reject()`。
-         * @async
-         * @see executeAfterElementLoaded
-         * @param {Object} options 选项
-         * @param {string} options.selector 该选择器指定要等待加载的元素 `element`
-         * @param {HTMLElement} [options.base=document] 基元素
-         * @param {number} [options.interval=100] 检测时间间隔（单位：ms）
-         * @param {number} [options.timeout=5000] 检测超时时间，检测时间超过该值时终止检测（单位：ms）
-         * @param {string | (() => *)} [options.stopCondition] 终止条件。若为函数，当 `stopCondition()` 返回的 `stopResult` 为真值时终止检测；若为字符串，则作为元素选择器指定终止元素 `stopElement`，若该元素加载成功则终止检测
-         * @param {number} [options.stopInterval=50] 终止条件二次判断期间的检测时间间隔（单位：ms）
-         * @param {number} [options.stopTimeout=0] 终止条件二次判断期间的检测超时时间（单位：ms）
-         * @param {number} [options.timePadding=0] 等待 `timePadding`ms 后才开始执行；包含在 `timeout` 中，因此不能大于 `timeout`
-         * @returns {Promise<HTMLElement>} `element`
-         * @throws 当等待超时或者被终止时抛出
-         */
-        async waitForElementLoaded() {
-          let options
-          if (arguments.length > 0) {
-            if (typeof arguments[0] == 'string') {
-              options = { selector: arguments[0] }
-              if (arguments[1]) {
-                options.base = arguments[1]
-              }
-            } else {
-              options = arguments[0]
-            }
-          }
-          return new Promise((resolve, reject) => {
-            this.executeAfterElementLoaded({
-              ...options,
-              callback: element => resolve(element),
-              onTimeout: function() {
-                reject(['TIMEOUT', 'waitForElementLoaded', this])
-              },
-              onStop: function() {
-                reject(['STOP', 'waitForElementLoaded', this])
-              },
-            })
-          })
-        },
-      }
-    }
-
-    /** @typedef {Object} GM_xmlhttpRequest_details */
-    /** @typedef {Object} GM_xmlhttpRequest_response */
-    /**
-     * 发起网络请求
-     * @async
-     * @param {GM_xmlhttpRequest_details} details 定义及细节同 {@link GM_xmlhttpRequest} 的 `details`
-     * @returns {Promise<GM_xmlhttpRequest_response>} 响应对象
-     * @throws 当请求发生错误或者超时时抛出
-     * @see {@link https://www.tampermonkey.net/documentation.php#GM_xmlhttpRequest GM_xmlhttpRequest}
-     */
-    async request(details) {
-      if (details) {
-        return new Promise((resolve, reject) => {
-          const throwHandler = function(msg) {
-            console.error(gm.error.NETWORK)
-            reject(msg)
-          }
-          details.onerror = details.onerror || (() => throwHandler(['ERROR', 'request', details]))
-          details.ontimeout = details.ontimeout || (() => throwHandler(['TIMEOUT', 'request', details]))
-          details.onload = details.onload || (response => resolve(response))
-          GM_xmlhttpRequest(details)
-        })
-      }
     }
   }
 
@@ -3669,4 +3707,54 @@ color: #551a8b
       }
     }
   }
+
+  const script = new Script()
+  const webpage = new Webpage()
+
+  script.initAtDocumentStart()
+  if (api.web.urlMatch(gm.regex.page_videoWatchlaterMode)) {
+    if (gm.config.redirect) { // 重定向，document-start 就执行，尽可能快地将原页面掩盖过去
+      webpage.redirect()
+      return // 必须 return，否则后面的内容还会执行使得加载速度超级慢
+    }
+  }
+
+  // 脚本的其他部分推迟至 DOMContentLoaded 执行
+  document.addEventListener('DOMContentLoaded', function() {
+    script.init()
+    script.addScriptMenu()
+
+    // 所有页面
+    if (gm.config.headerButton) {
+      webpage.addHeaderButton()
+    }
+    if (gm.config.removeHistory) {
+      webpage.processWatchlaterListDataSaving()
+    }
+
+    if (api.web.urlMatch(gm.regex.page_watchlaterList)) {
+      // 列表页面
+      webpage.processOpenListVideo()
+      webpage.adjustWatchlaterListUI()
+      if (gm.config.forceConsistentVideo || gm.config.autoRemove != Enums.autoRemove.never) {
+        webpage.processWatchlaterListLink()
+      }
+    } else if (api.web.urlMatch(gm.regex.page_videoNormalMode)) {
+      // 播放页面（正常模式）
+      if (gm.config.videoButton) {
+        webpage.addVideoButton_Normal()
+      }
+    } else if (api.web.urlMatch(gm.regex.page_videoWatchlaterMode)) {
+      // 播放页面（稍后再看模式）
+      if (gm.config.videoButton) {
+        webpage.addVideoButton_Watchlater()
+      }
+    } else if (api.web.urlMatch(gm.regex.page_dynamicMenu)) {
+      // 动态入口弹出菜单页面的处理
+      webpage.addMenuScrollbarStyle()
+      return
+    }
+    webpage.processSearchParams()
+    webpage.addStyle()
+  })
 })()
