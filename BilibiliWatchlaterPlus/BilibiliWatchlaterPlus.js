@@ -1,7 +1,7 @@
 // ==UserScript==
 // @id              BilibiliWatchlaterPlus@Laster2800
 // @name            B站稍后再看功能增强
-// @version         4.4.1.20200820
+// @version         4.4.2.20200820
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -2410,24 +2410,22 @@ class API {
      */
     addHeaderButton() {
       const _self = this
-      api.wait.executeAfterElementLoaded({
-        selector: '.user-con.signin',
-        callback: header => {
-          if (header) {
-            const collect = header.children[4]
-            const watchlater = document.createElement('div')
-            watchlater.className = 'item'
-            const link = watchlater.appendChild(document.createElement('a'))
-            const text = link.appendChild(document.createElement('span'))
-            text.className = 'name'
-            text.innerText = '稍后再看'
-            header.insertBefore(watchlater, collect)
+      api.wait.waitForElementLoaded('.user-con.signin').then(header => {
+        const collect = header.children[4]
+        const watchlater = document.createElement('div')
+        watchlater.className = 'item'
+        const link = watchlater.appendChild(document.createElement('a'))
+        const text = link.appendChild(document.createElement('span'))
+        text.className = 'name'
+        text.innerText = '稍后再看'
+        header.insertBefore(watchlater, collect)
 
-            processLeftClick(link)
-            processRightClick(watchlater)
-            processTooltip({ collect, watchlater })
-          }
-        },
+        processLeftClick(link)
+        processRightClick(watchlater)
+        processTooltip({ collect, watchlater })
+      }).catch(e => {
+        api.logger.error(gm.error.DOM_PARSE)
+        api.logger.error(e)
       })
 
       /**
@@ -2909,55 +2907,57 @@ class API {
         }
       }
 
-      api.wait.executeAfterConditionPassed({
+      api.wait.waitForConditionPassed({
         condition: executeCondition,
-        callback: ({ atr, original }) => {
-          const btn = document.createElement('label')
-          btn.id = `${gm.id}-normal-video-btn`
-          const cb = document.createElement('input')
-          cb.type = 'checkbox'
-          btn.appendChild(cb)
-          const text = document.createElement('span')
-          text.innerText = '稍后再看'
-          btn.className = 'appeal-text'
-          cb.onclick = function() { // 不要附加到 btn 上，否则点击时会执行两次
-            processSwitch()
-          }
-          btn.appendChild(text)
-          atr.appendChild(btn)
+      }).then(({ atr, original }) => {
+        const btn = document.createElement('label')
+        btn.id = `${gm.id}-normal-video-btn`
+        const cb = document.createElement('input')
+        cb.type = 'checkbox'
+        btn.appendChild(cb)
+        const text = document.createElement('span')
+        text.innerText = '稍后再看'
+        btn.className = 'appeal-text'
+        cb.onclick = function() { // 不要附加到 btn 上，否则点击时会执行两次
+          processSwitch()
+        }
+        btn.appendChild(text)
+        atr.appendChild(btn)
 
-          const aid = _self.method.getAidInNormalMode()
-          bus = { ...bus, btn, cb, aid }
-          initButtonStatus()
-          original.parentNode.style.display = 'none'
+        const aid = _self.method.getAidInNormalMode()
+        bus = { ...bus, btn, cb, aid }
+        initButtonStatus()
+        original.parentNode.style.display = 'none'
 
-          api.dom.createLocationchangeEvent()
-          window.addEventListener('locationchange', async function() {
-            try {
-              bus.aid = await api.wait.waitForConditionPassed({
-                condition: async () => {
-                  // 要等 aid 跟之前存的不一样，才能说明是切换成功后获取到的 aid
-                  const aid = await _self.method.getAidInWatchlaterMode()
-                  if (aid && aid != bus.aid) {
-                    return aid
-                  }
-                },
-              })
-              gm.searchParams = new URL(location.href).searchParams
-              const removed = await _self.processAutoRemoveInNormalMode()
-              const status = removed ? false : await _self.method.getVideoWatchlaterStatusByAid(bus.aid)
-              btn.added = status
-              cb.checked = status
+        api.dom.createLocationchangeEvent()
+        window.addEventListener('locationchange', async function() {
+          try {
+            bus.aid = await api.wait.waitForConditionPassed({
+              condition: async () => {
+                // 要等 aid 跟之前存的不一样，才能说明是切换成功后获取到的 aid
+                const aid = await _self.method.getAidInWatchlaterMode()
+                if (aid && aid != bus.aid) {
+                  return aid
+                }
+              },
+            })
+            gm.searchParams = new URL(location.href).searchParams
+            const removed = await _self.processAutoRemoveInNormalMode()
+            const status = removed ? false : await _self.method.getVideoWatchlaterStatusByAid(bus.aid)
+            btn.added = status
+            cb.checked = status
 
-              if (gm.config.removeHistory && gm.config.removeHistorySavePoint == Enums.removeHistorySavePoint.anypage) {
-                _self.method.saveWatchlaterListData(true)
-              }
-            } catch (e) {
-              api.logger.error(gm.error.DOM_PARSE)
-              api.logger.error(e)
+            if (gm.config.removeHistory && gm.config.removeHistorySavePoint == Enums.removeHistorySavePoint.anypage) {
+              _self.method.saveWatchlaterListData(true)
             }
-          })
-        },
+          } catch (e) {
+            api.logger.error(gm.error.DOM_PARSE)
+            api.logger.error(e)
+          }
+        })
+      }).catch(e => {
+        api.logger.error(gm.error.DOM_PARSE)
+        api.logger.error(e)
       })
 
       /**
@@ -3064,62 +3064,64 @@ class API {
         }
       }
 
-      api.wait.executeAfterConditionPassed({
+      api.wait.waitForConditionPassed({
         condition: executeCondition,
-        callback: async playContainer => {
-          const more = playContainer.querySelector('#playContainer .left-container .play-options .play-options-more')
-          const btn = document.createElement('label')
-          btn.id = `${gm.id}-watchlater-video-btn`
-          btn.onclick = e => e.stopPropagation()
-          const cb = document.createElement('input')
-          cb.type = 'checkbox'
-          btn.appendChild(cb)
-          const text = document.createElement('span')
-          text.innerText = '稍后再看'
-          btn.appendChild(text)
+      }).then(async playContainer => {
+        const more = playContainer.querySelector('#playContainer .left-container .play-options .play-options-more')
+        const btn = document.createElement('label')
+        btn.id = `${gm.id}-watchlater-video-btn`
+        btn.onclick = e => e.stopPropagation()
+        const cb = document.createElement('input')
+        cb.type = 'checkbox'
+        btn.appendChild(cb)
+        const text = document.createElement('span')
+        text.innerText = '稍后再看'
+        btn.appendChild(text)
 
-          // 确保与其他脚本配合时相关 UI 排列顺序不会乱
-          let gmContainer = more.querySelector('[id=gm-container]')
-          if (!gmContainer) {
-            gmContainer = more.appendChild(document.createElement('span'))
-            gmContainer.id = 'gm-container'
-            gmContainer.style.float = 'left'
-          }
-          gmContainer.appendChild(btn)
+        // 确保与其他脚本配合时相关 UI 排列顺序不会乱
+        let gmContainer = more.querySelector('[id=gm-container]')
+        if (!gmContainer) {
+          gmContainer = more.appendChild(document.createElement('span'))
+          gmContainer.id = 'gm-container'
+          gmContainer.style.float = 'left'
+        }
+        gmContainer.appendChild(btn)
 
-          cb.onclick = () => processSwitch() // 不要附加到 btn 上，否则点击时会执行两次
-          bus = { ...bus, btn, cb }
-          bus.aid = await _self.method.getAidInWatchlaterMode()
-          initButtonStatus()
+        cb.onclick = () => processSwitch() // 不要附加到 btn 上，否则点击时会执行两次
+        bus = { ...bus, btn, cb }
+        bus.aid = await _self.method.getAidInWatchlaterMode()
+        initButtonStatus()
 
-          // 切换视频时的处理
-          api.dom.createLocationchangeEvent()
-          window.addEventListener('locationchange', async function() {
-            try {
-              bus.aid = await api.wait.waitForConditionPassed({
-                condition: async () => {
-                  // 要等 aid 跟之前存的不一样，才能说明是切换成功后获取到的 aid
-                  const aid = await _self.method.getAidInWatchlaterMode()
-                  if (aid && aid != bus.aid) {
-                    return aid
-                  }
-                },
-              })
-              gm.searchParams = new URL(location.href).searchParams
-              const removed = await _self.processAutoRemoveInWatchlaterMode()
-              const status = removed ? false : await _self.method.getVideoWatchlaterStatusByAid(bus.aid)
-              btn.added = status
-              cb.checked = status
+        // 切换视频时的处理
+        api.dom.createLocationchangeEvent()
+        window.addEventListener('locationchange', async function() {
+          try {
+            bus.aid = await api.wait.waitForConditionPassed({
+              condition: async () => {
+                // 要等 aid 跟之前存的不一样，才能说明是切换成功后获取到的 aid
+                const aid = await _self.method.getAidInWatchlaterMode()
+                if (aid && aid != bus.aid) {
+                  return aid
+                }
+              },
+            })
+            gm.searchParams = new URL(location.href).searchParams
+            const removed = await _self.processAutoRemoveInWatchlaterMode()
+            const status = removed ? false : await _self.method.getVideoWatchlaterStatusByAid(bus.aid)
+            btn.added = status
+            cb.checked = status
 
-              if (gm.config.removeHistory && gm.config.removeHistorySavePoint == Enums.removeHistorySavePoint.anypage) {
-                _self.method.saveWatchlaterListData(true)
-              }
-            } catch (e) {
-              api.logger.error(gm.error.DOM_PARSE)
-              api.logger.error(e)
+            if (gm.config.removeHistory && gm.config.removeHistorySavePoint == Enums.removeHistorySavePoint.anypage) {
+              _self.method.saveWatchlaterListData(true)
             }
-          })
-        },
+          } catch (e) {
+            api.logger.error(gm.error.DOM_PARSE)
+            api.logger.error(e)
+          }
+        })
+      }).catch(e => {
+        api.logger.error(gm.error.DOM_PARSE)
+        api.logger.error(e)
       })
 
       /**
@@ -3147,7 +3149,7 @@ class API {
               const info = await _self.method.getVideoInfo(spBvid)
               aid = String(info.aid)
               // 必须要等到页面上的 aid 与之完全一致才行，那样说明已经切换到正确的视频上，然后再进行处理
-              await api.wait.waitForConditionPassed({
+              await api.wait.waitForConditionPassed({ // 这里 await 是为了将异常抛出来统一处理，而不是在 catch() 中处理
                 condition: async () => {
                   const currentAid = await _self.method.getAidInWatchlaterMode()
                   if (aid == currentAid) {
@@ -3155,6 +3157,7 @@ class API {
                   }
                 },
               })
+              // 无需切换视频，那就不必读取状态了，默认不在稍后再看即可
             } catch (e) {
               api.logger.error(gm.error.NETWORK)
               api.logger.error(e)
@@ -3163,9 +3166,6 @@ class API {
             }
           }
         }
-
-
-
         // 如果当前视频应当被移除，那就不必读取状态了
         // 注意，哪处代码先执行不确定，不过从理论上来说这里应该是会晚执行
         // 当然，自动移除的操作有可能会失败，但两处代码联动太麻烦了，还会涉及到切换其他视频的问题，综合考虑之下对这种小概率事件不作处理
@@ -3883,6 +3883,9 @@ class API {
           color: var(--disabled-color);
         }
 
+        #${gm.id}-normal-video-btn {
+          cursor: pointer;
+        }
         #${gm.id}-watchlater-video-btn {
           margin-right: 1em;
           cursor: pointer;
@@ -3892,6 +3895,7 @@ class API {
         #${gm.id}-watchlater-video-btn input[type=checkbox] {
           vertical-align: middle;
           margin: 0 2px 2px 0;
+          cursor: pointer;
         }
 
         #${gm.id} .gm-setting .gm-items::-webkit-scrollbar,
