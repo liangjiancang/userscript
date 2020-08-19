@@ -1,7 +1,7 @@
 // ==UserScript==
 // @id              BilibiliWatchlaterPlus@Laster2800
 // @name            B站稍后再看功能增强
-// @version         4.4.0.20200820
+// @version         4.4.1.20200820
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -1429,7 +1429,7 @@ class API {
                         <select id="gm-fillWatchlaterStatus">
                           <option value="${Enums.fillWatchlaterStatus.dynamic}">仅动态页面</option>
                           <option value="${Enums.fillWatchlaterStatus.dynamicAndVideo}">仅动态和视频播放页面</option>
-                          <option value="${Enums.fillWatchlaterStatus.anypage}">所有页面（不确保成功）</option>
+                          <option value="${Enums.fillWatchlaterStatus.anypage}">所有页面</option>
                           <option value="${Enums.fillWatchlaterStatus.never}">禁用功能</option>
                         </select>
                         <span id="gm-fwsInformation" class="gm-information" title="">💬</span>
@@ -1594,7 +1594,7 @@ class API {
           api.message.advanced(el.rhspInformation, `
             <div style="text-indent:2em;line-height:1.6em">
               <p>选择更多的保存时间点，可以提高移除记录的准确度，降低遗漏历史数据的情况。但是数据冲刷速度更快，数据利用率低，可能会导致真正有价值的记录被冲洗掉，并且增大IO和运算负担。无论选择哪一种方式，在同一个URL对应的页面下至多保存一次。</p>
-              <p>如果你习惯于先点开稍后再看列表页面，再点击视频观看，建议选择第一项，当然选择第二项提高准确度也是合理的。如果你习惯于直接在顶栏弹出菜单中点击视频观看，请选择第二项。第三项性价比低，如果没有特别需求请不要选择，否则务必开启模糊比对模式。</p>
+              <p>如果你习惯于先点开稍后再看列表页面，再点击视频观看，建议选择第一项，当然选择第二项提高准确度也是合理的。如果你习惯于直接在顶栏弹出菜单中点击视频观看，请选择第二项。第三项【在打开任意相关页面时保存数据】性价比低，如果没有特别需求请不要选择，否则务必开启模糊比对模式。</p>
             </div>
           `, '💬', { width: '36em', flagSize: '2em', disabled: () => el.rhspInformation.parentNode.getAttribute('disabled') })
           el.rhfcInformation = gm.el.setting.querySelector('#gm-rhfcInformation')
@@ -1607,7 +1607,7 @@ class API {
           api.message.advanced(el.fwsInformation, `
             <div style="text-indent:2em;line-height:1.6em">
               <p>在动态页、视频播放页以及其他页面，视频卡片的右下角方存在一个将视频加入或移除出稍后再看的快捷按钮。然而，在刷新页面后，B站不会为之加载稍后再看的状态——即使视频已经在稍后再看中，也不会显示出来。启用该功能后，会自动填充这些缺失的状态信息。</p>
-              <p>第三项【所有页面（不确保成功）】，会用一套固定的逻辑对脚本能匹配到的所有非特殊页面尝试进行信息填充。脚本本身没有匹配所有B站页面，如果有需要，请在脚本管理器（如Tampermonkey）中为脚本设置额外的页面匹配规则。由于B站各页面的设计不是很规范，某些页面中视频卡片的设计可能跟其他地方不一致，所以不保证能填充成功。</p>
+              <p>第三项【所有页面】，会用一套固定的逻辑对脚本能匹配到的所有非特殊页面尝试进行信息填充。脚本本身没有匹配所有B站页面，如果有需要，请在脚本管理器（如Tampermonkey）中为脚本设置额外的页面匹配规则。由于B站各页面的设计不是很规范，某些页面中视频卡片的设计可能跟其他地方不一致，所以不保证必定能填充成功。</p>
             </div>
           `, '💬', { width: '36em', flagSize: '2em' })
           el.fcvInformation = gm.el.setting.querySelector('#gm-fcvInformation')
