@@ -1,7 +1,7 @@
 // ==UserScript==
 // @id              BilibiliWatchlaterPlus@Laster2800
 // @name            B站稍后再看功能增强
-// @version         4.3.0.20200818
+// @version         4.4.0.20200820
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -156,6 +156,87 @@ class API {
             }
             callback && callback(success)
           }, api.options.fadeTime)
+        }
+      },
+
+      /**
+       * 为 HTML 元素添加 `class`
+       * @param {HTMLElement} el 目标元素
+       * @param {string} className `class`
+       */
+      addClass(el, className) {
+        if (el instanceof HTMLElement) {
+          if (!el.className) {
+            el.className = className
+          } else {
+            const clz = el.className.split(' ')
+            if (clz.indexOf(className) < 0) {
+              clz.push(className)
+              el.className = clz.join(' ')
+            }
+          }
+        }
+      },
+
+      /**
+       * 为 HTML 元素移除 `class`
+       * @param {HTMLElement} el 目标元素
+       * @param {string} [className] `class`，未指定时移除所有 `class`
+       */
+      removeClass(el, className) {
+        if (el instanceof HTMLElement) {
+          if (typeof className == 'string') {
+            if (el.className == className) {
+              el.className = ''
+            } else {
+              let clz = el.className.split(' ')
+              clz = clz.reduce((prev, current) => {
+                if (current != className) {
+                  prev.push(current)
+                }
+                return prev
+              }, [])
+              el.className = clz.join(' ')
+            }
+          } else {
+            el.className = ''
+          }
+        }
+      },
+
+      /**
+       * 判断 HTML 元素类名中是否含有 `class`
+       * @param {HTMLElement} el 目标元素
+       * @param {string | string[]} className `class`，支持同时判断多个
+       * @param {boolean} [and] 同时判断多个 `class` 时，默认采取 `OR` 逻辑，是否采用 `AND` 逻辑
+       * @returns {boolean} 是否含有 `class`
+       */
+      containsClass(el, className, and = false) {
+        if (el instanceof HTMLElement) {
+          if (el.className == className) {
+            return true
+          } else {
+            const clz = el.className.split(' ')
+            if (className instanceof Array) {
+              if (and) {
+                for (const c of className) {
+                  if (clz.indexOf(c) < 0) {
+                    return false
+                  }
+                }
+                return true
+              } else {
+                for (const c of className) {
+                  if (clz.indexOf(c) >= 0) {
+                    return true
+                  }
+                }
+                return false
+              }
+            } else {
+              return clz.indexOf(className) >= 0
+            }
+          }
         }
       },
     }
@@ -647,6 +728,16 @@ class API {
      * @readonly
      * @enum {string}
      */
+    fillWatchlaterStatus: {
+      dynamic: 'dynamic',
+      dynamicAndVideo: 'dynamicAndVideo',
+      anypage: 'anypage',
+      never: 'never',
+    },
+    /**
+     * @readonly
+     * @enum {string}
+     */
     autoRemove: {
       always: 'always',
       openFromList: 'openFromList',
@@ -667,10 +758,11 @@ class API {
   /**
    * @typedef GMObject
    * @property {string} id 脚本标识
-   * @property {number} configVersion 配置版本，为执行初始化的代码版本对应的配置版本号
-   * @property {number} configUpdate 当前版本对应的配置版本号；若同一天修改多次，可以追加小数来区分
+   * @property {number} configVersion 配置版本，为最后一次执行初始化设置或功能性更新设置时脚本对应的配置版本号
+   * @property {number} configUpdate 当前版本对应的配置版本号，只要涉及到配置的修改都要更新；若同一天修改多次，可以追加小数来区分
    * @property {URLSearchParams} searchParams URL 查询参数
    * @property {GMObject_config} config 用户配置
+   * @property {GMObject_configMap} configMap 用户配置属性
    * @property {GMObject_data} data 脚本数据
    * @property {GMObject_url} url URL
    * @property {GMObject_regex} regex 正则表达式
@@ -688,8 +780,10 @@ class API {
    * @property {menuScrollbarSetting} menuScrollbarSetting 弹出菜单的滚动条设置
    * @property {boolean} removeHistory 稍后再看移除记录
    * @property {removeHistorySavePoint} removeHistorySavePoint 保存稍后再看数据的时间点
-   * @property {number} removeHistorySaves 列表页数数据保存次数
+   * @property {boolean} removeHistoryFuzzyCompare 开启模糊比对模式以舍弃重复数据
+   * @property {number} removeHistorySaves 稍后再看数据保存次数
    * @property {number} removeHistorySearchTimes 历史回溯深度
+   * @property {fillWatchlaterStatus} fillWatchlaterStatus 填充稍后再看状态
    * @property {boolean} videoButton 视频播放页稍后再看状态快速切换
    * @property {autoRemove} autoRemove 自动将视频从播放列表移除
    * @property {boolean} redirect 稍后再看模式重定向至普通模式播放
@@ -699,6 +793,16 @@ class API {
    * @property {boolean} removeButton_removeWatched 移除【移除已观看视频】按钮
    * @property {boolean} openSettingAfterConfigUpdate 功能性更新后打开设置页面
    * @property {boolean} reloadAfterSetting 设置生效后刷新页面
+   */
+  /**
+   * @typedef {{ [config: string]: GMObject_configMap_item }} GMObject_configMap
+   */
+  /**
+   * @typedef GMObject_configMap_item
+   * @property {'checked' | 'value'} attr 对应 `DOM` 节点上的属性
+   * @property {boolean} [manual] 配置保存时是否需要手动处理
+   * @property {boolean} [needNotReload] 配置改变后是否不需要重新加载就能生效
+   * @property {number} [configVersion] 涉及配置更改的最后配置版本
    */
   /**
    * @callback removeHistoryData 通过懒加载方式获取 `removeHistoryData`
@@ -716,8 +820,9 @@ class API {
    */
   /**
    * @typedef GMObject_data_item
-   * @property {string} title 视频标题
+   * @property {string} aid 视频 `aid`
    * @property {string} bvid 视频 `bvid`
+   * @property {string} title 视频标题
    */
   /**
    * @typedef GMObject_data
@@ -748,6 +853,7 @@ class API {
    * @property {RegExp} page_watchlaterList 匹配列表页面
    * @property {RegExp} page_videoNormalMode 匹配正常模式播放页
    * @property {RegExp} page_videoWatchlaterMode 匹配稍后再看播放页
+   * @property {RegExp} page_dynamic 匹配动态页面
    * @property {RegExp} page_dynamicMenu 匹配顶栏动态入口菜单
    */
   /**
@@ -786,7 +892,7 @@ class API {
   const gm = {
     id: 'gm395456',
     configVersion: GM_getValue('configVersion'),
-    configUpdate: 20200815,
+    configUpdate: 20200819,
     searchParams: new URL(location.href).searchParams,
     config: {
       headerButton: true,
@@ -796,8 +902,10 @@ class API {
       menuScrollbarSetting: Enums.menuScrollbarSetting.beautify,
       removeHistory: true,
       removeHistorySavePoint: Enums.removeHistorySavePoint.listAndMenu,
+      removeHistoryFuzzyCompare: true,
       removeHistorySaves: null,
       removeHistorySearchTimes: null,
+      fillWatchlaterStatus: Enums.fillWatchlaterStatus.dynamicAndVideo,
       videoButton: true,
       autoRemove: Enums.autoRemove.openFromList,
       redirect: false,
@@ -807,6 +915,28 @@ class API {
       removeButton_removeWatched: false,
       openSettingAfterConfigUpdate: true,
       reloadAfterSetting: true,
+    },
+    configMap: {
+      headerButton: { attr: 'checked' },
+      headerButtonOpL: { attr: 'value', configVersion: 20200716 },
+      headerButtonOpR: { attr: 'value', configVersion: 20200716 },
+      openHeaderMenuLink: { attr: 'value', configVersion: 20200717 },
+      menuScrollbarSetting: { attr: 'value', configVersion: 20200722 },
+      removeHistory: { attr: 'checked', manual: true },
+      removeHistorySavePoint: { attr: 'value', configVersion: 20200815 },
+      removeHistoryFuzzyCompare: { attr: 'checked', needNotReload: true, configVersion: 20200819 },
+      removeHistorySaves: { attr: 'value', manual: true, needNotReload: true, configVersion: 20200721 },
+      removeHistorySearchTimes: { attr: 'value', manual: true, needNotReload: true, configVersion: 20200716 },
+      fillWatchlaterStatus: { attr: 'value', configVersion: 20200819 },
+      videoButton: { attr: 'checked' },
+      autoRemove: { attr: 'value', configVersion: 20200805 },
+      redirect: { attr: 'checked' },
+      openListVideo: { attr: 'value', configVersion: 20200717 },
+      forceConsistentVideo: { attr: 'checked', configVersion: 20200723 },
+      removeButton_removeAll: { attr: 'checked', configVersion: 20200722 },
+      removeButton_removeWatched: { attr: 'checked', configVersion: 20200722 },
+      openSettingAfterConfigUpdate: { attr: 'checked', needNotReload: true, configVersion: 20200805 },
+      reloadAfterSetting: { attr: 'checked', needNotReload: true, configVersion: 20200715 },
     },
     data: {
       removeHistoryData: null,
@@ -828,6 +958,7 @@ class API {
       page_watchlaterList: /\.com\/watchlater\/.*#.*\/list(?=\/|$)/,
       page_videoNormalMode: /\.com\/video(?=\/|$)/,
       page_videoWatchlaterMode: /bilibili.com\/medialist\/play\/watchlater(?=\/|$)/,
+      page_dynamic: /t\.bilibili\.com(?=\/|$)/,
       page_dynamicMenu: /\.com\/pages\/nav\/index_new#(?=\/|$)/,
     },
     const: {
@@ -984,8 +1115,9 @@ class API {
               const watchlaterList = json.data.list || []
               for (const e of watchlaterList) {
                 current.push({
-                  title: e.title,
+                  aid: String(e.aid),
                   bvid: e.bvid,
+                  title: e.title,
                 })
               }
               _.watchlaterListData = current
@@ -1166,27 +1298,6 @@ class API {
         _self.openMenuItem('setting')
       } else {
         const el = {}
-        /** @type {{ [c: string]: { attr: string, manual: string, needNotReload: boolean } }} */
-        const configMap = {
-          headerButton: { attr: 'checked' },
-          openHeaderMenuLink: { attr: 'value' },
-          menuScrollbarSetting: { attr: 'value' },
-          headerButtonOpL: { attr: 'value' },
-          headerButtonOpR: { attr: 'value' },
-          removeHistory: { attr: 'checked', manual: true },
-          removeHistorySavePoint: { attr: 'value' },
-          removeHistorySaves: { attr: 'value', manual: true, needNotReload: true },
-          removeHistorySearchTimes: { attr: 'value', manual: true, needNotReload: true },
-          videoButton: { attr: 'checked' },
-          autoRemove: { attr: 'value' },
-          redirect: { attr: 'checked' },
-          openListVideo: { attr: 'value' },
-          forceConsistentVideo: { attr: 'checked' },
-          removeButton_removeAll: { attr: 'checked' },
-          removeButton_removeWatched: { attr: 'checked' },
-          openSettingAfterConfigUpdate: { attr: 'checked', needNotReload: true },
-          reloadAfterSetting: { attr: 'checked', needNotReload: true },
-        }
         setTimeout(() => {
           initSetting()
           processConfigItem()
@@ -1212,7 +1323,7 @@ class API {
               <div class="gm-items">
                 <table>
                   <tr class="gm-item" title="在顶栏“动态”和“收藏”之间加入稍后再看入口，鼠标移至上方时弹出列表菜单，支持点击功能设置。">
-                    <td rowspan="5">全局功能</td>
+                    <td rowspan="5"><div>全局功能</div></td>
                     <td>
                       <label>
                         <span>在顶栏中加入稍后再看入口</span><input id="gm-headerButton" type="checkbox">
@@ -1221,38 +1332,46 @@ class API {
                   </tr>
                   <tr class="gm-subitem" title="选择左键点击入口时执行的操作。">
                     <td>
-                      <span>在入口上点击鼠标左键时</span>
-                      <select id="gm-headerButtonOpL"></select>
+                      <div>
+                        <span>在入口上点击鼠标左键时</span>
+                        <select id="gm-headerButtonOpL"></select>
+                      </div>
                     </td>
                   </tr>
                   <tr class="gm-subitem" title="选择右键点击入口时执行的操作。">
                     <td>
-                      <span>在入口上点击鼠标右键时</span>
-                      <select id="gm-headerButtonOpR"></select>
+                      <div>
+                        <span>在入口上点击鼠标右键时</span>
+                        <select id="gm-headerButtonOpR"></select>
+                      </div>
                     </td>
                   </tr>
                   <tr class="gm-subitem" title="选择在弹出菜单中点击视频的行为。为了保持行为一致，这个选项也会影响弹出菜单中收藏夹视频的打开，但不影响“动态”、“历史”等其他弹出菜单中点击视频的行为。">
                     <td>
-                      <span>在弹出菜单中点击视频时</span>
-                      <select id="gm-openHeaderMenuLink">
-                        <option value="${Enums.openHeaderMenuLink.openInCurrent}">在当前页面打开</option>
-                        <option value="${Enums.openHeaderMenuLink.openInNew}">在新标签页打开</option>
-                      </select>
+                      <div>
+                        <span>在弹出菜单中点击视频时</span>
+                        <select id="gm-openHeaderMenuLink">
+                          <option value="${Enums.openHeaderMenuLink.openInCurrent}">在当前页面打开</option>
+                          <option value="${Enums.openHeaderMenuLink.openInNew}">在新标签页打开</option>
+                        </select>
+                      </div>
                     </td>
                   </tr>
                   <tr class="gm-subitem" title="对弹出菜单中滚动条样式进行设置。为了保持行为一致，这个选项也会影响“动态”、“历史”等其他入口的弹出菜单。">
                     <td>
-                      <span>对于弹出菜单中的滚动条</span>
-                      <select id="gm-menuScrollbarSetting">
-                        <option value="${Enums.menuScrollbarSetting.beautify}">修改其外观为扁平化风格</option>
-                        <option value="${Enums.menuScrollbarSetting.hidden}">将其隐藏（不影响鼠标滚动）</option>
-                        <option value="${Enums.menuScrollbarSetting.original}">维持官方的滚动条样式</option>
-                      </select>
+                      <div>
+                        <span>对于弹出菜单中的滚动条</span>
+                        <select id="gm-menuScrollbarSetting">
+                          <option value="${Enums.menuScrollbarSetting.beautify}">修改其外观为扁平化风格</option>
+                          <option value="${Enums.menuScrollbarSetting.hidden}">将其隐藏（不影响鼠标滚动）</option>
+                          <option value="${Enums.menuScrollbarSetting.original}">维持官方的滚动条样式</option>
+                        </select>
+                      </div>
                     </td>
                   </tr>
 
                   <tr class="gm-item" title="保留最近几次打开【${gm.url.page_watchlaterList}】页面时稍后再看列表的记录，以查找出这段时间内将哪些视频移除出稍后再看，用于防止误删操作。关闭该选项后，会将内部历史数据清除！">
-                    <td rowspan="4">全局功能</td>
+                    <td rowspan="5"><div>全局功能</div></td>
                     <td>
                       <label>
                         <span>开启稍后再看移除记录</span>
@@ -1263,32 +1382,63 @@ class API {
                   </tr>
                   <tr class="gm-subitem" title="选择在何时保存稍后再看数据。无论选择哪一种方式，在同一个URL对应的页面下至多保存一次。">
                       <td>
-                        <span>为了生成移除记录，</span>
-                        <select id="gm-removeHistorySavePoint">
-                          <option value="${Enums.removeHistorySavePoint.list}">在打开列表页面时保存数据</option>
-                          <option value="${Enums.removeHistorySavePoint.listAndMenu}">在打开列表页面或弹出入口菜单时保存数据</option>
-                          <option value="${Enums.removeHistorySavePoint.anypage}">在打开任意相关页面时保存数据</option>
-                        </select>
-                        <span id="gm-rhspInformation" class="gm-information" title="">💬</span>
+                        <div>
+                          <span>为了生成移除记录，</span>
+                          <select id="gm-removeHistorySavePoint">
+                            <option value="${Enums.removeHistorySavePoint.list}">在打开列表页面时保存数据</option>
+                            <option value="${Enums.removeHistorySavePoint.listAndMenu}">在打开列表页面或弹出入口菜单时保存数据</option>
+                            <option value="${Enums.removeHistorySavePoint.anypage}">在打开任意相关页面时保存数据</option>
+                          </select>
+                          <span id="gm-rhspInformation" class="gm-information" title="">💬</span>
+                        </div>
                       </td>
+                  </tr>
+                  <tr class="gm-subitem" title="开启模糊比对模式以舍弃重复数据，从而提高数据密度并降低开销，但可能会造成部分记录的遗漏。关闭后，不会判断获取到的稍后再看数据是否重复，直接进行保存。">
+                    <td>
+                      <label>
+                        <span>开启模糊比对模式以舍弃重复数据</span>
+                        <span id="gm-rhfcInformation" class="gm-information" title="">💬</span>
+                        <input id="gm-removeHistoryFuzzyCompare" type="checkbox">
+                      </label>
+                    </td>
                   </tr>
                   <tr class="gm-subitem" title="较大的数值可能会带来较大的开销，经过性能测试，作者认为在设置在${gm.const.rhsWarning}以下时，即使在极限情况下也不会产生让人能察觉到的卡顿（存取总时不超过100ms），但在没有特殊要求的情况下依然不建议设置到这么大。该项修改后，会立即对过期记录进行清理，重新修改为原来的值无法还原被清除的记录，设置为比原来小的值需慎重！（范围：${gm.const.rhsMin} ~ ${gm.const.rhsMax}）">
                     <td>
-                      <span>保存最近多少次稍后再看数据</span>
-                      <span id="gm-cleanRemoveHistoryData" class="gm-hint-option" title="清理已保存的稍后再看数据，不可恢复！">清空数据(0条)</span>
-                      <input id="gm-removeHistorySaves" type="text">
-                      <span id="gm-rhsWarning" class="gm-warning" title="">⚠</span>
+                      <div>
+                        <span>保存最近多少次稍后再看数据</span>
+                        <span id="gm-cleanRemoveHistoryData" class="gm-hint-option" title="清理已保存的稍后再看数据，不可恢复！">清空数据(0条)</span>
+                        <input id="gm-removeHistorySaves" type="text">
+                        <span id="gm-rhsWarning" class="gm-warning" title="">⚠</span>
+                      </div>
                     </td>
                   </tr>
                   <tr class="gm-subitem" title="搜寻时在最近多少次稍后再看数据中查找，设置较小的值能较好地定位最近移除的视频。设置较大的值几乎不会对性能造成影响，但不能大于最近稍后再看数据保存次数。">
                     <td>
-                      <span>默认历史回溯深度</span>
-                      <input id="gm-removeHistorySearchTimes" type="text">
+                      <div>
+                        <span>默认历史回溯深度</span>
+                        <input id="gm-removeHistorySearchTimes" type="text">
+                      </div>
+                    </td>
+                  </tr>
+
+                  <tr class="gm-item" title="填充默认情况下缺失的稍后再看状态信息。">
+                    <td><div>全局功能</div></td>
+                    <td>
+                      <div>
+                        <span>填充缺失的稍后再看状态信息：</span>
+                        <select id="gm-fillWatchlaterStatus">
+                          <option value="${Enums.fillWatchlaterStatus.dynamic}">仅动态页面</option>
+                          <option value="${Enums.fillWatchlaterStatus.dynamicAndVideo}">仅动态和视频播放页面</option>
+                          <option value="${Enums.fillWatchlaterStatus.anypage}">所有页面（不确保成功）</option>
+                          <option value="${Enums.fillWatchlaterStatus.never}">禁用功能</option>
+                        </select>
+                        <span id="gm-fwsInformation" class="gm-information" title="">💬</span>
+                      </div>
                     </td>
                   </tr>
 
                   <tr class="gm-item" title="在播放页面（包括普通模式和稍后再看模式）中加入能将视频快速切换添加或移除出稍后再看列表的按钮。">
-                    <td>播放页面</td>
+                    <td><div>播放页面</div></td>
                     <td>
                       <label>
                         <span>加入快速切换视频稍后再看状态的按钮</span>
@@ -1298,19 +1448,21 @@ class API {
                   </tr>
 
                   <tr class="gm-item" title="打开播放页面时，自动将视频从稍后再看列表中移除，或在特定条件下执行自动移除。">
-                    <td>播放页面</td>
+                    <td><div>播放页面</div></td>
                     <td>
-                      <span>打开页面时，</span>
-                      <select id="gm-autoRemove">
-                        <option value="${Enums.autoRemove.always}">若视频在稍后再看中，则移除出稍后再看</option>
-                        <option value="${Enums.autoRemove.openFromList}">若是从列表页面或弹出菜单列表点击进入，则移除出稍后再看</option>
-                        <option value="${Enums.autoRemove.never}">从不执行自动移除功能</option>
-                      </select>
+                      <div>
+                        <span>打开页面时，</span>
+                        <select id="gm-autoRemove">
+                          <option value="${Enums.autoRemove.always}">若视频在稍后再看中，则移除出稍后再看</option>
+                          <option value="${Enums.autoRemove.openFromList}">若是从列表页面或弹出菜单列表点击进入，则移除出稍后再看</option>
+                          <option value="${Enums.autoRemove.never}">从不执行自动移除功能</option>
+                        </select>
+                      </div>
                     </td>
                   </tr>
 
                   <tr class="gm-item" title="打开【${gm.url.page_videoWatchlaterMode}】页面时，自动切换至【${gm.url.page_videoNormalMode}】页面进行播放。">
-                    <td>播放页面</td>
+                    <td><div>播放页面</div></td>
                     <td>
                       <label>
                         <span>从稍后再看模式强制切换到普通模式播放</span>
@@ -1320,18 +1472,20 @@ class API {
                   </tr>
 
                   <tr class="gm-item" title="设置在【${gm.url.page_watchlaterList}】页面点击视频时的行为。">
-                    <td>列表页面</td>
+                    <td><div>列表页面</div></td>
                     <td>
-                      <span>点击视频时</span>
-                      <select id="gm-openListVideo">
-                        <option value="${Enums.openListVideo.openInCurrent}">在当前页面打开</option>
-                        <option value="${Enums.openListVideo.openInNew}">在新标签页打开</option>
-                      </select>
+                      <div>
+                        <span>点击视频时</span>
+                        <select id="gm-openListVideo">
+                          <option value="${Enums.openListVideo.openInCurrent}">在当前页面打开</option>
+                          <option value="${Enums.openListVideo.openInNew}">在新标签页打开</option>
+                        </select>
+                      </div>
                     </td>
                   </tr>
 
                   <tr class="gm-item" title="见弹出说明">
-                    <td>列表页面</td>
+                    <td><div>列表页面</div></td>
                     <td>
                       <label>
                         <span>确保视频的一致性（避免点击A视频却打开B视频的问题）</span>
@@ -1342,27 +1496,27 @@ class API {
                   </tr>
 
                   <tr class="gm-item" title="这个按钮太危险了……">
-                    <td>列表页面</td>
+                    <td><div>列表页面</div></td>
                     <td>
                       <label>
-                        <span>移除 【一键清空】 按钮</span>
+                        <span>移除【一键清空】按钮</span>
                         <input id="gm-removeButton_removeAll" type="checkbox">
                       </label>
                     </td>
                   </tr>
 
                   <tr class="gm-item" title="这个按钮太危险了……">
-                    <td>列表页面</td>
+                    <td><div>列表页面</div></td>
                     <td>
                       <label>
-                        <span>移除 【移除已观看视频】 按钮</span>
+                        <span>移除【移除已观看视频】按钮</span>
                         <input id="gm-removeButton_removeWatched" type="checkbox">
                       </label>
                     </td>
                   </tr>
 
                   <tr class="gm-item" title="功能性更新后，是否打开用户设置？">
-                    <td>用户设置</td>
+                    <td><div>用户设置</div></td>
                     <td>
                       <label>
                         <span>功能性更新后打开用户设置</span>
@@ -1372,7 +1526,7 @@ class API {
                   </tr>
 
                   <tr class="gm-item" title="勾选后，如果更改的配置需要重新加载才能生效，那么会在设置完成后重新加载页面。">
-                    <td>用户设置</td>
+                    <td><div>用户设置</div></td>
                     <td>
                       <label>
                         <span>必要时在设置完成后重新加载页面</span>
@@ -1401,11 +1555,28 @@ class API {
           el.changelog = gm.el.setting.querySelector('#gm-changelog')
           switch (type) {
             case 1:
+              el.settingPage.setAttribute('setting-type', 'init')
               el.maintitle.innerHTML += '<br><span style="font-size:0.8em">(初始化设置)</span>'
               break
             case 2:
+              el.settingPage.setAttribute('setting-type', 'updated')
               el.maintitle.innerHTML += '<br><span style="font-size:0.8em">(功能性更新设置)</span>'
-              el.changelog.className = 'gm-config-updated'
+              for (const name in gm.configMap) {
+                const configVersion = gm.configMap[name].configVersion
+                if (configVersion && configVersion > gm.configVersion) {
+                  let node = el[name]
+                  while (node.nodeName != 'TD') {
+                    node = node.parentNode
+                    if (!node) {
+                      api.logger.error(gm.error.DOM_PARSE)
+                      break
+                    }
+                  }
+                  if (node && node.firstElementChild) {
+                    api.dom.addClass(node.firstElementChild, 'gm-updated')
+                  }
+                }
+              }
               break
           }
           el.save = gm.el.setting.querySelector('#gm-save')
@@ -1418,13 +1589,27 @@ class API {
             el.removeHistory.checked && _self.cleanRemoveHistoryData()
           }
 
+          // 提示信息
           el.rhspInformation = gm.el.setting.querySelector('#gm-rhspInformation')
           api.message.advanced(el.rhspInformation, `
             <div style="text-indent:2em;line-height:1.6em">
               <p>选择更多的保存时间点，可以提高移除记录的准确度，降低遗漏历史数据的情况。但是数据冲刷速度更快，数据利用率低，可能会导致真正有价值的记录被冲洗掉，并且增大IO和运算负担。无论选择哪一种方式，在同一个URL对应的页面下至多保存一次。</p>
-              <p>如果你习惯于先点开稍后再看列表页面，再点击视频观看，建议选择第一项，当然选择第二项提高准确度也是合理的。如果你习惯于直接在顶栏弹出菜单中点击视频观看，请选择第二项。第三项性价比低，如果没有特别需求请不要选择。</p>
+              <p>如果你习惯于先点开稍后再看列表页面，再点击视频观看，建议选择第一项，当然选择第二项提高准确度也是合理的。如果你习惯于直接在顶栏弹出菜单中点击视频观看，请选择第二项。第三项性价比低，如果没有特别需求请不要选择，否则务必开启模糊比对模式。</p>
             </div>
           `, '💬', { width: '36em', flagSize: '2em', disabled: () => el.rhspInformation.parentNode.getAttribute('disabled') })
+          el.rhfcInformation = gm.el.setting.querySelector('#gm-rhfcInformation')
+          api.message.advanced(el.rhfcInformation, `
+            <div style="line-height:1.6em">
+              模糊比对模式：设当前时间点获取到的稍后再看数据为A，上一次获取到的稍后再看数据为B。若A与B列表中的第一个视频以及总视频数相同，则认为A与B完全一致，并将A舍弃。
+            </div>
+          `, '💬', { width: '36em', flagSize: '2em', disabled: () => el.rhfcInformation.parentNode.getAttribute('disabled') })
+          el.fwsInformation = gm.el.setting.querySelector('#gm-fwsInformation')
+          api.message.advanced(el.fwsInformation, `
+            <div style="text-indent:2em;line-height:1.6em">
+              <p>在动态页、视频播放页以及其他页面，视频卡片的右下角方存在一个将视频加入或移除出稍后再看的快捷按钮。然而，在刷新页面后，B站不会为之加载稍后再看的状态——即使视频已经在稍后再看中，也不会显示出来。启用该功能后，会自动填充这些缺失的状态信息。</p>
+              <p>第三项【所有页面（不确保成功）】，会用一套固定的逻辑对脚本能匹配到的所有非特殊页面尝试进行信息填充。脚本本身没有匹配所有B站页面，如果有需要，请在脚本管理器（如Tampermonkey）中为脚本设置额外的页面匹配规则。由于B站各页面的设计不是很规范，某些页面中视频卡片的设计可能跟其他地方不一致，所以不保证能填充成功。</p>
+            </div>
+          `, '💬', { width: '36em', flagSize: '2em' })
           el.fcvInformation = gm.el.setting.querySelector('#gm-fcvInformation')
           api.message.advanced(el.fcvInformation, `
             <div style="text-indent:2em;line-height:1.6em">
@@ -1433,6 +1618,7 @@ class API {
               <p>在正常使用的情况下，这个问题出现的频率并不高；此外，如果没有开启模式切换功能，在修复成功后浏览器的历史回退功能会受到影响，且修复过程可能会伴随页面内容切换和不明显的URL变动。如果不希望见到这些问题，或者只是单纯不想在页面引入不必要的脚本操作，请选择关闭。</p>
             </div>
           `, '💬', { width: '36em', flagSize: '2em' }) // 谨慎地调这个宽度，不然又会引起字体发虚问题
+
           el.rhWarning = gm.el.setting.querySelector('#gm-rhWarning')
           api.message.advanced(el.rhWarning, '关闭移除记录，或将稍后再看数据保存次数设置为比原来小的值，都会造成对内部过期历史数据的清理！', '⚠')
           el.rhsWarning = gm.el.setting.querySelector('#gm-rhsWarning')
@@ -1469,7 +1655,7 @@ class API {
             subitemChange(this, [el.headerButtonOpL, el.headerButtonOpR, el.openHeaderMenuLink, el.menuScrollbarSetting])
           }
           el.removeHistory.init = el.removeHistory.onchange = function() {
-            subitemChange(this, [el.removeHistorySavePoint, el.removeHistorySaves, el.removeHistorySearchTimes])
+            subitemChange(this, [el.removeHistorySavePoint, el.removeHistoryFuzzyCompare, el.removeHistorySaves, el.removeHistorySearchTimes])
             setRhWaring()
           }
 
@@ -1550,8 +1736,8 @@ class API {
          */
         const onSave = () => {
           // 通用处理
-          for (const name in configMap) {
-            const cfg = configMap[name]
+          for (const name in gm.configMap) {
+            const cfg = gm.configMap[name]
             if (!cfg.manual) {
               const change = saveConfig(name, cfg.attr)
               if (!cfg.needNotReload) {
@@ -1603,8 +1789,8 @@ class API {
             GM_setValue('configVersion', gm.configVersion)
             // 关闭特殊状态
             setTimeout(() => {
+              el.settingPage.removeAttribute('setting-type')
               el.maintitle.innerText = GM_info.script.name
-              el.changelog.className = ''
               el.cancel.disabled = false
               el.shadow.removeAttribute('disabled')
             }, gm.const.fadeTime)
@@ -1620,11 +1806,11 @@ class API {
          * 设置打开时执行
          */
         const onOpen = () => {
-          for (const name in configMap) {
-            const attr = configMap[name].attr
+          for (const name in gm.configMap) {
+            const attr = gm.configMap[name].attr
             el[name][attr] = gm.config[name]
           }
-          for (const name in configMap) {
+          for (const name in gm.configMap) {
             // 需要等所有配置读取完成后再进行选项初始化
             el[name].init && el[name].init()
           }
@@ -2056,7 +2242,7 @@ class API {
         /**
          * 获取视频信息
          * @async
-         * @param {String} id `aid` 或 `bvid`
+         * @param {string} id `aid` 或 `bvid`
          * @param {'aid' | 'bvid'} [type='bvid'] `id` 类型
          * @returns {Promise<JSON>} 视频信息
          */
@@ -2111,7 +2297,7 @@ class API {
         /**
          * 根据 `aid` 获取视频的稍后再看状态
          * @async
-         * @param {number} aid AV号
+         * @param {string} aid AV号
          * @returns {Promise<boolean>} 视频是否在稍后再看中
          */
         async getVideoWatchlaterStatusByAid(aid) {
@@ -2170,9 +2356,20 @@ class API {
             if (!_.watchLaterListData_saved || reload) {
               if (!_.watchlaterListData_saving) {
                 _.watchlaterListData_saving = true
-                gm.data.watchlaterListData(reload).then(data => {
-                  if (data && data.length > 0) {
-                    gm.data.removeHistoryData().push(data)
+                gm.data.watchlaterListData(reload).then(current => {
+                  if (current && current.length > 0) {
+                    if (gm.config.removeHistoryFuzzyCompare) {
+                      const last = gm.data.removeHistoryData().get(0)
+                      if (last && current.length > 0) {
+                        const s0 = current.length == last.length
+                        const s1 = current[0].bvid == last[0].bvid
+                        if (s0 && s1) {
+                          _.watchLaterListData_saved = true
+                          return
+                        }
+                      }
+                    }
+                    gm.data.removeHistoryData().push(current)
                     GM_setValue('removeHistoryData', gm.data.removeHistoryData())
                     _.watchLaterListData_saved = true
                   }
@@ -2185,6 +2382,25 @@ class API {
               }
             }
           }
+        },
+
+        /**
+         * 获取稍后再看数据以 `aid` 为键的映射
+         * @async
+         * @param {boolean} [reload] 是否重新加载稍后再看列表数据
+         * @returns {Map<string, GMObject_data_item>} 稍后再看数据以 `aid` 为键的映射
+         */
+        async getWatchlaterDataMap(reload) {
+          const _ = this._
+          if (!_.watchlaterDataMap || reload) {
+            const map = new Map()
+            const current = await gm.data.watchlaterListData(reload) || []
+            for (const item of current) {
+              map.set(item.aid, item)
+            }
+            _.watchlaterDataMap = map
+          }
+          return _.watchlaterDataMap
         },
       }
     }
@@ -2280,7 +2496,7 @@ class API {
 
         // 运行到这里的时候，menu 其实在收藏入口元素下面，后来不知道为什么被移到外面
         const menu = document.querySelector(tabsPanelSelector(false)).parentNode.parentNode
-        const dispVue = collect.firstChild.__vue__
+        const dispVue = collect.firstElementChild.__vue__
 
         setTimeout(() => {
           processMenuClose()
@@ -2344,7 +2560,7 @@ class API {
             const activePanel = document.querySelector(activePanelSelector(true))
             if (activePanel) {
               // 在没有打开弹出菜单前，获取不到 activePanel
-              collect._activeTitle = activePanel.firstChild.title
+              collect._activeTitle = activePanel.firstElementChild.title
               collect._activePanel = activePanel
             }
 
@@ -2396,7 +2612,7 @@ class API {
               interval: 50,
               timeout: 1500,
             })
-            const activeTitle = activePanel.firstChild.title
+            const activeTitle = activePanel.firstElementChild.title
             if (activeTitle == '稍后再看') {
               if (!collect._activePanel || collect._activeTitle == '稍后再看') {
                 // 一般来说，只有当打开页面后直接通过稍后再看入口打开弹出菜单，然后再将鼠标移动到收藏入口上，才会执行进来
@@ -2466,7 +2682,7 @@ class API {
                   }
                   // 不要 observer.disconnect()，需一直监听变化
                 })
-                ob.observe(videoPanel.firstChild, { childList: true })
+                ob.observe(videoPanel.firstElementChild, { childList: true })
               } catch (e) {
                 menu._addLinkObserver = false
                 api.logger.error(gm.error.DOM_PARSE)
@@ -2534,6 +2750,136 @@ class API {
             result.target = '_self'
         }
         return result
+      }
+    }
+
+    /**
+     * 填充稍后再看状态
+     */
+    fillWatchlaterStatus() {
+      const _self = this
+      setTimeout(() => {
+        switch (gm.config.fillWatchlaterStatus) {
+          case Enums.fillWatchlaterStatus.dynamic:
+            if (api.web.urlMatch(gm.regex.page_dynamic)) {
+              fillWatchlaterStatus_dynamic()
+            }
+            return
+          case Enums.fillWatchlaterStatus.dynamicAndVideo:
+            if (api.web.urlMatch(gm.regex.page_dynamic)) {
+              fillWatchlaterStatus_dynamic()
+            } else if (api.web.urlMatch(gm.regex.page_videoNormalMode) || api.web.urlMatch(gm.regex.page_videoWatchlaterMode)) {
+              fillWatchlaterStatus_main()
+            }
+            return
+          case Enums.fillWatchlaterStatus.anypage:
+            if (api.web.urlMatch(gm.regex.page_dynamic)) {
+              fillWatchlaterStatus_dynamic()
+            } else if (!api.web.urlMatch(gm.regex.page_dynamicMenu)) {
+              fillWatchlaterStatus_main()
+            }
+            return
+          case Enums.fillWatchlaterStatus.never:
+          default:
+            return
+        }
+      })
+
+      /**
+       * 填充动态页稍后再看状态
+       */
+      const fillWatchlaterStatus_dynamic = () => {
+        const execute = async root => {
+          let videos
+          if (api.dom.containsClass(root, '.video-container')) {
+            videos = [root]
+          } else {
+            videos = root.querySelectorAll('.video-container')
+          }
+          for (const video of videos) {
+            if (!video._fillWatchlaterStatus) {
+              try {
+                // 这个 video 未必是最后加入到页面的视频卡片，有可能是作为 Vue 处理过程中的中转元素
+                video._fillWatchlaterStatus = true
+                const vue = video.__vue__ // 此时理应有 Vue 对象，如果没有就说明它可能是中转元素
+                // 但是，即使 video 真是中转元素，也有可能出现存在 __vue__ 的情况，实在没搞懂是什么原理
+                // 总之，只要有 Vue 对象，一率进行处理就不会有问题！
+                if (vue) {
+                  const aid = String(vue.aid)
+                  const map = await _self.method.getWatchlaterDataMap()
+                  if (map.has(aid)) {
+                    vue.seeLaterStatus = 1
+                  }
+                }
+              } catch (e) {
+                api.logger.error(gm.error.DOM_PARSE)
+                api.logger.error(e)
+              }
+            }
+          }
+        }
+
+        execute(document.body)
+        const ob = new MutationObserver(async records => {
+          for (const record of records) {
+            for (const addedNode of record.addedNodes) {
+              if (addedNode instanceof HTMLElement) {
+                execute(addedNode)
+              }
+            }
+          }
+        })
+        ob.observe(document.body, {
+          childList: true,
+          subtree: true,
+        })
+      }
+
+      /**
+       * 填充稍后再看状态（通用逻辑）
+       */
+      const fillWatchlaterStatus_main = () => {
+        const execute = async root => {
+          let videos
+          if (api.dom.containsClass(root, ['watch-later-video', 'watch-later-trigger'])) {
+            videos = [root]
+          } else {
+            videos = root.querySelectorAll('.watch-later-video, .watch-later-trigger')
+          }
+          for (const video of videos) {
+            if (!video._fillWatchlaterStatus) {
+              try {
+                video._fillWatchlaterStatus = true
+                const vue = video.__vue__
+                if (vue) {
+                  const aid = String(vue.aid)
+                  const map = await _self.method.getWatchlaterDataMap()
+                  if (map.has(aid)) {
+                    vue.added = true
+                  }
+                }
+              } catch (e) {
+                api.logger.error(gm.error.DOM_PARSE)
+                api.logger.error(e)
+              }
+            }
+          }
+        }
+
+        execute(document.body)
+        const ob = new MutationObserver(async records => {
+          for (const record of records) {
+            for (const addedNode of record.addedNodes) {
+              if (addedNode instanceof HTMLElement) {
+                execute(addedNode)
+              }
+            }
+          }
+        })
+        ob.observe(document.body, {
+          childList: true,
+          subtree: true,
+        })
       }
     }
 
@@ -2873,13 +3219,13 @@ class API {
         let ob = new MutationObserver(async (records, observer) => {
           for (const record of records) {
             for (const addedNode of record.addedNodes) {
-              if (addedNode.className == 'list-box') {
+              if (api.dom.containsClass(addedNode, 'list-box')) {
                 let watchlaterListData = null
                 if (gm.config.forceConsistentVideo) {
                   watchlaterListData = await gm.data.watchlaterListData()
                 }
                 const listBox = addedNode
-                const list = listBox.firstChild.children
+                const list = listBox.firstElementChild.children
                 for (let i = 0; i < list.length; i++) {
                   const links = list[i].querySelectorAll('a:not([class=user])') // 排除 .user，那是指向 UP 主的链接
                   for (const link of links) {
@@ -2906,9 +3252,9 @@ class API {
                       record.target.href = record.target._processedLink
                     }
                   }
-                  observer.observe(listBox.firstChild, obCfg) // 继续
+                  observer.observe(listBox.firstElementChild, obCfg) // 继续
                 })
-                ob.observe(listBox.firstChild, obCfg)
+                ob.observe(listBox.firstElementChild, obCfg)
                 return
               }
             }
@@ -3223,6 +3569,8 @@ class API {
           --hint-text-hightlight-color: #555555;
           --background-color: white;
           --background-hightlight-color: #ebebeb;
+          --update-hightlight-color: #c2ffc2;
+          --update-hightlight-hover-color: #a90000;
           --border-color: black;
           --shadow-color: #000000bf;
           --hightlight-color: #0075FF;
@@ -3269,7 +3617,7 @@ class API {
 
         #${gm.id} .gm-setting .gm-items {
           margin: 0 0.2em;
-          padding: 0 2em 0 2.2em;
+          padding: 0 1.8em 0 2.2em;
           font-size: 1.2em;
           max-height: 66vh;
           overflow-y: auto;
@@ -3278,19 +3626,22 @@ class API {
         #${gm.id} .gm-setting table {
           width: 100%;
           border-collapse: separate;
-          border-spacing: 0 0.3em; /* 前列后行 */
         }
         #${gm.id} .gm-setting td {
           position: relative;
         }
         #${gm.id} .gm-setting .gm-item td:first-child {
           vertical-align: top;
-          padding-right: 0.8em;
+          padding-right: 0.6em;
           font-weight: bold;
           color: var(--text-bold-color);
         }
         #${gm.id} .gm-setting .gm-item:not(:first-child) td {
-          padding-top: 0.7em;
+          padding-top: 0.5em;
+        }
+        #${gm.id} .gm-setting td > * {
+          padding: 0.2em;
+          border-radius: 0.2em;
         }
 
         #${gm.id} .gm-setting .gm-item:hover {
@@ -3350,7 +3701,7 @@ class API {
 
         #${gm.id} .gm-setting .gm-warning {
           position: absolute;
-          right: -1.2em;
+          right: -1.1em;
           color: var(--warn-color);
           font-size: 1.4em;
           line-height: 1em;
@@ -3460,12 +3811,23 @@ class API {
           color: var(--hint-text-color);
           cursor: pointer;
         }
-        #${gm.id} #gm-changelog.gm-config-updated {
+        #${gm.id} [setting-type=updated] #gm-changelog {
           font-weight: bold;
           color: var(--important-color);
         }
-        #${gm.id} #gm-changelog.gm-config-updated:hover {
+        #${gm.id} [setting-type=updated] #gm-changelog:hover {
           color: var(--important-color);
+        }
+        #${gm.id} [setting-type=updated] .gm-updated,
+        #${gm.id} [setting-type=updated] .gm-updated input,
+        #${gm.id} [setting-type=updated] .gm-updated select {
+          background-color: var(--update-hightlight-color);
+        }
+        #${gm.id} [setting-type=updated] .gm-updated option {
+          background-color: var(--background-color);
+        }
+        #${gm.id} [setting-type=updated] .gm-updated:hover {
+          color: var(--update-hightlight-hover-color);
         }
 
         #${gm.id} #gm-reset:hover,
@@ -3565,13 +3927,18 @@ class API {
      * @param {number} [capacity=maxSize] 容量，即循环数组的长度，不能小于 maxSize
      */
     constructor(maxSize, capacity) {
+      /** 起始元素位置（指向起始元素后方） */
       this.index = 0
+      /** 队列长度 */
       this.size = 0
+      /** 最大长度 */
       this.maxSize = maxSize
       if (!capacity || capacity < maxSize) {
         capacity = maxSize
       }
+      /** 容量 */
       this.capacity = capacity
+      /** 内部数据 */
       this.data = new Array(capacity)
     }
 
@@ -3655,6 +4022,40 @@ class API {
     }
 
     /**
+     * 获取第 `n` 个元素（范围 `[0, size - 1]`）
+     * @param {number} n 元素位置
+     * @returns {E} 第 `n` 个元素
+     */
+    get(n) {
+      if (this.size > 0 && n >= 0) {
+        let index = this.index - n - 1
+        if (index < 0) {
+          index += this.capacity
+        }
+        return this.data[index]
+      }
+    }
+
+    /**
+     * 设置第 `n` 个元素的值为 `value`（范围 `[0, size - 1]`，且第 `n` 个元素必须已存在）
+     * @param {number} n 元素位置
+     * @param {E} value 要设置的值
+     * @returns {boolean} 是否设置成功
+     */
+    set(n, value) {
+      if (n <= this.size - 1 && n >= 0) {
+        let index = this.index - n - 1
+        if (index < 0) {
+          index += this.capacity
+        }
+        this.data[index] = value
+        return true
+      } else {
+        return false
+      }
+    }
+
+    /**
      * 将推入队列以数组的形式返回
      * @param {number} [maxLength=size] 读取的最大长度
      * @returns {Array<E>} 队列数据的数组形式
@@ -3727,6 +4128,9 @@ class API {
     // 所有页面
     if (gm.config.headerButton) {
       webpage.addHeaderButton()
+    }
+    if (gm.config.fillWatchlaterStatus != Enums.fillWatchlaterStatus.never) {
+      webpage.fillWatchlaterStatus()
     }
     if (gm.config.removeHistory) {
       webpage.processWatchlaterListDataSaving()

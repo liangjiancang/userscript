@@ -1,13 +1,16 @@
 Todo:
 
 BilibiliWatchlaterPlus:
-  ☐ 动态页刷新之后，页面中所有视频一律会显示没有加入稍后再看。其实主页还有其他别的很多地方也是这样，我怀疑B站本身根本没有办法直接获取某一个视频是否加入到稍后再看，所以视频返回的是不带稍后再看状态的。后面要做的就是用脚本把这些缺失的状态填充上去，但估计只会做动态页的，其他地方太多太杂了，告辞。
-    `document.querySelectorAll('.video-container').__vue__.seeLaterStatus`
-  ☐ 使用模糊比对并舍弃重复数据（稍后再看列表中视频数，以及第一个视频不变时认为稍后再看没有改变）
 
 BilibiliCover:
 
 Archive:
+  ✔ 动态页刷新之后，页面中所有视频一律会显示没有加入稍后再看。其实主页还有其他别的很多地方也是这样，我怀疑B站本身根本没有办法直接获取某一个视频是否加入到稍后再看，所以视频返回的是不带稍后再看状态的。后面要做的就是用脚本把这些缺失的状态填充上去，但估计只会做动态页的，其他地方太多太杂了，告辞。 @started(20-08-19 15:12) @done(20-08-20 00:31) @lasted(9h19m55s) @project(BilibiliWatchlaterPlus)
+    `$('.video-container').__vue__.seeLaterStatus` 动态
+    `$('.watch-later-video').__vue__.added` 主页、视频
+  ✔ 新更新功能高亮显示 @started(20-08-19 16:12) @done(20-08-19 20:16) @lasted(4h4m32s) @project(BilibiliWatchlaterPlus)
+  ✔ 使用模糊比对并舍弃重复数据（稍后再看列表中视频数，以及第一个视频不变时认为稍后再看没有改变） @started(20-08-19 13:51) @done(20-08-19 15:12) @lasted(1h21m35s) @project(BilibiliWatchlaterPlus)
+  ✔ 重新截图，改 README，改 changelog @started(20-08-20 00:33) @done(20-08-20 01:11) @lasted(38m3s) @project(BilibiliWatchlaterPlus)
   ✔ CSS 变量 @started(20-08-18 15:48) @done(20-08-18 17:03) @lasted(1h15m38s) @project(BilibiliWatchlaterPlus)
   ✔ 格式化的输出流和错误流 @started(20-08-18 17:04) @done(20-08-18 21:40) @lasted(4h36m12s) @project(BilibiliWatchlaterPlus)
   ✔ 修复获取稍后再看数据失败时，写入废数据影响脚本运作的问题 @done(20-08-18 21:40) @project(BilibiliWatchlaterPlus)
