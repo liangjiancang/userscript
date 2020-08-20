@@ -1,7 +1,7 @@
 // ==UserScript==
 // @id              BilibiliWatchlaterPlus@Laster2800
 // @name            B站稍后再看功能增强
-// @version         4.4.2.20200820
+// @version         4.4.3.20200820
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -34,7 +34,7 @@ class API {
   /**
    * @param {Object} [options] 选项
    * @param {string} [options.id='_0'] 标识符
-   * @param {number} [options.fadeTime=400] UI 渐变时间
+   * @param {number} [options.fadeTime=400] UI 渐变时间（单位：ms）
    */
   constructor(options) {
     const defaultOptions = {
@@ -339,7 +339,7 @@ class API {
             `
           this.msgbox = _self.create(htmlMsg, { ...config, html: true, autoClose: false })
 
-          // 可能信息框刚好生成覆盖在 elWarning 上，需要做一个处理
+          // 可能信息框刚好生成覆盖在 el 上，需要做一个处理
           this.msgbox.onmouseenter = function() {
             this.mouseOver = true
           }
@@ -756,6 +756,7 @@ class API {
   Enums.headerButtonOpL = Enums.headerButtonOpR = Enums.headerButtonOp
 
   /**
+   * 全局对象
    * @typedef GMObject
    * @property {string} id 脚本标识
    * @property {number} configVersion 配置版本，为最后一次执行初始化设置或功能性更新设置时脚本对应的配置版本号
@@ -813,15 +814,22 @@ class API {
    * @async
    * @callback watchlaterListData 通过懒加载方式获取当前稍后再看列表数据
    * @param {boolean} [reload] 是否重新加载稍后再看列表数据
-   * @returns {Promise<GMObject_data_list>} 当前稍后再看数据
+   * @returns {Promise<GMObject_data_item0[]>} 当前稍后再看数据
+   */
+  /**
+   * `api_queryWatchlaterList` 返回数据中的视频单元
+   * @see {@link https://github.com/SocialSisterYi/bilibili-API-collect/blob/master/history%26toview/toview.md#获取稍后再看视频列表 获取稍后再看视频列表}
+   * @typedef GMObject_data_item0
+   * @property {number} aid 视频 AV 号，务必统一为字符串格式再使用
+   * @property {string} bvid 视频 BV 号
+   * @property {string} title 视频标题
    */
   /**
    * @typedef {GMObject_data_item[]} GMObject_data_list
    */
   /**
    * @typedef GMObject_data_item
-   * @property {string} aid 视频 `aid`
-   * @property {string} bvid 视频 `bvid`
+   * @property {string} bvid 视频 BV 号
    * @property {string} title 视频标题
    */
   /**
@@ -863,8 +871,8 @@ class API {
    * @property {number} defaultRhs 稍后再看数据的默认保存次数
    * @property {number} defaultRhst 默认历史回溯深度
    * @property {number} rhsWarning 稍后再看数据保存数警告线
-   * @property {number} fadeTime UI 渐变时间
-   * @property {number} textFadeTime 文字渐变时间
+   * @property {number} fadeTime UI 渐变时间（单位：ms）
+   * @property {number} textFadeTime 文字渐变时间（单位：ms）
    */
   /**
    * @typedef GMObject_menu
@@ -1104,27 +1112,21 @@ class API {
               }
             }
 
+            _.watchlaterListData = null // 一旦重新获取，将原来的数据舍弃
             _.watchlaterListData_loading = true
             try {
               const resp = await api.web.request({
                 method: 'GET',
                 url: gm.url.api_queryWatchlaterList,
               })
-              const current = []
               const json = JSON.parse(resp.responseText)
-              const watchlaterList = json.data.list || []
-              for (const e of watchlaterList) {
-                current.push({
-                  aid: String(e.aid),
-                  bvid: e.bvid,
-                  title: e.title,
-                })
-              }
+              const current = json.data.list
               _.watchlaterListData = current
               return current
             } catch (e) {
               api.logger.error(gm.error.NETWORK)
               api.logger.error(e)
+              return null
             } finally {
               _.watchlaterListData_loading = false
             }
@@ -2297,32 +2299,24 @@ class API {
         /**
          * 根据 `aid` 获取视频的稍后再看状态
          * @async
-         * @param {string} aid AV号
+         * @param {string} aid 视频 `aid`
+         * @param {boolean} [noCache] 判断时是否禁用缓存数据（并刷新缓存）
          * @returns {Promise<boolean>} 视频是否在稍后再看中
          */
-        async getVideoWatchlaterStatusByAid(aid) {
-          try {
-            const resp = await api.web.request({
-              method: 'GET',
-              url: gm.url.api_queryWatchlaterList,
-            })
-            const json = JSON.parse(resp.responseText)
-            const watchlaterList = json.data.list || []
-            for (const e of watchlaterList) {
+        async getVideoWatchlaterStatusByAid(aid, noCache) {
+          const current = await gm.data.watchlaterListData(noCache)
+          if (current && current.length > 0) {
+            for (const e of current) {
               if (aid == e.aid) {
                 return true
               }
             }
-            return false
-          } catch (e) {
-            api.logger.error(gm.error.NETWORK)
-            api.logger.error(e)
-            return false
           }
+          return false
         },
 
         /**
-         * 将视频加如稍后再看，或从稍后再看移除
+         * 将视频加入稍后再看，或从稍后再看移除
          * @async
          * @param {string} aid 视频 `aid`
          * @param {boolean} [status=true] 添加 `true` / 移除 `false`
@@ -2369,7 +2363,16 @@ class API {
                         }
                       }
                     }
-                    gm.data.removeHistoryData().push(current)
+
+                    const data = []
+                    for (const e of current) {
+                      data.push({
+                        // aid: String(e.aid),
+                        bvid: e.bvid,
+                        title: e.title,
+                      })
+                    }
+                    gm.data.removeHistoryData().push(data)
                     GM_setValue('removeHistoryData', gm.data.removeHistoryData())
                     _.watchLaterListData_saved = true
                   }
@@ -2388,7 +2391,7 @@ class API {
          * 获取稍后再看数据以 `aid` 为键的映射
          * @async
          * @param {boolean} [reload] 是否重新加载稍后再看列表数据
-         * @returns {Map<string, GMObject_data_item>} 稍后再看数据以 `aid` 为键的映射
+         * @returns {Map<string, GMObject_data_item0>} 稍后再看数据以 `aid` 为键的映射
          */
         async getWatchlaterDataMap(reload) {
           const _ = this._
@@ -2396,7 +2399,7 @@ class API {
             const map = new Map()
             const current = await gm.data.watchlaterListData(reload) || []
             for (const item of current) {
-              map.set(item.aid, item)
+              map.set(String(item.aid), item)
             }
             _.watchlaterDataMap = map
           }
@@ -2941,15 +2944,16 @@ class API {
                 }
               },
             })
+            let reloaded = false
             gm.searchParams = new URL(location.href).searchParams
             const removed = await _self.processAutoRemoveInNormalMode()
-            const status = removed ? false : await _self.method.getVideoWatchlaterStatusByAid(bus.aid)
-            btn.added = status
-            cb.checked = status
-
             if (gm.config.removeHistory && gm.config.removeHistorySavePoint == Enums.removeHistorySavePoint.anypage) {
               _self.method.saveWatchlaterListData(true)
+              reloaded = true
             }
+            const status = removed ? false : await _self.method.getVideoWatchlaterStatusByAid(bus.aid, !reloaded)
+            btn.added = status
+            cb.checked = status
           } catch (e) {
             api.logger.error(gm.error.DOM_PARSE)
             api.logger.error(e)
@@ -3105,15 +3109,16 @@ class API {
                 }
               },
             })
+            let reloaded = false
             gm.searchParams = new URL(location.href).searchParams
             const removed = await _self.processAutoRemoveInWatchlaterMode()
-            const status = removed ? false : await _self.method.getVideoWatchlaterStatusByAid(bus.aid)
-            btn.added = status
-            cb.checked = status
-
             if (gm.config.removeHistory && gm.config.removeHistorySavePoint == Enums.removeHistorySavePoint.anypage) {
               _self.method.saveWatchlaterListData(true)
+              reloaded = true
             }
+            const status = removed ? false : await _self.method.getVideoWatchlaterStatusByAid(bus.aid, !reloaded)
+            btn.added = status
+            cb.checked = status
           } catch (e) {
             api.logger.error(gm.error.DOM_PARSE)
             api.logger.error(e)
@@ -3269,7 +3274,7 @@ class API {
       /**
        * 根据 `forceConsistentVideo` 处理链接
        * @param {HTMLAnchorElement} link 链接元素
-       * @param {GMObject_data_item} itemData 对应项数据
+       * @param {GMObject_data_item0} itemData 对应项数据
        */
       const processLink_forceConsistentVideo = (link, itemData) => {
         if (gm.config.redirect) {
@@ -3923,7 +3928,7 @@ class API {
 
   /**
    * 推入队列，循环数组实现
-   * @template E 数据类型
+   * @template T 数据类型
    */
   class PushQueue {
     /**
@@ -3988,7 +3993,7 @@ class API {
 
     /**
      * 向队列中推入数据，若队列已达到最大长度，则舍弃末尾处数据
-     * @param {E} value 推入队列的数据
+     * @param {T} value 推入队列的数据
      */
     push(value) {
       this.data[this.index] = value
@@ -4010,7 +4015,7 @@ class API {
 
     /**
      * 将队列末位处的数据弹出
-     * @returns {E} 弹出的数据
+     * @returns {T} 弹出的数据
      */
     pop() {
       if (this.size > 0) {
@@ -4028,7 +4033,7 @@ class API {
     /**
      * 获取第 `n` 个元素（范围 `[0, size - 1]`）
      * @param {number} n 元素位置
-     * @returns {E} 第 `n` 个元素
+     * @returns {T} 第 `n` 个元素
      */
     get(n) {
       if (this.size > 0 && n >= 0) {
@@ -4043,7 +4048,7 @@ class API {
     /**
      * 设置第 `n` 个元素的值为 `value`（范围 `[0, size - 1]`，且第 `n` 个元素必须已存在）
      * @param {number} n 元素位置
-     * @param {E} value 要设置的值
+     * @param {T} value 要设置的值
      * @returns {boolean} 是否设置成功
      */
     set(n, value) {
@@ -4062,7 +4067,7 @@ class API {
     /**
      * 将推入队列以数组的形式返回
      * @param {number} [maxLength=size] 读取的最大长度
-     * @returns {Array<E>} 队列数据的数组形式
+     * @returns {Array<T>} 队列数据的数组形式
      */
     toArray(maxLength) {
       if (typeof maxLength != 'number') {
