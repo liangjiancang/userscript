@@ -1,9 +1,9 @@
-/* eslint-disable no-unused-vars */
+/* exported ObjectInspector */
 /**
  * 对象观察器
  * 
  * 根据 `regex` 在 `depth` 层深度内找到匹配 `regex` 的属性
- * @version 1.1.0.20200803
+ * @version 1.1.1.20200821
  */
 class ObjectInspector {
   /**
@@ -83,7 +83,7 @@ class ObjectInspector {
               if (!objSet.has(value)) {
                 objSet.add(value)
                 if (depth - 1 > 0) {
-                  this._inspectObjectInner({ obj: value, regex, inspectKey, inspectValue, exRegex, exLongStrLen }, depth - 1, result, prevKey + key + '.', objSet)
+                  this._inspectObjectInner({ obj: value, regex, inspectKey, inspectValue, exRegex, exLongStrLen }, depth - 1, result, `${prevKey + key}.`, objSet)
                 }
               }
             } else {
@@ -91,7 +91,7 @@ class ObjectInspector {
               if (typeof value == 'string') {
                 try {
                   var json = JSON.parse(value)
-                  this._inspectObjectInner({ obj: json, regex, inspectKey, inspectValue, exRegex, exLongStrLen }, depth - 1, result, prevKey + key + '{JSON-PARSE}:', objSet)
+                  this._inspectObjectInner({ obj: json, regex, inspectKey, inspectValue, exRegex, exLongStrLen }, depth - 1, result, `${prevKey + key}{JSON-PARSE}:`, objSet)
                   continue
                 } catch (e) { /* nothing to do */ }
 

@@ -5,6 +5,7 @@ BilibiliWatchlaterPlus:
 BilibiliCover:
 
 Archive:
+  ✔ 将 API 库化 @done(20-08-21 17:02) @project(Todo)
   ✔ current 不处理，data 处理 @started(20-08-20 09:49) @done(20-08-20 11:20) @lasted(1h31m) @project(BilibiliWatchlaterPlus)
   ✔ 统一 current 获取 @started(20-08-20 09:49) @done(20-08-20 11:20) @lasted(1h31m2s) @project(BilibiliWatchlaterPlus)
   ✔ 动态页刷新之后，页面中所有视频一律会显示没有加入稍后再看。其实主页还有其他别的很多地方也是这样，我怀疑B站本身根本没有办法直接获取某一个视频是否加入到稍后再看，所以视频返回的是不带稍后再看状态的。后面要做的就是用脚本把这些缺失的状态填充上去，但估计只会做动态页的，其他地方太多太杂了，告辞。 @started(20-08-19 15:12) @done(20-08-20 00:31) @lasted(9h19m55s) @project(BilibiliWatchlaterPlus)
