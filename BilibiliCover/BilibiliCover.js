@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站封面获取
-// @version         4.6.1.20200822
+// @version         4.6.2.20200822
 // @namespace       laster2800
 // @author          Laster2800
 // @description     B站视频播放页（普通模式、稍后再看模式）、番剧播放页、直播间添加获取封面的按钮
@@ -13,7 +13,7 @@
 // @include         *://live.bilibili.com/*
 // @exclude         *://live.bilibili.com/
 // @exclude         *://live.bilibili.com/*/*
-// @require         https://greasyfork.org/scripts/409641-api/code/API.js?version=840183
+// @require         https://greasyfork.org/scripts/409641-api/code/API.js?version=840383
 // @grant           GM_info
 // @grant           GM_addStyle
 // @grant           GM_download
