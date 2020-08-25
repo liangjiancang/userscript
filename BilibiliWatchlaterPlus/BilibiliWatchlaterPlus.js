@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.5.2.20200822
+// @version         4.5.3.20200825
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -3223,6 +3223,7 @@
         #${gm.id} input,
         #${gm.id} select {
           color: var(--text-color);
+          outline: none;
         }
 
         #${gm.id} a {
