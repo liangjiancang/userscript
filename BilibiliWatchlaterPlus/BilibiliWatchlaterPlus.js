@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.5.3.20200825
+// @version         4.5.4.20200905
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -145,7 +145,7 @@
    * @property {boolean} reloadAfterSetting 设置生效后刷新页面
    */
   /**
-   * @typedef {{ [config: string]: GMObject_configMap_item }} GMObject_configMap
+   * @typedef {{[config: string]: GMObject_configMap_item}} GMObject_configMap
    */
   /**
    * @typedef GMObject_configMap_item
@@ -2077,6 +2077,7 @@
        * @returns {{href: string, target: '_self' | '_blank'}}
        */
       function getHeaderButtonOpConfig(op) {
+        /** @type {{href: string, target: '_self' | '_blank'}} */
         const result = {}
         switch (op) {
           case Enums.headerButtonOp.openListInCurrent:
@@ -2100,6 +2101,11 @@
             break
           default:
             result.target = '_self'
+        }
+        if (result.href != gm.url.noop) {
+          const url = new URL(result.href)
+          url.searchParams.set(`${gm.id}_from_header`, 'true')
+          result.href = url.href
         }
         return result
       }
@@ -2811,14 +2817,22 @@
       const _self = this
       switch (gm.config.removeHistorySavePoint) {
         case Enums.removeHistorySavePoint.list:
-        case Enums.removeHistorySavePoint.listAndMenu:
-        default:
           if (api.web.urlMatch(gm.regex.page_watchlaterList)) {
             _self.method.saveWatchlaterListData()
           }
           break
+        case Enums.removeHistorySavePoint.listAndMenu:
+        default:
+          if (api.web.urlMatch(gm.regex.page_watchlaterList)) {
+            // 从入口打开，而设置为 listAndMenu，则数据必然刚刚刷新过
+            if (gm.searchParams.get(`${gm.id}_from_header`) != 'true') {
+              _self.method.saveWatchlaterListData()
+            }
+          }
+          break
         case Enums.removeHistorySavePoint.anypage:
           if (!api.web.urlMatch(gm.regex.page_dynamicMenu)) {
+            // anypage 时弹出入口菜单不会引起数据刷新，不必检测 ${gm.id}_from_header
             _self.method.saveWatchlaterListData()
           }
           break

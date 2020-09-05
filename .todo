@@ -1,10 +1,12 @@
 Todo:
 
 BilibiliWatchlaterPlus:
+  - 一键将稍后再看列表加入默认收藏夹，目前由于缺少 API 无法实现 https://greasyfork.org/zh-CN/scripts/395456/discussions/61694
 
 BilibiliCover:
 
 Archive:
+  ✔ 从入口点击进入列表页面，且刷新时间点为 listAndMenu 时，说明数据刚刷新过，不必刷新 @done(20-09-05 13:55) @project(BilibiliWatchlaterPlus)
   ✔ 将 API 库化 @done(20-08-21 17:02) @project(Todo)
   ✔ current 不处理，data 处理 @started(20-08-20 09:49) @done(20-08-20 11:20) @lasted(1h31m) @project(BilibiliWatchlaterPlus)
   ✔ 统一 current 获取 @started(20-08-20 09:49) @done(20-08-20 11:20) @lasted(1h31m2s) @project(BilibiliWatchlaterPlus)
