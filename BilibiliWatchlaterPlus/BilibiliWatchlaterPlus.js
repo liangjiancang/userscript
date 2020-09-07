@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.5.4.20200905
+// @version         4.5.5.20200907
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -209,7 +209,7 @@
    * @typedef GMObject_regex
    * @property {RegExp} page_watchlaterList 匹配列表页面
    * @property {RegExp} page_videoNormalMode 匹配正常模式播放页
-   * @property {RegExp} page_videoWatchlaterMode 匹配稍后再看播放页
+   * @property {RegExp} page_videoWatchlaterMode 匹配稍后再看模式播放页
    * @property {RegExp} page_dynamic 匹配动态页面
    * @property {RegExp} page_dynamicMenu 匹配顶栏动态入口菜单
    */
@@ -237,7 +237,7 @@
    */
   /**
    * @typedef GMObject_error
-   * @property {string} DOM_PARSE HTML 解析错误
+   * @property {string} DOM_PARSE DOM 解析错误
    * @property {string} NETWORK 网络错误
    * @property {string} REDIRECT 重定向错误
    * @property {string} UNKNOWN 未知错误
@@ -292,7 +292,7 @@
       forceConsistentVideo: { attr: 'checked', configVersion: 20200723 },
       removeButton_removeAll: { attr: 'checked', configVersion: 20200722 },
       removeButton_removeWatched: { attr: 'checked', configVersion: 20200722 },
-      openSettingAfterConfigUpdate: { attr: 'checked', needNotReload: true, configVersion: 20200805 },
+      openSettingAfterConfigUpdate: { attr: 'checked', configVersion: 20200805 },
       reloadAfterSetting: { attr: 'checked', needNotReload: true, configVersion: 20200715 },
     },
     data: {
@@ -337,7 +337,7 @@
       history: null,
     },
     error: {
-      DOM_PARSE: `DOM解析错误。大部分情况下是由于网络加载速度不足造成的，不影响脚本工作；否则就是B站网页改版，请联系脚本作者修改：${GM_info.script.supportURL}`,
+      DOM_PARSE: `DOM解析错误。大部分情况下是由于网络加载速度不足造成的，不影响脚本工作；否则就是B站网页改版，请联系脚本作者进行修改：${GM_info.script.supportURL}`,
       NETWORK: `网络连接错误，出现这个问题有可能是因为网络加载速度不足或者B站后台API被改动。也不排除是脚本内部数据出错造成的，初始化脚本或清空稍后再看数据也许能解决问题。无法解决请联系脚本作者：${GM_info.script.supportURL}`,
       REDIRECT: `重定向错误，可能是网络问题，如果重新加载页面依然出错请联系脚本作者：${GM_info.script.supportURL}`,
       UNKNOWN: `未知错误，请联系脚本作者：${GM_info.script.supportURL}`,
@@ -387,7 +387,6 @@
         },
       }
     }
-
 
     /**
      * document-start 级别初始化
@@ -502,12 +501,12 @@
       const _self = this
       // 该项与更新相关，在此处处理
       gm.config.openSettingAfterConfigUpdate = _self.method.gmValidate('openSettingAfterConfigUpdate', gm.config.openSettingAfterConfigUpdate)
-      if (gm.configVersion !== 0 && gm.configVersion !== gm.configUpdate) {
-        if (gm.config.openSettingAfterConfigUpdate) {
-          _self.openUserSetting(2)
-        }
-
+      if (gm.configVersion > 0) {
         if (gm.configVersion < gm.configUpdate) {
+          if (gm.config.openSettingAfterConfigUpdate) {
+            _self.openUserSetting(2)
+          }
+
           // 必须按从旧到新的顺序写
           // 内部不能使用 gm.cofigUpdate，必须手写更新后的配置版本号！
 
@@ -563,19 +562,6 @@
           if (gm.configVersion < 20200805) {
             GM_deleteValue('resetAfterFnUpdate')
           }
-        } else if (gm.configVersion === undefined) {
-          if (GM_getValue('gm395456') > 0) {
-            // 2.6.0.20200717 版本重构
-            for (const name in gm.config) {
-              const oldName = `gm395456_${name}`
-              const value = GM_getValue(oldName)
-              GM_setValue(name, value)
-              GM_deleteValue(oldName)
-            }
-            gm.configVersion = GM_getValue('gm395456')
-            GM_setValue('configVersion', gm.configVersion) // 保留配置版本
-            GM_deleteValue('gm395456')
-          }
         }
       }
     }
@@ -618,6 +604,8 @@
           gm.config.removeHistorySearchTimes = gm.config.removeHistorySaves
         }
         GM_setValue('removeHistorySearchTimes', gm.config.removeHistorySearchTimes)
+
+        _self.openUserSetting(1)
       }
     }
 
@@ -628,9 +616,6 @@
       const _self = this
       // 用户配置设置
       GM_registerMenuCommand('用户设置', () => _self.openUserSetting())
-      if (!gm.configVersion) { // 初始化
-        _self.openUserSetting(1)
-      }
       if (gm.config.removeHistory) {
         // 稍后再看移除记录
         GM_registerMenuCommand('稍后再看移除记录', () => _self.openRemoveHistory()) // 注意不要直接传函数对象，否则 this 不对
@@ -679,7 +664,8 @@
                     <td rowspan="5"><div>全局功能</div></td>
                     <td>
                       <label>
-                        <span>在顶栏中加入稍后再看入口</span><input id="gm-headerButton" type="checkbox">
+                        <span>在顶栏中加入稍后再看入口</span>
+                        <input id="gm-headerButton" type="checkbox">
                       </label>
                     </td>
                   </tr>
@@ -949,13 +935,13 @@
               <p>选择更多的保存时间点，可以提高移除记录的准确度，降低遗漏历史数据的情况。但是数据冲刷速度更快，数据利用率低，可能会导致真正有价值的记录被冲洗掉，并且增大IO和运算负担。无论选择哪一种方式，在同一个URL对应的页面下至多保存一次。</p>
               <p>如果你习惯于先点开稍后再看列表页面，再点击视频观看，建议选择第一项，当然选择第二项提高准确度也是合理的。如果你习惯于直接在顶栏弹出菜单中点击视频观看，请选择第二项。第三项【在打开任意相关页面时保存数据】性价比低，如果没有特别需求请不要选择，否则务必开启模糊比对模式。</p>
             </div>
-          `, '💬', { width: '36em', flagSize: '2em', disabled: () => el.rhspInformation.parentNode.getAttribute('disabled') })
+          `, '💬', { width: '36em', flagSize: '2em', disabled: () => el.rhspInformation.parentNode.hasAttribute('disabled') })
           el.rhfcInformation = gm.el.setting.querySelector('#gm-rhfcInformation')
           api.message.advanced(el.rhfcInformation, `
             <div style="line-height:1.6em">
               模糊比对模式：设当前时间点获取到的稍后再看数据为A，上一次获取到的稍后再看数据为B。若A与B列表中的第一个视频以及总视频数相同，则认为A与B完全一致，并将A舍弃。
             </div>
-          `, '💬', { width: '36em', flagSize: '2em', disabled: () => el.rhfcInformation.parentNode.getAttribute('disabled') })
+          `, '💬', { width: '36em', flagSize: '2em', disabled: () => el.rhfcInformation.parentNode.hasAttribute('disabled') })
           el.fwsInformation = gm.el.setting.querySelector('#gm-fwsInformation')
           api.message.advanced(el.fwsInformation, `
             <div style="text-indent:2em;line-height:1.6em">
@@ -999,7 +985,7 @@
               if (item.checked) {
                 parent.removeAttribute('disabled')
               } else {
-                parent.setAttribute('disabled', 'disabled')
+                parent.setAttribute('disabled', '')
               }
               el.disabled = !item.checked
             }
@@ -1073,13 +1059,13 @@
           gm.menu.setting.openHandler = onOpen
           el.cancel.onclick = () => _self.closeMenuItem('setting')
           el.shadow.onclick = function() {
-            if (!this.getAttribute('disabled')) {
+            if (!this.hasAttribute('disabled')) {
               _self.closeMenuItem('setting')
             }
           }
           if (type > 0) {
             el.cancel.disabled = true
-            el.shadow.setAttribute('disabled', 'disabled')
+            el.shadow.setAttribute('disabled', '')
           }
         }
 
@@ -1581,18 +1567,6 @@
         },
 
         /**
-         * 在普通模式播放页中获取当前页面对应的 `aid`
-         * @returns {string} `aid`
-         */
-        getAidInNormalMode() {
-          if (unsafeWindow.aid) {
-            return String(unsafeWindow.aid)
-          } else {
-            api.logger.error(gm.error.DOM_PARSE)
-          }
-        },
-
-        /**
          * 获取视频信息
          * @async
          * @param {string} id `aid` 或 `bvid`
@@ -1613,38 +1587,29 @@
         },
 
         /**
-         * 在稍后再看模式播放页中获取当前页面对应的 `aid`
+         * 获取 `aid`
          * @async
          * @returns {Promise<string>} `aid`
          */
-        async getAidInWatchlaterMode() {
-          if (unsafeWindow.aid) {
-            return String(unsafeWindow.aid)
-          }
-
-          const _ = this._
+        async getAid() {
+          let aid
           try {
-            if (!_.playContainer) {
-              _.playContainer = await api.wait.waitForConditionPassed({
+            if (unsafeWindow.aid) {
+              aid = unsafeWindow.aid
+            } else {
+              aid = await api.wait.waitForConditionPassed({
                 condition: () => {
-                  const app = document.querySelector('#app')
-                  const vueLoad = app && app.__vue__
-                  if (!vueLoad) {
-                    return false
-                  }
-                  const playContainer = app.querySelector('#playContainer')
-                  if (playContainer.__vue__.playId) {
-                    // 等到能获取到 aid 再进入，免得等下处处都要异步处理
-                    return playContainer
-                  }
-                }
+                  const player = unsafeWindow.player
+                  const message = player && player.getVideoMessage && player.getVideoMessage()
+                  return message && message.aid
+                },
               })
             }
           } catch (e) {
             api.logger.error(gm.error.DOM_PARSE)
             api.logger.error(e)
           }
-          return String(_.playContainer.__vue__.playId)
+          return String(aid)
         },
 
         /**
@@ -2269,7 +2234,7 @@
 
       api.wait.waitForConditionPassed({
         condition: executeCondition,
-      }).then(({ atr, original }) => {
+      }).then(async ({ atr, original }) => {
         const btn = document.createElement('label')
         btn.id = `${gm.id}-normal-video-btn`
         const cb = document.createElement('input')
@@ -2284,7 +2249,7 @@
         btn.appendChild(text)
         atr.appendChild(btn)
 
-        const aid = _self.method.getAidInNormalMode()
+        const aid = await _self.method.getAid()
         bus = { ...bus, btn, cb, aid }
         initButtonStatus()
         original.parentNode.style.display = 'none'
@@ -2295,7 +2260,7 @@
             bus.aid = await api.wait.waitForConditionPassed({
               condition: async () => {
                 // 要等 aid 跟之前存的不一样，才能说明是切换成功后获取到的 aid
-                const aid = await _self.method.getAidInWatchlaterMode()
+                const aid = await _self.method.getAid()
                 if (aid && aid != bus.aid) {
                   return aid
                 }
@@ -2450,7 +2415,7 @@
 
         cb.onclick = () => processSwitch() // 不要附加到 btn 上，否则点击时会执行两次
         bus = { ...bus, btn, cb }
-        bus.aid = await _self.method.getAidInWatchlaterMode()
+        bus.aid = await _self.method.getAid()
         initButtonStatus()
 
         // 切换视频时的处理
@@ -2460,7 +2425,7 @@
             bus.aid = await api.wait.waitForConditionPassed({
               condition: async () => {
                 // 要等 aid 跟之前存的不一样，才能说明是切换成功后获取到的 aid
-                const aid = await _self.method.getAidInWatchlaterMode()
+                const aid = await _self.method.getAid()
                 if (aid && aid != bus.aid) {
                   return aid
                 }
@@ -2513,7 +2478,7 @@
               // 必须要等到页面上的 aid 与之完全一致才行，那样说明已经切换到正确的视频上，然后再进行处理
               await api.wait.waitForConditionPassed({ // 这里 await 是为了将异常抛出来统一处理，而不是在 catch() 中处理
                 condition: async () => {
-                  const currentAid = await _self.method.getAidInWatchlaterMode()
+                  const currentAid = await _self.method.getAid()
                   if (aid == currentAid) {
                     return aid
                   }
@@ -2540,7 +2505,7 @@
       const processSwitch = async () => {
         const btn = bus.btn
         const cb = bus.cb
-        bus.aid = await _self.method.getAidInWatchlaterMode()
+        bus.aid = await _self.method.getAid()
         if (!bus.aid) {
           cb.checked = btn.added
           api.message.create('网络错误，操作失败')
@@ -2741,7 +2706,7 @@
       const spRemove = gm.searchParams.get(`${gm.id}_remove_from_list`) === 'true'
       if (alwaysAutoRemove || spRemove) {
         const _self = this
-        const aid = _self.method.getAidInNormalMode()
+        const aid = await _self.method.getAid()
         if (alwaysAutoRemove) { // 如果总是自动移除，要检查视频是否已经在稍后再看中，确定在再移除
           const status = await _self.method.getVideoWatchlaterStatusByAid(aid)
           if (!status) {
@@ -2778,7 +2743,7 @@
             // 否则，先将视频移除出稍后再看，那么根本就无法在稍后再看模式中观看该视频
             await api.wait.waitForConditionPassed({
               condition: async () => {
-                const currentAid = await _self.method.getAidInWatchlaterMode()
+                const currentAid = await _self.method.getAid()
                 if (aid == currentAid) {
                   return aid
                 }
@@ -2791,7 +2756,7 @@
           }
         }
         if (!aid) {
-          aid = await _self.method.getAidInWatchlaterMode()
+          aid = await _self.method.getAid()
         }
 
         if (alwaysAutoRemove) { // 如果总是自动移除，要检查视频是否已经在稍后再看中，确定在再移除
