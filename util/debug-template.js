@@ -1,9 +1,9 @@
 // ==UserScript==
 // @name            debug
-// @namespace       http://tampermonkey.net/
 // @version         0-debug
-// @description     Debug local script
+// @namespace       http://tampermonkey.net/
 // @author          Laster2800
+// @description     Debug local script
 // @require         file:///${scriptPath}
 // @[otherAttr]     [Same as target script]
 // ==/UserScript==
