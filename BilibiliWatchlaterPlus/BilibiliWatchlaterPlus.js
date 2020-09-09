@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.5.5.20200907
+// @version         4.5.6.20200909
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -15,7 +15,7 @@
 // @include         *://space.bilibili.com/*
 // @include         *://account.bilibili.com/*
 // @exclude         *://message.bilibili.com/pages/*
-// @require         https://greasyfork.org/scripts/409641-api/code/API.js?version=840383
+// @require         https://greasyfork.org/scripts/409641-api/code/API.js?version=846211
 // @grant           GM_addStyle
 // @grant           GM_xmlhttpRequest
 // @grant           GM_registerMenuCommand
@@ -876,7 +876,8 @@
                 </table>
               </div>
               <div class="gm-bottom">
-                <button id="gm-save">保存</button><button id="gm-cancel">取消</button>
+                <button id="gm-save">保存</button>
+                <button id="gm-cancel">取消</button>
               </div>
               <div id="gm-reset" title="重置脚本设置及内部数据，也许能解决脚本运行错误的问题。该操作不会清除已保存的稍后再看数据，因此不会导致移除记录丢失。无法解决请联系脚本作者：${GM_info.script.supportURL}">初始化脚本</div>
               <a id="gm-changelog" title="显示更新日志" href="${gm.url.gm_changelog}" target="_blank">更新日志</a>
@@ -922,11 +923,7 @@
           el.cancel = gm.el.setting.querySelector('#gm-cancel')
           el.shadow = gm.el.setting.querySelector('.gm-shadow')
           el.reset = gm.el.setting.querySelector('#gm-reset')
-          el.reset.onclick = () => _self.resetScript()
           el.cleanRemoveHistoryData = gm.el.setting.querySelector('#gm-cleanRemoveHistoryData')
-          el.cleanRemoveHistoryData.onclick = function() {
-            el.removeHistory.checked && _self.cleanRemoveHistoryData()
-          }
 
           // 提示信息
           el.rhspInformation = gm.el.setting.querySelector('#gm-rhspInformation')
@@ -1055,13 +1052,17 @@
          */
         const processSettingItem = () => {
           const _self = this
-          el.save.onclick = onSave
           gm.menu.setting.openHandler = onOpen
+          el.save.onclick = onSave
           el.cancel.onclick = () => _self.closeMenuItem('setting')
           el.shadow.onclick = function() {
             if (!this.hasAttribute('disabled')) {
               _self.closeMenuItem('setting')
             }
+          }
+          el.reset.onclick = () => _self.resetScript()
+          el.cleanRemoveHistoryData.onclick = function() {
+            el.removeHistory.checked && _self.cleanRemoveHistoryData()
           }
           if (type > 0) {
             el.cancel.disabled = true
@@ -1455,7 +1456,7 @@
      * 初始化脚本
      */
     resetScript() {
-      const result = confirm('是否要初始化脚本？\n\n注意：本操作不会清理内部保存的稍后再看数据，要清理稍后再看数据请在用户设置中操作。')
+      const result = confirm(`【${GM_info.script.name}】\n\n是否要初始化脚本？\n\n注意：本操作不会清理内部保存的稍后再看数据，要清理稍后再看数据请在用户设置中操作。`)
       if (result) {
         const keyNoReset = { removeHistorySaves: true, removeHistoryData: true }
         const gmKeys = GM_listValues()
@@ -1464,7 +1465,6 @@
             GM_deleteValue(gmKey)
           }
         }
-
         gm.configVersion = 0
         GM_setValue('configVersion', gm.configVersion)
         location.reload()
@@ -1475,7 +1475,7 @@
      * 清空 removeHistoryData
      */
     cleanRemoveHistoryData() {
-      const result = confirm('是否要清空稍后再看数据？')
+      const result = confirm(`【${GM_info.script.name}】\n\n是否要清空稍后再看数据？`)
       if (result) {
         this.closeMenuItem('setting')
         GM_deleteValue('removeHistorySaves')
@@ -2254,9 +2254,14 @@
         initButtonStatus()
         original.parentNode.style.display = 'none'
 
+        bus.pathname = location.pathname
         api.dom.createLocationchangeEvent()
         window.addEventListener('locationchange', async function() {
+          if (location.pathname == bus.pathname) { // 并非切换视频（如切分 P）
+            return
+          }
           try {
+            bus.pathname = location.pathname
             bus.aid = await api.wait.waitForConditionPassed({
               condition: async () => {
                 // 要等 aid 跟之前存的不一样，才能说明是切换成功后获取到的 aid
@@ -2419,9 +2424,14 @@
         initButtonStatus()
 
         // 切换视频时的处理
+        bus.pathname = location.pathname
         api.dom.createLocationchangeEvent()
         window.addEventListener('locationchange', async function() {
+          if (location.pathname == bus.pathname) { // 并非切换视频（如切分 P）
+            return
+          }
           try {
+            bus.pathname = location.pathname
             bus.aid = await api.wait.waitForConditionPassed({
               condition: async () => {
                 // 要等 aid 跟之前存的不一样，才能说明是切换成功后获取到的 aid
@@ -3015,6 +3025,7 @@
         #${gm.id} .gm-setting input[type=text] {
           float: right;
           border-width: 0 0 1px 0;
+          border-radius: 0;
           width: 2.4em;
           text-align: right;
           padding: 0 0.2em;
@@ -3044,29 +3055,6 @@
           opacity: 0;
           display: none;
           cursor: pointer;
-        }
-
-        #${gm.id} .gm-setting .gm-bottom {
-          margin: 1.4em 2em 1em 2em;
-          text-align: center;
-        }
-
-        #${gm.id} .gm-setting .gm-bottom button {
-          font-size: 1em;
-          padding: 0.3em 1em;
-          margin: 0 0.8em;
-          cursor: pointer;
-          background-color: var(--background-color);
-          border: 1px solid var(--border-color);
-          border-radius: 2px;
-        }
-        #${gm.id} .gm-setting .gm-bottom button:hover {
-          background-color: var(--background-hightlight-color);
-        }
-        #${gm.id} .gm-setting .gm-bottom button[disabled] {
-          cursor: not-allowed;
-          border-color: var(--disabled-color);
-          background-color: var(--background-color);
         }
 
         #${gm.id} .gm-history {
@@ -3127,6 +3115,29 @@
         #${gm.id} .gm-history .gm-content > div:hover {
           font-weight: bold;
           color: var(--text-bold-color);
+        }
+
+        #${gm.id} .gm-bottom {
+          margin: 1.4em 2em 1em 2em;
+          text-align: center;
+        }
+
+        #${gm.id} .gm-bottom button {
+          font-size: 1em;
+          padding: 0.3em 1em;
+          margin: 0 0.8em;
+          cursor: pointer;
+          background-color: var(--background-color);
+          border: 1px solid var(--border-color);
+          border-radius: 2px;
+        }
+        #${gm.id} .gm-bottom button:hover {
+          background-color: var(--background-hightlight-color);
+        }
+        #${gm.id} .gm-bottom button[disabled] {
+          cursor: not-allowed;
+          border-color: var(--disabled-color);
+          background-color: var(--background-color);
         }
 
         #${gm.id} #gm-reset {
@@ -3200,9 +3211,11 @@
         }
 
         #${gm.id} input,
-        #${gm.id} select {
+        #${gm.id} select,
+        #${gm.id} button {
           color: var(--text-color);
           outline: none;
+          appearance: auto; /* 番剧播放页该项被覆盖 */
         }
 
         #${gm.id} a {
