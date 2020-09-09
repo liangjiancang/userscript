@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站防剧透进度条
-// @version         1.0.1.20200909
+// @version         1.0.2.20200909
 // @namespace       laster2800
 // @author          Laster2800
 // @description     看比赛、看番总是被进度条剧透？装上这个脚本再也不用担心这些问题了
@@ -414,7 +414,7 @@
                     <td>
                       <div>
                         <span>防剧透机制说明</span>
-                        <a class="gm-hint-option" title="查看脚本防剧透机制的实现原理。" href="${gm.url.gm_readme}##防剧透机制说明" target="_blank" style="color:var(--hint-text-color)">点击查看</a>
+                        <a class="gm-hint-option" title="查看脚本防剧透机制的实现原理。" href="${gm.url.gm_readme}#防剧透机制说明" target="_blank" style="color:var(--hint-text-color)">点击查看</a>
                       </div>
                     </td>
                   </tr>
