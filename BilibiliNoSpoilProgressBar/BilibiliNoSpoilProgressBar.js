@@ -1,12 +1,12 @@
 // ==UserScript==
 // @name            B站防剧透进度条
-// @version         0.1.0.20200909
+// @version         0.2.0.20200909
 // @namespace       laster2800
 // @author          Laster2800
 // @description     看比赛、看番总是被进度条剧透？装上这个脚本再也不用担心这些问题了
 // @icon            https://www.bilibili.com/favicon.ico
-// @homepage        https://greasyfork.org/zh-CN/scripts/[TODO]
-// @supportURL      https://greasyfork.org/zh-CN/scripts/[TODO]/feedback
+// @homepage        https://greasyfork.org/zh-CN/scripts/411092
+// @supportURL      https://greasyfork.org/zh-CN/scripts/411092/feedback
 // @license         LGPL-3.0
 // @include         *://www.bilibili.com/video/*
 // @include         *://www.bilibili.com/medialist/play/watchlater
@@ -136,7 +136,7 @@
    * @type {GMObject}
    */
   const gm = {
-    id: 'gmBeta', // TODO
+    id: 'gm411092',
     configVersion: GM_getValue('configVersion'),
     configUpdate: 20200909,
     config: {
@@ -610,13 +610,13 @@
           el.offsetLeftInformation = gm.el.setting.querySelector('#gm-offsetLeftInformation')
           api.message.advanced(el.offsetLeftInformation, `
             <div style="line-height:1.6em">
-              极限情况下进度条向左偏移的距离（百分比），该选项用于解决进度条前向剧透问题。更多信息请阅读说明文档。
+              极限情况下进度条向左偏移的距离（百分比），该选项用于解决进度条后向剧透问题。更多信息请阅读说明文档。
             </div>
           `, '💬', { width: '36em', flagSize: '2em' })
           el.offsetRightInformation = gm.el.setting.querySelector('#gm-offsetRightInformation')
           api.message.advanced(el.offsetRightInformation, `
             <div style="line-height:1.6em">
-              极限情况下进度条向左偏移的距离（百分比），该选项用于解决进度条后向剧透问题。更多信息请阅读说明文档。
+              极限情况下进度条向左偏移的距离（百分比），该选项用于解决进度条前向剧透问题。更多信息请阅读说明文档。
             </div>
           `, '💬', { width: '36em', flagSize: '2em' })
           el.reservedLeftInformation = gm.el.setting.querySelector('#gm-reservedLeftInformation')
