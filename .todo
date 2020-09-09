@@ -3,9 +3,39 @@ Todo:
 BilibiliWatchlaterPlus:
   - 一键将稍后再看列表加入默认收藏夹，目前由于缺少 API 无法实现 https://greasyfork.org/zh-CN/scripts/395456/discussions/61694
 
+BilibiliNoSpoilProgressBar:
+
 BilibiliCover:
 
 Archive:
+  ✔ 更新 API @done(20-09-09 21:21) @project(BilibiliWatchlaterPlus)
+  ✔ 更新 README @done(20-09-09 22:22) @project(BilibiliWatchlaterPlus)
+  ✔ 推荐 @done(20-09-09 22:36) @project(BilibiliWatchlaterPlus)
+  ✔ 普通播放页面防剧透功能 @started(20-09-07 08:40) @done(20-09-07 15:23) @lasted(6h43m48s) @project(BilibiliNoSpoilProgressBar)
+  ✔ 隐藏总时间 @done(20-09-07 15:29) @project(BilibiliNoSpoilProgressBar)
+  ✔ 隐藏高能进度？ @done(20-09-07 15:23) @project(BilibiliNoSpoilProgressBar)
+  ✔ 切换分P @done(20-09-07 15:24) @project(BilibiliNoSpoilProgressBar)
+  ✔ 稍后再看页面防剧透功能 @done(20-09-07 15:23) @project(BilibiliNoSpoilProgressBar)
+  ✔ 番剧防剧透功能 @done(20-09-07 15:23) @project(BilibiliNoSpoilProgressBar)
+  ✔ 点击时不要刷新位置 @done(20-09-07 23:03) @project(BilibiliNoSpoilProgressBar)
+  ✔ 切换后没有控制器 @done(20-09-07 21:03) @project(BilibiliNoSpoilProgressBar)
+  ✔ 设置页面 @done(20-09-07 23:03) @project(BilibiliNoSpoilProgressBar)
+  ✔ UP 主白名单 @done(20-09-09 20:58) @project(BilibiliNoSpoilProgressBar)
+  ✔ 番剧白名单 @done(20-09-07 23:58) @project(BilibiliNoSpoilProgressBar)
+  ✔ 随机度设置 @done(20-09-09 15:50) @project(BilibiliNoSpoilProgressBar)
+  ✔ README、Changelog @done(20-09-09 22:22) @project(BilibiliNoSpoilProgressBar)
+  ✔ 播放完成切换分 P @done(20-09-08 21:46) @project(BilibiliNoSpoilProgressBar)
+  ✘ 直接找到最低层，判断 URL 有没有变化即可 @cancelled(20-09-08 21:55) @project(BilibiliNoSpoilProgressBar)
+  ✔ 解决奇怪的视频刷新问题 @done(20-09-09 16:48) @project(BilibiliNoSpoilProgressBar)
+  ✔ 改进算法 @done(20-09-09 15:49) @project(BilibiliNoSpoilProgressBar)
+  ✔ 下面小进度条隐藏 @done(20-09-09 15:49) @project(BilibiliNoSpoilProgressBar)
+  ✔ 参数说明 @done(20-09-09 16:27) @project(BilibiliNoSpoilProgressBar)
+  ✔ 滚动条样式 @done(20-09-09 18:37) @project(BilibiliNoSpoilProgressBar)
+  ✔ 添加 vsc 任务 @done(20-09-09 22:22) @project(BilibiliNoSpoilProgressBar)
+  ✔ 公开脚本 @done(20-09-09 22:38) @project(BilibiliNoSpoilProgressBar)
+  ✔ 更新 API @done(20-09-09 21:21) @project(BilibiliCover)
+  ✔ 更新 README @done(20-09-09 22:22) @project(BilibiliCover)
+  ✔ 推荐 @done(20-09-09 22:36) @project(BilibiliCover)
   ✔ 从入口点击进入列表页面，且刷新时间点为 listAndMenu 时，说明数据刚刷新过，不必刷新 @done(20-09-05 13:55) @project(BilibiliWatchlaterPlus)
   ✔ 将 API 库化 @done(20-08-21 17:02) @project(Todo)
   ✔ current 不处理，data 处理 @started(20-08-20 09:49) @done(20-08-20 11:20) @lasted(1h31m) @project(BilibiliWatchlaterPlus)

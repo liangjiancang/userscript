@@ -32,8 +32,6 @@
 
 在设置窗口中已经提供了详细的说明，但前提是理解上面关于防剧透原理的说明。
 
-*gitee: [BilibiliNoSpoilProgressBar](https://gitee.com/liangjiancang/userscript/tree/master/BilibiliNoSpoilProgressBar)*
-
 ## 截图
 
 * 设置入口
@@ -45,5 +43,7 @@
     ![脚本控制-1](https://gitee.com/liangjiancang/userscript/raw/master/BilibiliNoSpoilProgressBar/screenshot/脚本控制-1.png)
 
     ![脚本控制-2](https://gitee.com/liangjiancang/userscript/raw/master/BilibiliNoSpoilProgressBar/screenshot/脚本控制-2.png)
+
+*gitee: [BilibiliNoSpoilProgressBar](https://gitee.com/liangjiancang/userscript/tree/master/BilibiliNoSpoilProgressBar)*
 
 *by Laster2800*
