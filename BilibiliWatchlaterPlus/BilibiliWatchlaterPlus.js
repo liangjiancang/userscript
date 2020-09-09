@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.5.6.20200909
+// @version         4.5.7.20200909
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -314,7 +314,7 @@
     regex: {
       page_watchlaterList: /\.com\/watchlater\/.*#.*\/list(?=\/|$)/,
       page_videoNormalMode: /\.com\/video(?=\/|$)/,
-      page_videoWatchlaterMode: /bilibili.com\/medialist\/play\/watchlater(?=\/|$)/,
+      page_videoWatchlaterMode: /\.com\/medialist\/play\/watchlater(?=\/|$)/,
       page_dynamic: /t\.bilibili\.com(?=\/|$)/,
       page_dynamicMenu: /\.com\/pages\/nav\/index_new#(?=\/|$)/,
     },
