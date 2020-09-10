@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站防剧透进度条
-// @version         1.1.0.20200911
+// @version         1.1.1.20200911
 // @namespace       laster2800
 // @author          Laster2800
 // @description     看比赛、看番总是被进度条剧透？装上这个脚本再也不用担心这些问题了
@@ -369,6 +369,12 @@
           }
         }
         _self.openUserSetting(1)
+        setTimeout(() => {
+          const result = confirm(`【${GM_info.script.name}】\n\n脚本有一定的使用门槛，建议在阅读说明文档后使用。是否打开说明文档？`)
+          if (result) {
+            window.open(`${gm.url.gm_readme}#防剧透机制说明`)
+          }
+        }, 2000)
       }
     }
 
