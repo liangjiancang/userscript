@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站防剧透进度条
-// @version         1.0.3.20200909
+// @version         1.1.0.20200911
 // @namespace       laster2800
 // @author          Laster2800
 // @description     看比赛、看番总是被进度条剧透？装上这个脚本再也不用担心这些问题了
@@ -12,7 +12,7 @@
 // @include         *://www.bilibili.com/medialist/play/watchlater
 // @include         *://www.bilibili.com/medialist/play/watchlater/*
 // @include         *://www.bilibili.com/bangumi/play/*
-// @require         https://greasyfork.org/scripts/409641-api/code/API.js?version=846211
+// @require         https://greasyfork.org/scripts/409641-api/code/API.js?version=846534
 // @grant           GM_addStyle
 // @grant           GM_xmlhttpRequest
 // @grant           GM_registerMenuCommand
@@ -59,6 +59,7 @@
    * @property {number} offsetRight 进度条偏移极右值
    * @property {number} reservedLeft 进度条左侧预留区
    * @property {number} reservedRight 进度条右侧预留区
+   * @property {boolean} postponeOffset 延后进度条偏移的时间点
    * @property {boolean} openSettingAfterConfigUpdate 功能性更新后打开设置页面
    * @property {boolean} reloadAfterSetting 设置生效后刷新页面
    */
@@ -138,7 +139,7 @@
   const gm = {
     id: 'gm411092',
     configVersion: GM_getValue('configVersion'),
-    configUpdate: 20200909,
+    configUpdate: 20200911,
     config: {
       bangumiEnabled: false,
       simpleScriptControl: false,
@@ -150,6 +151,7 @@
       offsetRight: null,
       reservedLeft: null,
       reservedRight: null,
+      postponeOffset: true,
       openSettingAfterConfigUpdate: true,
       reloadAfterSetting: true,
     },
@@ -160,10 +162,11 @@
       disableDuration: { attr: 'checked' },
       disablePbp: { attr: 'checked' },
       disablePreview: { attr: 'checked' },
-      offsetLeft: { attr: 'value', manual: true, needNotReload: true },
-      offsetRight: { attr: 'value', manual: true, needNotReload: true },
+      offsetLeft: { attr: 'value', manual: true, needNotReload: true, configVersion: 20200911 },
+      offsetRight: { attr: 'value', manual: true, needNotReload: true, configVersion: 20200911 },
       reservedLeft: { attr: 'value', manual: true, needNotReload: true },
       reservedRight: { attr: 'value', manual: true, needNotReload: true },
+      postponeOffset: {  attr: 'checked', needNotReload: true, configVersion: 20200911 },
       openSettingAfterConfigUpdate: { attr: 'checked' },
       reloadAfterSetting: { attr: 'checked', needNotReload: true },
     },
@@ -183,8 +186,8 @@
       page_bangumi: /\.com\/bangumi\/play(?=\/|$)/,
     },
     const: {
-      defaultOffsetLeft: 30,
-      defaultOffsetRight: 30,
+      defaultOffsetLeft: 40,
+      defaultOffsetRight: 40,
       defaultReservedLeft: 10,
       defaultReservedRight: 10,
       fadeTime: 400,
@@ -196,6 +199,7 @@
     el: {
       gmRoot: null,
       setting: null,
+      uploaderList: null,
     },
     error: {
       DOM_PARSE: `DOM解析错误。大部分情况下是由于网络加载速度不足造成的，不影响脚本工作；否则就是B站网页改版，请联系脚本作者进行修改：${GM_info.script.supportURL}`,
@@ -331,6 +335,12 @@
 
           // 必须按从旧到新的顺序写
           // 内部不能使用 gm.cofigUpdate，必须手写更新后的配置版本号！
+
+          // 1.1.0.20200911
+          if (gm.configVersion < 20200911) {
+            GM_setValue('offsetLeft', gm.const.defaultOffsetLeft)
+            GM_setValue('offsetRight', gm.const.defaultOffsetRight)
+          }
         }
       }
     }
@@ -489,7 +499,7 @@
                   </tr>
 
                   <tr class="gm-item" title="防剧透参数设置，请务必在理解参数作用的前提下修改！">
-                    <td rowspan="5"><div>高级设置</div></td>
+                    <td rowspan="6"><div>高级设置</div></td>
                     <td>
                       <div>
                         <span>防剧透参数</span>
@@ -531,6 +541,15 @@
                         <span id="gm-reservedRightInformation" class="gm-information" title="">💬</span>
                         <input id="gm-reservedRight" type="text">
                       </div>
+                    </td>
+                  </tr>
+                  <tr class="gm-subitem" title="是否延后进度条偏移的时间点，使得在启用功能或改变播放进度后立即进行进度条偏移？">
+                    <td>
+                      <label>
+                        <span>延后进度条偏移的时间点</span>
+                        <span id="gm-postponeOffsetInformation" class="gm-information" title="">💬</span>
+                        <input id="gm-postponeOffset" type="checkbox">
+                      </label>
                     </td>
                   </tr>
 
@@ -629,6 +648,12 @@
           api.message.advanced(el.reservedRightInformation, `
             <div style="line-height:1.6em">
               进度条右侧预留区间大小（百分比）。若进度条向右偏移后导致滑块进入区间，则调整偏移量使得滑块位于区间最左侧。该选项是为了保证在任何情况下都能通过点击滑块右侧区域向后调整进度。更多信息请阅读说明文档。
+            </div>
+          `, '💬', { width: '36em', flagSize: '2em' })
+          el.postponeOffsetInformation = gm.el.setting.querySelector('#gm-postponeOffsetInformation')
+          api.message.advanced(el.postponeOffsetInformation, `
+            <div style="line-height:1.6em">
+              默认情况下，在启用功能或改变播放进度后，对进度条的偏移不会立即应用，而是在下次进度条显示出来时应用。因为这样会被用户观察到，从而推测出偏移方向与偏移量。更多信息请阅读说明文档。
             </div>
           `, '💬', { width: '36em', flagSize: '2em' })
         }
@@ -1133,67 +1158,135 @@
       const _self = this
       if (!_self.control._noSpoilHandler) {
         _self.control._noSpoilHandler = () => {
-          let offset = 'offset'
-          let playRate = 0
-          if (_self.enabled) {
-            if (!_self.progress._noSpoil) {
-              _self.progress._fakeRandom = Math.random()
-            }
-            const player = unsafeWindow.player
-            playRate = player.getCurrentTime() / player.getDuration()
-            const min = 100 - gm.config.offsetLeft
-            const max = 100 + gm.config.offsetRight
-            const fakeEnd = _self.progress._fakeRandom * (max - min) + min
-            offset = playRate * (fakeEnd - 100)
-            if (offset > 0) {
-              const reserved = 100 - gm.config.reservedRight
-              if (playRate * 100 + offset > reserved) {
-                offset = reserved - playRate * 100
+          try {
+            let offset = 'offset'
+            let playRate = 0
+            if (_self.enabled) {
+              if (!_self.progress._noSpoil) {
+                _self.progress._fakeRandom = Math.random()
               }
-            } else {
-              const reserved = gm.config.reservedLeft
-              if (playRate * 100 + offset < reserved) {
-                if (playRate * 100 < reserved) {
-                  offset = 0
-                } else {
-                  offset = reserved - playRate * 100
+              const player = unsafeWindow.player
+              playRate = player.getCurrentTime() / player.getDuration()
+              const min = 100 - gm.config.offsetLeft
+              const max = 100 + gm.config.offsetRight
+              const fakeEnd = _self.progress._fakeRandom * (max - min) + min
+
+              offset = fakeEnd - 100
+              const reservedLeft = gm.config.reservedLeft
+              const reservedRight = 100 - gm.config.reservedRight
+              if (playRate * 100 < reservedLeft) {
+                offset = 0
+              } else {
+                const offsetRate = playRate * 100 + offset
+                if (offsetRate < reservedLeft) {
+                  offset = reservedLeft - playRate * 100
+                } else if (offsetRate > reservedRight) {
+                  offset = reservedRight - playRate * 100
                 }
               }
+            } else if (_self.progress._noSpoil) {
+              offset = 0
             }
-            _self.progress._noSpoil = true
-          } else if (_self.progress._noSpoil) {
-            offset = 0
-          }
-          if (typeof offset == 'number') {
-            _self.progress.root.style.transform = `translateX(${offset}%)`
-            _self.scriptControl.transform = `translateX(${-offset}%)`
-            if (_self.enabled) {
-              _self.progress.track.style.visibility = 'hidden'
-              _self.shadowProgress.style.visibility = 'hidden'
-              _self.fakeTrack.style.visibility = 'visible'
-              _self.fakeTrack.style.transform = `translateX(${-offset}%)`
-              _self.fakePlayed.style.transform = `scaleX(${playRate + offset / 100})`
-            } else {
-              _self.progress._noSpoil = false
-              _self.progress.track.style.visibility = 'visible'
-              _self.shadowProgress.style.visibility = 'visible'
-              _self.fakeTrack.style.visibility = 'hidden'
-            }
-          }
 
-          if (api.web.urlMatch(gm.regex.page_videoNormalMode) || api.web.urlMatch(gm.regex.page_videoWatchlaterMode)) {
-            if (_self.uploaderEnabled) {
-              _self.scriptControl.uploaderEnabled.setAttribute('enabled', '')
-            } else {
-              _self.scriptControl.uploaderEnabled.removeAttribute('enabled')
+            if (typeof offset == 'number') {
+              const handler = () => {
+                _self.progress.root.style.transform = `translateX(${offset}%)`
+                _self.scriptControl.transform = `translateX(${-offset}%)`
+                if (_self.enabled) {
+                  _self.fakeTrack.style.transform = `translateX(${-offset}%)`
+                }
+              }
+
+              if (_self.enabled) {
+                _self.progress.buffer.style.visibility = 'hidden'
+                _self.progress.track.style.visibility = 'hidden'
+                _self.shadowProgress.style.visibility = 'hidden'
+                _self.fakeTrack.style.visibility = 'visible'
+
+                const processFakePlayed = () => {
+                  try {
+                    const player = unsafeWindow.player
+                    const currentPlayRate = player.getCurrentTime() / player.getDuration()
+                    let currentOffset
+                    const m = _self.progress.root.style.transform.match(/(?<=translateX\()[^)]+(?=\))/)
+                    if (m && m.length > 0) {
+                      currentOffset = m[0]
+                    } else {
+                      currentOffset = 0
+                    }
+                    _self.fakePlayed.style.transform = `scaleX(${currentPlayRate + parseFloat(currentOffset) / 100})`
+                  } catch (e) {
+                    api.logger.error(gm.error.DOM_PARSE)
+                    api.logger.error(e)
+                  }
+                }
+                const clzControlShow = 'video-control-show'
+                const playerArea = document.querySelector('.bilibili-player-area')
+                if (!gm.config.postponeOffset || !api.dom.containsClass(playerArea, clzControlShow)) {
+                  handler()
+                } else if (!_self.progress._noSpoil) { // 首次打开
+                  _self.progress.root.style.transform = 'translateX(0)'
+                  _self.scriptControl.transform = 'translateX(0)'
+                  _self.fakeTrack.style.transform = 'translateX(0)'
+                }
+                if (!playerArea._obControlShow) {
+                  playerArea._obControlShow = new MutationObserver(records => {
+                    for (const record of records) {
+                      if (record.attributeName == 'class') {
+                        if (api.dom.containsClass(playerArea, clzControlShow)) {
+                          if (!playerArea._obPlayRate) {
+                            playerArea._obPlayRate = new MutationObserver(records => {
+                              for (const record of records) {
+                                if (record.attributeName == 'style') {
+                                  processFakePlayed()
+                                  break
+                                }
+                              }
+                            })
+                            playerArea._obPlayRate.observe(_self.progress.played, { attributes: true })
+                          }
+                        } else if (playerArea._obPlayRate) {
+                          playerArea._obPlayRate.disconnect()
+                          playerArea._obPlayRate = null
+                        }
+                        break
+                      }
+                    }
+                  })
+                  playerArea._obControlShow.observe(playerArea, { attributes: true })
+                } else {
+                  processFakePlayed()
+                }
+
+                _self.progress._noSpoil = true
+              } else {
+                _self.progress.track.style.visibility = 'visible'
+                _self.progress.buffer.style.visibility = 'visible'
+                _self.shadowProgress.style.visibility = 'visible'
+                _self.fakeTrack.style.visibility = 'hidden'
+                handler()
+
+                _self.progress._noSpoil = false
+              }
             }
-          }
-          if (api.web.urlMatch(gm.regex.page_bangumi)) {
-            if (gm.config.bangumiEnabled) {
-              _self.scriptControl.bangumiEnabled.setAttribute('enabled', '')
-            } else {
-              _self.scriptControl.bangumiEnabled.removeAttribute('enabled')
+
+            if (api.web.urlMatch(gm.regex.page_videoNormalMode) || api.web.urlMatch(gm.regex.page_videoWatchlaterMode)) {
+              if (_self.uploaderEnabled) {
+                _self.scriptControl.uploaderEnabled.setAttribute('enabled', '')
+              } else {
+                _self.scriptControl.uploaderEnabled.removeAttribute('enabled')
+              }
             }
+            if (api.web.urlMatch(gm.regex.page_bangumi)) {
+              if (gm.config.bangumiEnabled) {
+                _self.scriptControl.bangumiEnabled.setAttribute('enabled', '')
+              } else {
+                _self.scriptControl.bangumiEnabled.removeAttribute('enabled')
+              }
+            }
+          } catch (e) {
+            api.logger.error(gm.error.DOM_PARSE)
+            api.logger.error(e)
           }
         }
       }
@@ -1253,11 +1346,12 @@
 
     /**
      * 初始化防剧透功能
+     * @param {boolean} [selfCall] 自调用
      * @async
      */
-    async initNoSpoil() {
+    async initNoSpoil(selfCall) {
+      const _self = this
       try {
-        const _self = this
         await _self.initWebpage()
         await _self.processNoSpoil()
 
@@ -1276,8 +1370,26 @@
           timePadding: 1000,
         })
       } catch (e) {
-        api.logger.error(gm.error.DOM_PARSE)
-        api.logger.error(e)
+        // 抛出异常，有可能确实是 B 站改版导致，但更多情况下，是因为网页还未加载完成导致的
+        // 出现这种情况，往往是因为用户一次性打开多个页面，过了非常久之后才切换过去导致的
+        try {
+          if (selfCall) {
+            throw e
+          } else {
+            const control = await api.wait.waitForElementLoaded('.bilibili-player-video-control')
+            const ob = new MutationObserver((records, observer) => {
+              observer.disconnect()
+              _self.initNoSpoil(true)
+            })
+            ob.observe(control, {
+              childList: true,
+              subtree: true,
+            })
+          }
+        } catch (e) {
+          api.logger.error(gm.error.DOM_PARSE)
+          api.logger.error(e)
+        }
       }
     }
 
@@ -1412,7 +1524,7 @@
                 const aid = await _self.method.getAid()
                 const videoInfo = await _self.method.getVideoInfo(aid, 'aid')
                 const uid = String(videoInfo.owner.mid)
-    
+
                 _self.uploaderEnabled = !_self.uploaderEnabled
                 if (_self.uploaderEnabled) {
                   this.setAttribute('enabled', '')
@@ -1634,9 +1746,8 @@
           background-color: var(--background-color);
           border-radius: 10px;
           z-index: 65535;
-          width: 60vw;
+          width: 36em;
           height: 40em;
-          min-width: 40em;
           transition: top 100ms, left 100ms;
         }
 
