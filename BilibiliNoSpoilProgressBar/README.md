@@ -2,7 +2,7 @@
 
 相关脚本：**[B站稍后再看功能增强](https://greasyfork.org/zh-CN/scripts/395456)**、**[B站封面获取](https://greasyfork.org/zh-CN/scripts/395575)**
 
-与稍后再看功能相关，一切你能想到和想不到的功能。一图胜千言，无须多言。求好评，求收藏💔。点击查看 [更新日志](https://gitee.com/liangjiancang/userscript/blob/master/BilibiliNoSpoilProgressBar/changelog.md)。
+看比赛、看番总是被进度条剧透？装上这个脚本再也不用担心这些问题了。一图胜千言，无须多言。求好评，求收藏💔。点击查看 [更新日志](https://gitee.com/liangjiancang/userscript/blob/master/BilibiliNoSpoilProgressBar/changelog.md)。
 
 ![用户设置](https://gitee.com/liangjiancang/userscript/raw/master/BilibiliNoSpoilProgressBar/screenshot/用户设置.png)
 
