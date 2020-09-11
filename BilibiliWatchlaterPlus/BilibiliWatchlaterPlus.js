@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.5.8.20200910
+// @version         4.5.9.20200911
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -190,7 +190,7 @@
    * @callback api_videoInfo
    * @param {string} id `aid` 或 `bvid`
    * @param {'aid' | 'bvid'} type `id` 类型
-   * @returns 查询视频信息的 URL
+   * @returns {string} 查询视频信息的 URL
    */
   /**
    * @typedef GMObject_url
