@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站防剧透进度条
-// @version         1.2.1.20200911
+// @version         1.2.2.20200911
 // @namespace       laster2800
 // @author          Laster2800
 // @description     看比赛、看番总是被进度条剧透？装上这个脚本再也不用担心这些问题了
@@ -12,7 +12,7 @@
 // @include         *://www.bilibili.com/medialist/play/watchlater
 // @include         *://www.bilibili.com/medialist/play/watchlater/*
 // @include         *://www.bilibili.com/bangumi/play/*
-// @require         https://greasyfork.org/scripts/409641-api/code/API.js?version=846534
+// @require         https://greasyfork.org/scripts/409641-api/code/API.js?version=846937
 // @grant           GM_addStyle
 // @grant           GM_xmlhttpRequest
 // @grant           GM_registerMenuCommand
@@ -1247,8 +1247,45 @@
       const _self = this
       setTimeout(() => {
         noSpoilHandler()
-        _self.control.addEventListener('mouseenter', noSpoilHandler) // 拖拽 thumb 释放来调整进度也会触发 mouseenter 事件
-        _self.progress.bar.addEventListener('click', () => setTimeout(noSpoilHandler, 10))
+
+        const clzControlShow = 'video-control-show'
+        const playerArea = document.querySelector('.bilibili-player-area')
+        if (!playerArea._obControlShow) {
+          playerArea._obControlShow = new MutationObserver(records => {
+            for (const record of records) {
+              if (record.attributeName == 'class') {
+                const before = api.dom.containsClass({ className: record.oldValue }, clzControlShow)
+                const current = api.dom.containsClass(playerArea, clzControlShow)
+                if (before != current) {
+                  if (current) {
+                    if (_self.enabled) {
+                      noSpoilHandler(true)
+                      if (!playerArea._obPlayRate) {
+                        playerArea._obPlayRate = new MutationObserver(records => {
+                          for (const record of records) {
+                            if (record.attributeName == 'style') {
+                              _self.processFakePlayed()
+                              break
+                            }
+                          }
+                        })
+                        playerArea._obPlayRate.observe(_self.progress.thumb, { attributes: true })
+                      }
+                    }
+                  } else if (playerArea._obPlayRate) {
+                    playerArea._obPlayRate.disconnect()
+                    playerArea._obPlayRate = null
+                  }
+                  break
+                }
+              }
+            }
+          })
+          playerArea._obControlShow.observe(playerArea, {
+            attributes: true,
+            attributeOldValue: true,
+          })
+        }
       })
 
       if (_self.enabled) {
@@ -1299,8 +1336,9 @@
 
       /**
        * 防剧透处理核心流程
+       * @param {boolean} [noPostpone] 不延后执行
        */
-      const noSpoilHandler = () => {
+      const noSpoilHandler = noPostpone => {
         try {
           let offset = 'offset'
           let playRate = 0
@@ -1339,42 +1377,14 @@
               _self.shadowProgress.style.visibility = 'hidden'
               _self.fakeTrack.style.visibility = 'visible'
 
-              const clzControlShow = 'video-control-show'
-              const playerArea = document.querySelector('.bilibili-player-area')
-              if (!gm.config.postponeOffset || !api.dom.containsClass(playerArea, clzControlShow)) {
+              if (noPostpone || !gm.config.postponeOffset) {
                 handler()
               } else if (!_self.progress._noSpoil) { // 首次打开
                 _self.progress.root.style.transform = 'translateX(0)'
                 _self.scriptControl.transform = 'translateX(0)'
                 _self.fakeTrack.style.transform = 'translateX(0)'
               }
-              if (!playerArea._obControlShow) {
-                playerArea._obControlShow = new MutationObserver(records => {
-                  for (const record of records) {
-                    if (record.attributeName == 'class') {
-                      if (api.dom.containsClass(playerArea, clzControlShow)) {
-                        if (!playerArea._obPlayRate) {
-                          playerArea._obPlayRate = new MutationObserver(records => {
-                            for (const record of records) {
-                              if (record.attributeName == 'style') {
-                                processFakePlayed()
-                                break
-                              }
-                            }
-                          })
-                          playerArea._obPlayRate.observe(_self.progress.played, { attributes: true })
-                        }
-                      } else if (playerArea._obPlayRate) {
-                        playerArea._obPlayRate.disconnect()
-                        playerArea._obPlayRate = null
-                      }
-                      break
-                    }
-                  }
-                })
-                playerArea._obControlShow.observe(playerArea, { attributes: true })
-              }
-              processFakePlayed()
+              _self.processFakePlayed()
 
               _self.progress._noSpoil = true
             } else {
@@ -1430,27 +1440,6 @@
           r = (r - mid) / (1 - mid)
           r **= factor
           return origin + r * right
-        }
-      }
-
-      /**
-       * 调整用于模拟已播放进度的假已播放条
-       */
-      const processFakePlayed = () => {
-        try {
-          const player = unsafeWindow.player
-          const currentPlayRate = player.getCurrentTime() / player.getDuration()
-          let currentOffset
-          const m = _self.progress.root.style.transform.match(/(?<=translateX\()[^)]+(?=\))/)
-          if (m && m.length > 0) {
-            currentOffset = m[0]
-          } else {
-            currentOffset = 0
-          }
-          _self.fakePlayed.style.transform = `scaleX(${currentPlayRate + parseFloat(currentOffset) / 100})`
-        } catch (e) {
-          api.logger.error(gm.error.DOM_PARSE)
-          api.logger.error(e)
         }
       }
     }
@@ -1676,6 +1665,28 @@
         _self.scriptControl.setting.onclick = function() {
           _self.script.openUserSetting()
         }
+      }
+    }
+
+    /**
+     * 更新用于模拟已播放进度的伪已播放条
+     */
+    processFakePlayed() {
+      try {
+        const _self = this
+        const player = unsafeWindow.player
+        const currentPlayRate = player.getCurrentTime() / player.getDuration()
+        let currentOffset
+        const m = _self.progress.root.style.transform.match(/(?<=translateX\()[^)]+(?=\))/)
+        if (m && m.length > 0) {
+          currentOffset = m[0]
+        } else {
+          currentOffset = 0
+        }
+        _self.fakePlayed.style.transform = `scaleX(${currentPlayRate + parseFloat(currentOffset) / 100})`
+      } catch (e) {
+        api.logger.error(gm.error.DOM_PARSE)
+        api.logger.error(e)
       }
     }
 
