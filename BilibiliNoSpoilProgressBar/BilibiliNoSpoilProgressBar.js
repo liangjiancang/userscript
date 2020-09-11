@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站防剧透进度条
-// @version         1.1.1.20200911
+// @version         1.2.0.20200911
 // @namespace       laster2800
 // @author          Laster2800
 // @description     看比赛、看番总是被进度条剧透？装上这个脚本再也不用担心这些问题了
@@ -55,6 +55,7 @@
    * @property {boolean} disableDuration 隐藏视频时长
    * @property {boolean} disablePbp 隐藏【热度】曲线
    * @property {boolean} disablePreview 隐藏进度条预览
+   * @property {number} offsetTransformFactor 进度条极端偏移因子
    * @property {number} offsetLeft 进度条偏移极左值
    * @property {number} offsetRight 进度条偏移极右值
    * @property {number} reservedLeft 进度条左侧预留区
@@ -92,7 +93,7 @@
    * @callback api_videoInfo
    * @param {string} id `aid` 或 `bvid`
    * @param {'aid' | 'bvid'} type `id` 类型
-   * @returns 查询视频信息的 URL
+   * @returns {string} 查询视频信息的 URL
    */
   /**
    * @typedef GMObject_url
@@ -109,6 +110,7 @@
    */
   /**
    * @typedef GMObject_const
+   * @property {number} defaultOffsetTransformFactor 进度条极端偏移因子
    * @property {number} defaultOffsetLeft 结束点进度条滑块最小位置的默认值
    * @property {number} defaultOffsetRight 结束点进度条滑块最大位置的默认值
    * @property {number} defaultReservedLeft 进度条左侧预留区默认值
@@ -139,7 +141,7 @@
   const gm = {
     id: 'gm411092',
     configVersion: GM_getValue('configVersion'),
-    configUpdate: 20200911,
+    configUpdate: 20200911.1,
     config: {
       bangumiEnabled: false,
       simpleScriptControl: false,
@@ -147,6 +149,7 @@
       disableDuration: true,
       disablePbp: true,
       disablePreview: false,
+      offsetTransformFactor: null,
       offsetLeft: null,
       offsetRight: null,
       reservedLeft: null,
@@ -162,11 +165,12 @@
       disableDuration: { attr: 'checked' },
       disablePbp: { attr: 'checked' },
       disablePreview: { attr: 'checked' },
+      offsetTransformFactor: { attr: 'value', manual: true, needNotReload: true, configVersion: 20200911.1 },
       offsetLeft: { attr: 'value', manual: true, needNotReload: true, configVersion: 20200911 },
       offsetRight: { attr: 'value', manual: true, needNotReload: true, configVersion: 20200911 },
       reservedLeft: { attr: 'value', manual: true, needNotReload: true },
       reservedRight: { attr: 'value', manual: true, needNotReload: true },
-      postponeOffset: {  attr: 'checked', needNotReload: true, configVersion: 20200911 },
+      postponeOffset: { attr: 'checked', needNotReload: true, configVersion: 20200911 },
       openSettingAfterConfigUpdate: { attr: 'checked' },
       reloadAfterSetting: { attr: 'checked', needNotReload: true },
     },
@@ -186,6 +190,7 @@
       page_bangumi: /\.com\/bangumi\/play(?=\/|$)/,
     },
     const: {
+      defaultOffsetTransformFactor: 0.65,
       defaultOffsetLeft: 40,
       defaultOffsetRight: 40,
       defaultReservedLeft: 10,
@@ -267,6 +272,7 @@
     initGMObject() {
       gm.config = {
         ...gm.config,
+        offsetTransformFactor: gm.const.defaultOffsetTransformFactor,
         offsetLeft: gm.const.defaultOffsetLeft,
         offsetRight: gm.const.defaultOffsetRight,
         reservedLeft: gm.const.defaultReservedLeft,
@@ -505,11 +511,20 @@
                   </tr>
 
                   <tr class="gm-item" title="防剧透参数设置，请务必在理解参数作用的前提下修改！">
-                    <td rowspan="6"><div>高级设置</div></td>
+                    <td rowspan="7"><div>高级设置</div></td>
                     <td>
                       <div>
                         <span>防剧透参数</span>
                         <span id="gm-resetParam" class="gm-hint-option" title="重置防剧透参数。">重置</span>
+                      </div>
+                    </td>
+                  </tr>
+                  <tr class="gm-subitem" title="进度条极端偏移因子设置。">
+                    <td>
+                      <div>
+                        <span>进度条极端偏移因子</span>
+                        <span id="gm-offsetTransformFactorInformation" class="gm-information" title="">💬</span>
+                        <input id="gm-offsetTransformFactor" type="text">
                       </div>
                     </td>
                   </tr>
@@ -632,16 +647,33 @@
           el.uploaderList = gm.el.setting.querySelector('#gm-uploaderList')
 
           // 提示信息
+          el.offsetTransformFactorInformation = gm.el.setting.querySelector('#gm-offsetTransformFactorInformation')
+          api.message.advanced(el.offsetTransformFactorInformation, `
+            <style>
+              .${gm.id}-msgbox ul > li {
+                list-style: disc;
+                margin-left: 1em;
+              }
+            </style>
+            <div style="line-height:1.6em">
+              <div>进度条极端偏移因子（范围：0.00 ~ 5.00），用于控制进度条偏移量的概率分布。更多信息请阅读说明文档。</div>
+              <ul>
+                <li>因子的值越小，则出现极限偏移的概率越高。最小可取值为 <b>0</b>，此时总是使用极左值或极右值。</li>
+                <li>因子的值越大，则出现极限偏移的概率越低，偏移值趋向于 0。无理论上限，但实际取值达到 3 效果就已经非常明显，限制最大值为 5。</li>
+                <li>因子取值为 <b>1</b> 时，偏移量的概率会在整个区间平滑分布。</li>
+              </ul>
+            </div>
+          `, '💬', { width: '36em', flagSize: '2em' })
           el.offsetLeftInformation = gm.el.setting.querySelector('#gm-offsetLeftInformation')
           api.message.advanced(el.offsetLeftInformation, `
             <div style="line-height:1.6em">
-              极限情况下进度条向左偏移的距离（百分比），该选项用于解决进度条后向剧透问题。更多信息请阅读说明文档。
+              极限情况下进度条向左偏移的距离（百分比），该选项用于解决进度条后向剧透问题。设置为 <b>0</b> 可以禁止进度条左偏。更多信息请阅读说明文档。
             </div>
           `, '💬', { width: '36em', flagSize: '2em' })
           el.offsetRightInformation = gm.el.setting.querySelector('#gm-offsetRightInformation')
           api.message.advanced(el.offsetRightInformation, `
             <div style="line-height:1.6em">
-              极限情况下进度条向左偏移的距离（百分比），该选项用于解决进度条前向剧透问题。更多信息请阅读说明文档。
+              极限情况下进度条向左偏移的距离（百分比），该选项用于解决进度条前向剧透问题。设置为 <b>0</b> 可以禁止进度条右偏。更多信息请阅读说明文档。
             </div>
           `, '💬', { width: '36em', flagSize: '2em' })
           el.reservedLeftInformation = gm.el.setting.querySelector('#gm-reservedLeftInformation')
@@ -668,6 +700,45 @@
          * 维护与设置项相关的数据和元素
          */
         const processConfigItem = () => {
+          el.offsetTransformFactor.oninput = function() {
+            const v0 = this.value.replace(/[^\d.]/g, '')
+            if (v0 === '') {
+              this.value = ''
+            } else {
+              let value
+              if (/^\d+\./.test(v0)) {
+                if (!/^\d+\.\d+$/.test(v0)) {
+                  value = v0.replace(/(?<=^\d+\.\d*).*/, '')
+                } else {
+                  value = v0
+                }
+                if (parseFloat(value) >= 5) {
+                  if (value.endsWith('.')) {
+                    value = '5.'
+                  } else {
+                    value = '5.0'
+                  }
+                }
+              } else {
+                value = parseFloat(v0)
+                if (value > 5) {
+                  value = 5
+                }
+                value = String(value)
+              }
+              if (/\.\d{3,}$/.test(value)) {
+                value = value.replace(/(?<=\.\d{2}).*/, '')
+              }
+              this.value = value
+            }
+          }
+          el.offsetTransformFactor.onblur = function() {
+            let value = this.value
+            if (value === '') {
+              value = gm.const.defaultOffsetTransformFactor
+            }
+            this.value = parseFloat(value).toFixed(2)
+          }
           el.offsetLeft.oninput = el.offsetRight.oninput = el.reservedLeft.oninput = el.reservedRight.oninput = function() {
             const v0 = this.value.replace(/[^\d]/g, '')
             if (v0 === '') {
@@ -717,6 +788,7 @@
           }
           el.reset.onclick = () => _self.resetScript()
           el.resetParam.onclick = () => {
+            el.offsetTransformFactor.value = gm.const.defaultOffsetTransformFactor
             el.offsetLeft.value = gm.const.defaultOffsetLeft
             el.offsetRight.value = gm.const.defaultOffsetRight
             el.reservedLeft.value = gm.const.defaultReservedLeft
@@ -748,10 +820,14 @@
           }
 
           // 特殊处理
+          let offsetTransformFactor = parseFloat(el.offsetTransformFactor.value)
           let offsetLeft = parseInt(el.offsetLeft.value)
           let offsetRight = parseInt(el.offsetRight.value)
           let reservedLeft = parseInt(el.reservedLeft.value)
           let reservedRight = parseInt(el.reservedRight.value)
+          if (isNaN(offsetTransformFactor)) {
+            offsetTransformFactor = gm.const.defaultOffsetTransformFactor
+          }
           if (isNaN(offsetLeft)) {
             offsetLeft = gm.const.defaultOffsetLeft
           }
@@ -763,6 +839,10 @@
           }
           if (isNaN(reservedRight)) {
             reservedRight = gm.const.defaultReservedRight
+          }
+          if (offsetTransformFactor != gm.config.offsetTransformFactor) {
+            gm.config.offsetTransformFactor = offsetTransformFactor
+            GM_setValue('offsetTransformFactor', gm.config.offsetTransformFactor)
           }
           if (offsetLeft != gm.config.offsetLeft) {
             gm.config.offsetLeft = offsetLeft
@@ -1162,146 +1242,11 @@
      */
     processNoSpoil() {
       const _self = this
-      if (!_self.control._noSpoilHandler) {
-        _self.control._noSpoilHandler = () => {
-          try {
-            let offset = 'offset'
-            let playRate = 0
-            if (_self.enabled) {
-              if (!_self.progress._noSpoil) {
-                _self.progress._fakeRandom = Math.random()
-              }
-              const player = unsafeWindow.player
-              playRate = player.getCurrentTime() / player.getDuration()
-              const min = 100 - gm.config.offsetLeft
-              const max = 100 + gm.config.offsetRight
-              const fakeEnd = _self.progress._fakeRandom * (max - min) + min
-
-              offset = fakeEnd - 100
-              const reservedLeft = gm.config.reservedLeft
-              const reservedRight = 100 - gm.config.reservedRight
-              if (playRate * 100 < reservedLeft) {
-                offset = 0
-              } else {
-                const offsetRate = playRate * 100 + offset
-                if (offsetRate < reservedLeft) {
-                  offset = reservedLeft - playRate * 100
-                } else if (offsetRate > reservedRight) {
-                  offset = reservedRight - playRate * 100
-                }
-              }
-            } else if (_self.progress._noSpoil) {
-              offset = 0
-            }
-
-            if (typeof offset == 'number') {
-              const handler = () => {
-                _self.progress.root.style.transform = `translateX(${offset}%)`
-                _self.scriptControl.transform = `translateX(${-offset}%)`
-                if (_self.enabled) {
-                  _self.fakeTrack.style.transform = `translateX(${-offset}%)`
-                }
-              }
-
-              if (_self.enabled) {
-                _self.progress.buffer.style.visibility = 'hidden'
-                _self.progress.track.style.visibility = 'hidden'
-                _self.shadowProgress.style.visibility = 'hidden'
-                _self.fakeTrack.style.visibility = 'visible'
-
-                const processFakePlayed = () => {
-                  try {
-                    const player = unsafeWindow.player
-                    const currentPlayRate = player.getCurrentTime() / player.getDuration()
-                    let currentOffset
-                    const m = _self.progress.root.style.transform.match(/(?<=translateX\()[^)]+(?=\))/)
-                    if (m && m.length > 0) {
-                      currentOffset = m[0]
-                    } else {
-                      currentOffset = 0
-                    }
-                    _self.fakePlayed.style.transform = `scaleX(${currentPlayRate + parseFloat(currentOffset) / 100})`
-                  } catch (e) {
-                    api.logger.error(gm.error.DOM_PARSE)
-                    api.logger.error(e)
-                  }
-                }
-                const clzControlShow = 'video-control-show'
-                const playerArea = document.querySelector('.bilibili-player-area')
-                if (!gm.config.postponeOffset || !api.dom.containsClass(playerArea, clzControlShow)) {
-                  handler()
-                } else if (!_self.progress._noSpoil) { // 首次打开
-                  _self.progress.root.style.transform = 'translateX(0)'
-                  _self.scriptControl.transform = 'translateX(0)'
-                  _self.fakeTrack.style.transform = 'translateX(0)'
-                }
-                if (!playerArea._obControlShow) {
-                  playerArea._obControlShow = new MutationObserver(records => {
-                    for (const record of records) {
-                      if (record.attributeName == 'class') {
-                        if (api.dom.containsClass(playerArea, clzControlShow)) {
-                          if (!playerArea._obPlayRate) {
-                            playerArea._obPlayRate = new MutationObserver(records => {
-                              for (const record of records) {
-                                if (record.attributeName == 'style') {
-                                  processFakePlayed()
-                                  break
-                                }
-                              }
-                            })
-                            playerArea._obPlayRate.observe(_self.progress.played, { attributes: true })
-                          }
-                        } else if (playerArea._obPlayRate) {
-                          playerArea._obPlayRate.disconnect()
-                          playerArea._obPlayRate = null
-                        }
-                        break
-                      }
-                    }
-                  })
-                  playerArea._obControlShow.observe(playerArea, { attributes: true })
-                } else {
-                  processFakePlayed()
-                }
-
-                _self.progress._noSpoil = true
-              } else {
-                _self.progress.track.style.visibility = 'visible'
-                _self.progress.buffer.style.visibility = 'visible'
-                _self.shadowProgress.style.visibility = 'visible'
-                _self.fakeTrack.style.visibility = 'hidden'
-                handler()
-
-                _self.progress._noSpoil = false
-              }
-            }
-
-            if (api.web.urlMatch(gm.regex.page_videoNormalMode) || api.web.urlMatch(gm.regex.page_videoWatchlaterMode)) {
-              if (_self.uploaderEnabled) {
-                _self.scriptControl.uploaderEnabled.setAttribute('enabled', '')
-              } else {
-                _self.scriptControl.uploaderEnabled.removeAttribute('enabled')
-              }
-            }
-            if (api.web.urlMatch(gm.regex.page_bangumi)) {
-              if (gm.config.bangumiEnabled) {
-                _self.scriptControl.bangumiEnabled.setAttribute('enabled', '')
-              } else {
-                _self.scriptControl.bangumiEnabled.removeAttribute('enabled')
-              }
-            }
-          } catch (e) {
-            api.logger.error(gm.error.DOM_PARSE)
-            api.logger.error(e)
-          }
-        }
-      }
-      const syncHandler = function() {
-        setTimeout(_self.control._noSpoilHandler, 10)
-      }
-      _self.control._noSpoilHandler()
-      _self.control.addEventListener('mouseenter', _self.control._noSpoilHandler) // 拖拽 thumb 释放来调整进度也会触发 mouseenter 事件
-      _self.progress.bar.addEventListener('click', syncHandler)
+      setTimeout(() => {
+        noSpoilHandler()
+        _self.control.addEventListener('mouseenter', noSpoilHandler) // 拖拽 thumb 释放来调整进度也会触发 mouseenter 事件
+        _self.progress.bar.addEventListener('click', () => setTimeout(noSpoilHandler, 10))
+      })
 
       if (_self.enabled) {
         _self.progress.preview.style.visibility = gm.config.disablePreview ? 'hidden' : 'visible'
@@ -1348,6 +1293,163 @@
         const hide = _self.enabled && gm.config.disablePbp
         pakku.style.visibility = hide ? 'hidden' : ''
       }).catch(() => {})
+
+      /**
+       * 防剧透处理核心流程
+       */
+      const noSpoilHandler = () => {
+        try {
+          let offset = 'offset'
+          let playRate = 0
+          if (_self.enabled) {
+            const player = unsafeWindow.player
+            playRate = player.getCurrentTime() / player.getDuration()
+            offset = getEndPoint() - 100
+            const reservedLeft = gm.config.reservedLeft
+            const reservedRight = 100 - gm.config.reservedRight
+            if (playRate * 100 < reservedLeft) {
+              offset = 0
+            } else {
+              const offsetRate = playRate * 100 + offset
+              if (offsetRate < reservedLeft) {
+                offset = reservedLeft - playRate * 100
+              } else if (offsetRate > reservedRight) {
+                offset = reservedRight - playRate * 100
+              }
+            }
+          } else if (_self.progress._noSpoil) {
+            offset = 0
+          }
+
+          if (typeof offset == 'number') {
+            const handler = () => {
+              _self.progress.root.style.transform = `translateX(${offset}%)`
+              _self.scriptControl.transform = `translateX(${-offset}%)`
+              if (_self.enabled) {
+                _self.fakeTrack.style.transform = `translateX(${-offset}%)`
+              }
+            }
+
+            if (_self.enabled) {
+              _self.progress.buffer.style.visibility = 'hidden'
+              _self.progress.track.style.visibility = 'hidden'
+              _self.shadowProgress.style.visibility = 'hidden'
+              _self.fakeTrack.style.visibility = 'visible'
+
+              const clzControlShow = 'video-control-show'
+              const playerArea = document.querySelector('.bilibili-player-area')
+              if (!gm.config.postponeOffset || !api.dom.containsClass(playerArea, clzControlShow)) {
+                handler()
+              } else if (!_self.progress._noSpoil) { // 首次打开
+                _self.progress.root.style.transform = 'translateX(0)'
+                _self.scriptControl.transform = 'translateX(0)'
+                _self.fakeTrack.style.transform = 'translateX(0)'
+              }
+              if (!playerArea._obControlShow) {
+                playerArea._obControlShow = new MutationObserver(records => {
+                  for (const record of records) {
+                    if (record.attributeName == 'class') {
+                      if (api.dom.containsClass(playerArea, clzControlShow)) {
+                        if (!playerArea._obPlayRate) {
+                          playerArea._obPlayRate = new MutationObserver(records => {
+                            for (const record of records) {
+                              if (record.attributeName == 'style') {
+                                processFakePlayed()
+                                break
+                              }
+                            }
+                          })
+                          playerArea._obPlayRate.observe(_self.progress.played, { attributes: true })
+                        }
+                      } else if (playerArea._obPlayRate) {
+                        playerArea._obPlayRate.disconnect()
+                        playerArea._obPlayRate = null
+                      }
+                      break
+                    }
+                  }
+                })
+                playerArea._obControlShow.observe(playerArea, { attributes: true })
+              }
+              processFakePlayed()
+
+              _self.progress._noSpoil = true
+            } else {
+              _self.progress.track.style.visibility = 'visible'
+              _self.progress.buffer.style.visibility = 'visible'
+              _self.shadowProgress.style.visibility = 'visible'
+              _self.fakeTrack.style.visibility = 'hidden'
+              handler()
+
+              _self.progress._noSpoil = false
+            }
+          }
+
+          if (api.web.urlMatch(gm.regex.page_videoNormalMode) || api.web.urlMatch(gm.regex.page_videoWatchlaterMode)) {
+            if (_self.uploaderEnabled) {
+              _self.scriptControl.uploaderEnabled.setAttribute('enabled', '')
+            } else {
+              _self.scriptControl.uploaderEnabled.removeAttribute('enabled')
+            }
+          }
+          if (api.web.urlMatch(gm.regex.page_bangumi)) {
+            if (gm.config.bangumiEnabled) {
+              _self.scriptControl.bangumiEnabled.setAttribute('enabled', '')
+            } else {
+              _self.scriptControl.bangumiEnabled.removeAttribute('enabled')
+            }
+          }
+        } catch (e) {
+          api.logger.error(gm.error.DOM_PARSE)
+          api.logger.error(e)
+        }
+      }
+
+      /**
+       * 获取偏移后进度条尾部位置
+       * @returns {number} 偏移后进度条尾部位置
+       */
+      const getEndPoint = () => {
+        if (!_self.progress._noSpoil) {
+          _self.progress._fakeRandom = Math.random()
+        }
+        let r = _self.progress._fakeRandom
+        const origin = 100 // 左右分界点
+        const left = gm.config.offsetLeft
+        const right = gm.config.offsetRight
+        const factor = gm.config.offsetTransformFactor
+        const mid = left / (left + right) // 概率中点
+        if (r <= mid) { // 向左偏移
+          r = 1 - r / mid
+          r **= factor
+          return origin - r * left
+        } else { // 向右偏移
+          r = (r - mid) / (1 - mid)
+          r **= factor
+          return origin + r * right
+        }
+      }
+
+      /**
+       * 调整用于模拟已播放进度的假已播放条
+       */
+      const processFakePlayed = () => {
+        try {
+          const player = unsafeWindow.player
+          const currentPlayRate = player.getCurrentTime() / player.getDuration()
+          let currentOffset
+          const m = _self.progress.root.style.transform.match(/(?<=translateX\()[^)]+(?=\))/)
+          if (m && m.length > 0) {
+            currentOffset = m[0]
+          } else {
+            currentOffset = 0
+          }
+          _self.fakePlayed.style.transform = `scaleX(${currentPlayRate + parseFloat(currentOffset) / 100})`
+        } catch (e) {
+          api.logger.error(gm.error.DOM_PARSE)
+          api.logger.error(e)
+        }
+      }
     }
 
     /**

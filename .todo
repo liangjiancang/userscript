@@ -4,11 +4,14 @@ BilibiliWatchlaterPlus:
   - 一键将稍后再看列表加入默认收藏夹，目前由于缺少 API 无法实现 https://greasyfork.org/zh-CN/scripts/395456/discussions/61694
 
 BilibiliNoSpoilProgressBar:
-  ☐ 随机曲线调整
 
 BilibiliCover:
 
 Archive:
+  ✔ 随机曲线调整 @started(20-09-11 17:28) @done(20-09-11 19:58) @lasted(2h30m18s) @project(BilibiliNoSpoilProgressBar)
+  ✔ 修复第一次启用时假已播放条没有处理的问题 @done(20-09-11 19:58) @project(BilibiliNoSpoilProgressBar)
+  ✔ 截图 @done(20-09-11 20:03) @project(BilibiliNoSpoilProgressBar)
+  ✔ changelog @done(20-09-11 20:10) @project(BilibiliNoSpoilProgressBar)
   ✔ 打开网页后不切过去，等很久之后不行 @done(20-09-10 19:38) @project(BilibiliNoSpoilProgressBar)
   ✔ 默认参数调整 @done(20-09-11 01:21) @project(BilibiliNoSpoilProgressBar)
   ✔ 偏移与播放进度的耦合关系改变 @done(20-09-11 01:15) @project(BilibiliNoSpoilProgressBar)

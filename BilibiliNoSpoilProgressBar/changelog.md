@@ -2,6 +2,11 @@
 
 本日志只记录用户友好的更新说明，影响不大的问题修复与修改不作记录，具体修改见 [提交记录](https://gitee.com/liangjiancang/userscript/commits/master/BilibiliNoSpoilProgressBar/BilibiliNoSpoilProgressBar.js)。
 
+## V1.2
+
+1. 功能实现：进度条极端偏移因子，用于控制进度条偏移量的概率分布。
+2. 进度条偏移时间点延后：修复打开页面后，首次启用防剧透进度条时已播放进度不正确的问题。
+
 ## V1.1
 
 1. 脚本：修复打开播放页面后长时间放置而没有切换过去，导致脚本逻辑注入失败的问题。
