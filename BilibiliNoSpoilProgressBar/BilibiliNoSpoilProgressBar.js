@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站防剧透进度条
-// @version         1.2.0.20200911
+// @version         1.2.1.20200911
 // @namespace       laster2800
 // @author          Laster2800
 // @description     看比赛、看番总是被进度条剧透？装上这个脚本再也不用担心这些问题了
@@ -1030,6 +1030,9 @@
             menu.state = true
             menu.openHandler && menu.openHandler.call(menu)
             api.dom.fade(true, menu.el, callback)
+            if (document.fullscreenElement) {
+              document.exitFullscreen()
+            }
           } else if (!keepOthers) {
             if (menu.state) {
               _self.closeMenuItem(key)
