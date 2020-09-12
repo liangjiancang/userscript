@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.5.11.20200911
+// @version         4.5.12.20200912
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -527,9 +527,6 @@
               // 如果 removeHistory 关闭则移除 removeHistoryData
               GM_setValue('removeHistoryData', null)
             }
-            // 升级配置版本
-            gm.configVersion = 20200718
-            GM_setValue('configVersion', gm.configVersion)
           }
 
           // 3.0.0.20200721
@@ -537,9 +534,6 @@
             const openHeaderMenuLink = _self.method.gmValidate('openHeaderDropdownLink', gm.config.openHeaderMenuLink, false)
             GM_setValue('openHeaderMenuLink', openHeaderMenuLink)
             GM_deleteValue('openHeaderDropdownLink')
-
-            gm.configVersion = 20200721
-            GM_setValue('configVersion', gm.configVersion)
           }
 
           // 3.1.0.20200722
@@ -554,11 +548,9 @@
             for (const name of ['headerButtonOpL', 'headerButtonOpR', 'openHeaderMenuLink', 'openListVideo']) {
               exec(name)
             }
-
-            gm.configVersion = 20200722
-            GM_setValue('configVersion', gm.configVersion)
           }
 
+          // 4.0.0.20200806
           if (gm.configVersion < 20200805) {
             GM_deleteValue('resetAfterFnUpdate')
           }
@@ -3465,56 +3457,58 @@
     }
   }
 
-  const script = new Script()
-  const webpage = new Webpage()
+  (function() {
+    const script = new Script()
+    const webpage = new Webpage()
 
-  script.initAtDocumentStart()
-  if (api.web.urlMatch(gm.regex.page_videoWatchlaterMode)) {
-    if (gm.config.redirect) { // 重定向，document-start 就执行，尽可能快地将原页面掩盖过去
-      webpage.redirect()
-      return // 必须 return，否则后面的内容还会执行使得加载速度超级慢
-    }
-  }
-
-  // 脚本的其他部分推迟至 DOMContentLoaded 执行
-  document.addEventListener('DOMContentLoaded', function() {
-    script.init()
-    script.addScriptMenu()
-
-    // 所有页面
-    if (gm.config.headerButton) {
-      webpage.addHeaderButton()
-    }
-    if (gm.config.fillWatchlaterStatus != Enums.fillWatchlaterStatus.never) {
-      webpage.fillWatchlaterStatus()
-    }
-    if (gm.config.removeHistory) {
-      webpage.processWatchlaterListDataSaving()
-    }
-
-    if (api.web.urlMatch(gm.regex.page_watchlaterList)) {
-      // 列表页面
-      webpage.processOpenListVideo()
-      webpage.adjustWatchlaterListUI()
-      if (gm.config.forceConsistentVideo || gm.config.autoRemove != Enums.autoRemove.never) {
-        webpage.processWatchlaterListLink()
+    script.initAtDocumentStart()
+    if (api.web.urlMatch(gm.regex.page_videoWatchlaterMode)) {
+      if (gm.config.redirect) { // 重定向，document-start 就执行，尽可能快地将原页面掩盖过去
+        webpage.redirect()
+        return // 必须 return，否则后面的内容还会执行使得加载速度超级慢
       }
-    } else if (api.web.urlMatch(gm.regex.page_videoNormalMode)) {
-      // 播放页面（正常模式）
-      if (gm.config.videoButton) {
-        webpage.addVideoButton_Normal()
-      }
-    } else if (api.web.urlMatch(gm.regex.page_videoWatchlaterMode)) {
-      // 播放页面（稍后再看模式）
-      if (gm.config.videoButton) {
-        webpage.addVideoButton_Watchlater()
-      }
-    } else if (api.web.urlMatch(gm.regex.page_dynamicMenu)) {
-      // 动态入口弹出菜单页面的处理
-      webpage.addMenuScrollbarStyle()
-      return
     }
-    webpage.processSearchParams()
-    webpage.addStyle()
-  })
+
+    // 脚本的其他部分推迟至 DOMContentLoaded 执行
+    document.addEventListener('DOMContentLoaded', function() {
+      script.init()
+      script.addScriptMenu()
+
+      // 所有页面
+      if (gm.config.headerButton) {
+        webpage.addHeaderButton()
+      }
+      if (gm.config.fillWatchlaterStatus != Enums.fillWatchlaterStatus.never) {
+        webpage.fillWatchlaterStatus()
+      }
+      if (gm.config.removeHistory) {
+        webpage.processWatchlaterListDataSaving()
+      }
+
+      if (api.web.urlMatch(gm.regex.page_watchlaterList)) {
+        // 列表页面
+        webpage.processOpenListVideo()
+        webpage.adjustWatchlaterListUI()
+        if (gm.config.forceConsistentVideo || gm.config.autoRemove != Enums.autoRemove.never) {
+          webpage.processWatchlaterListLink()
+        }
+      } else if (api.web.urlMatch(gm.regex.page_videoNormalMode)) {
+        // 播放页面（正常模式）
+        if (gm.config.videoButton) {
+          webpage.addVideoButton_Normal()
+        }
+      } else if (api.web.urlMatch(gm.regex.page_videoWatchlaterMode)) {
+        // 播放页面（稍后再看模式）
+        if (gm.config.videoButton) {
+          webpage.addVideoButton_Watchlater()
+        }
+      } else if (api.web.urlMatch(gm.regex.page_dynamicMenu)) {
+        // 动态入口弹出菜单页面的处理
+        webpage.addMenuScrollbarStyle()
+        return
+      }
+      webpage.processSearchParams()
+      webpage.addStyle()
+    })
+  })()
 })()

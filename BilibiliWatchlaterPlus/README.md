@@ -6,7 +6,7 @@
 
 ![用户设置](https://gitee.com/liangjiancang/userscript/raw/master/BilibiliWatchlaterPlus/screenshot/用户设置.png)
 
-## 说明
+## 补充说明
 
 1. 脚本包含 [B站“稍后再看”重定向](https://greasyfork.org/zh-CN/scripts/383441) 的功能，请勿重复安装。
 
