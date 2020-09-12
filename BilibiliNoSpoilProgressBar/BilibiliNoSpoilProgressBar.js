@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站防剧透进度条
-// @version         1.2.3.20200912
+// @version         1.2.4.20200913
 // @namespace       laster2800
 // @author          Laster2800
 // @description     看比赛、看番总是被进度条剧透？装上这个脚本再也不用担心这些问题了
@@ -1315,7 +1315,21 @@
             currentPoint._fake.style.display = 'none'
           }
         }
+      }).catch(e => {
+        api.logger.error(gm.error.DOM_PARSE)
+        api.logger.error(e)
       })
+      api.wait.waitForElementLoaded('.bilibili-player-video-progress-detail-time').then(currentPoint => {
+        if (_self.enabled && gm.config.disableCurrentPoint) {
+          currentPoint.style.visibility = 'hidden'
+        } else {
+          currentPoint.style.visibility = 'visible'
+        }
+      }).catch(e => {
+        api.logger.error(gm.error.DOM_PARSE)
+        api.logger.error(e)
+      })
+
       // 隐藏视频时长
       api.wait.waitForElementLoaded('.bilibili-player-video-time-total').then(duration => {
         if (_self.enabled && gm.config.disableDuration) {
@@ -1328,11 +1342,13 @@
         api.logger.error(gm.error.DOM_PARSE)
         api.logger.error(e)
       })
+
       // 隐藏高能进度条的【热度】曲线（可能存在）
       api.wait.waitForElementLoaded('#bilibili_pbp', _self.control).then(pbp => {
         const hide = _self.enabled && gm.config.disablePbp
         pbp.style.visibility = hide ? 'hidden' : ''
       }).catch(() => {})
+
       // 隐藏 pakku 扩展引入的弹幕密度显示（可能存在）
       api.wait.waitForElementLoaded('canvas.pakku-fluctlight', _self.control).then(pakku => {
         const hide = _self.enabled && gm.config.disablePbp
