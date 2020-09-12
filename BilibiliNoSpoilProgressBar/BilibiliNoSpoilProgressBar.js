@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站防剧透进度条
-// @version         1.2.2.20200911
+// @version         1.2.3.20200912
 // @namespace       laster2800
 // @author          Laster2800
 // @description     看比赛、看番总是被进度条剧透？装上这个脚本再也不用担心这些问题了
@@ -141,11 +141,11 @@
   const gm = {
     id: 'gm411092',
     configVersion: GM_getValue('configVersion'),
-    configUpdate: 20200911.1,
+    configUpdate: 20200912,
     config: {
       bangumiEnabled: false,
       simpleScriptControl: false,
-      disableCurrentPoint: false,
+      disableCurrentPoint: true,
       disableDuration: true,
       disablePbp: true,
       disablePreview: false,
@@ -161,7 +161,7 @@
     configMap: {
       bangumiEnabled: { attr: 'checked', needNotReload: true },
       simpleScriptControl: { attr: 'checked' },
-      disableCurrentPoint: { attr: 'checked' },
+      disableCurrentPoint: { attr: 'checked', configVersion: 20200912 },
       disableDuration: { attr: 'checked' },
       disablePbp: { attr: 'checked' },
       disablePreview: { attr: 'checked' },
@@ -344,8 +344,13 @@
 
           // 1.1.0.20200911
           if (gm.configVersion < 20200911) {
-            GM_setValue('offsetLeft', gm.const.defaultOffsetLeft)
-            GM_setValue('offsetRight', gm.const.defaultOffsetRight)
+            GM_setValue('offsetLeft', 40)
+            GM_setValue('offsetRight', 40)
+          }
+
+          // 1.2.4.20200912
+          if (gm.configVersion < 20200912) {
+            GM_setValue('disableCurrentPoint', true)
           }
         }
       }
@@ -2041,7 +2046,7 @@
     }
   }
 
-  (async function() {
+  (function() {
     const script = new Script()
     const webpage = new Webpage()
 
