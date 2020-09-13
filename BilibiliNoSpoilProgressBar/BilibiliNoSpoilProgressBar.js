@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站防剧透进度条
-// @version         1.2.4.20200913
+// @version         1.2.5.20200913
 // @namespace       laster2800
 // @author          Laster2800
 // @description     看比赛、看番总是被进度条剧透？装上这个脚本再也不用担心这些问题了
@@ -1141,19 +1141,43 @@
             if (unsafeWindow.aid) {
               aid = unsafeWindow.aid
             } else {
-              aid = await api.wait.waitForConditionPassed({
-                condition: () => {
-                  const player = unsafeWindow.player
-                  const message = player && player.getVideoMessage && player.getVideoMessage()
-                  return message && message.aid
-                },
-              })
+              const vm = await this.getVideoMessage()
+              aid = vm && vm.aid ? vm.aid : ''
             }
           } catch (e) {
             api.logger.error(gm.error.DOM_PARSE)
             api.logger.error(e)
           }
           return String(aid)
+        },
+
+        /**
+         * 获取 `cid`
+         * @async
+         * @returns {Promise<string>} `cid`
+         */
+        async getCid() {
+          const vm = await this.getVideoMessage()
+          return vm && vm.cid ? String(vm.cid) : ''
+        },
+
+        /**
+         * 获取页面上的视频信息
+         * @async
+         * @returns {Object} `window.player.getVideoMessage()`
+         */
+        async getVideoMessage() {
+          try {
+            return await api.wait.waitForConditionPassed({
+              condition: () => {
+                const player = unsafeWindow.player
+                return player && player.getVideoMessage && player.getVideoMessage()
+              },
+            })
+          } catch (e) {
+            api.logger.error(gm.error.DOM_PARSE)
+            api.logger.error(e)
+          }
         },
 
         /**
@@ -1521,24 +1545,24 @@
     async initLocationChangeProcess() {
       const _self = this
       let currentPathname = location.pathname
-      let currentAid = await _self.method.getAid()
+      let currentCid = await _self.method.getCid()
       api.dom.createLocationchangeEvent()
       window.addEventListener('locationchange', function() {
         api.wait.waitForConditionPassed({
           condition: async () => {
             if (location.pathname == currentPathname) {
               // 并非切换视频（如切分 P）
-              return currentAid
+              return currentCid
             } else {
-              const aid = await _self.method.getAid()
-              if (aid != currentAid) { // aid 改变才能说明页面真正切换过去
+              const cid = await _self.method.getCid()
+              if (cid != currentCid) { // cid 改变才能说明页面真正切换过去
                 currentPathname = location.pathname
-                return aid
+                return cid
               }
             }
           },
-        }).then(aid => {
-          currentAid = aid
+        }).then(cid => {
+          currentCid = cid
           _self.initNoSpoil()
           if (api.web.urlMatch(gm.regex.page_videoWatchlaterMode)) {
             _self.initSwitchingPartProcess()
