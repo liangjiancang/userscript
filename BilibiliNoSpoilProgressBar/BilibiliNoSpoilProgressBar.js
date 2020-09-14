@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站防剧透进度条
-// @version         1.2.5.20200913
+// @version         1.2.6.20200914
 // @namespace       laster2800
 // @author          Laster2800
 // @description     看比赛、看番总是被进度条剧透？装上这个脚本再也不用担心这些问题了
@@ -1276,6 +1276,7 @@
       const _self = this
       setTimeout(() => {
         noSpoilHandler()
+        hideElementStatic()
 
         const clzControlShow = 'video-control-show'
         const playerArea = document.querySelector('.bilibili-player-area')
@@ -1317,67 +1318,81 @@
         }
       })
 
-      if (_self.enabled) {
-        _self.progress.preview.style.visibility = gm.config.disablePreview ? 'hidden' : 'visible'
-      } else {
-        _self.progress.preview.style.visibility = 'visible'
+      /**
+       * 隐藏必要元素（相关设置修改后需刷新页面）
+       */
+      const hideElementStatic = () => {
+        // 隐藏进度条预览
+        if (_self.enabled) {
+          _self.progress.preview.style.visibility = gm.config.disablePreview ? 'hidden' : 'visible'
+        } else {
+          _self.progress.preview.style.visibility = 'visible'
+        }
+
+        // 隐藏当前播放时间
+        api.wait.waitForElementLoaded('.bilibili-player-video-time-now:not(.fake)').then(currentPoint => {
+          if (_self.enabled && gm.config.disableCurrentPoint) {
+            if (!currentPoint._fake) {
+              currentPoint._fake = currentPoint.parentNode.insertBefore(currentPoint.cloneNode(true), currentPoint)
+              currentPoint._fake.innerText = '???'
+              api.dom.addClass(currentPoint._fake, 'fake')
+            }
+            currentPoint.style.display = 'none'
+            currentPoint._fake.style.display = 'unset'
+          } else {
+            currentPoint.style.display = 'unset'
+            if (currentPoint._fake) {
+              currentPoint._fake.style.display = 'none'
+            }
+          }
+        }).catch(e => {
+          api.logger.error(gm.error.DOM_PARSE)
+          api.logger.error(e)
+        })
+        api.wait.waitForElementLoaded('.bilibili-player-video-progress-detail-time').then(currentPoint => {
+          if (_self.enabled && gm.config.disableCurrentPoint) {
+            currentPoint.style.visibility = 'hidden'
+          } else {
+            currentPoint.style.visibility = 'visible'
+          }
+        }).catch(e => {
+          api.logger.error(gm.error.DOM_PARSE)
+          api.logger.error(e)
+        })
+
+        // 隐藏视频时长
+        api.wait.waitForElementLoaded('.bilibili-player-video-time-total:not(.fake)').then(duration => {
+          if (_self.enabled && gm.config.disableDuration) {
+            if (!duration._fake) {
+              duration._fake = duration.parentNode.insertBefore(duration.cloneNode(true), duration)
+              duration._fake.innerText = '???'
+              api.dom.addClass(duration._fake, 'fake')
+            }
+            duration.style.display = 'none'
+            duration._fake.style.display = 'unset'
+          } else {
+            duration.style.display = 'unset'
+            if (duration._fake) {
+              duration._fake.style.display = 'none'
+            }
+          }
+        }).catch(e => {
+          api.logger.error(gm.error.DOM_PARSE)
+          api.logger.error(e)
+        })
+
+        // 隐藏高能进度条的【热度】曲线（可能存在）
+        api.wait.waitForElementLoaded('#bilibili_pbp', _self.control).then(pbp => {
+          const hide = _self.enabled && gm.config.disablePbp
+          pbp.style.visibility = hide ? 'hidden' : ''
+        }).catch(() => {})
+
+        // 隐藏 pakku 扩展引入的弹幕密度显示（可能存在）
+        api.wait.waitForElementLoaded('canvas.pakku-fluctlight', _self.control).then(pakku => {
+          const hide = _self.enabled && gm.config.disablePbp
+          pakku.style.visibility = hide ? 'hidden' : ''
+        }).catch(() => {})
       }
-
-      // 隐藏当前播放时间
-      api.wait.waitForElementLoaded('.bilibili-player-video-time-now:not(.fake)').then(currentPoint => {
-        if (_self.enabled && gm.config.disableCurrentPoint) {
-          if (!currentPoint._fake) {
-            currentPoint._fake = currentPoint.parentNode.insertBefore(currentPoint.cloneNode(true), currentPoint)
-            currentPoint._fake.innerText = '???'
-            api.dom.addClass(currentPoint._fake, 'fake')
-          }
-          currentPoint.style.display = 'none'
-          currentPoint._fake.style.display = 'unset'
-        } else {
-          currentPoint.style.display = 'unset'
-          if (currentPoint._fake) {
-            currentPoint._fake.style.display = 'none'
-          }
-        }
-      }).catch(e => {
-        api.logger.error(gm.error.DOM_PARSE)
-        api.logger.error(e)
-      })
-      api.wait.waitForElementLoaded('.bilibili-player-video-progress-detail-time').then(currentPoint => {
-        if (_self.enabled && gm.config.disableCurrentPoint) {
-          currentPoint.style.visibility = 'hidden'
-        } else {
-          currentPoint.style.visibility = 'visible'
-        }
-      }).catch(e => {
-        api.logger.error(gm.error.DOM_PARSE)
-        api.logger.error(e)
-      })
-
-      // 隐藏视频时长
-      api.wait.waitForElementLoaded('.bilibili-player-video-time-total').then(duration => {
-        if (_self.enabled && gm.config.disableDuration) {
-          duration._innerText = duration.innerText
-          duration.innerText = '???'
-        } else if (duration._innerText) {
-          duration.innerText = duration._innerText
-        }
-      }).catch(e => {
-        api.logger.error(gm.error.DOM_PARSE)
-        api.logger.error(e)
-      })
-
-      // 隐藏高能进度条的【热度】曲线（可能存在）
-      api.wait.waitForElementLoaded('#bilibili_pbp', _self.control).then(pbp => {
-        const hide = _self.enabled && gm.config.disablePbp
-        pbp.style.visibility = hide ? 'hidden' : ''
-      }).catch(() => {})
-
-      // 隐藏 pakku 扩展引入的弹幕密度显示（可能存在）
-      api.wait.waitForElementLoaded('canvas.pakku-fluctlight', _self.control).then(pakku => {
-        const hide = _self.enabled && gm.config.disablePbp
-        pakku.style.visibility = hide ? 'hidden' : ''
-      }).catch(() => {})
 
       /**
        * 防剧透处理核心流程
