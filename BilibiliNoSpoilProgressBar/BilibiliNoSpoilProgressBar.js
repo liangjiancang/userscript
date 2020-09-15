@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站防剧透进度条
-// @version         1.2.6.20200914
+// @version         1.2.7.20200915
 // @namespace       laster2800
 // @author          Laster2800
 // @description     看比赛、看番总是被进度条剧透？装上这个脚本再也不用担心这些问题了
@@ -1109,7 +1109,6 @@
        */
       this.fakePlayed = null
 
-
       /**
        * 脚本控制条
        * @type {HTMLElement}
@@ -1137,16 +1136,11 @@
          */
         async getAid() {
           let aid
-          try {
-            if (unsafeWindow.aid) {
-              aid = unsafeWindow.aid
-            } else {
-              const vm = await this.getVideoMessage()
-              aid = vm && vm.aid ? vm.aid : ''
-            }
-          } catch (e) {
-            api.logger.error(gm.error.DOM_PARSE)
-            api.logger.error(e)
+          if (unsafeWindow.aid) {
+            aid = unsafeWindow.aid
+          } else {
+            const vm = await this.getVideoMessage()
+            aid = vm && vm.aid ? vm.aid : ''
           }
           return String(aid)
         },
@@ -1222,7 +1216,7 @@
       _self.progress.preview = await api.wait.waitForElementLoaded('.bilibili-player-video-progress-detail', _self.progress.root)
       _self.shadowProgress = await api.wait.waitForElementLoaded('.bilibili-player-video-progress-shadow', this.control)
 
-      _self.fakeTrack = _self.progress.track.parentNode.insertBefore(_self.progress.track.cloneNode(true), _self.progress.track) // 必须在 thumb 前，否则 z 轴层次错误
+      _self.fakeTrack = _self.progress.track.insertAdjacentElement('afterend', _self.progress.track.cloneNode(true)) // 必须在 thumb 前，否则 z 轴层次错误
       _self.fakeTrack.style.visibility = 'hidden'
       _self.fakeTrack.querySelector('.bui-bar-buffer').style.visibility = 'hidden'
       _self.fakePlayed = _self.fakeTrack.querySelector('.bui-bar-normal')
@@ -1275,47 +1269,9 @@
     processNoSpoil() {
       const _self = this
       setTimeout(() => {
-        noSpoilHandler()
         hideElementStatic()
-
-        const clzControlShow = 'video-control-show'
-        const playerArea = document.querySelector('.bilibili-player-area')
-        if (!playerArea._obControlShow) {
-          playerArea._obControlShow = new MutationObserver(records => {
-            for (const record of records) {
-              if (record.attributeName == 'class') {
-                const before = api.dom.containsClass({ className: record.oldValue }, clzControlShow)
-                const current = api.dom.containsClass(playerArea, clzControlShow)
-                if (before != current) {
-                  if (current) {
-                    if (_self.enabled) {
-                      noSpoilHandler(true)
-                      if (!playerArea._obPlayRate) {
-                        playerArea._obPlayRate = new MutationObserver(records => {
-                          for (const record of records) {
-                            if (record.attributeName == 'style') {
-                              _self.processFakePlayed()
-                              break
-                            }
-                          }
-                        })
-                        playerArea._obPlayRate.observe(_self.progress.thumb, { attributes: true })
-                      }
-                    }
-                  } else if (playerArea._obPlayRate) {
-                    playerArea._obPlayRate.disconnect()
-                    playerArea._obPlayRate = null
-                  }
-                  break
-                }
-              }
-            }
-          })
-          playerArea._obControlShow.observe(playerArea, {
-            attributes: true,
-            attributeOldValue: true,
-          })
-        }
+        processContrlShow()
+        core()
       })
 
       /**
@@ -1333,7 +1289,7 @@
         api.wait.waitForElementLoaded('.bilibili-player-video-time-now:not(.fake)').then(currentPoint => {
           if (_self.enabled && gm.config.disableCurrentPoint) {
             if (!currentPoint._fake) {
-              currentPoint._fake = currentPoint.parentNode.insertBefore(currentPoint.cloneNode(true), currentPoint)
+              currentPoint._fake = currentPoint.insertAdjacentElement('afterend', currentPoint.cloneNode(true))
               currentPoint._fake.innerText = '???'
               api.dom.addClass(currentPoint._fake, 'fake')
             }
@@ -1364,7 +1320,7 @@
         api.wait.waitForElementLoaded('.bilibili-player-video-time-total:not(.fake)').then(duration => {
           if (_self.enabled && gm.config.disableDuration) {
             if (!duration._fake) {
-              duration._fake = duration.parentNode.insertBefore(duration.cloneNode(true), duration)
+              duration._fake = duration.insertAdjacentElement('afterend', duration.cloneNode(true))
               duration._fake.innerText = '???'
               api.dom.addClass(duration._fake, 'fake')
             }
@@ -1395,10 +1351,54 @@
       }
 
       /**
+       * 处理视频控制的显隐
+       */
+      const processContrlShow = () => {
+        const clzControlShow = 'video-control-show'
+        const playerArea = document.querySelector('.bilibili-player-area')
+        if (!playerArea._obControlShow) {
+          playerArea._obControlShow = new MutationObserver(records => {
+            for (const record of records) {
+              if (record.attributeName == 'class') {
+                const before = api.dom.containsClass({ className: record.oldValue }, clzControlShow)
+                const current = api.dom.containsClass(playerArea, clzControlShow)
+                if (before != current) {
+                  if (current) {
+                    if (_self.enabled) {
+                      core(true)
+                      if (!playerArea._obPlayRate) {
+                        playerArea._obPlayRate = new MutationObserver(records => {
+                          for (const record of records) {
+                            if (record.attributeName == 'style') {
+                              _self.processFakePlayed()
+                              break
+                            }
+                          }
+                        })
+                        playerArea._obPlayRate.observe(_self.progress.thumb, { attributes: true })
+                      }
+                    }
+                  } else if (playerArea._obPlayRate) {
+                    playerArea._obPlayRate.disconnect()
+                    playerArea._obPlayRate = null
+                  }
+                  break
+                }
+              }
+            }
+          })
+          playerArea._obControlShow.observe(playerArea, {
+            attributes: true,
+            attributeOldValue: true,
+          })
+        }
+      }
+
+      /**
        * 防剧透处理核心流程
        * @param {boolean} [noPostpone] 不延后执行
        */
-      const noSpoilHandler = noPostpone => {
+      const core = noPostpone => {
         try {
           let offset = 'offset'
           let playRate = 0
