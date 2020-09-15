@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.5.12.20200912
+// @version         4.6.0.20200915
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -25,10 +25,41 @@
 // @grant           GM_listValues
 // @connect         api.bilibili.com
 // @run-at          document-start
+// @incompatible    firefox 不支持 Greasemonkey！Tampermonkey、Violentmonkey 可用
 // ==/UserScript==
 
 (function() {
   'use strict'
+
+  // 脚本兼容
+  let incompatible = false
+  let scriptHandler = '当前脚本管理器'
+  if (!GM_info || !GM_info.script || !GM_info.scriptHandler) {
+    incompatible = true
+  }
+  if (GM_info && GM_info.scriptHandler) {
+    scriptHandler = GM_info.scriptHandler
+    if (scriptHandler == 'Greasemonkey') {
+      incompatible = true
+    }
+  }
+  if (incompatible) {
+    const label = GM_info && GM_info.script && GM_info.script.name ? `【${GM_info.script.name}】\n\n` : ''
+    alert(`${label}脚本不支持${scriptHandler}！请改用Tampermonkey或Violentmonkey。`)
+    return
+  }
+  if (scriptHandler != 'Tampermonkey') {
+    const script = GM_info.script
+    if (!script.author) {
+      script.author = 'Laster2800'
+    }
+    if (!script.homepage) {
+      script.homepage = 'https://greasyfork.org/zh-CN/scripts/395456'
+    }
+    if (!script.supportURL) {
+      script.supportURL = 'https://greasyfork.org/zh-CN/scripts/395456/feedback'
+    }
+  }
 
   /**
    * 脚本内用到的枚举定义

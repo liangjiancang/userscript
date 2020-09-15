@@ -2,6 +2,11 @@
 
 本日志只记录用户友好的更新说明，影响不大的问题修复与修改不作记录，具体修改见 [提交记录](https://gitee.com/liangjiancang/userscript/commits/master/BilibiliWatchlaterPlus/BilibiliWatchlaterPlus.js)。
 
+## V4.6
+
+1. 脚本：兼容性处理。
+2. 脚本：大量微小的问题修复以及功能改进。
+
 ## V4.5
 
 1. API：将 `API` 类剥离出来，作为一个通用代码库使用。以后关于 API 的更新说明见 [API.js 提交记录](https://gitee.com/liangjiancang/userscript/commits/master/lib/API.js)。

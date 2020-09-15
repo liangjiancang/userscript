@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站封面获取
-// @version         4.6.5.20200911
+// @version         4.7.0.20200915
 // @namespace       laster2800
 // @author          Laster2800
 // @description     B站视频播放页（普通模式、稍后再看模式）、番剧播放页、直播间添加获取封面的按钮
@@ -21,9 +21,30 @@
 // @grant           GM_getValue
 // @grant           GM_registerMenuCommand
 // @grant           GM_unregisterMenuCommand
+// @incompatible    firefox 不支持 Greasemonkey！Tampermonkey、Violentmonkey 可用
 // ==/UserScript==
 
 (function() {
+  'use strict'
+
+  // 脚本兼容
+  let incompatible = false
+  let scriptHandler = '当前脚本管理器'
+  if (!GM_info || !GM_info.script || !GM_info.scriptHandler) {
+    incompatible = true
+  }
+  if (GM_info && GM_info.scriptHandler) {
+    scriptHandler = GM_info.scriptHandler
+    if (scriptHandler == 'Greasemonkey') {
+      incompatible = true
+    }
+  }
+  if (incompatible) {
+    const label = GM_info && GM_info.script && GM_info.script.name ? `【${GM_info.script.name}】\n\n` : ''
+    alert(`${label}脚本不支持${scriptHandler}！请改用Tampermonkey或Violentmonkey。`)
+    return
+  }
+
   const gm = {
     id: 'gm395575',
     title: '点击保存封面或在新标签页中打开图片（可在脚本菜单中设置）。\n此外，可在脚本菜单中开启或关闭封面预览功能。\n右键点击可基于图片链接作进一步的处理，如通过“另存为”直接保存图片。',

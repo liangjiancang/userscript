@@ -2,6 +2,10 @@
 
 本日志只记录用户友好的更新说明，影响不大的问题修复与修改不作记录，具体修改见 [提交记录](https://gitee.com/liangjiancang/userscript/commits/master/BilibiliNoSpoilProgressBar/BilibiliNoSpoilProgressBar.js)。
 
+## V1.3
+
+1. 脚本：兼容性处理。
+
 ## V1.2
 
 1. 功能实现：进度条极端偏移因子，用于控制进度条偏移量的概率分布。
