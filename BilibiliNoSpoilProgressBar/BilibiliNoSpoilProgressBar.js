@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站防剧透进度条
-// @version         1.3.0.20200915
+// @version         1.3.1.20200916
 // @namespace       laster2800
 // @author          Laster2800
 // @description     看比赛、看番总是被进度条剧透？装上这个脚本再也不用担心这些问题了
@@ -239,7 +239,7 @@
     },
     error: {
       DOM_PARSE: `DOM解析错误。大部分情况下是由于网络加载速度不足造成的，不影响脚本工作；否则就是B站网页改版，请联系脚本作者进行修改：${GM_info.script.supportURL}`,
-      NETWORK: `网络连接错误，出现这个问题有可能是因为网络加载速度不足或者B站后台API被改动。也不排除是脚本内部数据出错造成的，初始化脚本或清空稍后再看数据也许能解决问题。无法解决请联系脚本作者：${GM_info.script.supportURL}`,
+      NETWORK: `网络连接错误，出现这个问题有可能是因为网络加载速度不足或者B站后台API被改动。也不排除是脚本内部数据出错造成的，初始化脚本也许能解决问题。无法解决请联系脚本作者：${GM_info.script.supportURL}`,
     }
   }
 
@@ -412,7 +412,7 @@
         }
         _self.openUserSetting(1)
         setTimeout(() => {
-          const result = confirm(`【${GM_info.script.name}】\n\n脚本有一定的使用门槛，建议在阅读说明文档后使用。是否打开说明文档？`)
+          const result = confirm(`【${GM_info.script.name}】\n\n脚本有一定使用门槛，如果不理解防剧透机制效果将会剧减，这种情况下用户甚至完全不明白脚本在“干什么”，建议在阅读说明后使用。是否立即打开防剧透机制说明？`)
           if (result) {
             window.open(`${gm.url.gm_readme}#防剧透机制说明`)
           }
@@ -1254,6 +1254,7 @@
 
       _self.initScriptControl()
 
+      // 卡住，等条件通过才结束函数执行
       await api.wait.waitForConditionPassed({
         condition: () => {
           const player = unsafeWindow.player

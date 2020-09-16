@@ -8,6 +8,10 @@
 
 更新说明见 [提交记录](https://gitee.com/liangjiancang/userscript/commits/master/BilibiliCover/BilibiliCover.js)。
 
+## 补充说明
+
+1. 脚本基于 Microsoft Edge 浏览器和 Tampermonkey 脚本管理器开发，明确不支持 Greasemonkey。在其他浏览器及脚本管理器上运行可能会出现问题，请提供反馈。
+
 ## 截图
 
 * 脚本设置
