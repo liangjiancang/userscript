@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.6.1.20200920
+// @version         4.6.2.20200920
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -17,7 +17,7 @@
 // @exclude         *://message.bilibili.com/pages/nav/index_new_pc_sync
 // @exclude         *://t.bilibili.com/h5/dynamic/specification
 // @exclude         *://www.bilibili.com/page-proxy/game-nav.html
-// @require         https://greasyfork.org/scripts/409641-api/code/API.js?version=846937
+// @require         https://greasyfork.org/scripts/409641-api/code/API.js?version=849737
 // @grant           GM_addStyle
 // @grant           GM_xmlhttpRequest
 // @grant           GM_registerMenuCommand
@@ -2354,7 +2354,7 @@
           api.message.create(`${note}成功`)
         } else {
           cb.checked = btn.added
-          api.message.create(`网络错误，${note}失败`)
+          api.message.create(`${note}失败${!btn.added ? '，可能是因为不支持当前稿件类型（如互动视频）' : ''}`)
         }
       }
     }
@@ -2543,22 +2543,20 @@
       const processSwitch = async () => {
         const btn = bus.btn
         const cb = bus.cb
-        bus.aid = await _self.method.getAid()
-        if (!bus.aid) {
-          cb.checked = btn.added
-          api.message.create('网络错误，操作失败')
-          return
-        }
         const note = btn.added ? '从稍后再看移除' : '添加到稍后再看'
-        const success = await _self.method.switchVideoWatchlaterStatus(bus.aid, !btn.added)
-        if (success) {
-          btn.added = !btn.added
-          cb.checked = btn.added
-          api.message.create(`${note}成功`)
-        } else {
-          cb.checked = btn.added
-          api.message.create(`网络错误，${note}失败`)
+        bus.aid = await _self.method.getAid()
+        if (bus.aid) {
+          const success = await _self.method.switchVideoWatchlaterStatus(bus.aid, !btn.added)
+          if (success) {
+            btn.added = !btn.added
+            cb.checked = btn.added
+            api.message.create(`${note}成功`)
+            return
+          }
         }
+        // 获取不到 aid，或网络请求失败，或请求成功但添加失败
+        cb.checked = btn.added
+        api.message.create(`${note}失败${!btn.added ? '，可能是因为不支持当前稿件类型（如互动视频）' : ''}`)
       }
     }
 
