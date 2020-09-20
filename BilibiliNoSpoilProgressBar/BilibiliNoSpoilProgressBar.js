@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站防剧透进度条
-// @version         1.3.2.20200920
+// @version         1.3.3.20200920
 // @namespace       laster2800
 // @author          Laster2800
 // @description     看比赛、看番总是被进度条剧透？装上这个脚本再也不用担心这些问题了
@@ -1167,13 +1167,22 @@
          */
         async getAid() {
           let aid
-          if (unsafeWindow.aid) {
-            aid = unsafeWindow.aid
-          } else {
-            const vm = await this.getVideoMessage()
-            aid = vm && vm.aid ? vm.aid : ''
+          try {
+            if (unsafeWindow.aid) {
+              aid = unsafeWindow.aid
+            } else {
+              aid = await api.wait.waitForConditionPassed({
+                condition: async () => {
+                  const message = await this.getVideoMessage()
+                  return message && message.aid
+                },
+              })
+            }
+          } catch (e) {
+            api.logger.error(gm.error.DOM_PARSE)
+            api.logger.error(e)
           }
-          return String(aid)
+          return String(aid || '')
         },
 
         /**
@@ -1182,8 +1191,19 @@
          * @returns {Promise<string>} `cid`
          */
         async getCid() {
-          const vm = await this.getVideoMessage()
-          return vm && vm.cid ? String(vm.cid) : ''
+          let cid
+          try {
+            cid = await api.wait.waitForConditionPassed({
+              condition: async () => {
+                const message = await this.getVideoMessage()
+                return message && message.cid
+              },
+            })
+          } catch (e) {
+            api.logger.error(gm.error.DOM_PARSE)
+            api.logger.error(e)
+          }
+          return String(cid || '')
         },
 
         /**
