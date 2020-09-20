@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站封面获取
-// @version         4.7.1.20200920
+// @version         4.7.2.20200921
 // @namespace       laster2800
 // @author          Laster2800
 // @description     B站视频播放页（普通模式、稍后再看模式）、番剧播放页、直播间添加获取封面的按钮
@@ -13,7 +13,7 @@
 // @include         *://live.bilibili.com/*
 // @exclude         *://live.bilibili.com/
 // @exclude         *://live.bilibili.com/*/*
-// @require         https://greasyfork.org/scripts/409641-api/code/API.js?version=849737
+// @require         https://greasyfork.org/scripts/409641-api/code/API.js?version=849812
 // @grant           GM_info
 // @grant           GM_addStyle
 // @grant           GM_download
@@ -82,7 +82,7 @@
 
   (async function() {
     try {
-      if (/\/video\//.test(location.href)) {
+      if (api.web.urlMatch(/\/video\//)) {
         addVideoBtn(
           await api.wait.waitForConditionPassed({
             condition: () => {
@@ -95,7 +95,7 @@
             },
           })
         )
-      } else if (/\/bangumi\/play\//.test(location.href)) {
+      } else if (api.web.urlMatch(/\/bangumi\/play\//)) {
         addBangumiBtn(
           await api.wait.waitForConditionPassed({
             condition: () => {
@@ -108,7 +108,7 @@
             },
           })
         )
-      } else if (/live\.bilibili\.com\/\d/.test(location.href)) {
+      } else if (api.web.urlMatch(/live\.bilibili\.com\/\d/)) {
         addLiveBtn(
           await api.wait.waitForConditionPassed({
             condition: () => {
@@ -121,7 +121,7 @@
             },
           })
         )
-      } else if (/\/medialist\/play\/watchlater(?=\/|$)/.test(location.href)) {
+      } else if (api.web.urlMatch(/\/medialist\/play\/watchlater(?=\/|$)/)) {
         addWatchlaterVideoBtn(
           await api.wait.waitForConditionPassed({
             condition: () => {
