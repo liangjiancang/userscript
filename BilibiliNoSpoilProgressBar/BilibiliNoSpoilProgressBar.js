@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站防剧透进度条
-// @version         1.3.1.20200916
+// @version         1.3.2.20200920
 // @namespace       laster2800
 // @author          Laster2800
 // @description     看比赛、看番总是被进度条剧透？装上这个脚本再也不用担心这些问题了
@@ -1337,6 +1337,7 @@
           api.logger.error(gm.error.DOM_PARSE)
           api.logger.error(e)
         })
+        // 隐藏视频预览上的当前播放时间（鼠标移至进度条上显示）
         api.wait.waitForElementLoaded('.bilibili-player-video-progress-detail-time').then(currentPoint => {
           if (_self.enabled && gm.config.disableCurrentPoint) {
             currentPoint.style.visibility = 'hidden'
@@ -1368,6 +1369,12 @@
           api.logger.error(gm.error.DOM_PARSE)
           api.logger.error(e)
         })
+        // 隐藏【上次看到XX:XX 跳转播放】中的时间（可能存在）
+        api.wait.waitForElementLoaded('.bilibili-player-video-toast-item-text').then(toast => {
+          if (toast.innerText.indexOf('上次看到') >= 0 && toast.innerText.indexOf('???') < 0) {
+            toast.innerHTML = toast.innerHTML.replace(/(?<=<span>)\d+:\d+(?=<\/span>)/, '???')
+          }
+        }).catch(() => {})
 
         // 隐藏高能进度条的【热度】曲线（可能存在）
         api.wait.waitForElementLoaded('#bilibili_pbp', _self.control).then(pbp => {
@@ -1764,18 +1771,43 @@
      * 更新用于模拟已播放进度的伪已播放条
      */
     processFakePlayed() {
+      const _self = this
+      if (!_self.enabled) {
+        return
+      }
       try {
-        const _self = this
         const player = unsafeWindow.player
-        const currentPlayRate = player.getCurrentTime() / player.getDuration()
-        let currentOffset
+        const playRate = player.getCurrentTime() / player.getDuration()
+        let offset
         const m = _self.progress.root.style.transform.match(/(?<=translateX\()[^)]+(?=\))/)
         if (m && m.length > 0) {
-          currentOffset = m[0]
+          offset = m[0]
         } else {
-          currentOffset = 0
+          offset = 0
         }
-        _self.fakePlayed.style.transform = `scaleX(${currentPlayRate + parseFloat(currentOffset) / 100})`
+        offset = parseFloat(offset)
+        // 若处于播放进度小于左侧预留区的特殊情况，不要进行处理
+        // 注意，一旦离开这种特殊状态，就再也不可能进度该特殊状态了，因为这样反而会暴露信息
+        if (offset !== 0) {
+          let reservedZone = false
+          let offsetPlayRate = offset + playRate * 100
+          const reservedLeft = gm.config.reservedLeft
+          const reservedRight = 100 - gm.config.reservedRight
+          // 当实际播放进度小于左侧保留区时，不作特殊处理，因为这样反而会暴露信息
+          if (offsetPlayRate < reservedLeft) {
+            offset += reservedLeft - offsetPlayRate
+            reservedZone = true
+          } else if (offsetPlayRate > reservedRight) {
+            offset -= offsetPlayRate - reservedRight
+            reservedZone = true
+          }
+          if (reservedZone) {
+            _self.progress.root.style.transform = `translateX(${offset}%)`
+            _self.scriptControl.transform = `translateX(${-offset}%)`
+            _self.fakeTrack.style.transform = `translateX(${-offset}%)`
+          }
+        }
+        _self.fakePlayed.style.transform = `scaleX(${playRate + offset / 100})`
       } catch (e) {
         api.logger.error(gm.error.DOM_PARSE)
         api.logger.error(e)
