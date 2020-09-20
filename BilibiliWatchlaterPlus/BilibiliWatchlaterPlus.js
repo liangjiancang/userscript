@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.6.0.20200915
+// @version         4.6.1.20200920
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -9,12 +9,14 @@
 // @supportURL      https://greasyfork.org/zh-CN/scripts/395456/feedback
 // @license         LGPL-3.0
 // @include         *://www.bilibili.com/*
-// @include         /^(.*):\/\/t\.bilibili\.com(\/([^\/]*\/?|pages\/nav\/index_new.*))?$/
+// @include         *://t.bilibili.com/*
 // @include         *://message.bilibili.com/*
 // @include         *://search.bilibili.com/*
 // @include         *://space.bilibili.com/*
 // @include         *://account.bilibili.com/*
-// @exclude         *://message.bilibili.com/pages/*
+// @exclude         *://message.bilibili.com/pages/nav/index_new_pc_sync
+// @exclude         *://t.bilibili.com/h5/dynamic/specification
+// @exclude         *://www.bilibili.com/page-proxy/game-nav.html
 // @require         https://greasyfork.org/scripts/409641-api/code/API.js?version=846937
 // @grant           GM_addStyle
 // @grant           GM_xmlhttpRequest
@@ -1635,7 +1637,7 @@
             api.logger.error(gm.error.DOM_PARSE)
             api.logger.error(e)
           }
-          return String(aid)
+          return String(aid || '')
         },
 
         /**
@@ -3505,15 +3507,17 @@
       script.init()
       script.addScriptMenu()
 
-      // 所有页面
-      if (gm.config.headerButton) {
-        webpage.addHeaderButton()
-      }
-      if (gm.config.fillWatchlaterStatus != Enums.fillWatchlaterStatus.never) {
-        webpage.fillWatchlaterStatus()
-      }
-      if (gm.config.removeHistory) {
-        webpage.processWatchlaterListDataSaving()
+      // 非特殊页面
+      if (!api.web.urlMatch(gm.regex.page_dynamicMenu)) {
+        if (gm.config.headerButton) {
+          webpage.addHeaderButton()
+        }
+        if (gm.config.fillWatchlaterStatus != Enums.fillWatchlaterStatus.never) {
+          webpage.fillWatchlaterStatus()
+        }
+        if (gm.config.removeHistory) {
+          webpage.processWatchlaterListDataSaving()
+        }
       }
 
       if (api.web.urlMatch(gm.regex.page_watchlaterList)) {
