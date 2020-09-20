@@ -17,7 +17,7 @@
 // @exclude         *://message.bilibili.com/pages/nav/index_new_pc_sync
 // @exclude         *://t.bilibili.com/h5/dynamic/specification
 // @exclude         *://www.bilibili.com/page-proxy/game-nav.html
-// @require         https://greasyfork.org/scripts/409641-api/code/API.js?version=849737
+// @require         https://greasyfork.org/scripts/409641-api/code/API.js?version=849812
 // @grant           GM_addStyle
 // @grant           GM_xmlhttpRequest
 // @grant           GM_registerMenuCommand
@@ -182,7 +182,7 @@
    */
   /**
    * @typedef GMObject_configMap_item
-   * @property {'checked' | 'value'} attr 对应 `DOM` 节点上的属性
+   * @property {'checked'|'value'} attr 对应 `DOM` 节点上的属性
    * @property {boolean} [manual] 配置保存时是否需要手动处理
    * @property {boolean} [needNotReload] 配置改变后是否不需要重新加载就能生效
    * @property {number} [configVersion] 涉及配置更改的最后配置版本
@@ -222,7 +222,7 @@
   /**
    * @callback api_videoInfo
    * @param {string} id `aid` 或 `bvid`
-   * @param {'aid' | 'bvid'} type `id` 类型
+   * @param {'aid'|'bvid'} type `id` 类型
    * @returns {string} 查询视频信息的 URL
    */
   /**
@@ -1598,7 +1598,7 @@
          * 获取视频信息
          * @async
          * @param {string} id `aid` 或 `bvid`
-         * @param {'aid' | 'bvid'} [type='bvid'] `id` 类型
+         * @param {'aid'|'bvid'} [type='bvid'] `id` 类型
          * @returns {Promise<JSON>} 视频信息
          */
         async getVideoInfo(id, type = 'bvid') {
@@ -2067,10 +2067,10 @@
       /**
        * 获取入口点击的链接设置
        * @param {headerButtonOp} op
-       * @returns {{href: string, target: '_self' | '_blank'}}
+       * @returns {{href: string, target: '_self'|'_blank'}}
        */
       function getHeaderButtonOpConfig(op) {
-        /** @type {{href: string, target: '_self' | '_blank'}} */
+        /** @type {{href: string, target: '_self'|'_blank'}} */
         const result = {}
         switch (op) {
           case Enums.headerButtonOp.openListInCurrent:
@@ -2119,7 +2119,7 @@
           case Enums.fillWatchlaterStatus.dynamicAndVideo:
             if (api.web.urlMatch(gm.regex.page_dynamic)) {
               fillWatchlaterStatus_dynamic()
-            } else if (api.web.urlMatch(gm.regex.page_videoNormalMode) || api.web.urlMatch(gm.regex.page_videoWatchlaterMode)) {
+            } else if (api.web.urlMatch([gm.regex.page_videoNormalMode, gm.regex.page_videoWatchlaterMode], 'OR')) {
               fillWatchlaterStatus_main()
             }
             return

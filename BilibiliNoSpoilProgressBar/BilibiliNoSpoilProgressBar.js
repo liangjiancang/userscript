@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站防剧透进度条
-// @version         1.3.4.20200920
+// @version         1.3.5.20200921
 // @namespace       laster2800
 // @author          Laster2800
 // @description     看比赛、看番总是被进度条剧透？装上这个脚本再也不用担心这些问题了
@@ -12,7 +12,7 @@
 // @include         *://www.bilibili.com/medialist/play/watchlater
 // @include         *://www.bilibili.com/medialist/play/watchlater/*
 // @include         *://www.bilibili.com/bangumi/play/*
-// @require         https://greasyfork.org/scripts/409641-api/code/API.js?version=849737
+// @require         https://greasyfork.org/scripts/409641-api/code/API.js?version=849812
 // @grant           GM_addStyle
 // @grant           GM_xmlhttpRequest
 // @grant           GM_registerMenuCommand
@@ -100,7 +100,7 @@
    */
   /**
    * @typedef GMObject_configMap_item
-   * @property {'checked' | 'value'} attr 对应 `DOM` 节点上的属性
+   * @property {'checked'|'value'} attr 对应 `DOM` 节点上的属性
    * @property {boolean} [manual] 配置保存时是否需要手动处理
    * @property {boolean} [needNotReload] 配置改变后是否不需要重新加载就能生效
    * @property {number} [configVersion] 涉及配置更改的最后配置版本
@@ -123,7 +123,7 @@
   /**
    * @callback api_videoInfo
    * @param {string} id `aid` 或 `bvid`
-   * @param {'aid' | 'bvid'} type `id` 类型
+   * @param {'aid'|'bvid'} type `id` 类型
    * @returns {string} 查询视频信息的 URL
    */
   /**
@@ -1229,7 +1229,7 @@
          * 获取视频信息
          * @async
          * @param {string} id `aid` 或 `bvid`
-         * @param {'aid' | 'bvid'} [type='bvid'] `id` 类型
+         * @param {'aid'|'bvid'} [type='bvid'] `id` 类型
          * @returns {Promise<JSON>} 视频信息
          */
         async getVideoInfo(id, type = 'bvid') {
@@ -1290,7 +1290,7 @@
      */
     async detectEnabled() {
       const _self = this
-      if (api.web.urlMatch(gm.regex.page_videoNormalMode) || api.web.urlMatch(gm.regex.page_videoWatchlaterMode)) {
+      if (api.web.urlMatch([gm.regex.page_videoNormalMode, gm.regex.page_videoWatchlaterMode], 'OR')) {
         try {
           const ulSet = gm.data.uploaderListSet()
           if (ulSet.has('*')) {
@@ -1517,7 +1517,7 @@
             }
           }
 
-          if (api.web.urlMatch(gm.regex.page_videoNormalMode) || api.web.urlMatch(gm.regex.page_videoWatchlaterMode)) {
+          if (api.web.urlMatch([gm.regex.page_videoNormalMode, gm.regex.page_videoWatchlaterMode], 'OR')) {
             if (_self.uploaderEnabled) {
               _self.scriptControl.uploaderEnabled.setAttribute('enabled', '')
             } else {
@@ -1734,7 +1734,7 @@
       }
 
       if (!gm.config.simpleScriptControl) {
-        if (api.web.urlMatch(gm.regex.page_videoNormalMode) || api.web.urlMatch(gm.regex.page_videoWatchlaterMode)) {
+        if (api.web.urlMatch([gm.regex.page_videoNormalMode, gm.regex.page_videoWatchlaterMode], 'OR')) {
           if (!gm.data.uploaderListSet().has('*')) { // * 匹配所有 UP 主不显示该按钮
             _self.scriptControl.uploaderEnabled.style.display = 'unset'
             _self.scriptControl.uploaderEnabled.onclick = async function() {
