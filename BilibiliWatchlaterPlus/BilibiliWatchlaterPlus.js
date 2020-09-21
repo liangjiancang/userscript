@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.6.3.20200921
+// @version         4.6.4.20200921
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -2674,16 +2674,17 @@
 
     /**
      * 根据 URL 上的查询参数作进一步处理
+     * @async
      */
-    processSearchParams() {
+    async processSearchParams() {
       const _self = this
       if (api.web.urlMatch(gm.regex.page_videoNormalMode)) {
         // 播放页面（正常模式）
-        _self.processAutoRemoveInNormalMode()
+        await _self.processAutoRemoveInNormalMode()
       } else if (api.web.urlMatch(gm.regex.page_videoWatchlaterMode)) {
         // 播放页面（稍后再看模式）
-        _self.forceConsistentVideoInWatchlaterMode()
-        _self.processAutoRemoveInWatchlaterMode()
+        await _self.forceConsistentVideoInWatchlaterMode()
+        await _self.processAutoRemoveInWatchlaterMode()
       }
 
       // 移除 URL 上的查询参数
@@ -2696,37 +2697,61 @@
           removed = true
         }
       })
-      if (removed) {
+      if (removed && location.href != url.href) {
         history.replaceState({}, null, url.href)
       }
     }
 
     /**
      * 对于稍后再看模式播放页，根据 URL 上的查询参数，强制切换到准确的视频上
+     * @async
+     * @param {boolean} [selfCall] 自调用
      */
-    async forceConsistentVideoInWatchlaterMode() {
+    async forceConsistentVideoInWatchlaterMode(selfCall) {
+      const _self = this
       const spBvid = gm.searchParams.get(`${gm.id}_bvid`)
       if (spBvid) {
         try {
           const playlist = await api.wait.waitForElementLoaded('.player-auxiliary-collapse-playlist')
-          const targetItem = await api.wait.waitForElementLoaded({
-            selector: `[data-bvid=${spBvid}]`,
-            base: playlist,
-            interval: 50,
-            timeout: 800,
-          })
-          const itemImg = targetItem.querySelector('.player-auxiliary-playlist-item-img')
-          const playingImg = itemImg.querySelector('.player-auxiliary-playlist-item-img-playing')
-          if (getComputedStyle(playingImg).display == 'none') {
-            itemImg.click()
+          try {
+            const targetItem = await api.wait.waitForElementLoaded({
+              selector: `[data-bvid=${spBvid}]`,
+              base: playlist,
+              interval: 50,
+              timeout: 800,
+            })
+            const itemImg = targetItem.querySelector('.player-auxiliary-playlist-item-img')
+            const playingImg = itemImg.querySelector('.player-auxiliary-playlist-item-img-playing')
+            if (getComputedStyle(playingImg).display == 'none') {
+              itemImg.click()
+            }
+          } catch (e) {
+            api.logger.error(gm.error.DOM_PARSE)
+            api.logger.error(e)
+
+            const result = confirm(`【${GM_info.script.name}】\n\n视频 ${spBvid} 不在稍后再看中，是否转到普通模式播放？`)
+            if (result) {
+              location.replace(`${gm.url.page_videoNormalMode}/${spBvid}`)
+            }
           }
         } catch (e) {
-          api.logger.error(gm.error.DOM_PARSE)
-          api.logger.error(e)
-
-          const result = confirm(`【${GM_info.script.name}】\n\n视频 ${spBvid} 不在稍后再看中，是否转到普通模式播放？`)
-          if (result) {
-            location.replace(`${gm.url.page_videoNormalMode}/${spBvid}`)
+          try {
+            if (selfCall) {
+              throw e
+            } else {
+              const rightContainer = await api.wait.waitForElementLoaded('.right-container')
+              const ob = new MutationObserver((records, observer) => {
+                observer.disconnect()
+                _self.forceConsistentVideoInWatchlaterMode(true)
+              })
+              ob.observe(rightContainer, {
+                childList: true,
+                subtree: true,
+              })
+            }
+          } catch (e) {
+            api.logger.error(gm.error.DOM_PARSE)
+            api.logger.error(e)
           }
         }
       }
