@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站防剧透进度条
-// @version         1.3.6.20200921
+// @version         1.3.7.20200921
 // @namespace       laster2800
 // @author          Laster2800
 // @description     看比赛、看番总是被进度条剧透？装上这个脚本再也不用担心这些问题了
@@ -1567,8 +1567,8 @@
 
     /**
      * 初始化防剧透功能
-     * @param {boolean} [selfCall] 自调用
      * @async
+     * @param {boolean} [selfCall] 自调用
      */
     async initNoSpoil(selfCall) {
       const _self = this
@@ -1653,10 +1653,11 @@
     /**
      * 初始化稍后再看模式播放页切换分 P 的处理
      * @async
+     * @param {boolean} [selfCall] 自调用
      */
-    async initSwitchingPartProcess() {
+    async initSwitchingPartProcess(selfCall) {
+      const _self = this
       try {
-        const _self = this
         let obActiveP, obList
         const list = await api.wait.waitForElementLoaded('.player-auxiliary-playlist-list')
         try {
@@ -1688,12 +1689,28 @@
         obList = new MutationObserver((records, observer) => {
           observer.disconnect()
           obActiveP && obActiveP.disconnect()
-          _self.initSwitchingPartProcess()
+          _self.initSwitchingPartProcess(true)
         })
         obList.observe(list, { childList: true })
       } catch (e) {
-        api.logger.error(gm.error.DOM_PARSE)
-        api.logger.error(e)
+        try {
+          if (selfCall) {
+            throw e
+          } else {
+            const rightContainer = await api.wait.waitForElementLoaded('.right-container')
+            const ob = new MutationObserver((records, observer) => {
+              observer.disconnect()
+              _self.initSwitchingPartProcess(true)
+            })
+            ob.observe(rightContainer, {
+              childList: true,
+              subtree: true,
+            })
+          }
+        } catch (e) {
+          api.logger.error(gm.error.DOM_PARSE)
+          api.logger.error(e)
+        }
       }
     }
 
