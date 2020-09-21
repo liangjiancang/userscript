@@ -1,10 +1,12 @@
 // ==UserScript==
 // @name            B站封面获取
-// @version         4.7.2.20200921
+// @version         4.7.3.20200921
 // @namespace       laster2800
 // @author          Laster2800
 // @description     B站视频播放页（普通模式、稍后再看模式）、番剧播放页、直播间添加获取封面的按钮
 // @icon            https://www.bilibili.com/favicon.ico
+// @homepage        https://greasyfork.org/zh-CN/scripts/395575
+// @supportURL      https://greasyfork.org/zh-CN/scripts/395575/feedback
 // @license         LGPL-3.0
 // @include         *://www.bilibili.com/video/*
 // @include         *://www.bilibili.com/bangumi/play/*
@@ -270,6 +272,7 @@
     }).then(playContainer => {
       bus.playContainer = playContainer
       bus.cover = playContainer.__vue__.playCover
+      bus.playId = playContainer.__vue__.playId
       setCover(bus.cover)
 
       api.dom.createLocationchangeEvent()
@@ -291,11 +294,19 @@
         },
         timeout: 2000,
       }).then(cover => {
-        bus.cover = cover
-        setCover(cover)
+        if (bus.cover != cover) {
+          bus.cover = cover
+          setCover(cover)
+        }
       }).catch(e => {
-        setCover(false)
-        api.logger.error(e)
+        const playId = bus.playContainer.__vue__.playId
+        if (bus.playId == playId) {
+          // 若 playId 也没有变化，说明更新是无必要的，没有错误
+          bus.playId = playId
+        } else {
+          setCover(false)
+          api.logger.error(e)
+        }
       })
     }
 
@@ -305,9 +316,12 @@
         preview.src = coverUrl
         addDownloadEvent(cover)
       } else {
-        cover.href = ''
+        cover.href = 'javascript:void(0)'
         preview.src = ''
-        cover.onclick = () => alert(errorMsg)
+        cover.onclick = function(e) {
+          e.preventDefault()
+          alert(errorMsg)
+        }
       }
       cover.title = gm.title || errorMsg
     }
