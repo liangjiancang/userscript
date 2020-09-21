@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站防剧透进度条
-// @version         1.3.5.20200921
+// @version         1.3.6.20200921
 // @namespace       laster2800
 // @author          Laster2800
 // @description     看比赛、看番总是被进度条剧透？装上这个脚本再也不用担心这些问题了
@@ -1390,11 +1390,13 @@
           api.logger.error(e)
         })
         // 隐藏【上次看到XX:XX 跳转播放】中的时间（可能存在）
-        api.wait.waitForElementLoaded('.bilibili-player-video-toast-item-text').then(toast => {
-          if (toast.innerText.indexOf('上次看到') >= 0 && toast.innerText.indexOf('???') < 0) {
-            toast.innerHTML = toast.innerHTML.replace(/(?<=<span>)\d+:\d+(?=<\/span>)/, '???')
-          }
-        }).catch(() => {})
+        if (_self.enabled) {
+          api.wait.waitForElementLoaded('.bilibili-player-video-toast-item-text').then(toast => {
+            if (toast.innerText.indexOf('上次看到') >= 0 && toast.innerText.indexOf('???') < 0) {
+              toast.innerHTML = toast.innerHTML.replace(/(?<=<span>)\d+:\d+(?=<\/span>)/, '???')
+            }
+          }).catch(() => {})
+        }
 
         // 隐藏高能进度条的【热度】曲线（可能存在）
         api.wait.waitForElementLoaded('#bilibili_pbp', _self.control).then(pbp => {
