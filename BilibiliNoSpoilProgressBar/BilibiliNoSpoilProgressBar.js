@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站防剧透进度条
-// @version         1.3.9.20200923
+// @version         1.3.10.20200923
 // @namespace       laster2800
 // @author          Laster2800
 // @description     看比赛、看番总是被进度条剧透？装上这个脚本再也不用担心这些问题了
@@ -104,6 +104,8 @@
    * @property {'checked'|'value'} attr 对应 `DOM` 节点上的属性
    * @property {boolean} [manual] 配置保存时是否需要手动处理
    * @property {boolean} [needNotReload] 配置改变后是否不需要重新加载就能生效
+   * @property {number} [min] 最小值
+   * @property {number} [max] 最大值
    * @property {number} [configVersion] 涉及配置更改的最后配置版本
    */
   /**
@@ -192,7 +194,7 @@
       disableDuration: { default: true, attr: 'checked' },
       disablePbp: { default: true, attr: 'checked' },
       disablePreview: { default: false, attr: 'checked' },
-      offsetTransformFactor: { default: 0.65, attr: 'value', manual: true, needNotReload: true, configVersion: 20200911.1 },
+      offsetTransformFactor: { default: 0.65, attr: 'value', manual: true, needNotReload: true, max: 5.0, configVersion: 20200911.1 },
       offsetLeft: { default: 40, attr: 'value', manual: true, needNotReload: true, configVersion: 20200911 },
       offsetRight: { default: 40, attr: 'value', manual: true, needNotReload: true, configVersion: 20200911 },
       reservedLeft: { default: 10, attr: 'value', manual: true, needNotReload: true },
@@ -621,7 +623,7 @@
                 <button id="gm-save">保存</button>
                 <button id="gm-cancel">取消</button>
               </div>
-              <div id="gm-reset" title="重置脚本设置及内部数据，也许能解决脚本运行错误的问题。该操作不会清除已保存的稍后再看数据，因此不会导致移除记录丢失。无法解决请联系脚本作者：${GM_info.script.supportURL}">初始化脚本</div>
+              <div id="gm-reset" title="重置脚本设置及内部数据，也许能解决脚本运行错误的问题。无法解决请联系脚本作者：${GM_info.script.supportURL}">初始化脚本</div>
               <a id="gm-changelog" title="显示更新日志" href="${gm.url.gm_changelog}" target="_blank">更新日志</a>
             </div>
             <div class="gm-shadow"></div>
@@ -734,17 +736,17 @@
                 } else {
                   value = v0
                 }
-                if (parseFloat(value) >= 5) {
+                if (parseFloat(value) >= gm.configMap.offsetTransformFactor.max) {
                   if (value.endsWith('.')) {
-                    value = '5.'
+                    value = `${gm.configMap.offsetTransformFactor.max.toFixed(0)}.`
                   } else {
-                    value = '5.0'
+                    value = gm.configMap.offsetTransformFactor.max.toFixed(2)
                   }
                 }
               } else {
                 value = parseFloat(v0)
-                if (value > 5) {
-                  value = 5
+                if (value > gm.configMap.offsetTransformFactor.max) {
+                  value = gm.configMap.offsetTransformFactor.max // 此处不要设置小数点
                 }
                 value = String(value)
               }
@@ -767,7 +769,7 @@
               this.value = ''
             } else {
               let value = parseInt(v0)
-              if (value > 100) {
+              if (value > 100) { // 不能大于 100%
                 value = 100
               }
               this.value = value
@@ -1722,6 +1724,16 @@
       _self.scriptControl.bangumiEnabled = _self.scriptControl.querySelector(`#${gm.id}-bangumiEnabled`)
       _self.scriptControl.setting = _self.scriptControl.querySelector(`#${gm.id}-setting`)
 
+      // 临时将 z-index 调至底层，不要影响信息的显示
+      // 不通过样式直接将 z-index 设为最底层，是因为会被 pbp 遮盖导致点击不了
+      // 问题的关键在于，B 站已经给进度条和 pbp 内所有元素都设定好 z-index，只能用这种奇技淫巧来解决
+      _self.progress.bar.addEventListener('mouseenter', function() {
+        _self.scriptControl.style.zIndex = '-1'
+      })
+      _self.progress.bar.addEventListener('mouseleave', function() {
+        _self.scriptControl.style.zIndex = ''
+      })
+
       _self.scriptControl.enabled.handler = function() {
         if (_self.enabled) {
           this.setAttribute('enabled', '')
@@ -1871,9 +1883,9 @@
           left: 0;
           bottom: 0;
           color: var(--light-text-color);
-          margin-bottom: 0.8em;
+          margin-bottom: 1em;
           font-size: 13px;
-          z-index: -1;
+          z-index: 10000;
         }
 
         .${gm.id}-scriptControl > * {
