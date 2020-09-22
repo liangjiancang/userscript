@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站防剧透进度条
-// @version         1.3.7.20200921
+// @version         1.3.8.20200922
 // @namespace       laster2800
 // @author          Laster2800
 // @description     看比赛、看番总是被进度条剧透？装上这个脚本再也不用担心这些问题了
@@ -100,6 +100,7 @@
    */
   /**
    * @typedef GMObject_configMap_item
+   * @property {*} default 默认值
    * @property {'checked'|'value'} attr 对应 `DOM` 节点上的属性
    * @property {boolean} [manual] 配置保存时是否需要手动处理
    * @property {boolean} [needNotReload] 配置改变后是否不需要重新加载就能生效
@@ -141,11 +142,6 @@
    */
   /**
    * @typedef GMObject_const
-   * @property {number} defaultOffsetTransformFactor 进度条极端偏移因子
-   * @property {number} defaultOffsetLeft 结束点进度条滑块最小位置的默认值
-   * @property {number} defaultOffsetRight 结束点进度条滑块最大位置的默认值
-   * @property {number} defaultReservedLeft 进度条左侧预留区默认值
-   * @property {number} defaultReservedRight 进度条右侧预留区默认值
    * @property {number} fadeTime UI 渐变时间（单位：ms）
    */
   /**
@@ -190,20 +186,20 @@
       reloadAfterSetting: true,
     },
     configMap: {
-      bangumiEnabled: { attr: 'checked', needNotReload: true },
-      simpleScriptControl: { attr: 'checked' },
-      disableCurrentPoint: { attr: 'checked', configVersion: 20200912 },
-      disableDuration: { attr: 'checked' },
-      disablePbp: { attr: 'checked' },
-      disablePreview: { attr: 'checked' },
-      offsetTransformFactor: { attr: 'value', manual: true, needNotReload: true, configVersion: 20200911.1 },
-      offsetLeft: { attr: 'value', manual: true, needNotReload: true, configVersion: 20200911 },
-      offsetRight: { attr: 'value', manual: true, needNotReload: true, configVersion: 20200911 },
-      reservedLeft: { attr: 'value', manual: true, needNotReload: true },
-      reservedRight: { attr: 'value', manual: true, needNotReload: true },
-      postponeOffset: { attr: 'checked', needNotReload: true, configVersion: 20200911 },
-      openSettingAfterConfigUpdate: { attr: 'checked' },
-      reloadAfterSetting: { attr: 'checked', needNotReload: true },
+      bangumiEnabled: { default: false, attr: 'checked', needNotReload: true },
+      simpleScriptControl: { default: false, attr: 'checked' },
+      disableCurrentPoint: { default: true, attr: 'checked', configVersion: 20200912 },
+      disableDuration: { default: true, attr: 'checked' },
+      disablePbp: { default: true, attr: 'checked' },
+      disablePreview: { default: false, attr: 'checked' },
+      offsetTransformFactor: { default: 0.65, attr: 'value', manual: true, needNotReload: true, configVersion: 20200911.1 },
+      offsetLeft: { default: 40, attr: 'value', manual: true, needNotReload: true, configVersion: 20200911 },
+      offsetRight: { default: 40, attr: 'value', manual: true, needNotReload: true, configVersion: 20200911 },
+      reservedLeft: { default: 10, attr: 'value', manual: true, needNotReload: true },
+      reservedRight: { default: 10, attr: 'value', manual: true, needNotReload: true },
+      postponeOffset: { default: true, attr: 'checked', needNotReload: true, configVersion: 20200911 },
+      openSettingAfterConfigUpdate: { default: true, attr: 'checked' },
+      reloadAfterSetting: { default: true, attr: 'checked', needNotReload: true },
     },
     data: {
       uploaderList: null,
@@ -221,11 +217,6 @@
       page_bangumi: /\.com\/bangumi\/play(?=\/|$)/,
     },
     const: {
-      defaultOffsetTransformFactor: 0.65,
-      defaultOffsetLeft: 40,
-      defaultOffsetRight: 40,
-      defaultReservedLeft: 10,
-      defaultReservedRight: 10,
       fadeTime: 400,
     },
     menu: {
@@ -301,13 +292,8 @@
      * 初始化全局对象
      */
     initGMObject() {
-      gm.config = {
-        ...gm.config,
-        offsetTransformFactor: gm.const.defaultOffsetTransformFactor,
-        offsetLeft: gm.const.defaultOffsetLeft,
-        offsetRight: gm.const.defaultOffsetRight,
-        reservedLeft: gm.const.defaultReservedLeft,
-        reservedRight: gm.const.defaultReservedRight,
+      for (const name in gm.configMap) {
+        gm.config[name] = gm.configMap[name].default
       }
 
       gm.data = {
@@ -771,7 +757,7 @@
           el.offsetTransformFactor.onblur = function() {
             let value = this.value
             if (value === '') {
-              value = gm.const.defaultOffsetTransformFactor
+              value = gm.configMap.offsetTransformFactor.default
             }
             this.value = parseFloat(value).toFixed(2)
           }
@@ -789,22 +775,22 @@
           }
           el.offsetLeft.onblur = function() {
             if (this.value === '') {
-              this.value = gm.const.defaultOffsetLeft
+              this.value = gm.configMap.offsetLeft.default
             }
           }
           el.offsetRight.onblur = function() {
             if (this.value === '') {
-              this.value = gm.const.defaultOffsetRight
+              this.value = gm.configMap.offsetRight.default
             }
           }
           el.reservedLeft.onblur = function() {
             if (this.value === '') {
-              this.value = gm.const.defaultReservedLeft
+              this.value = gm.configMap.reservedLeft.default
             }
           }
           el.reservedRight.onblur = function() {
             if (this.value === '') {
-              this.value = gm.const.defaultReservedRight
+              this.value = gm.configMap.reservedRight.default
             }
           }
         }
@@ -824,11 +810,11 @@
           }
           el.reset.onclick = () => _self.resetScript()
           el.resetParam.onclick = () => {
-            el.offsetTransformFactor.value = gm.const.defaultOffsetTransformFactor
-            el.offsetLeft.value = gm.const.defaultOffsetLeft
-            el.offsetRight.value = gm.const.defaultOffsetRight
-            el.reservedLeft.value = gm.const.defaultReservedLeft
-            el.reservedRight.value = gm.const.defaultReservedRight
+            el.offsetTransformFactor.value = gm.configMap.offsetTransformFactor.default
+            el.offsetLeft.value = gm.configMap.offsetLeft.default
+            el.offsetRight.value = gm.configMap.offsetRight.default
+            el.reservedLeft.value = gm.configMap.reservedLeft.default
+            el.reservedRight.value = gm.configMap.reservedRight.default
           }
           el.uploaderList.onclick = () => {
             _self.openUploaderList()
@@ -862,19 +848,19 @@
           let reservedLeft = parseInt(el.reservedLeft.value)
           let reservedRight = parseInt(el.reservedRight.value)
           if (isNaN(offsetTransformFactor)) {
-            offsetTransformFactor = gm.const.defaultOffsetTransformFactor
+            offsetTransformFactor = gm.configMap.offsetTransformFactor.default
           }
           if (isNaN(offsetLeft)) {
-            offsetLeft = gm.const.defaultOffsetLeft
+            offsetLeft = gm.configMap.offsetLeft.default
           }
           if (isNaN(offsetRight)) {
-            offsetRight = gm.const.defaultOffsetRight
+            offsetRight = gm.configMap.offsetRight.default
           }
           if (isNaN(reservedLeft)) {
-            reservedLeft = gm.const.defaultReservedLeft
+            reservedLeft = gm.configMap.reservedLeft.default
           }
           if (isNaN(reservedRight)) {
-            reservedRight = gm.const.defaultReservedRight
+            reservedRight = gm.configMap.reservedRight.default
           }
           if (offsetTransformFactor != gm.config.offsetTransformFactor) {
             gm.config.offsetTransformFactor = offsetTransformFactor
