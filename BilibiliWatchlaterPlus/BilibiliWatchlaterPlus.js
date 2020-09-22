@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.7.0.20200922
+// @version         4.7.1.20200923
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -162,9 +162,9 @@
    * @property {openHeaderMenuLink} openHeaderMenuLink 顶栏弹出菜单链接点击行为
    * @property {menuScrollbarSetting} menuScrollbarSetting 弹出菜单的滚动条设置
    * @property {boolean} removeHistory 稍后再看移除记录
-   * @property {removeHistorySavePoint} removeHistorySavePoint 保存稍后再看数据的时间点
+   * @property {removeHistorySavePoint} removeHistorySavePoint 保存稍后再看历史数据的时间点
    * @property {boolean} removeHistoryFuzzyCompare 开启模糊比对模式以舍弃重复数据
-   * @property {number} removeHistorySaves 稍后再看数据保存次数
+   * @property {number} removeHistorySaves 稍后再看历史数据保存次数
    * @property {number} removeHistorySearchTimes 历史回溯深度
    * @property {fillWatchlaterStatus} fillWatchlaterStatus 填充稍后再看状态
    * @property {boolean} videoButton 视频播放页稍后再看状态快速切换
@@ -187,6 +187,8 @@
    * @property {'checked'|'value'} attr 对应 `DOM` 节点上的属性
    * @property {boolean} [manual] 配置保存时是否需要手动处理
    * @property {boolean} [needNotReload] 配置改变后是否不需要重新加载就能生效
+   * @property {number} [min] 最小值
+   * @property {number} [max] 最大值
    * @property {number} [configVersion] 涉及配置更改的最后配置版本
    */
   /**
@@ -196,9 +198,9 @@
    */
   /**
    * @async
-   * @callback watchlaterListData 通过懒加载方式获取当前稍后再看列表数据
+   * @callback watchlaterListData 通过懒加载方式获取稍后再看列表数据
    * @param {boolean} [reload] 是否重新加载稍后再看列表数据
-   * @returns {Promise<GMObject_data_item0[]>} 当前稍后再看数据
+   * @returns {Promise<GMObject_data_item0[]>} 稍后再看列表数据
    */
   /**
    * `api_queryWatchlaterList` 返回数据中的视频单元
@@ -218,8 +220,8 @@
    */
   /**
    * @typedef GMObject_data
-   * @property {removeHistoryData} removeHistoryData 为生成移除记录而保存的稍后再看数据
-   * @property {watchlaterListData} watchlaterListData 当前稍后再看数据
+   * @property {removeHistoryData} removeHistoryData 为生成移除记录而保存的稍后再看历史数据
+   * @property {watchlaterListData} watchlaterListData 当前稍后再看列表数据
    */
   /**
    * @callback api_videoInfo
@@ -250,9 +252,7 @@
    */
   /**
    * @typedef GMObject_const
-   * @property {number} rhsMin 稍后再看数据最小保存次数
-   * @property {number} rhsMax 稍后再看数据最大保存次数
-   * @property {number} rhsWarning 稍后再看数据保存数警告线
+   * @property {number} rhsWarning 稍后再看历史数据保存数警告线
    * @property {number} fadeTime UI 渐变时间（单位：ms）
    * @property {number} textFadeTime 文字渐变时间（单位：ms）
    */
@@ -294,7 +294,7 @@
       removeHistory: { default: true, attr: 'checked', manual: true },
       removeHistorySavePoint: { default: Enums.removeHistorySavePoint.listAndMenu, attr: 'value', configVersion: 20200815 },
       removeHistoryFuzzyCompare: { default: true, attr: 'checked', needNotReload: true, configVersion: 20200819 },
-      removeHistorySaves: { default: 64, attr: 'value', manual: true, needNotReload: true, configVersion: 20200721 },
+      removeHistorySaves: { default: 64, attr: 'value', min: 1, max: 1024, manual: true, needNotReload: true, configVersion: 20200721 },
       removeHistorySearchTimes: { default: 16, attr: 'value', manual: true, needNotReload: true, configVersion: 20200716 },
       fillWatchlaterStatus: { default: Enums.fillWatchlaterStatus.dynamicAndVideo, attr: 'value', configVersion: 20200819 },
       videoButton: { default: true, attr: 'checked' },
@@ -304,7 +304,7 @@
       forceConsistentVideo: { default: true, attr: 'checked', configVersion: 20200723 },
       removeButton_removeAll: { default: false, attr: 'checked', configVersion: 20200722 },
       removeButton_removeWatched: { default: false, attr: 'checked', configVersion: 20200722 },
-      watchlaterListCacheValidPeriod: { default: 30, attr: 'value', manual: true, needNotReload: true, configVersion: 20200922 },
+      watchlaterListCacheValidPeriod: { default: 30, attr: 'value', max: 9999, manual: true, needNotReload: true, configVersion: 20200922 },
       openSettingAfterConfigUpdate: { default: true, attr: 'checked', configVersion: 20200805 },
       reloadAfterSetting: { default: true, attr: 'checked', needNotReload: true, configVersion: 20200715 },
     },
@@ -332,8 +332,6 @@
       page_dynamicMenu: /\.com\/pages\/nav\/index_new#(?=\/|$)/,
     },
     const: {
-      rhsMin: 1,
-      rhsMax: 1024, // 经过性能测试，放宽到 1024 应该没有太大问题
       rhsWarning: 256,
       fadeTime: 400,
       textFadeTime: 100,
@@ -349,7 +347,7 @@
     },
     error: {
       DOM_PARSE: `DOM解析错误。大部分情况下是由于网络加载速度不足造成的，不影响脚本工作；否则就是B站网页改版，请联系脚本作者进行修改：${GM_info.script.supportURL}`,
-      NETWORK: `网络连接错误，出现这个问题有可能是因为网络加载速度不足或者B站后台API被改动。也不排除是脚本内部数据出错造成的，初始化脚本或清空稍后再看数据也许能解决问题。无法解决请联系脚本作者：${GM_info.script.supportURL}`,
+      NETWORK: `网络连接错误，出现这个问题有可能是因为网络加载速度不足或者B站后台API被改动。也不排除是脚本内部数据出错造成的，初始化脚本或清空稍后再看历史数据也许能解决问题。无法解决请联系脚本作者：${GM_info.script.supportURL}`,
       REDIRECT: `重定向错误，可能是网络问题，如果重新加载页面依然出错请联系脚本作者：${GM_info.script.supportURL}`,
       UNKNOWN: `未知错误，请联系脚本作者：${GM_info.script.supportURL}`,
     },
@@ -447,7 +445,7 @@
                   data.setMaxSize(gm.config.removeHistorySaves)
                 }
               } else {
-                data = new PushQueue(gm.config.removeHistorySaves, gm.const.rhsMax)
+                data = new PushQueue(gm.config.removeHistorySaves, gm.configMap.removeHistorySaves.max)
                 GM_setValue('removeHistoryData', data)
               }
               _.removeHistoryData = data
@@ -551,7 +549,7 @@
               const removeHistoryData = GM_getValue('removeHistoryData')
               if (removeHistoryData) {
                 Object.setPrototypeOf(removeHistoryData, PushQueue.prototype)
-                removeHistoryData.setCapacity(gm.const.rhsMax)
+                removeHistoryData.setCapacity(gm.configMap.removeHistorySaves.max)
                 GM_setValue('removeHistoryData', removeHistoryData)
               }
             } else {
@@ -642,8 +640,8 @@
       if (gm.config.removeHistory) {
         // 稍后再看移除记录
         GM_registerMenuCommand('稍后再看移除记录', () => _self.openRemoveHistory()) // 注意不要直接传函数对象，否则 this 不对
-        // 清空稍后再看数据
-        GM_registerMenuCommand('清空稍后再看数据', () => _self.cleanRemoveHistoryData())
+        // 清空稍后再看历史数据
+        GM_registerMenuCommand('清空稍后再看历史数据', () => _self.cleanRemoveHistoryData())
       }
       // 强制初始化
       GM_registerMenuCommand('初始化脚本', () => _self.resetScript())
@@ -742,7 +740,7 @@
                       </label>
                     </td>
                   </tr>
-                  <tr class="gm-subitem" title="选择在何时保存稍后再看数据。无论选择哪一种方式，在同一个URL对应的页面下至多保存一次。">
+                  <tr class="gm-subitem" title="选择在何时保存稍后再看历史数据。无论选择哪一种方式，在同一个URL对应的页面下至多保存一次。">
                       <td>
                         <div>
                           <span>为了生成移除记录，</span>
@@ -755,7 +753,7 @@
                         </div>
                       </td>
                   </tr>
-                  <tr class="gm-subitem" title="开启模糊比对模式以舍弃重复数据，从而提高数据密度并降低开销，但可能会造成部分记录的遗漏。关闭后，不会判断获取到的稍后再看数据是否重复，直接进行保存。">
+                  <tr class="gm-subitem" title="开启模糊比对模式以舍弃重复数据，从而提高数据密度并降低开销，但可能会造成部分记录的遗漏。关闭后，不会判断获取到的稍后再看列表数据是否重复，直接进行保存。">
                     <td>
                       <label>
                         <span>开启模糊比对模式以舍弃重复数据</span>
@@ -764,17 +762,17 @@
                       </label>
                     </td>
                   </tr>
-                  <tr class="gm-subitem" title="较大的数值可能会带来较大的开销，经过性能测试，作者认为在设置在${gm.const.rhsWarning}以下时，即使在极限情况下也不会产生让人能察觉到的卡顿（存取总时不超过100ms），但在没有特殊要求的情况下依然不建议设置到这么大。该项修改后，会立即对过期记录进行清理，重新修改为原来的值无法还原被清除的记录，设置为比原来小的值需慎重！（范围：${gm.const.rhsMin} ~ ${gm.const.rhsMax}）">
+                  <tr class="gm-subitem" title="较大的数值可能会带来较大的开销，经过性能测试，作者认为在设置在${gm.const.rhsWarning}以下时，即使在极限情况下也不会产生让人能察觉到的卡顿（存取总时不超过100ms），但在没有特殊要求的情况下依然不建议设置到这么大。该项修改后，会立即对过期记录进行清理，重新修改为原来的值无法还原被清除的记录，设置为比原来小的值需慎重！（范围：${gm.configMap.removeHistorySaves.min} ~ ${gm.configMap.removeHistorySaves.max}）">
                     <td>
                       <div>
-                        <span>保存最近多少次稍后再看数据</span>
-                        <span id="gm-cleanRemoveHistoryData" class="gm-hint-option" title="清理已保存的稍后再看数据，不可恢复！">清空数据(0条)</span>
+                        <span>稍后再看历史数据保存次数</span>
+                        <span id="gm-cleanRemoveHistoryData" class="gm-hint-option" title="清理已保存的稍后再看历史数据，不可恢复！">清空数据(0条)</span>
                         <input id="gm-removeHistorySaves" type="text">
                         <span id="gm-rhsWarning" class="gm-warning" title="">⚠</span>
                       </div>
                     </td>
                   </tr>
-                  <tr class="gm-subitem" title="搜寻时在最近多少次稍后再看数据中查找，设置较小的值能较好地定位最近移除的视频。设置较大的值几乎不会对性能造成影响，但不能大于最近稍后再看数据保存次数。">
+                  <tr class="gm-subitem" title="搜寻时在最近保存的多少次稍后再看历史数据中查找，设置较小的值能较好地定位最近移除的视频。设置较大的值几乎不会对性能造成影响，但不能大于最近稍后再看历史数据保存次数。">
                     <td>
                       <div>
                         <span>默认历史回溯深度</span>
@@ -912,7 +910,7 @@
                 <button id="gm-save">保存</button>
                 <button id="gm-cancel">取消</button>
               </div>
-              <div id="gm-reset" title="重置脚本设置及内部数据，也许能解决脚本运行错误的问题。该操作不会清除已保存的稍后再看数据，因此不会导致移除记录丢失。无法解决请联系脚本作者：${GM_info.script.supportURL}">初始化脚本</div>
+              <div id="gm-reset" title="重置脚本设置及内部数据，也许能解决脚本运行错误的问题。该操作不会清除已保存的稍后再看历史数据，因此不会导致移除记录丢失。无法解决请联系脚本作者：${GM_info.script.supportURL}">初始化脚本</div>
               <a id="gm-changelog" title="显示更新日志" href="${gm.url.gm_changelog}" target="_blank">更新日志</a>
             </div>
             <div class="gm-shadow"></div>
@@ -969,7 +967,7 @@
           el.rhfcInformation = gm.el.setting.querySelector('#gm-rhfcInformation')
           api.message.advanced(el.rhfcInformation, `
             <div style="line-height:1.6em">
-              模糊比对模式：设当前时间点获取到的稍后再看数据为A，上一次获取到的稍后再看数据为B。若A与B列表中的第一个视频以及总视频数相同，则认为A与B完全一致，并将A舍弃。
+              模糊比对模式：设当前时间点获取到的稍后再看列表数据为A，上一次获取到的稍后再看列表数据为B。若A与B列表中的第一个视频以及总视频数相同，则认为A与B完全一致，并将A舍弃。
             </div>
           `, '💬', { width: '36em', flagSize: '2em', disabled: () => el.rhfcInformation.parentNode.hasAttribute('disabled') })
           el.fwsInformation = gm.el.setting.querySelector('#gm-fwsInformation')
@@ -989,7 +987,7 @@
           `, '💬', { width: '36em', flagSize: '2em' }) // 谨慎地调这个宽度，不然又会引起字体发虚问题
 
           el.rhWarning = gm.el.setting.querySelector('#gm-rhWarning')
-          api.message.advanced(el.rhWarning, '关闭移除记录，或将稍后再看数据保存次数设置为比原来小的值，都会造成对内部过期历史数据的清理！', '⚠')
+          api.message.advanced(el.rhWarning, '关闭移除记录，或将稍后再看历史数据保存次数设置为比原来小的值，都会造成对内部过期历史数据的清理！', '⚠')
           el.rhsWarning = gm.el.setting.querySelector('#gm-rhsWarning')
           api.message.advanced(el.rhsWarning, `该项设置过大时，在极端情况下可能会造成明显的卡顿，一般不建议该项超过${gm.const.rhsWarning}。当然，如果对机器的读写性能自信，可以无视该警告。`, '⚠')
 
@@ -1035,10 +1033,10 @@
               this.value = ''
             } else {
               let value = parseInt(v0)
-              if (value > gm.const.rhsMax) {
-                value = gm.const.rhsMax
-              } else if (value < gm.const.rhsMin) {
-                value = gm.const.rhsMin
+              if (value > gm.configMap.removeHistorySaves.max) {
+                value = gm.configMap.removeHistorySaves.max
+              } else if (value < gm.configMap.removeHistorySaves.min) {
+                value = gm.configMap.removeHistorySaves.min
               }
               this.value = value
             }
@@ -1061,11 +1059,12 @@
             if (v0 === '') {
               this.value = ''
             } else {
+              // removeHistorySearchTimes 的极值受 removeHistorySaves 约束
               let value = parseInt(v0)
-              if (value > gm.const.rhsMax) {
-                value = gm.const.rhsMax
-              } else if (value < gm.const.rhsMin) {
-                value = gm.const.rhsMin
+              if (value > gm.configMap.removeHistorySaves.max) {
+                value = gm.configMap.removeHistorySaves.max
+              } else if (value < gm.configMap.removeHistorySaves.min) {
+                value = gm.configMap.removeHistorySaves.min
               }
               this.value = value
             }
@@ -1084,6 +1083,12 @@
             const v0 = this.value.replace(/[^\d]/g, '')
             if (v0 === '') {
               this.value = ''
+            } else {
+              let value = parseInt(v0)
+              if (value > gm.configMap.watchlaterListCacheValidPeriod.max) {
+                value = gm.configMap.watchlaterListCacheValidPeriod.max
+              }
+              this.value = value
             }
           }
           el.watchlaterListCacheValidPeriod.onblur = function() {
@@ -1337,10 +1342,10 @@
             <div class="gm-history-page">
               <div class="gm-title">稍后再看移除记录</div>
               <div class="gm-comment">
-                <div>根据最近<span id="gm-save-times">0</span>次打开列表页面时获取到的<span id="gm-record-num">0</span>条不重复的记录生成（总计<span id="gm-record-num-repeat">0</span>条），共筛选出<span id="gm-remove-num">0</span>条移除记录。排序由视频最后一次加入到稍后再看的时间决定，与移除出稍后再看的时间无关。如果记录太多难以定位被误删的视频，请在下方设置减少历史回溯深度。鼠标移动到内容区域可向下滚动翻页，点击对话框以外的位置退出。</div>
+                <div>根据最近保存的<span id="gm-save-times">0</span>次稍后再看历史数据中的<span id="gm-record-num">0</span>条不重复记录生成（总计<span id="gm-record-num-repeat">0</span>条），共筛选出<span id="gm-remove-num">0</span>条移除记录。排序由视频最后一次加入到稍后再看的时间决定，与移除出稍后再看的时间无关。如果记录太多难以定位被误删的视频，请在下方设置减少历史回溯深度。鼠标移动到内容区域可向下滚动翻页，点击对话框以外的位置退出。</div>
                 <div style="text-align:right;font-weight:bold">
                   <span id="gm-history-sort" style="text-decoration:underline;cursor:pointer">倒序</span>
-                  <span title="搜寻时在最近多少次稍后再看数据中查找，设置较小的值能较好地定位最近移除的视频。按下回车键或输入框失去焦点时刷新数据，输入框为空时自动设为可取的最大值。">历史回溯深度：<input type="text" id="gm-search-times" value="0"></span>
+                  <span title="搜寻时在最近保存的多少次稍后再看历史数据中查找，设置较小的值能较好地定位最近移除的视频。按下回车键或输入框失去焦点时刷新数据，输入框为空时自动设为可取的最大值。">历史回溯深度：<input type="text" id="gm-search-times" value="0"></span>
                 </div>
               </div>
             </div>
@@ -1480,7 +1485,7 @@
               }
               el.content.innerHTML = result.join('<br>')
             } else {
-              el.content.innerText = `在最近 ${el.searchTimes.current} 次稍后再看数据中没有找到被移除的记录，请尝试增大历史回溯深度`
+              el.content.innerText = `在最近保存的 ${el.searchTimes.current} 次稍后再看历史数据中没有找到被移除的记录，请尝试增大历史回溯深度`
               el.content.style.color = 'gray'
             }
             el.content.style.opacity = '1'
@@ -1508,7 +1513,7 @@
      * 初始化脚本
      */
     resetScript() {
-      const result = confirm(`【${GM_info.script.name}】\n\n是否要初始化脚本？\n\n注意：本操作不会清理内部保存的稍后再看数据，要清理稍后再看数据请在用户设置中操作。`)
+      const result = confirm(`【${GM_info.script.name}】\n\n是否要初始化脚本？\n\n注意：本操作不会清理内部保存的稍后再看历史数据，要清理稍后再看历史数据请在用户设置中操作。`)
       if (result) {
         const keyNoReset = { removeHistorySaves: true, removeHistoryData: true }
         const gmKeys = GM_listValues()
@@ -1527,7 +1532,7 @@
      * 清空 removeHistoryData
      */
     cleanRemoveHistoryData() {
-      const result = confirm(`【${GM_info.script.name}】\n\n是否要清空稍后再看数据？`)
+      const result = confirm(`【${GM_info.script.name}】\n\n是否要清空稍后再看历史数据？`)
       if (result) {
         this.closeMenuItem('setting')
         GM_deleteValue('removeHistorySaves')
@@ -1712,7 +1717,9 @@
         },
 
         /**
-         * 保存稍后再看数据，用于后续操作
+         * 保存稍后再看列表数据，用于后续操作
+         *
+         * 此操作回引起稍后再看历史数据的保存
          * @async
          * @param {boolean} [reload] 是否重新加载稍后再看列表数据
          */
@@ -1760,10 +1767,10 @@
         },
 
         /**
-         * 获取稍后再看数据以 `aid` 为键的映射
+         * 获取稍后再看列表数据以 `aid` 为键的映射
          * @async
          * @param {boolean} [reload] 是否重新加载稍后再看列表数据
-         * @returns {Map<string, GMObject_data_item0>} 稍后再看数据以 `aid` 为键的映射
+         * @returns {Map<string, GMObject_data_item0>} 稍后再看列表数据以 `aid` 为键的映射
          */
         async getWatchlaterDataMap(reload) {
           const _ = this._
@@ -2865,10 +2872,11 @@
     }
 
     /**
-     * 根据 `removeHistorySavePoint` 保存稍后再看数据
+     * 根据 `removeHistorySavePoint` 保存稍后再看历史数据
      */
     processWatchlaterListDataSaving() {
       const _self = this
+      // 执行列表数据的保存会引起历史数据的保存
       switch (gm.config.removeHistorySavePoint) {
         case Enums.removeHistorySavePoint.list:
           if (api.web.urlMatch(gm.regex.page_watchlaterList)) {
