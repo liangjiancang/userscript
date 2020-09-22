@@ -2,6 +2,12 @@
 
 本日志只记录用户友好的更新说明，影响不大的问题修复与修改不作记录，具体修改见 [提交记录](https://gitee.com/liangjiancang/userscript/commits/master/BilibiliWatchlaterPlus/BilibiliWatchlaterPlus.js)。
 
+## V4.7
+
+1. 脚本：对稍后再看列表数据进行缓存，在缓存的有效期内将会使用缓存来代替网络请求，除非有必要确保数据的正确性。
+2. 功能实现：对稍后再看列表数据缓存有效期进行设置。
+3. 代码：配置的默认值硬编码进 configMap 中，而不再作为脚本常量看待。
+
 ## V4.6
 
 1. 脚本：兼容性处理。
@@ -50,8 +56,8 @@
 
 ## V3.5
 
-1. 代码：重构，OOP 化。
-2. API：强加各类 API，在一些回调上通过 `this` 附加必要信息。
+1. API：强加各类 API，在一些回调上通过 `this` 附加必要信息。
+2. 代码：重构，OOP 化。
 
 ## V3.4
 

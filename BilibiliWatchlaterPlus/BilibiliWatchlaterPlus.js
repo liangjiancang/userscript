@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.6.4.20200921
+// @version         4.7.0.20200922
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -174,6 +174,7 @@
    * @property {boolean} forceConsistentVideo 确保视频的一致性
    * @property {boolean} removeButton_removeAll 移除【一键清空】按钮
    * @property {boolean} removeButton_removeWatched 移除【移除已观看视频】按钮
+   * @property {number} watchlaterListCacheValidPeriod 稍后再看列表数据缓存有效期（单位：秒）
    * @property {boolean} openSettingAfterConfigUpdate 功能性更新后打开设置页面
    * @property {boolean} reloadAfterSetting 设置生效后刷新页面
    */
@@ -182,6 +183,7 @@
    */
   /**
    * @typedef GMObject_configMap_item
+   * @property {*} default 默认值
    * @property {'checked'|'value'} attr 对应 `DOM` 节点上的属性
    * @property {boolean} [manual] 配置保存时是否需要手动处理
    * @property {boolean} [needNotReload] 配置改变后是否不需要重新加载就能生效
@@ -250,8 +252,6 @@
    * @typedef GMObject_const
    * @property {number} rhsMin 稍后再看数据最小保存次数
    * @property {number} rhsMax 稍后再看数据最大保存次数
-   * @property {number} defaultRhs 稍后再看数据的默认保存次数
-   * @property {number} defaultRhst 默认历史回溯深度
    * @property {number} rhsWarning 稍后再看数据保存数警告线
    * @property {number} fadeTime UI 渐变时间（单位：ms）
    * @property {number} textFadeTime 文字渐变时间（单位：ms）
@@ -282,51 +282,31 @@
   const gm = {
     id: 'gm395456',
     configVersion: GM_getValue('configVersion'),
-    configUpdate: 20200819,
+    configUpdate: 20200922,
     searchParams: new URL(location.href).searchParams,
-    config: {
-      headerButton: true,
-      headerButtonOpL: Enums.headerButtonOp.openListInCurrent,
-      headerButtonOpR: Enums.headerButtonOp.openUserSetting,
-      openHeaderMenuLink: Enums.openHeaderMenuLink.openInCurrent,
-      menuScrollbarSetting: Enums.menuScrollbarSetting.beautify,
-      removeHistory: true,
-      removeHistorySavePoint: Enums.removeHistorySavePoint.listAndMenu,
-      removeHistoryFuzzyCompare: true,
-      removeHistorySaves: null,
-      removeHistorySearchTimes: null,
-      fillWatchlaterStatus: Enums.fillWatchlaterStatus.dynamicAndVideo,
-      videoButton: true,
-      autoRemove: Enums.autoRemove.openFromList,
-      redirect: false,
-      openListVideo: Enums.openListVideo.openInCurrent,
-      forceConsistentVideo: true,
-      removeButton_removeAll: false,
-      removeButton_removeWatched: false,
-      openSettingAfterConfigUpdate: true,
-      reloadAfterSetting: true,
-    },
+    config: {},
     configMap: {
-      headerButton: { attr: 'checked' },
-      headerButtonOpL: { attr: 'value', configVersion: 20200716 },
-      headerButtonOpR: { attr: 'value', configVersion: 20200716 },
-      openHeaderMenuLink: { attr: 'value', configVersion: 20200717 },
-      menuScrollbarSetting: { attr: 'value', configVersion: 20200722 },
-      removeHistory: { attr: 'checked', manual: true },
-      removeHistorySavePoint: { attr: 'value', configVersion: 20200815 },
-      removeHistoryFuzzyCompare: { attr: 'checked', needNotReload: true, configVersion: 20200819 },
-      removeHistorySaves: { attr: 'value', manual: true, needNotReload: true, configVersion: 20200721 },
-      removeHistorySearchTimes: { attr: 'value', manual: true, needNotReload: true, configVersion: 20200716 },
-      fillWatchlaterStatus: { attr: 'value', configVersion: 20200819 },
-      videoButton: { attr: 'checked' },
-      autoRemove: { attr: 'value', configVersion: 20200805 },
-      redirect: { attr: 'checked' },
-      openListVideo: { attr: 'value', configVersion: 20200717 },
-      forceConsistentVideo: { attr: 'checked', configVersion: 20200723 },
-      removeButton_removeAll: { attr: 'checked', configVersion: 20200722 },
-      removeButton_removeWatched: { attr: 'checked', configVersion: 20200722 },
-      openSettingAfterConfigUpdate: { attr: 'checked', configVersion: 20200805 },
-      reloadAfterSetting: { attr: 'checked', needNotReload: true, configVersion: 20200715 },
+      headerButton: { default: true, attr: 'checked' },
+      headerButtonOpL: { default: Enums.headerButtonOp.openListInCurrent, attr: 'value', configVersion: 20200716 },
+      headerButtonOpR: { default: Enums.headerButtonOp.openUserSetting, attr: 'value', configVersion: 20200716 },
+      openHeaderMenuLink: { default: Enums.openHeaderMenuLink.openInCurrent, attr: 'value', configVersion: 20200717 },
+      menuScrollbarSetting: { default: Enums.menuScrollbarSetting.beautify, attr: 'value', configVersion: 20200722 },
+      removeHistory: { default: true, attr: 'checked', manual: true },
+      removeHistorySavePoint: { default: Enums.removeHistorySavePoint.listAndMenu, attr: 'value', configVersion: 20200815 },
+      removeHistoryFuzzyCompare: { default: true, attr: 'checked', needNotReload: true, configVersion: 20200819 },
+      removeHistorySaves: { default: 64, attr: 'value', manual: true, needNotReload: true, configVersion: 20200721 },
+      removeHistorySearchTimes: { default: 16, attr: 'value', manual: true, needNotReload: true, configVersion: 20200716 },
+      fillWatchlaterStatus: { default: Enums.fillWatchlaterStatus.dynamicAndVideo, attr: 'value', configVersion: 20200819 },
+      videoButton: { default: true, attr: 'checked' },
+      autoRemove: { default: Enums.autoRemove.openFromList, attr: 'value', configVersion: 20200805 },
+      redirect: { default: false, attr: 'checked' },
+      openListVideo: { default: Enums.openListVideo.openInCurrent, attr: 'value', configVersion: 20200717 },
+      forceConsistentVideo: { default: true, attr: 'checked', configVersion: 20200723 },
+      removeButton_removeAll: { default: false, attr: 'checked', configVersion: 20200722 },
+      removeButton_removeWatched: { default: false, attr: 'checked', configVersion: 20200722 },
+      watchlaterListCacheValidPeriod: { default: 30, attr: 'value', manual: true, needNotReload: true, configVersion: 20200922 },
+      openSettingAfterConfigUpdate: { default: true, attr: 'checked', configVersion: 20200805 },
+      reloadAfterSetting: { default: true, attr: 'checked', needNotReload: true, configVersion: 20200715 },
     },
     data: {
       removeHistoryData: null,
@@ -354,8 +334,6 @@
     const: {
       rhsMin: 1,
       rhsMax: 1024, // 经过性能测试，放宽到 1024 应该没有太大问题
-      defaultRhs: 64, // 就目前的 PC 运算力，即使达到 gm.const.rhsWarning 且在极限情况下也不会有明显的卡顿
-      defaultRhst: 16,
       rhsWarning: 256,
       fadeTime: 400,
       textFadeTime: 100,
@@ -427,9 +405,10 @@
     initAtDocumentStart() {
       // document-start 级用户配置读取
       if (gm.configVersion > 0) {
-        gm.config.redirect = this.method.gmValidate('redirect', gm.config.redirect)
+        gm.config.redirect = this.method.gmValidate('redirect', gm.configMap.redirect.default)
       } else {
-        GM_setValue('redirect', gm.config.redirect)
+        gm.config.redirect = gm.configMap.redirect.default
+        GM_setValue('redirect', gm.configMap.redirect.default)
       }
     }
 
@@ -446,10 +425,11 @@
      * 初始化全局对象
      */
     initGMObject() {
-      gm.config = {
-        ...gm.config,
-        removeHistorySaves: gm.const.defaultRhs,
-        removeHistorySearchTimes: gm.const.defaultRhst,
+      const cfgDocumentStart = { redirect: true } // document-start 时期就处理过的配置
+      for (const name in gm.configMap) {
+        if (!cfgDocumentStart[name]) {
+          gm.config[name] = gm.configMap[name].default
+        }
       }
 
       gm.data = {
@@ -495,6 +475,20 @@
               }
             }
 
+            if (!reload && gm.config.watchlaterListCacheValidPeriod > 0) {
+              const cacheTime = GM_getValue('watchlaterListCacheTime')
+              if (cacheTime) {
+                const current = new Date().getTime()
+                if (current - cacheTime < gm.config.watchlaterListCacheValidPeriod * 1000) {
+                  const list = GM_getValue('watchlaterListCache')
+                  if (list) {
+                    _.watchlaterListData = list
+                    return list
+                  }
+                }
+              }
+            }
+
             _.watchlaterListData = null // 一旦重新获取，将原来的数据舍弃
             _.watchlaterListData_loading = true
             try {
@@ -504,6 +498,10 @@
               })
               const json = JSON.parse(resp.responseText)
               const current = json.data.list
+              if (gm.config.watchlaterListCacheValidPeriod > 0) {
+                GM_setValue('watchlaterListCacheTime', new Date().getTime())
+                GM_setValue('watchlaterListCache', current)
+              }
               _.watchlaterListData = current
               return current
             } catch (e) {
@@ -879,6 +877,16 @@
                     </td>
                   </tr>
 
+                  <tr class="gm-item" title="在缓存的有效期内将会使用缓存来代替网络请求，除非有必要确保数据的正确性。设置为0时禁止使用缓存。">
+                    <td><div>脚本设置</div></td>
+                    <td>
+                      <div>
+                        <span>稍后再看列表数据缓存有效期（单位：秒）</span>
+                        <input id="gm-watchlaterListCacheValidPeriod" type="text">
+                      </div>
+                    </td>
+                  </tr>
+
                   <tr class="gm-item" title="功能性更新后，是否打开用户设置？">
                     <td><div>用户设置</div></td>
                     <td>
@@ -1047,6 +1055,7 @@
             setRhWaring()
             setRhsWarning()
           }
+
           el.removeHistorySearchTimes.oninput = function() {
             const v0 = this.value.replace(/[^\d]/g, '')
             if (v0 === '') {
@@ -1068,6 +1077,18 @@
               el.removeHistorySaves.value = this.value
               setRhWaring()
               setRhsWarning()
+            }
+          }
+
+          el.watchlaterListCacheValidPeriod.oninput = function() {
+            const v0 = this.value.replace(/[^\d]/g, '')
+            if (v0 === '') {
+              this.value = ''
+            }
+          }
+          el.watchlaterListCacheValidPeriod.onblur = function() {
+            if (this.value === '') {
+              this.value = gm.configMap.watchlaterListCacheValidPeriod.default
             }
           }
         }
@@ -1128,7 +1149,7 @@
               // 果：removeHistorySaves & removeHistoryData
               gm.data.removeHistoryData().setMaxSize(rhsV)
               gm.config.removeHistorySaves = rhsV
-              GM_setValue('removeHistorySaves', gm.config.removeHistorySaves)
+              GM_setValue('removeHistorySaves', rhsV)
               GM_setValue('removeHistoryData', gm.data.removeHistoryData())
               // 不需要修改 needReload
             }
@@ -1137,7 +1158,7 @@
             const rhstV = parseInt(el.removeHistorySearchTimes.value)
             if (rhstV != gm.config.removeHistorySearchTimes && !isNaN(rhstV)) {
               gm.config.removeHistorySearchTimes = rhstV
-              GM_setValue('removeHistorySearchTimes', gm.config.removeHistorySearchTimes)
+              GM_setValue('removeHistorySearchTimes', rhstV)
               // 不需要修改 needReload
             }
           } else if (resetMaxSize) {
@@ -1145,6 +1166,12 @@
             // 果：removeHistoryData
             gm.data.removeHistoryData(true)
             GM_deleteValue('removeHistoryData')
+          }
+
+          const wlcvp = parseInt(el.watchlaterListCacheValidPeriod.value)
+          if (wlcvp != gm.config.watchlaterListCacheValidPeriod && !isNaN(wlcvp)) {
+            gm.config.watchlaterListCacheValidPeriod = wlcvp
+            GM_setValue('watchlaterListCacheValidPeriod', wlcvp)
           }
 
           _self.closeMenuItem('setting')
@@ -1509,7 +1536,7 @@
           location.reload()
         } else {
           if (gm.config.removeHistory) {
-            gm.config.removeHistorySaves = gm.const.defaultRhs
+            gm.config.removeHistorySaves = gm.configMap.removeHistorySaves.default
             gm.data.removeHistoryData(true)
           }
         }
@@ -1686,6 +1713,7 @@
 
         /**
          * 保存稍后再看数据，用于后续操作
+         * @async
          * @param {boolean} [reload] 是否重新加载稍后再看列表数据
          */
         saveWatchlaterListData(reload) {
@@ -1694,7 +1722,7 @@
             if (!_.watchLaterListData_saved || reload) {
               if (!_.watchlaterListData_saving) {
                 _.watchlaterListData_saving = true
-                gm.data.watchlaterListData(reload).then(current => {
+                return gm.data.watchlaterListData(reload).then(current => {
                   if (current && current.length > 0) {
                     if (gm.config.removeHistoryFuzzyCompare) {
                       const last = gm.data.removeHistoryData().get(0)
@@ -2303,7 +2331,7 @@
             gm.searchParams = new URL(location.href).searchParams
             const removed = await _self.processAutoRemoveInNormalMode()
             if (gm.config.removeHistory && gm.config.removeHistorySavePoint == Enums.removeHistorySavePoint.anypage) {
-              _self.method.saveWatchlaterListData(true)
+              await _self.method.saveWatchlaterListData(true)
               reloaded = true
             }
             const status = removed ? false : await _self.method.getVideoWatchlaterStatusByAid(bus.aid, !reloaded)
@@ -2473,7 +2501,7 @@
             gm.searchParams = new URL(location.href).searchParams
             const removed = await _self.processAutoRemoveInWatchlaterMode()
             if (gm.config.removeHistory && gm.config.removeHistorySavePoint == Enums.removeHistorySavePoint.anypage) {
-              _self.method.saveWatchlaterListData(true)
+              await _self.method.saveWatchlaterListData(true)
               reloaded = true
             }
             const status = removed ? false : await _self.method.getVideoWatchlaterStatusByAid(bus.aid, !reloaded)
