@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.7.1.20200923
+// @version         4.7.2.20200923
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -294,7 +294,7 @@
       removeHistory: { default: true, attr: 'checked', manual: true },
       removeHistorySavePoint: { default: Enums.removeHistorySavePoint.listAndMenu, attr: 'value', configVersion: 20200815 },
       removeHistoryFuzzyCompare: { default: true, attr: 'checked', needNotReload: true, configVersion: 20200819 },
-      removeHistorySaves: { default: 64, attr: 'value', min: 1, max: 1024, manual: true, needNotReload: true, configVersion: 20200721 },
+      removeHistorySaves: { default: 64, attr: 'value', manual: true, needNotReload: true, min: 1, max: 1024, configVersion: 20200721 },
       removeHistorySearchTimes: { default: 16, attr: 'value', manual: true, needNotReload: true, configVersion: 20200716 },
       fillWatchlaterStatus: { default: Enums.fillWatchlaterStatus.dynamicAndVideo, attr: 'value', configVersion: 20200819 },
       videoButton: { default: true, attr: 'checked' },
@@ -304,7 +304,7 @@
       forceConsistentVideo: { default: true, attr: 'checked', configVersion: 20200723 },
       removeButton_removeAll: { default: false, attr: 'checked', configVersion: 20200722 },
       removeButton_removeWatched: { default: false, attr: 'checked', configVersion: 20200722 },
-      watchlaterListCacheValidPeriod: { default: 30, attr: 'value', max: 9999, manual: true, needNotReload: true, configVersion: 20200922 },
+      watchlaterListCacheValidPeriod: { default: 30, attr: 'value', manual: true, needNotReload: true, max: 9999, configVersion: 20200922 },
       openSettingAfterConfigUpdate: { default: true, attr: 'checked', configVersion: 20200805 },
       reloadAfterSetting: { default: true, attr: 'checked', needNotReload: true, configVersion: 20200715 },
     },
