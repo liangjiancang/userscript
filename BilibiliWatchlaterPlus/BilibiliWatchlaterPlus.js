@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.7.3.20200927
+// @version         4.7.4.20200927
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -283,7 +283,7 @@
   const gm = {
     id: 'gm395456',
     configVersion: GM_getValue('configVersion'),
-    configUpdate: 20200922,
+    configUpdate: 20200927,
     searchParams: new URL(location.href).searchParams,
     config: {},
     configMap: {
@@ -305,7 +305,7 @@
       forceConsistentVideo: { default: true, attr: 'checked', configVersion: 20200723 },
       removeButton_removeAll: { default: false, attr: 'checked', configVersion: 20200722 },
       removeButton_removeWatched: { default: false, attr: 'checked', configVersion: 20200722 },
-      watchlaterListCacheValidPeriod: { default: 30, attr: 'value', manual: true, needNotReload: true, max: 9999, configVersion: 20200922 },
+      watchlaterListCacheValidPeriod: { default: 15, attr: 'value', manual: true, needNotReload: true, max: 600, configVersion: 20200927 },
       openSettingAfterConfigUpdate: { default: true, attr: 'checked', configVersion: 20200805 },
       reloadAfterSetting: { default: true, attr: 'checked', needNotReload: true, configVersion: 20200715 },
     },
@@ -583,6 +583,11 @@
           // 4.0.0.20200806
           if (gm.configVersion < 20200805) {
             GM_deleteValue('resetAfterFnUpdate')
+          }
+
+          // 4.7.4.20200927
+          if (gm.configVersion < 20200927) {
+            GM_setValue('watchlaterListCacheValidPeriod', 15)
           }
         }
       }
@@ -876,12 +881,13 @@
                     </td>
                   </tr>
 
-                  <tr class="gm-item" title="在本地缓存的有效期内将会使用本地缓存来代替网络请求，除非有必要确保数据的正确性。设置为0时禁止使用本地缓存。">
+                  <tr class="gm-item" title="稍后再看列表数据本地缓存有效期（单位：秒）">
                     <td><div>脚本设置</div></td>
                     <td>
                       <div>
-                        <span>稍后再看列表数据本地缓存有效期（单位：秒）</span>
+                        <span>稍后再看列表数据本地缓存有效期</span>
                         <input id="gm-watchlaterListCacheValidPeriod" type="text">
+                        <span id="gm-wlcvpInformation" class="gm-information" title="">💬</span>
                       </div>
                     </td>
                   </tr>
@@ -985,7 +991,15 @@
               <p>假设先打开列表页面，此时列表的第1个视频是A，然后在其他页面将B视频添加到稍后再看，最后回到刚才列表页面点击A视频，结果播放的会是此时真正位于列表第1位的B视频。</p>
               <p>在正常使用的情况下，这个问题出现的频率并不高；此外，如果没有开启模式切换功能，在修复成功后浏览器的历史回退功能会受到影响，且修复过程可能会伴随页面内容切换和不明显的URL变动。如果不希望见到这些问题，或者只是单纯不想在页面引入不必要的脚本操作，请选择关闭。</p>
             </div>
-          `, '💬', { width: '36em', flagSize: '2em' }) // 谨慎地调这个宽度，不然又会引起字体发虚问题
+          `, '💬', { width: '36em', flagSize: '2em' })
+          el.wlcvpInformation = gm.el.setting.querySelector('#gm-wlcvpInformation')
+          api.message.advanced(el.wlcvpInformation, `
+            <div style="text-indent:2em;line-height:1.6em">
+              <p>在本地缓存的有效期内脚本将会使用本地缓存来代替网络请求，除非是在有必要确保数据正确性的场合。设置为 <b>0</b> 可以禁止使用本地缓存。</p>
+              <p>本地缓存无法确保数据的正确性，设置过长时甚至可能导致各种诡异的现象。请根据个人需要将本地缓存有效期设置为一个合理的值。</p>
+              <p>不推荐设置为 0 将其完全禁用，而是设置为一个较小值（如 2）。这样几乎不会影响正确性，同时保留从 0 到 1 的质变。</p>
+            </div>
+          `, '💬', { width: '36em', flagSize: '2em' })
 
           el.rhWarning = gm.el.setting.querySelector('#gm-rhWarning')
           api.message.advanced(el.rhWarning, '关闭移除记录，或将稍后再看历史数据保存次数设置为比原来小的值，都会造成对内部过期历史数据的清理！', '⚠')
@@ -3115,7 +3129,6 @@
         #${gm.id} .gm-setting input[type=text] {
           float: right;
           border-width: 0 0 1px 0;
-          border-radius: 0;
           width: 2.4em;
           text-align: right;
           padding: 0 0.2em;
@@ -3305,6 +3318,7 @@
         #${gm.id} button {
           color: var(--text-color);
           outline: none;
+          border-radius: 0;
           appearance: auto; /* 番剧播放页该项被覆盖 */
         }
 
