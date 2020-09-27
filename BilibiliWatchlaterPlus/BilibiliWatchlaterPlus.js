@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.7.2.20200923
+// @version         4.7.3.20200927
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -174,7 +174,7 @@
    * @property {boolean} forceConsistentVideo 确保视频的一致性
    * @property {boolean} removeButton_removeAll 移除【一键清空】按钮
    * @property {boolean} removeButton_removeWatched 移除【移除已观看视频】按钮
-   * @property {number} watchlaterListCacheValidPeriod 稍后再看列表数据缓存有效期（单位：秒）
+   * @property {number} watchlaterListCacheValidPeriod 稍后再看列表数据本地缓存有效期（单位：秒）
    * @property {boolean} openSettingAfterConfigUpdate 功能性更新后打开设置页面
    * @property {boolean} reloadAfterSetting 设置生效后刷新页面
    */
@@ -200,6 +200,7 @@
    * @async
    * @callback watchlaterListData 通过懒加载方式获取稍后再看列表数据
    * @param {boolean} [reload] 是否重新加载稍后再看列表数据
+   * @param {boolean} [cache=true] 是否使用本地缓存
    * @returns {Promise<GMObject_data_item0[]>} 稍后再看列表数据
    */
   /**
@@ -453,7 +454,7 @@
             return _.removeHistoryData
           }
         },
-        watchlaterListData: async reload => {
+        watchlaterListData: async (reload, cache = true) => {
           const _ = gm.data._
           if (!_.watchlaterListData || reload) {
             if (_.watchlaterListData_loading) {
@@ -473,7 +474,7 @@
               }
             }
 
-            if (!reload && gm.config.watchlaterListCacheValidPeriod > 0) {
+            if (!reload && cache && gm.config.watchlaterListCacheValidPeriod > 0) {
               const cacheTime = GM_getValue('watchlaterListCacheTime')
               if (cacheTime) {
                 const current = new Date().getTime()
@@ -875,11 +876,11 @@
                     </td>
                   </tr>
 
-                  <tr class="gm-item" title="在缓存的有效期内将会使用缓存来代替网络请求，除非有必要确保数据的正确性。设置为0时禁止使用缓存。">
+                  <tr class="gm-item" title="在本地缓存的有效期内将会使用本地缓存来代替网络请求，除非有必要确保数据的正确性。设置为0时禁止使用本地缓存。">
                     <td><div>脚本设置</div></td>
                     <td>
                       <div>
-                        <span>稍后再看列表数据缓存有效期（单位：秒）</span>
+                        <span>稍后再看列表数据本地缓存有效期（单位：秒）</span>
                         <input id="gm-watchlaterListCacheValidPeriod" type="text">
                       </div>
                     </td>
@@ -1676,11 +1677,12 @@
          * 根据 `aid` 获取视频的稍后再看状态
          * @async
          * @param {string} aid 视频 `aid`
-         * @param {boolean} [noCache] 判断时是否禁用缓存数据（并刷新缓存）
+         * @param {boolean} [pageCache=true] 是否使用页面缓存
+         * @param {boolean} [localCache=true] 是否使用本地缓存
          * @returns {Promise<boolean>} 视频是否在稍后再看中
          */
-        async getVideoWatchlaterStatusByAid(aid, noCache) {
-          const current = await gm.data.watchlaterListData(noCache)
+        async getVideoWatchlaterStatusByAid(aid, pageCache = true, localCache = true) {
+          const current = await gm.data.watchlaterListData(!pageCache, localCache)
           if (current && current.length > 0) {
             for (const e of current) {
               if (aid == e.aid) {
@@ -1770,13 +1772,14 @@
          * 获取稍后再看列表数据以 `aid` 为键的映射
          * @async
          * @param {boolean} [reload] 是否重新加载稍后再看列表数据
+         * @param {boolean} [cache=true] 是否使用稍后再看列表数据本地缓存
          * @returns {Map<string, GMObject_data_item0>} 稍后再看列表数据以 `aid` 为键的映射
          */
-        async getWatchlaterDataMap(reload) {
+        async getWatchlaterDataMap(reload, cache = true) {
           const _ = this._
           if (!_.watchlaterDataMap || reload) {
             const map = new Map()
-            const current = await gm.data.watchlaterListData(reload) || []
+            const current = await gm.data.watchlaterListData(reload, cache) || []
             for (const item of current) {
               map.set(String(item.aid), item)
             }
@@ -2341,7 +2344,7 @@
               await _self.method.saveWatchlaterListData(true)
               reloaded = true
             }
-            const status = removed ? false : await _self.method.getVideoWatchlaterStatusByAid(bus.aid, !reloaded)
+            const status = removed ? false : await _self.method.getVideoWatchlaterStatusByAid(bus.aid, reloaded)
             btn.added = status
             cb.checked = status
           } catch (e) {
@@ -2511,7 +2514,7 @@
               await _self.method.saveWatchlaterListData(true)
               reloaded = true
             }
-            const status = removed ? false : await _self.method.getVideoWatchlaterStatusByAid(bus.aid, !reloaded)
+            const status = removed ? false : await _self.method.getVideoWatchlaterStatusByAid(bus.aid, reloaded)
             btn.added = status
             cb.checked = status
           } catch (e) {
@@ -2620,7 +2623,7 @@
               if (api.dom.containsClass(addedNode, 'list-box')) {
                 let watchlaterListData = null
                 if (gm.config.forceConsistentVideo) {
-                  watchlaterListData = await gm.data.watchlaterListData()
+                  watchlaterListData = await gm.data.watchlaterListData(false, false) // 此处若使用本地缓存可能会导致列表同步错位
                 }
                 const listBox = addedNode
                 const list = listBox.firstElementChild.children
@@ -2804,7 +2807,7 @@
         const _self = this
         const aid = await _self.method.getAid()
         if (alwaysAutoRemove) { // 如果总是自动移除，要检查视频是否已经在稍后再看中，确定在再移除
-          const status = await _self.method.getVideoWatchlaterStatusByAid(aid)
+          const status = await _self.method.getVideoWatchlaterStatusByAid(aid) // 偏向于认为视频在其中，因此即使缓存很可能有问题也没有必要纠正
           if (!status) {
             return true
           }
