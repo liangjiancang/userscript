@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站防剧透进度条
-// @version         1.3.10.20200923
+// @version         1.3.11.20200927
 // @namespace       laster2800
 // @author          Laster2800
 // @description     看比赛、看番总是被进度条剧透？装上这个脚本再也不用担心这些问题了
@@ -817,6 +817,7 @@
             el.offsetRight.value = gm.configMap.offsetRight.default
             el.reservedLeft.value = gm.configMap.reservedLeft.default
             el.reservedRight.value = gm.configMap.reservedRight.default
+            el.postponeOffset.checked = gm.configMap.postponeOffset.default
           }
           el.uploaderList.onclick = () => {
             _self.openUploaderList()
@@ -1982,7 +1983,6 @@
         #${gm.id} .gm-setting input[type=text] {
           float: right;
           border-width: 0 0 1px 0;
-          border-radius: 0;
           width: 2.4em;
           text-align: right;
           padding: 0 0.2em;
@@ -2166,6 +2166,7 @@
         #${gm.id} button {
           color: var(--text-color);
           outline: none;
+          border-radius: 0;
           appearance: auto; /* 番剧播放页该项被覆盖 */
         }
 
