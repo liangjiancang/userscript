@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.7.4.20200927
+// @version         4.7.5.20200927
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -885,7 +885,7 @@
                     <td><div>脚本设置</div></td>
                     <td>
                       <div>
-                        <span>稍后再看列表数据本地缓存有效期</span>
+                        <span>稍后再看列表数据本地缓存有效期（单位：秒）</span>
                         <input id="gm-watchlaterListCacheValidPeriod" type="text">
                         <span id="gm-wlcvpInformation" class="gm-information" title="">💬</span>
                       </div>
