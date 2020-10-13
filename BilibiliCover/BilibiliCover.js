@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站封面获取
-// @version         4.7.3.20200921
+// @version         4.7.4.20201013
 // @namespace       laster2800
 // @author          Laster2800
 // @description     B站视频播放页（普通模式、稍后再看模式）、番剧播放页、直播间添加获取封面的按钮
@@ -16,7 +16,6 @@
 // @exclude         *://live.bilibili.com/
 // @exclude         *://live.bilibili.com/*/*
 // @require         https://greasyfork.org/scripts/409641-api/code/API.js?version=849812
-// @grant           GM_info
 // @grant           GM_addStyle
 // @grant           GM_download
 // @grant           GM_setValue
@@ -143,21 +142,14 @@
   })()
 
   function addVideoBtn(atr) {
-    const coverMeta = document.querySelector('head meta[itemprop=image]')
-    const coverUrl = coverMeta && coverMeta.content
+    const bus = {}
     const cover = document.createElement('a')
     const errorMsg = '获取失败，若非网络问题请提供反馈'
     cover.innerText = '获取封面'
     cover.target = '_blank'
-    if (coverUrl) {
-      cover.href = coverUrl
-      addDownloadEvent(cover)
-      createPreview(cover).src = coverUrl
-    } else {
-      cover.onclick = () => alert(errorMsg)
-    }
-    cover.title = gm.title || errorMsg
     cover.className = 'appeal-text'
+    cover.onclick = e => e.stopPropagation()
+    const preview = createPreview(cover)
 
     // 确保与其他脚本配合时相关 UI 排列顺序不会乱
     const gm395456 = atr.querySelector('[id|=gm395456]')
@@ -165,6 +157,70 @@
       atr.insertBefore(cover, gm395456)
     } else {
       atr.appendChild(cover)
+    }
+
+    api.wait.waitForConditionPassed({
+      condition: () => {
+        const coverMeta = document.querySelector('head meta[itemprop=image]')
+        return coverMeta && coverMeta.content
+      },
+      timeout: 2000,
+    }).then(cover => {
+      bus.cover = cover
+      bus.aid = unsafeWindow.aid
+      setCover(bus.cover)
+
+      api.dom.createLocationchangeEvent()
+      window.addEventListener('locationchange', function() {
+        updateCover()
+      })
+    }).catch(e => {
+      setCover(false)
+      api.logger.error(e)
+    })
+
+    const updateCover = () => {
+      api.wait.waitForConditionPassed({
+        condition: () => {
+          const coverMeta = document.querySelector('head meta[itemprop=image]')
+          const cover = coverMeta && coverMeta.content
+          if (cover && cover != bus.cover) {
+            return cover
+          }
+        },
+        timeout: 2000,
+      }).then(cover => {
+        if (bus.cover != cover) {
+          bus.cover = cover
+          setCover(cover)
+        }
+      }).catch(e => {
+        const aid = unsafeWindow.aid
+        if (bus.aid == aid) {
+          // 若 aid 也没有变化，说明更新是无必要的，没有错误
+          bus.aid = aid
+        } else {
+          setCover(false)
+          api.logger.error(e)
+        }
+      })
+    }
+
+    const setCover = coverUrl => {
+      if (coverUrl) {
+        cover.href = coverUrl
+        preview.src = coverUrl
+        addDownloadEvent(cover)
+        createPreview(cover).src = coverUrl
+      } else {
+        cover.href = 'javascript:void(0)'
+        preview.src = ''
+        cover.onclick = function(e) {
+          e.preventDefault()
+          alert(errorMsg)
+        }
+      }
+      cover.title = gm.title || errorMsg
     }
   }
 
@@ -277,14 +333,14 @@
 
       api.dom.createLocationchangeEvent()
       window.addEventListener('locationchange', function() {
-        updateCoverUrl()
+        updateCover()
       })
     }).catch(e => {
       setCover(false)
       api.logger.error(e)
     })
 
-    const updateCoverUrl = () => {
+    const updateCover = () => {
       api.wait.waitForConditionPassed({
         condition: () => {
           const cover = bus.playContainer.__vue__.playCover
