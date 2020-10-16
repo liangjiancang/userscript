@@ -2,6 +2,10 @@
 
 本日志只记录用户友好的更新说明，影响不大的问题修复与修改不作记录，具体修改见 [提交记录](https://gitee.com/liangjiancang/userscript/commits/master/BilibiliWatchlaterPlus/BilibiliWatchlaterPlus.js)。
 
+## V4.8
+
+1. 顶栏入口：增加中键点击功能，并增加【清空稍后再看】快捷功能。见 [64830](https://greasyfork.org/zh-CN/scripts/395456/discussions/64830)。
+
 ## V4.7
 
 1. 脚本：明确【稍后再看列表数据】和【稍后再看历史数据】这两个概念，在代码以及 UI 上进行统一。其中，前者指单次获取到稍后再看列表数据，大部分情况下特指当前时间点获取到的稍后再看列表数据；后者是前者的历史集合。

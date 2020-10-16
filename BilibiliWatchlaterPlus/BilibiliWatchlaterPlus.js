@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.7.5.20200927
+// @version         4.8.0.20201016
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -76,6 +76,7 @@
       openListInNew: 'openListInNew',
       playAllInCurrent: 'playAllInCurrent',
       playAllInNew: 'playAllInNew',
+      clearWatchlater: 'clearWatchlater',
       openUserSetting: 'openUserSetting',
       openRemoveHistory: 'openRemoveHistory',
       noOperation: 'noOperation',
@@ -135,7 +136,7 @@
     },
   }
   // 将名称不完全对应的补上，这样校验才能生效
-  Enums.headerButtonOpL = Enums.headerButtonOpR = Enums.headerButtonOp
+  Enums.headerButtonOpL = Enums.headerButtonOpR = Enums.headerButtonOpM = Enums.headerButtonOp
 
   /**
    * 全局对象
@@ -157,8 +158,9 @@
   /**
    * @typedef GMObject_config
    * @property {boolean} headerButton 顶栏入口
-   * @property {headerButtonOp} headerButtonOpL 顶栏入口左击行为
-   * @property {headerButtonOp} headerButtonOpR 顶栏入口右击行为
+   * @property {headerButtonOp} headerButtonOpL 顶栏入口左键点击行为
+   * @property {headerButtonOp} headerButtonOpR 顶栏入口右键点击行为
+   * @property {headerButtonOp} headerButtonOpM 顶栏入口中键点击行为
    * @property {openHeaderMenuLink} openHeaderMenuLink 顶栏弹出菜单链接点击行为
    * @property {menuScrollbarSetting} menuScrollbarSetting 弹出菜单的滚动条设置
    * @property {boolean} removeHistory 稍后再看移除记录
@@ -236,6 +238,7 @@
    * @property {api_videoInfo} api_videoInfo 视频信息
    * @property {string} api_addToWatchlater 将视频添加至稍后再看，要求 POST 一个含 `aid` 和 `csrf` 的表单
    * @property {string} api_removeFromWatchlater 将视频从稍后再看移除，要求 POST 一个含 `aid` 和 `csrf` 的表单
+   * @property {string} api_clearWatchlater 清空稍后再看，要求 POST 一个含 `csrf` 的表单
    * @property {string} page_watchlaterList 列表页面
    * @property {string} page_videoNormalMode 正常模式播放页
    * @property {string} page_videoWatchlaterMode 稍后再看模式播放页
@@ -283,13 +286,14 @@
   const gm = {
     id: 'gm395456',
     configVersion: GM_getValue('configVersion'),
-    configUpdate: 20200927,
+    configUpdate: 20201016,
     searchParams: new URL(location.href).searchParams,
     config: {},
     configMap: {
       headerButton: { default: true, attr: 'checked' },
-      headerButtonOpL: { default: Enums.headerButtonOp.openListInCurrent, attr: 'value', configVersion: 20200716 },
-      headerButtonOpR: { default: Enums.headerButtonOp.openUserSetting, attr: 'value', configVersion: 20200716 },
+      headerButtonOpL: { default: Enums.headerButtonOp.openListInCurrent, attr: 'value', configVersion: 20201016 },
+      headerButtonOpR: { default: Enums.headerButtonOp.openUserSetting, attr: 'value', configVersion: 20201016 },
+      headerButtonOpM: { default: Enums.headerButtonOp.openListInNew, attr: 'value', configVersion: 20201016 },
       openHeaderMenuLink: { default: Enums.openHeaderMenuLink.openInCurrent, attr: 'value', configVersion: 20200717 },
       menuScrollbarSetting: { default: Enums.menuScrollbarSetting.beautify, attr: 'value', configVersion: 20200722 },
       removeHistory: { default: true, attr: 'checked', manual: true },
@@ -318,6 +322,7 @@
       api_videoInfo: (id, type) => `https://api.bilibili.com/x/web-interface/view?${type}=${id}`,
       api_addToWatchlater: 'https://api.bilibili.com/x/v2/history/toview/add',
       api_removeFromWatchlater: 'https://api.bilibili.com/x/v2/history/toview/del',
+      api_clearWatchlater: 'http://api.bilibili.com/x/v2/history/toview/clear',
       page_watchlaterList: 'https://www.bilibili.com/watchlater/#/list',
       page_videoNormalMode: 'https://www.bilibili.com/video',
       page_videoWatchlaterMode: 'https://www.bilibili.com/medialist/play/watchlater',
@@ -688,7 +693,7 @@
               <div class="gm-items">
                 <table>
                   <tr class="gm-item" title="在顶栏“动态”和“收藏”之间加入稍后再看入口，鼠标移至上方时弹出列表菜单，支持点击功能设置。">
-                    <td rowspan="5"><div>全局功能</div></td>
+                    <td rowspan="6"><div>全局功能</div></td>
                     <td>
                       <label>
                         <span>在顶栏中加入稍后再看入口</span>
@@ -709,6 +714,14 @@
                       <div>
                         <span>在入口上点击鼠标右键时</span>
                         <select id="gm-headerButtonOpR"></select>
+                      </div>
+                    </td>
+                  </tr>
+                  <tr class="gm-subitem" title="选择中键点击入口时执行的操作。">
+                    <td>
+                      <div>
+                        <span>在入口上点击鼠标中键时</span>
+                        <select id="gm-headerButtonOpM"></select>
                       </div>
                     </td>
                   </tr>
@@ -1006,11 +1019,12 @@
           el.rhsWarning = gm.el.setting.querySelector('#gm-rhsWarning')
           api.message.advanced(el.rhsWarning, `该项设置过大时，在极端情况下可能会造成明显的卡顿，一般不建议该项超过${gm.const.rhsWarning}。当然，如果对机器的读写性能自信，可以无视该警告。`, '⚠')
 
-          el.headerButtonOpL.innerHTML = el.headerButtonOpR.innerHTML = `
+          el.headerButtonOpL.innerHTML = el.headerButtonOpR.innerHTML = el.headerButtonOpM.innerHTML = `
             <option value="${Enums.headerButtonOp.openListInCurrent}">在当前页面打开列表页面</option>
             <option value="${Enums.headerButtonOp.openListInNew}">在新标签页打开列表页面</option>
             <option value="${Enums.headerButtonOp.playAllInCurrent}">在当前页面播放全部</option>
             <option value="${Enums.headerButtonOp.playAllInNew}">在新标签页播放全部</option>
+            <option value="${Enums.headerButtonOp.clearWatchlater}">清空稍后再看</option>
             <option value="${Enums.headerButtonOp.openUserSetting}">打开用户设置</option>
             <option value="${Enums.headerButtonOp.openRemoveHistory}">打开稍后再看移除记录</option>
             <option value="${Enums.headerButtonOp.noOperation}">不执行操作</option>
@@ -1034,7 +1048,7 @@
             }
           }
           el.headerButton.init = el.headerButton.onchange = function() {
-            subitemChange(this, [el.headerButtonOpL, el.headerButtonOpR, el.openHeaderMenuLink, el.menuScrollbarSetting])
+            subitemChange(this, [el.headerButtonOpL, el.headerButtonOpR, el.headerButtonOpM, el.openHeaderMenuLink, el.menuScrollbarSetting])
           }
           el.removeHistory.init = el.removeHistory.onchange = function() {
             subitemChange(this, [el.removeHistorySavePoint, el.removeHistoryFuzzyCompare, el.removeHistorySaves, el.removeHistorySearchTimes])
@@ -1733,6 +1747,28 @@
         },
 
         /**
+         * 清空稍后再看
+         * @async
+         * @returns {Promise<boolean>} 操作是否成功
+         */
+        async clearWatchlater() {
+          try {
+            const data = new FormData()
+            data.append('csrf', this.getCSRF())
+            const resp = await api.web.request({
+              method: 'POST',
+              url: gm.url.api_clearWatchlater,
+              data: data,
+            })
+            return JSON.parse(resp.response).code == 0
+          } catch (e) {
+            api.logger.error(gm.error.NETWORK)
+            api.logger.error(e)
+            return false
+          }
+        },
+
+        /**
          * 保存稍后再看列表数据，用于后续操作
          *
          * 此操作回引起稍后再看历史数据的保存
@@ -1819,8 +1855,7 @@
         text.innerText = '稍后再看'
         header.insertBefore(watchlater, collect)
 
-        processLeftClick(link)
-        processRightClick(watchlater)
+        processClickEvent(watchlater)
         processTooltip({ collect, watchlater })
       }).catch(e => {
         api.logger.error(gm.error.DOM_PARSE)
@@ -1828,40 +1863,40 @@
       })
 
       /**
-       * 处理鼠标左键点击
+       * 处理清空稍后再看
+       * @async
        */
-      const processLeftClick = link => {
-        // 使用 href 和 target 的方式设置，保留浏览器中键强制新标签页打开的特性
-        const left = getHeaderButtonOpConfig(gm.config.headerButtonOpL)
-        link.href = left.href
-        link.target = left.target
-        switch (gm.config.headerButtonOpL) {
-          case Enums.headerButtonOp.openUserSetting:
-            link.onclick = () => _self.script.openUserSetting()
-            break
-          case Enums.headerButtonOp.openRemoveHistory:
-            link.onclick = () => _self.script.openRemoveHistory()
-            break
+      const clearWatchlater = async () => {
+        const result = confirm(`【${GM_info.script.name}】\n\n是否清空稍后再看？`)
+        if (result) {
+          const success = await this.method.clearWatchlater()
+          api.message.create(`清空稍后再看${success ? '成功' : '失败'}`)
+          if (success && api.web.urlMatch(gm.regex.page_watchlaterList)) {
+            location.reload()
+          }
         }
       }
 
       /**
-       * 处理鼠标右键点击
+       * 处理鼠标点击事件
+       * @param {HTMLElement} watchlater 稍后再看入口元素
        */
-      const processRightClick = watchlater => {
-        watchlater.oncontextmenu = function(e) {
-          if (gm.config.headerButtonOpR != Enums.headerButtonOp.noOperation) {
-            e && e.preventDefault && e.preventDefault()
-          }
-          switch (gm.config.headerButtonOpR) {
+      const processClickEvent = watchlater => {
+        const config = [gm.config.headerButtonOpL, gm.config.headerButtonOpM, gm.config.headerButtonOpR]
+        const process = button => {
+          const cfg = config[button]
+          switch (cfg) {
             case Enums.headerButtonOp.openListInCurrent:
             case Enums.headerButtonOp.openListInNew:
             case Enums.headerButtonOp.playAllInCurrent:
             case Enums.headerButtonOp.playAllInNew: {
-              const right = getHeaderButtonOpConfig(gm.config.headerButtonOpR)
+              const right = getHeaderButtonOpConfig(cfg)
               window.open(right.href, right.target)
               break
             }
+            case Enums.headerButtonOp.clearWatchlater:
+              clearWatchlater()
+              break
             case Enums.headerButtonOp.openUserSetting:
               _self.script.openUserSetting()
               break
@@ -1869,6 +1904,16 @@
               _self.script.openRemoveHistory()
               break
           }
+        }
+        watchlater.onmousedown = function(e) {
+          if (e.button != 2) {
+            process(e.button)
+            e.preventDefault()
+          }
+        }
+        watchlater.oncontextmenu = function(e) {
+          process(2) // 整合写进 mousedown 中会导致无法阻止右键菜单弹出
+          e.preventDefault()
         }
       }
 
@@ -2133,6 +2178,7 @@
           case Enums.headerButtonOp.playAllInNew:
             result.href = gm.url.page_watchlaterPlayAll
             break
+          case Enums.headerButtonOp.clearWatchlater:
           case Enums.headerButtonOp.openUserSetting:
           case Enums.headerButtonOp.openRemoveHistory:
           case Enums.headerButtonOp.noOperation:
