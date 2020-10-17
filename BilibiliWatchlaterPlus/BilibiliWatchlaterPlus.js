@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.8.0.20201016
+// @version         4.8.1.20201017
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -1883,6 +1883,10 @@
        */
       const processClickEvent = watchlater => {
         const config = [gm.config.headerButtonOpL, gm.config.headerButtonOpM, gm.config.headerButtonOpR]
+        /**
+         * 处理鼠标点击事件
+         * @param {1 | 2 | 3} button 左键 | 中键 | 右键
+         */
         const process = button => {
           const cfg = config[button]
           switch (cfg) {
@@ -1890,8 +1894,8 @@
             case Enums.headerButtonOp.openListInNew:
             case Enums.headerButtonOp.playAllInCurrent:
             case Enums.headerButtonOp.playAllInNew: {
-              const right = getHeaderButtonOpConfig(cfg)
-              window.open(right.href, right.target)
+              const action = getHeaderButtonOpConfig(cfg)
+              window.open(action.href, action.target)
               break
             }
             case Enums.headerButtonOp.clearWatchlater:
