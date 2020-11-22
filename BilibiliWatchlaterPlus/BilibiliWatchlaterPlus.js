@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.8.1.20201017
+// @version         4.8.2.20201122
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -2104,9 +2104,10 @@
                 const ob = new MutationObserver(records => {
                   for (const record of records) {
                     for (const addedNode of record.addedNodes) {
-                      if (addedNode.nodeName == 'A') {
+                      const node = addedNode.firstElementChild
+                      if (node && node.nodeName == 'A') {
                         /** @type {HTMLAnchorElement} */
-                        const link = addedNode
+                        const link = node
                         if (openLinkInCurrent && link.target != '_self') {
                           link.target = '_self'
                         }
@@ -2119,7 +2120,7 @@
                           link.addEventListener('mouseup', function(e) {
                             // 不能 mousedown，隐藏之后无法触发事件
                             if (e.button == 0 || e.button == 1) { // 左键或中键
-                              link.style.display = 'none'
+                              link.parentNode.style.display = 'none'
                             }
                           })
                         }
