@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.8.2.20201122
+// @version         4.8.3.20201122
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -17,6 +17,7 @@
 // @exclude         *://message.bilibili.com/pages/nav/index_new_pc_sync
 // @exclude         *://t.bilibili.com/h5/dynamic/specification
 // @exclude         *://www.bilibili.com/page-proxy/game-nav.html
+// @exclude         /.*:\/\/.*:\/\/.*/
 // @require         https://greasyfork.org/scripts/409641-api/code/API.js?version=849812
 // @grant           GM_addStyle
 // @grant           GM_xmlhttpRequest
