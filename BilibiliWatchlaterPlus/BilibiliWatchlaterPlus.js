@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.8.3.20201122
+// @version         4.8.4.20201202
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -3401,6 +3401,7 @@
           vertical-align: middle;
           margin: 0 2px 2px 0;
           cursor: pointer;
+          appearance: auto;
         }
 
         #${gm.id} .gm-setting .gm-items::-webkit-scrollbar,
