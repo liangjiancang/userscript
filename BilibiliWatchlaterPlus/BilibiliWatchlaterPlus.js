@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.8.4.20201202
+// @version         4.8.5.20210125
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -2102,7 +2102,7 @@
                 // const target = gm.config.openHeaderMenuLink == enums.openHeaderMenuLink.openInNew ? '_blank' : '_self'
                 const videoPanel = await api.wait.waitForElementLoaded(videoPanelSelector())
                 // 添加一个 ob，在给右边视频面板添加链接时，对其进行处理
-                const ob = new MutationObserver(records => {
+                const ob = new MutationObserver(async records => {
                   for (const record of records) {
                     for (const addedNode of record.addedNodes) {
                       const node = addedNode.firstElementChild
@@ -2114,16 +2114,24 @@
                         }
 
                         if (autoRemove) {
-                          const url = new URL(link.href)
-                          url.searchParams.set(`${gm.id}_remove_from_list`, 'true')
-                          link.href = url.href
-
-                          link.addEventListener('mouseup', function(e) {
-                            // 不能 mousedown，隐藏之后无法触发事件
-                            if (e.button == 0 || e.button == 1) { // 左键或中键
-                              link.parentNode.style.display = 'none'
-                            }
+                          const activePanel = await api.wait.waitForElementLoaded({
+                            selector: activePanelSelector(true),
+                            interval: 50,
+                            timeout: 1500,
                           })
+                          const activeTitle = activePanel.firstElementChild.title
+                          if (activeTitle == '稍后再看') {
+                            const url = new URL(link.href)
+                            url.searchParams.set(`${gm.id}_remove_from_list`, 'true')
+                            link.href = url.href
+  
+                            link.addEventListener('mouseup', function(e) {
+                              // 不能 mousedown，隐藏之后无法触发事件
+                              if (e.button == 0 || e.button == 1) { // 左键或中键
+                                link.parentNode.style.display = 'none'
+                              }
+                            })
+                          }
                         }
                       }
                     }

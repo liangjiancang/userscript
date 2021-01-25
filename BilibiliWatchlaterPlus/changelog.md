@@ -5,6 +5,7 @@
 ## V4.8
 
 1. 顶栏入口：增加中键点击功能，并增加【清空稍后再看】快捷功能。见 [64830](https://greasyfork.org/zh-CN/scripts/395456/discussions/64830)。
+2. 顶栏入口：修复在弹出菜单中，非稍后再看（收藏夹）中的视频卡片也被添加自动移除逻辑的问题。见 [74371](https://greasyfork.org/zh-CN/scripts/395456/discussions/74371)。
 
 ## V4.7
 
