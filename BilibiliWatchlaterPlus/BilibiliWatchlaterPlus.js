@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.8.5.20210125
+// @version         4.8.6.20210205
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -2304,10 +2304,10 @@
       const fillWatchlaterStatus_main = () => {
         const execute = async root => {
           let videos
-          if (api.dom.containsClass(root, ['watch-later-video', 'watch-later-trigger'])) {
+          if (api.dom.containsClass(root, ['watch-later-video', 'watch-later-trigger', 'watch-later', 'w-later'])) {
             videos = [root]
           } else {
-            videos = root.querySelectorAll('.watch-later-video, .watch-later-trigger')
+            videos = root.querySelectorAll('.watch-later-video, .watch-later-trigger, .watch-later, .w-later')
           }
           for (const video of videos) {
             if (!video._fillWatchlaterStatus) {
@@ -3378,6 +3378,7 @@
         #${gm.id} button {
           color: var(--text-color);
           outline: none;
+          border: 1px solid var(--border-color); /* 在某些页面被覆盖 */
           border-radius: 0;
           appearance: auto; /* 番剧播放页该项被覆盖 */
         }
