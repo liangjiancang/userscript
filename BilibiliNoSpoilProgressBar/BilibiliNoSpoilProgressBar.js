@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站防剧透进度条
-// @version         1.3.13.20210211
+// @version         1.3.14.20210211
 // @namespace       laster2800
 // @author          Laster2800
 // @description     看比赛、看番总是被进度条剧透？装上这个脚本再也不用担心这些问题了
@@ -716,7 +716,7 @@
           el.postponeOffsetInformation = gm.el.setting.querySelector('#gm-postponeOffsetInformation')
           api.message.advanced(el.postponeOffsetInformation, `
             <div style="line-height:1.6em">
-              默认情况下，在启用功能或改变播放进度后，对进度条的偏移不会立即应用，而是在下次进度条显示出来时应用。因为这样会被用户观察到，从而推测出偏移方向与偏移量。更多信息请阅读说明文档。
+              在启用功能或改变播放进度后，不要立即对进度条进行偏移，而是在下次进度条显示出来时偏移。这样可以避免用户观察到处理过程，从而防止用户推测出偏移方向与偏移量。更多信息请阅读说明文档。
             </div>
           `, '💬', { width: '36em', flagSize: '2em' })
         }
