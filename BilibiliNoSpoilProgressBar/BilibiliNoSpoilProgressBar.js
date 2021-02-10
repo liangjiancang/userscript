@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站防剧透进度条
-// @version         1.3.12.20201122
+// @version         1.3.13.20210211
 // @namespace       laster2800
 // @author          Laster2800
 // @description     看比赛、看番总是被进度条剧透？装上这个脚本再也不用担心这些问题了
@@ -683,7 +683,7 @@
             <div style="line-height:1.6em">
               <div>进度条极端偏移因子（范围：0.00 ~ 5.00），用于控制进度条偏移量的概率分布。更多信息请阅读说明文档。</div>
               <ul>
-                <li>因子的值越小，则出现极限偏移的概率越高。最小可取值为 <b>0</b>，此时总是使用极左值或极右值。</li>
+                <li>因子的值越小，则出现极限偏移的概率越高。最小可取值为 <b>0</b>，此时偏移值必定为极左值或极右值。</li>
                 <li>因子的值越大，则出现极限偏移的概率越低，偏移值趋向于 0。无理论上限，但实际取值达到 3 效果就已经非常明显，限制最大值为 5。</li>
                 <li>因子取值为 <b>1</b> 时，偏移量的概率会在整个区间平滑分布。</li>
               </ul>
@@ -698,7 +698,7 @@
           el.offsetRightInformation = gm.el.setting.querySelector('#gm-offsetRightInformation')
           api.message.advanced(el.offsetRightInformation, `
             <div style="line-height:1.6em">
-              极限情况下进度条向左偏移的距离（百分比），该选项用于解决进度条前向剧透问题。设置为 <b>0</b> 可以禁止进度条右偏。更多信息请阅读说明文档。
+              极限情况下进度条向右偏移的距离（百分比），该选项用于解决进度条前向剧透问题。设置为 <b>0</b> 可以禁止进度条右偏。更多信息请阅读说明文档。
             </div>
           `, '💬', { width: '36em', flagSize: '2em' })
           el.reservedLeftInformation = gm.el.setting.querySelector('#gm-reservedLeftInformation')
