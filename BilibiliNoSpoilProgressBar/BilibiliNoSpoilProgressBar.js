@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站防剧透进度条
-// @version         1.3.14.20210211
+// @version         1.4.0.20210302
 // @namespace       laster2800
 // @author          Laster2800
 // @description     看比赛、看番总是被进度条剧透？装上这个脚本再也不用担心这些问题了
@@ -87,6 +87,7 @@
    * @property {boolean} disableDuration 隐藏视频时长
    * @property {boolean} disablePbp 隐藏【热度】曲线
    * @property {boolean} disablePreview 隐藏进度条预览
+   * @property {boolean} disablePartInformation 隐藏分P信息
    * @property {number} offsetTransformFactor 进度条极端偏移因子
    * @property {number} offsetLeft 进度条偏移极左值
    * @property {number} offsetRight 进度条偏移极右值
@@ -171,7 +172,7 @@
   const gm = {
     id: 'gm411092',
     configVersion: GM_getValue('configVersion'),
-    configUpdate: 20200912,
+    configUpdate: 20210302,
     config: {
       bangumiEnabled: false,
       simpleScriptControl: false,
@@ -179,6 +180,7 @@
       disableDuration: true,
       disablePbp: true,
       disablePreview: false,
+      disablePartInformation: true,
       offsetTransformFactor: null,
       offsetLeft: null,
       offsetRight: null,
@@ -195,6 +197,7 @@
       disableDuration: { default: true, attr: 'checked' },
       disablePbp: { default: true, attr: 'checked' },
       disablePreview: { default: false, attr: 'checked' },
+      disablePartInformation: { default: true, attr: 'checked', configVersion: 20210302 },
       offsetTransformFactor: { default: 0.65, attr: 'value', manual: true, needNotReload: true, max: 5.0, configVersion: 20200911.1 },
       offsetLeft: { default: 40, attr: 'value', manual: true, needNotReload: true, configVersion: 20200911 },
       offsetRight: { default: 40, attr: 'value', manual: true, needNotReload: true, configVersion: 20200911 },
@@ -495,7 +498,7 @@
                   </tr>
 
                   <tr class="gm-item" title="这些功能可能会造成剧透，根据需要在防剧透进度条中进行隐藏。">
-                    <td rowspan="5"><div>用户接口</div></td>
+                    <td rowspan="6"><div>用户接口</div></td>
                     <td>
                       <div>
                         <span>启用功能时</span>
@@ -531,6 +534,14 @@
                       <label>
                         <span>隐藏进度条预览</span>
                         <input id="gm-disablePreview" type="checkbox">
+                      </label>
+                    </td>
+                  </tr>
+                  <tr class="gm-subitem" title="是否隐藏视频分P信息？它们可能会造成剧透。">
+                    <td>
+                      <label>
+                        <span>隐藏分P信息</span>
+                        <input id="gm-disablePartInformation" type="checkbox">
                       </label>
                     </td>
                   </tr>
@@ -1399,6 +1410,72 @@
           const hide = _self.enabled && gm.config.disablePbp
           pakku.style.visibility = hide ? 'hidden' : ''
         }).catch(() => {})
+
+        // 隐藏分P信息
+        if (gm.config.disablePartInformation) {
+          // 全屏播放时的分P选择
+          if (_self.enabled) {
+            api.wait.waitForElementLoaded('.bilibili-player-video-btn-menu').then(menu => {
+              /** @type HTMLElement[] */
+              const items = menu.querySelectorAll('.bilibili-player-video-btn-menu-list')
+              for (let i = 0; i < items.length; i++) {
+                items[i].innerText = 'P' + (i + 1)
+              }
+            }).catch(e => {
+              api.logger.error(gm.error.DOM_PARSE)
+              api.logger.error(e)
+            })
+          }
+          // 全屏播放时显示的分P标题
+          api.wait.waitForElementLoaded('.bilibili-player-video-top-title').then(el => {
+            el.style.visibility = _self.enabled ? 'hidden' : 'visible'
+          }).catch(e => {
+            api.logger.error(gm.error.DOM_PARSE)
+            api.logger.error(e)
+          })
+          // 播放页右侧分P选择
+          if (api.web.urlMatch(gm.regex.page_videoNormalMode)) {
+            api.wait.waitForElementLoaded('#multi_page').then(multiPage => {
+              const hideTypes = [multiPage.querySelectorAll('.clickitem .part'), multiPage.querySelectorAll('.clickitem .duration')]
+              for (const hideType of hideTypes) {
+                for (const hideElement of hideType) {
+                  hideElement.style.visibility = _self.enabled ? 'hidden' : 'visible'
+                }
+              }
+              if (_self.enabled) {
+                const links = multiPage.querySelectorAll('a')
+                for (const link of links) {
+                  link.title = '' // 隐藏提示信息
+                }
+              }
+            }).catch(e => {
+              api.logger.error(gm.error.DOM_PARSE)
+              api.logger.error(e)
+            })
+          } else if (api.web.urlMatch(gm.regex.page_videoWatchlaterMode)) {
+            if (_self.enabled) {
+              api.wait.waitForElementLoaded('.player-auxiliary-playlist-list').then(list => {
+                const exec = () => {
+                  /** @type HTMLElement[] */
+                  const items = list.querySelectorAll('.player-auxiliary-playlist-item-p-item')
+                  for (const item of items) {
+                    item.innerText = item.innerText.replace(/(?<=^P\d+)\D.*/, '')
+                  }
+                  // 如果 list 中发生修改，则重新处理
+                  const obList = new MutationObserver((records, observer) => {
+                    observer.disconnect()
+                    exec()
+                  })
+                  obList.observe(list, { childList: true })
+                }
+                exec()
+              }).catch(e => {
+                api.logger.error(gm.error.DOM_PARSE)
+                api.logger.error(e)
+              })
+            }
+          }
+        }
       }
 
       /**
