@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站防剧透进度条
-// @version         1.4.0.20210302
+// @version         1.4.1.20210302
 // @namespace       laster2800
 // @author          Laster2800
 // @description     看比赛、看番总是被进度条剧透？装上这个脚本再也不用担心这些问题了
@@ -1459,7 +1459,9 @@
                   /** @type HTMLElement[] */
                   const items = list.querySelectorAll('.player-auxiliary-playlist-item-p-item')
                   for (const item of items) {
-                    item.innerText = item.innerText.replace(/(?<=^P\d+)\D.*/, '')
+                    if (/^P\d+\D/.test(item.innerText)) {
+                      item.innerText = item.innerText.replace(/(?<=^P\d+)\D.*/, '')
+                    }
                   }
                   // 如果 list 中发生修改，则重新处理
                   const obList = new MutationObserver((records, observer) => {
