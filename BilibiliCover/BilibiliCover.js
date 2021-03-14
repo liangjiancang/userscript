@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站封面获取
-// @version         4.7.5.20201122
+// @version         4.7.6.20210314
 // @namespace       laster2800
 // @author          Laster2800
 // @description     B站视频播放页（普通模式、稍后再看模式）、番剧播放页、直播间添加获取封面的按钮
@@ -259,9 +259,9 @@
   }
 
   function addLiveBtn(urc) {
-    const data = unsafeWindow.__NEPTUNE_IS_MY_WAIFU__.baseInfoRes.data
-    const coverUrl = data.user_cover
-    const kfUrl = data.keyframe
+    const info = unsafeWindow.__NEPTUNE_IS_MY_WAIFU__.roomInfoRes.data.room_info
+    const coverUrl = info.cover
+    const kfUrl = info.keyframe
     const cover = document.createElement('a')
     cover.innerText = '获取封面'
     cover.target = '_blank'
