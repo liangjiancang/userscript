@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站防剧透进度条
-// @version         1.4.2.20210302
+// @version         1.4.3.20210317
 // @namespace       laster2800
 // @author          Laster2800
 // @description     看比赛、看番总是被进度条剧透？装上这个脚本再也不用担心这些问题了
@@ -537,7 +537,7 @@
                       </label>
                     </td>
                   </tr>
-                  <tr class="gm-subitem" title="是否隐藏视频分P信息？它们可能会造成剧透。">
+                  <tr class="gm-subitem" title="是否隐藏视频分P信息？它们可能会造成剧透。该功能对番剧无效。">
                     <td>
                       <label>
                         <span>隐藏分P信息</span>
@@ -1411,8 +1411,8 @@
           pakku.style.visibility = hide ? 'hidden' : ''
         }).catch(() => {})
 
-        // 隐藏分P信息
-        if (gm.config.disablePartInformation) {
+        // 隐藏分P信息（番剧没有必要隐藏）
+        if (gm.config.disablePartInformation && !api.web.urlMatch(gm.regex.page_bangumi)) {
           // 全屏播放时的分P选择
           if (_self.enabled) {
             api.wait.waitForElementLoaded('.bilibili-player-video-btn-menu').then(menu => {
