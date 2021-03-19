@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.8.6.20210205
+// @version         4.8.7.20210319
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -2113,18 +2113,13 @@
                           link.target = '_self'
                         }
 
+                        // 自动移除
                         if (autoRemove) {
-                          const activePanel = await api.wait.waitForElementLoaded({
-                            selector: activePanelSelector(true),
-                            interval: 50,
-                            timeout: 1500,
-                          })
-                          const activeTitle = activePanel.firstElementChild.title
-                          if (activeTitle == '稍后再看') {
+                          const card = node.__vue__.card
+                          if (card.isLater) { // 稍后再看
                             const url = new URL(link.href)
                             url.searchParams.set(`${gm.id}_remove_from_list`, 'true')
                             link.href = url.href
-  
                             link.addEventListener('mouseup', function(e) {
                               // 不能 mousedown，隐藏之后无法触发事件
                               if (e.button == 0 || e.button == 1) { // 左键或中键
