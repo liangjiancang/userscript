@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.9.1.20210322
+// @version         4.9.2.20210323
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -3409,6 +3409,9 @@
           background-color: var(--background-color);
         }
         #${gm.id} [setting-type=updated] .gm-updated:hover {
+          color: var(--update-hightlight-hover-color);
+        }
+        #${gm.id} [setting-type=updated] .gm-updated .gm-lineitem:hover {
           color: var(--update-hightlight-hover-color);
         }
 
