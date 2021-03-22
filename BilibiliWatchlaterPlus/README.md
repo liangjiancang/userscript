@@ -25,6 +25,10 @@
 
     ![顶栏入口、快速切换（普通模式和稍后再看模式）](https://gitee.com/liangjiancang/userscript/raw/master/BilibiliWatchlaterPlus/screenshot/顶栏入口、快速切换（普通模式和稍后再看模式）.png)
 
+* 入口菜单
+
+    ![入口菜单](https://gitee.com/liangjiancang/userscript/raw/master/BilibiliWatchlaterPlus/screenshot/入口菜单.png)
+
 * 列表页UI
 
     ![列表页UI](https://gitee.com/liangjiancang/userscript/raw/master/BilibiliWatchlaterPlus/screenshot/列表页UI.png)

@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.8.7.20210319
+// @version         4.9.0.20210322
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -86,6 +86,15 @@
      * @readonly
      * @enum {string}
      */
+    headerMenu: {
+      enable: 'enable',
+      enableSimple: 'enableSimple',
+      disable: 'disable',
+    },
+    /**
+     * @readonly
+     * @enum {string}
+     */
     openHeaderMenuLink: {
       openInCurrent: 'openInCurrent',
       openInNew: 'openInNew',
@@ -162,21 +171,28 @@
    * @property {headerButtonOp} headerButtonOpL 顶栏入口左键点击行为
    * @property {headerButtonOp} headerButtonOpR 顶栏入口右键点击行为
    * @property {headerButtonOp} headerButtonOpM 顶栏入口中键点击行为
+   * @property {headerMenu} headerMenu 顶栏入口弹出菜单设置
    * @property {openHeaderMenuLink} openHeaderMenuLink 顶栏弹出菜单链接点击行为
    * @property {menuScrollbarSetting} menuScrollbarSetting 弹出菜单的滚动条设置
+   * @property {boolean} headerMenuFnSetting 弹出菜单：设置
+   * @property {boolean} headerMenuFnHistory 弹出菜单：历史
+   * @property {boolean} headerMenuFnRemoveAll 弹出菜单：清空
+   * @property {boolean} headerMenuFnShowAll 弹出菜单：显示
+   * @property {boolean} headerMenuFnPlayAll 弹出菜单：播放
    * @property {boolean} removeHistory 稍后再看移除记录
    * @property {removeHistorySavePoint} removeHistorySavePoint 保存稍后再看历史数据的时间点
    * @property {boolean} removeHistoryFuzzyCompare 开启模糊比对模式以舍弃重复数据
    * @property {number} removeHistorySaves 稍后再看历史数据保存次数
    * @property {number} removeHistorySearchTimes 历史回溯深度
    * @property {fillWatchlaterStatus} fillWatchlaterStatus 填充稍后再看状态
+   * @property {boolean} hideWatchlaterInCollect 隐藏【收藏】中的【稍后再看】
    * @property {boolean} videoButton 视频播放页稍后再看状态快速切换
    * @property {autoRemove} autoRemove 自动将视频从播放列表移除
    * @property {boolean} redirect 稍后再看模式重定向至普通模式播放
    * @property {openListVideo} openListVideo 列表页面视频点击行为
-   * @property {boolean} forceConsistentVideo 确保视频的一致性
    * @property {boolean} removeButton_removeAll 移除【一键清空】按钮
    * @property {boolean} removeButton_removeWatched 移除【移除已观看视频】按钮
+   * @property {boolean} disablePageCache 禁用页面缓存
    * @property {number} watchlaterListCacheValidPeriod 稍后再看列表数据本地缓存有效期（单位：秒）
    * @property {boolean} openSettingAfterConfigUpdate 功能性更新后打开设置页面
    * @property {boolean} reloadAfterSetting 设置生效后刷新页面
@@ -204,6 +220,7 @@
    * @callback watchlaterListData 通过懒加载方式获取稍后再看列表数据
    * @param {boolean} [reload] 是否重新加载稍后再看列表数据
    * @param {boolean} [cache=true] 是否使用本地缓存
+   * @param {boolean} [disablePageCache] 是否禁用页面缓存
    * @returns {Promise<GMObject_data_item0[]>} 稍后再看列表数据
    */
   /**
@@ -265,6 +282,7 @@
    * @typedef GMObject_menu
    * @property {GMObject_menu_item} setting 设置
    * @property {GMObject_menu_item} history 移除记录
+   * @property {GMObject_menu_item} entryPopup 入口弹出菜单
    */
   /**
    * @typedef GMObject_menu_item
@@ -287,7 +305,7 @@
   const gm = {
     id: 'gm395456',
     configVersion: GM_getValue('configVersion'),
-    configUpdate: 20201016,
+    configUpdate: 20210322,
     searchParams: new URL(location.href).searchParams,
     config: {},
     configMap: {
@@ -295,21 +313,28 @@
       headerButtonOpL: { default: Enums.headerButtonOp.openListInCurrent, attr: 'value', configVersion: 20201016 },
       headerButtonOpR: { default: Enums.headerButtonOp.openUserSetting, attr: 'value', configVersion: 20201016 },
       headerButtonOpM: { default: Enums.headerButtonOp.openListInNew, attr: 'value', configVersion: 20201016 },
+      headerMenu: { default: Enums.headerMenu.enable, attr: 'value', configVersion: 20210322 },
       openHeaderMenuLink: { default: Enums.openHeaderMenuLink.openInCurrent, attr: 'value', configVersion: 20200717 },
       menuScrollbarSetting: { default: Enums.menuScrollbarSetting.beautify, attr: 'value', configVersion: 20200722 },
+      headerMenuFnSetting: { default: true, attr: 'checked', configVersion: 20210322 },
+      headerMenuFnHistory: { default: true, attr: 'checked', configVersion: 20210322 },
+      headerMenuFnRemoveAll: { default: false, attr: 'checked', configVersion: 20210322 },
+      headerMenuFnShowAll: { default: false, attr: 'checked', configVersion: 20210322 },
+      headerMenuFnPlayAll: { default: true, attr: 'checked', configVersion: 20210322 },
       removeHistory: { default: true, attr: 'checked', manual: true },
       removeHistorySavePoint: { default: Enums.removeHistorySavePoint.listAndMenu, attr: 'value', configVersion: 20200815 },
       removeHistoryFuzzyCompare: { default: true, attr: 'checked', needNotReload: true, configVersion: 20200819 },
       removeHistorySaves: { default: 64, attr: 'value', manual: true, needNotReload: true, min: 1, max: 1024, configVersion: 20200721 },
       removeHistorySearchTimes: { default: 16, attr: 'value', manual: true, needNotReload: true, configVersion: 20200716 },
       fillWatchlaterStatus: { default: Enums.fillWatchlaterStatus.dynamicAndVideo, attr: 'value', configVersion: 20200819 },
+      hideWatchlaterInCollect: { default: true, attr: 'checked', configVersion: 20210322 },
       videoButton: { default: true, attr: 'checked' },
       autoRemove: { default: Enums.autoRemove.openFromList, attr: 'value', configVersion: 20200805 },
       redirect: { default: false, attr: 'checked' },
       openListVideo: { default: Enums.openListVideo.openInCurrent, attr: 'value', configVersion: 20200717 },
-      forceConsistentVideo: { default: true, attr: 'checked', configVersion: 20200723 },
       removeButton_removeAll: { default: false, attr: 'checked', configVersion: 20200722 },
       removeButton_removeWatched: { default: false, attr: 'checked', configVersion: 20200722 },
+      disablePageCache: { default: false, attr: 'checked', configVersion: 20210322 },
       watchlaterListCacheValidPeriod: { default: 15, attr: 'value', manual: true, needNotReload: true, max: 600, configVersion: 20200927 },
       openSettingAfterConfigUpdate: { default: true, attr: 'checked', configVersion: 20200805 },
       reloadAfterSetting: { default: true, attr: 'checked', needNotReload: true, configVersion: 20200715 },
@@ -327,7 +352,7 @@
       page_watchlaterList: 'https://www.bilibili.com/watchlater/#/list',
       page_videoNormalMode: 'https://www.bilibili.com/video',
       page_videoWatchlaterMode: 'https://www.bilibili.com/medialist/play/watchlater',
-      page_watchlaterPlayAll: 'https://www.bilibili.com/medialist/play/watchlater/p1',
+      page_watchlaterPlayAll: 'https://www.bilibili.com/medialist/play/watchlater/',
       gm_changelog: 'https://gitee.com/liangjiancang/userscript/blob/master/BilibiliWatchlaterPlus/changelog.md',
       noop: 'javascript:void(0)',
     },
@@ -346,6 +371,7 @@
     menu: {
       setting: { state: false, el: null },
       history: { state: false, el: null },
+      entryPopup: { state: false, el: document.createElement('div') }
     },
     el: {
       gmRoot: null,
@@ -460,9 +486,9 @@
             return _.removeHistoryData
           }
         },
-        watchlaterListData: async (reload, cache = true) => {
+        watchlaterListData: async (reload, cache = true, disablePageCache = false) => {
           const _ = gm.data._
-          if (!_.watchlaterListData || reload) {
+          if (!_.watchlaterListData || reload || disablePageCache || gm.config.disablePageCache) {
             if (_.watchlaterListData_loading) {
               try {
                 return await api.wait.waitForConditionPassed({
@@ -595,6 +621,11 @@
           if (gm.configVersion < 20200927) {
             GM_setValue('watchlaterListCacheValidPeriod', 15)
           }
+
+          // 4.9.0.20210322
+          if (gm.configVersion < 20210322) {
+            GM_deleteValue('forceConsistentVideo')
+          }
         }
       }
     }
@@ -694,7 +725,7 @@
               <div class="gm-items">
                 <table>
                   <tr class="gm-item" title="在顶栏“动态”和“收藏”之间加入稍后再看入口，鼠标移至上方时弹出列表菜单，支持点击功能设置。">
-                    <td rowspan="6"><div>全局功能</div></td>
+                    <td rowspan="8"><div>全局功能</div></td>
                     <td>
                       <label>
                         <span>在顶栏中加入稍后再看入口</span>
@@ -726,10 +757,22 @@
                       </div>
                     </td>
                   </tr>
-                  <tr class="gm-subitem" title="选择在弹出菜单中点击视频的行为。为了保持行为一致，这个选项也会影响弹出菜单中收藏夹视频的打开，但不影响“动态”、“历史”等其他弹出菜单中点击视频的行为。">
+                  <tr class="gm-subitem" title="设置入口弹出菜单。">
                     <td>
                       <div>
-                        <span>在弹出菜单中点击视频时</span>
+                        <span>将鼠标移动至入口上方时</span>
+                        <select id="gm-headerMenu">
+                          <option value="${Enums.headerMenu.enable}">弹出稍后再看列表</option>
+                          <option value="${Enums.headerMenu.enableSimple}">弹出简化的稍后再看列表</option>
+                          <option value="${Enums.headerMenu.disable}">不执行操作</option>
+                        </select>
+                      </div>
+                    </td>
+                  </tr>
+                  <tr class="gm-subitem" title="选择在弹出菜单中点击链接的行为。">
+                    <td>
+                      <div>
+                        <span>在弹出菜单中点击链接时</span>
                         <select id="gm-openHeaderMenuLink">
                           <option value="${Enums.openHeaderMenuLink.openInCurrent}">在当前页面打开</option>
                           <option value="${Enums.openHeaderMenuLink.openInNew}">在新标签页打开</option>
@@ -737,7 +780,7 @@
                       </div>
                     </td>
                   </tr>
-                  <tr class="gm-subitem" title="对弹出菜单中滚动条样式进行设置。为了保持行为一致，这个选项也会影响“动态”、“历史”等其他入口的弹出菜单。">
+                  <tr class="gm-subitem" title="对弹出菜单中滚动条样式进行设置。为了保持外观一致，这个选项也会影响“动态”、“收藏”、“历史”等其他入口的弹出菜单。">
                     <td>
                       <div>
                         <span>对于弹出菜单中的滚动条</span>
@@ -746,6 +789,28 @@
                           <option value="${Enums.menuScrollbarSetting.hidden}">将其隐藏（不影响鼠标滚动）</option>
                           <option value="${Enums.menuScrollbarSetting.original}">维持官方的滚动条样式</option>
                         </select>
+                      </div>
+                    </td>
+                  </tr>
+                  <tr class="gm-subitem" title="设置在弹出列表显示的快捷功能。">
+                    <td>
+                      <div class="gm-lineitems">
+                        <span>在弹出菜单中显示：</span>
+                        <label class="gm-lineitem">
+                          <span>设置</span><input id="gm-headerMenuFnSetting" type="checkbox">
+                        </label>
+                        <label class="gm-lineitem">
+                          <span>历史</span><input id="gm-headerMenuFnHistory" type="checkbox">
+                        </label>
+                        <label class="gm-lineitem">
+                          <span>清空</span><input id="gm-headerMenuFnRemoveAll" type="checkbox">
+                        </label>
+                        <label class="gm-lineitem">
+                          <span>显示</span><input id="gm-headerMenuFnShowAll" type="checkbox">
+                        </label>
+                        <label class="gm-lineitem">
+                          <span>播放</span><input id="gm-headerMenuFnPlayAll" type="checkbox">
+                        </label>
                       </div>
                     </td>
                   </tr>
@@ -817,6 +882,16 @@
                     </td>
                   </tr>
 
+                  <tr class="gm-item" title="隐藏顶栏【收藏】入口弹出菜单中的【稍后再看】。">
+                    <td><div>全局功能</div></td>
+                    <td>
+                      <label>
+                        <span>隐藏【收藏】中的【稍后再看】</span>
+                        <input id="gm-hideWatchlaterInCollect" type="checkbox">
+                      </label>
+                    </td>
+                  </tr>
+
                   <tr class="gm-item" title="在播放页面（包括普通模式和稍后再看模式）中加入能将视频快速切换添加或移除出稍后再看列表的按钮。">
                     <td><div>播放页面</div></td>
                     <td>
@@ -864,17 +939,6 @@
                     </td>
                   </tr>
 
-                  <tr class="gm-item" title="见弹出说明">
-                    <td><div>列表页面</div></td>
-                    <td>
-                      <label>
-                        <span>确保视频的一致性（避免点击A视频却打开B视频的问题）</span>
-                        <span id="gm-fcvInformation" class="gm-information" title="">💬</span>
-                        <input id="gm-forceConsistentVideo" type="checkbox">
-                      </label>
-                    </td>
-                  </tr>
-
                   <tr class="gm-item" title="这个按钮太危险了……">
                     <td><div>列表页面</div></td>
                     <td>
@@ -891,6 +955,17 @@
                       <label>
                         <span>移除【移除已观看视频】按钮</span>
                         <input id="gm-removeButton_removeWatched" type="checkbox">
+                      </label>
+                    </td>
+                  </tr>
+
+                  <tr class="gm-item" title="禁用页面缓存">
+                    <td><div>脚本设置</div></td>
+                    <td>
+                      <label>
+                        <span>禁用页面缓存</span>
+                        <span id="gm-dpcInformation" class="gm-information" title="">💬</span>
+                        <input id="gm-disablePageCache" type="checkbox">
                       </label>
                     </td>
                   </tr>
@@ -998,12 +1073,10 @@
               <p>第三项【所有页面】，会用一套固定的逻辑对脚本能匹配到的所有非特殊页面尝试进行信息填充。脚本本身没有匹配所有B站页面，如果有需要，请在脚本管理器（如Tampermonkey）中为脚本设置额外的页面匹配规则。由于B站各页面的设计不是很规范，某些页面中视频卡片的设计可能跟其他地方不一致，所以不保证必定能填充成功。</p>
             </div>
           `, '💬', { width: '36em', flagSize: '2em' })
-          el.fcvInformation = gm.el.setting.querySelector('#gm-fcvInformation')
-          api.message.advanced(el.fcvInformation, `
-            <div style="text-indent:2em;line-height:1.6em">
-              <p>从列表页面打开视频时，其URL使用该视频在列表中的位置来标识。假如列表在其他页面上被修改，这种定位方式就会出错。这是B站新版稍后再看播放页面的设计缺陷，本设置开启后能修复这个问题。</p>
-              <p>假设先打开列表页面，此时列表的第1个视频是A，然后在其他页面将B视频添加到稍后再看，最后回到刚才列表页面点击A视频，结果播放的会是此时真正位于列表第1位的B视频。</p>
-              <p>在正常使用的情况下，这个问题出现的频率并不高；此外，如果没有开启模式切换功能，在修复成功后浏览器的历史回退功能会受到影响，且修复过程可能会伴随页面内容切换和不明显的URL变动。如果不希望见到这些问题，或者只是单纯不想在页面引入不必要的脚本操作，请选择关闭。</p>
+          el.dpcInformation = gm.el.setting.querySelector('#gm-dpcInformation')
+          api.message.advanced(el.dpcInformation, `
+            <div style="line-height:1.6em">
+              <p>部分情况下，在同一个页面中，若一份数据之前已经获取过，则使用页面中缓存的数据。当然，这种情况对数据的实时性没有要求，不建议禁用页面缓存。注意，启用该项不会禁用本地缓存。</p>
             </div>
           `, '💬', { width: '36em', flagSize: '2em' })
           el.wlcvpInformation = gm.el.setting.querySelector('#gm-wlcvpInformation')
@@ -1048,8 +1121,14 @@
               el.disabled = !item.checked
             }
           }
+          el.headerMenuFn = el.headerMenuFnSetting.parentNode.parentNode
           el.headerButton.init = el.headerButton.onchange = function() {
-            subitemChange(this, [el.headerButtonOpL, el.headerButtonOpR, el.headerButtonOpM, el.openHeaderMenuLink, el.menuScrollbarSetting])
+            subitemChange(this, [el.headerButtonOpL, el.headerButtonOpR, el.headerButtonOpM, el.headerMenu, el.openHeaderMenuLink, el.menuScrollbarSetting, el.headerMenuFnSetting, el.headerMenuFnHistory, el.headerMenuFnRemoveAll, el.headerMenuFnShowAll, el.headerMenuFnPlayAll])
+            if (this.checked) {
+              el.headerMenuFn.removeAttribute('disabled')
+            } else {
+              el.headerMenuFn.setAttribute('disabled', '')
+            }
           }
           el.removeHistory.init = el.removeHistory.onchange = function() {
             subitemChange(this, [el.removeHistorySavePoint, el.removeHistoryFuzzyCompare, el.removeHistorySaves, el.removeHistorySearchTimes])
@@ -1706,12 +1785,13 @@
          * 根据 `aid` 获取视频的稍后再看状态
          * @async
          * @param {string} aid 视频 `aid`
-         * @param {boolean} [pageCache=true] 是否使用页面缓存
+         * @param {boolean} [reload] 是否重新加载
          * @param {boolean} [localCache=true] 是否使用本地缓存
+         * @param {boolean} [disablePageCache] 是否禁用页面缓存
          * @returns {Promise<boolean>} 视频是否在稍后再看中
          */
-        async getVideoWatchlaterStatusByAid(aid, pageCache = true, localCache = true) {
-          const current = await gm.data.watchlaterListData(!pageCache, localCache)
+        async getVideoWatchlaterStatusByAid(aid, reload = false, localCache = true, disablePageCache = false) {
+          const current = await gm.data.watchlaterListData(reload, localCache, disablePageCache)
           if (current && current.length > 0) {
             for (const e of current) {
               if (aid == e.aid) {
@@ -1761,7 +1841,16 @@
               url: gm.url.api_clearWatchlater,
               data: data,
             })
-            return JSON.parse(resp.response).code == 0
+            const success = JSON.parse(resp.response).code == 0
+            if (success) {
+              const current = []
+              gm.data._.watchlaterListData = current
+              if (gm.config.watchlaterListCacheValidPeriod > 0) {
+                GM_setValue('watchlaterListCacheTime', new Date().getTime())
+                GM_setValue('watchlaterListCache', current)
+              }
+            }
+            return success
           } catch (e) {
             api.logger.error(gm.error.NETWORK)
             api.logger.error(e)
@@ -1824,13 +1913,14 @@
          * @async
          * @param {boolean} [reload] 是否重新加载稍后再看列表数据
          * @param {boolean} [cache=true] 是否使用稍后再看列表数据本地缓存
+         * @param {boolean} [disablePageCache] 是否禁用稍后再看列表数据页面缓存
          * @returns {Map<string, GMObject_data_item0>} 稍后再看列表数据以 `aid` 为键的映射
          */
-        async getWatchlaterDataMap(reload, cache = true) {
+        async getWatchlaterDataMap(reload, cache = true, disablePageCache = false) {
           const _ = this._
-          if (!_.watchlaterDataMap || reload) {
+          if (!_.watchlaterDataMap || reload || disablePageCache) {
             const map = new Map()
-            const current = await gm.data.watchlaterListData(reload, cache) || []
+            const current = await gm.data.watchlaterListData(reload, cache, disablePageCache) || []
             for (const item of current) {
               map.set(String(item.aid), item)
             }
@@ -1838,6 +1928,38 @@
           }
           return _.watchlaterDataMap
         },
+
+        /**
+         * 将秒格式的时间转换为字符串形式
+         * @param {number} sTime 秒格式的时间
+         * @returns {string} 字符串形式
+         */
+        getSTimeString(sTime) {
+          let iH = 0
+          let iM = Math.floor(sTime / 60)
+          if (iM >= 60) {
+            iH = Math.floor(iM / 60)
+            iM = iM % 60
+          }
+          const iS = sTime % 60
+
+          let sH = ''
+          if (iH > 0) {
+            sH = String(iH)
+            if (sH.length < 2) {
+              sH = '0' + sH
+            }
+          }
+          let sM = String(iM)
+          if (sM.length < 2) {
+            sM = '0' + sM
+          }
+          let sS = String(iS)
+          if (sS.length < 2) {
+            sS = '0' + sS
+          }
+          return `${sH ? sH + ':' : ''}${sM}:${sS}`
+        }
       }
     }
 
@@ -1857,7 +1979,7 @@
         header.insertBefore(watchlater, collect)
 
         processClickEvent(watchlater)
-        processTooltip({ collect, watchlater })
+        processPopup(watchlater)
       }).catch(e => {
         api.logger.error(gm.error.DOM_PARSE)
         api.logger.error(e)
@@ -1866,16 +1988,19 @@
       /**
        * 处理清空稍后再看
        * @async
+       * @returns {boolean} 是否清空成功
        */
       const clearWatchlater = async () => {
+        let success = false
         const result = confirm(`【${GM_info.script.name}】\n\n是否清空稍后再看？`)
         if (result) {
-          const success = await this.method.clearWatchlater()
+          success = await this.method.clearWatchlater()
           api.message.create(`清空稍后再看${success ? '成功' : '失败'}`)
           if (success && api.web.urlMatch(gm.regex.page_watchlaterList)) {
             location.reload()
           }
         }
+        return success
       }
 
       /**
@@ -1924,112 +2049,33 @@
 
       /**
        * 处理弹出菜单
+       * @param {HTMLElement} watchlater 稍后再看元素
        */
-      function processTooltip({ collect, watchlater }) {
-        // 鼠标移动到稍后再看入口上时，以 Tooltip 形式显示稍后再看列表
-        const menuSelector = open => { // 注意，该 selector 无法直接选出对应的弹出菜单，只能用作拼接
-          if (typeof open == 'boolean') {
-            return `[role=tooltip][aria-hidden=${!open}]`
-          } else {
-            return '[role=tooltip][aria-hidden]'
-          }
+      const processPopup = watchlater => {
+        if (gm.config.headerMenu == Enums.headerMenu.disable) {
+          return
         }
-        const tabsPanelSelector = open => `${menuSelector(open)} .tabs-panel`
-        const videoPanelSelector = open => `${menuSelector(open)} .favorite-video-panel`
-
-        const defaultCollectPanelChildSelector = open => `${tabsPanelSelector(open)} [title=默认收藏夹]`
-        const watchlaterPanelChildSelector = open => `${tabsPanelSelector(open)} [title=稍后再看]`
-        const activePanelSelector = open => `${tabsPanelSelector(open)} .tab-item--active`
-
-        // 运行到这里的时候，menu 其实在收藏入口元素下面，后来不知道为什么被移到外面
-        const menu = document.querySelector(tabsPanelSelector(false)).parentNode.parentNode
-        const dispVue = collect.firstElementChild.__vue__
-
+        const popup = gm.menu.entryPopup.el
         setTimeout(() => {
-          processMenuClose()
-          // addEventListener 尽量避免冲掉事件
-          watchlater.addEventListener('mouseenter', onEnterWatchlater)
+          // 此处必须用 over；若用 enter，且网页刚加载完成时光标正好在入口上，无法轻移光标以触发事件
+          watchlater.addEventListener('mouseover', onOverWatchlater)
           watchlater.addEventListener('mouseleave', onLeaveWatchlater)
-          collect.addEventListener('mouseenter', onEnterCollect)
-          collect.addEventListener('mouseleave', onLeaveCollect)
-          menu.addEventListener('mouseenter', function() {
-            this.mouseOver = true
-          })
-          menu.addEventListener('mouseleave', function() {
-            this.mouseOver = false
-          })
+          popup.addEventListener('mouseenter', onEnterPopup)
+          popup.addEventListener('mouseleave', onLeavePopup)
         })
 
         /**
-         * 拦截鼠标从收藏入口以及菜单离开导致的菜单关闭，修改之使得如果此时鼠标已经移到稍后再看入口上就不关闭菜单。
-         *
-         * 借助 Chrome 命令行函数 getEventListeners() 可以定位（猜）到监听器在哪里。需要一点运气……
-         */
-        const processMenuClose = function() {
-          const miniFavorite = collect.querySelector('.mini-favorite')
-          const listener = dispVue.handleMouseLeave
-          // 真以为我就没法拦截到你？
-          miniFavorite.removeEventListener('mouseleave', listener)
-          const collectListener = function() {
-            setTimeout(() => {
-              if (!watchlater.mouseOver && !menu.mouseOver) {
-                listener.apply(this, arguments)
-              }
-            }, 50)
-          }
-          // 改绑到 collect 上，让两者之间完全没有空隙
-          collect.addEventListener('mouseleave', collectListener)
-          // 用 padding 代替 margin，使得 leave 的时候就直接接触到 watchlater
-          collect.style.paddingLeft = '12px'
-          collect.style.marginLeft = '0'
-
-          menu.removeEventListener('mouseleave', listener)
-          const menuListener = function() {
-            setTimeout(() => {
-              if (!watchlater.mouseOver && !collect.mouseOver) {
-                listener.apply(this, arguments)
-              }
-            }, 50)
-          }
-          menu.addEventListener('mouseleave', menuListener)
-          menu.style.paddingTop = '12px'
-          menu.style.marginTop = '0'
-        }
-
-        /**
          * 进入稍后再看入口的处理
-         * @async
          */
-        const onEnterWatchlater = async function() {
-          this.mouseOver = true
-          addHeaderMenuLinkObserver()
-          try {
-            const activePanel = document.querySelector(activePanelSelector(true))
-            if (activePanel) {
-              // 在没有打开弹出菜单前，获取不到 activePanel
-              collect._activeTitle = activePanel.firstElementChild.title
-              collect._activePanel = activePanel
-            }
-
-            if (!dispVue.showPopper) {
-              dispVue.showPopper = true
-            }
-            // 等待弹出菜单的状态变为“打开”再操作，会比较安全，虽然此时 DOM 上的菜单可能没有真正打开
-            // 时间可以给长一点，否则有时候加载得比较慢会 timeout
-            const watchlaterPanelChild = await api.wait.waitForElementLoaded({
-              selector: watchlaterPanelChildSelector(true),
-              interval: 50,
-              timeout: 2000,
-            })
-            watchlaterPanelChild.parentNode.click()
-          } catch (e) {
-            api.logger.error(gm.error.DOM_PARSE)
-            api.logger.error(e)
+        const onOverWatchlater = function() {
+          if (this.mouseOver) {
+            return
           }
-          setMenuArrow()
-
-          if (gm.config.removeHistory && gm.config.removeHistorySavePoint == Enums.removeHistorySavePoint.listAndMenu) {
-            _self.method.saveWatchlaterListData()
+          this.mouseOver = true
+          if (!gm.menu.entryPopup.state) {
+            popup.style.top = `calc(${watchlater.offsetTop + watchlater.offsetHeight}px + 1em)`
+            popup.style.left = `calc(${watchlater.offsetLeft + watchlater.offsetWidth / 2}px - 15em)`
+            openEntryPopup()
           }
         }
 
@@ -2038,135 +2084,235 @@
          */
         const onLeaveWatchlater = function() {
           this.mouseOver = false
-          // 要留出足够空间让 collect.mouseOver 和 container.mouseOver 变化
           setTimeout(() => {
-            if (!menu.mouseOver && !collect.mouseOver) {
-              dispVue.showPopper = false
+            if (!popup.mouseOver) {
+              _self.script.closeMenuItem('entryPopup')
             }
-          }, 20)
+          }, 100)
         }
 
         /**
-         * 进入收藏入口的处理
-         * @async
+         * 进入弹出菜单的处理
          */
-        const onEnterCollect = async function() {
+        const onEnterPopup = function() {
           this.mouseOver = true
-          addHeaderMenuLinkObserver()
-          try {
-            const activePanel = await api.wait.waitForElementLoaded({
-              selector: activePanelSelector(true),
-              interval: 50,
-              timeout: 1500,
-            })
-            const activeTitle = activePanel.firstElementChild.title
-            if (activeTitle == '稍后再看') {
-              if (!collect._activePanel || collect._activeTitle == '稍后再看') {
-                // 一般来说，只有当打开页面后直接通过稍后再看入口打开弹出菜单，然后再将鼠标移动到收藏入口上，才会执行进来
-                const defaultCollectPanelChild = await api.wait.waitForElementLoaded({
-                  selector: defaultCollectPanelChildSelector(true),
-                  interval: 50,
-                  timeout: 1500,
-                })
-                collect._activeTitle = defaultCollectPanelChild.title
-                collect._activePanel = defaultCollectPanelChild.parentNode
-              }
-              collect._activePanel.click()
-            }
-          } catch (e) {
-            api.logger.error(gm.error.DOM_PARSE)
-            api.logger.error(e)
-          }
-          setMenuArrow()
         }
 
         /**
-         * 离开收藏入口的处理
+         * 离开弹出菜单的处理
          */
-        const onLeaveCollect = function() {
+        const onLeavePopup = function() {
           this.mouseOver = false
+          setTimeout(() => {
+            if (!watchlater.mouseOver) {
+              _self.script.closeMenuItem('entryPopup')
+            }
+          }, 100)
         }
+      }
 
-        /**
-         * 为稍后再看菜单中添加一个 ob，实时追踪内部的链接并进行处理
-         * @async
-         */
-        const addHeaderMenuLinkObserver = async () => {
-          if (!menu._addLinkObserver) {
+      /**
+       * 打开入口弹出菜单
+       */
+      const openEntryPopup = () => {
+        const el = {}
+        if (gm.el.entryPopup) {
+          // 重新打开的前置处理
+          _self.script.openMenuItem('entryPopup')
+        } else {
+          setTimeout(() => {
+            initPopup()
+            processPopup()
+            _self.script.openMenuItem('entryPopup')
+          })
+
+          /**
+           * 初始化
+           */
+          const initPopup = () => {
             const openLinkInCurrent = gm.config.openHeaderMenuLink == Enums.openHeaderMenuLink.openInCurrent
-            const autoRemove = gm.config.autoRemove == Enums.autoRemove.openFromList
-            if (openLinkInCurrent || autoRemove) {
-              menu._addLinkObserver = true
-              try {
-                // 目前默认原来是 _blank，如果以后 B 站改成默认 _self，那要反过来
-                // const target = gm.config.openHeaderMenuLink == enums.openHeaderMenuLink.openInNew ? '_blank' : '_self'
-                const videoPanel = await api.wait.waitForElementLoaded(videoPanelSelector())
-                // 添加一个 ob，在给右边视频面板添加链接时，对其进行处理
-                const ob = new MutationObserver(async records => {
-                  for (const record of records) {
-                    for (const addedNode of record.addedNodes) {
-                      const node = addedNode.firstElementChild
-                      if (node && node.nodeName == 'A') {
-                        /** @type {HTMLAnchorElement} */
-                        const link = node
-                        if (openLinkInCurrent && link.target != '_self') {
-                          link.target = '_self'
-                        }
+            const target = openLinkInCurrent ? '_self' : '_blank'
+            gm.el.entryPopup = gm.el.gmRoot.appendChild(gm.menu.entryPopup.el)
+            gm.el.entryPopup.className = 'gm-entrypopup'
+            gm.el.entryPopup.innerHTML = `
+              <div class="gm-popup-arrow"></div>
+              <div class="gm-entry-list"></div>
+              <div class="gm-entry-bottom">
+                <a class="gm-entry-button" fn="setting" href="${gm.url.noop}" target="${target}">设置</a>
+                <a class="gm-entry-button" fn="history" href="${gm.url.noop}" target="${target}">历史</a>
+                <a class="gm-entry-button" fn="removeAll" href="${gm.url.noop}" target="${target}">清空</a>
+                <a class="gm-entry-button" fn="showAll" href="${gm.url.page_watchlaterList}" target="${target}">显示</a>
+                <a class="gm-entry-button" fn="playAll" href="${gm.url.page_watchlaterPlayAll}" target="${target}">播放</a>
+              </div>
+            `
+            el.entryList = gm.el.entryPopup.querySelector('.gm-entry-list')
+            el.entryBottom = gm.el.entryPopup.querySelector('.gm-entry-bottom')
+          }
 
-                        // 自动移除
-                        if (autoRemove) {
-                          const card = node.__vue__.card
-                          if (card.isLater) { // 稍后再看
-                            const url = new URL(link.href)
-                            url.searchParams.set(`${gm.id}_remove_from_list`, 'true')
-                            link.href = url.href
-                            link.addEventListener('mouseup', function(e) {
-                              // 不能 mousedown，隐藏之后无法触发事件
-                              if (e.button == 0 || e.button == 1) { // 左键或中键
-                                link.parentNode.style.display = 'none'
-                              }
-                            })
-                          }
-                        }
+          /**
+           * 维护内部元素
+           */
+          const processPopup = () => {
+            gm.menu.entryPopup.openHandler = onOpen
+            try {
+              el.entryFn = {}
+              const buttons = el.entryBottom.querySelectorAll('.gm-entry-button')
+              for (const button of buttons) {
+                const fn = button.getAttribute('fn')
+                if (fn) {
+                  el.entryFn[fn] = button
+                }
+              }
+              if (gm.config.headerMenuFnSetting) {
+                el.entryFn.setting.setAttribute('enabled', '')
+                el.entryFn.setting.addEventListener('click', () => _self.script.openUserSetting())
+              }
+              if (gm.config.headerMenuFnHistory) {
+                el.entryFn.history.setAttribute('enabled', '')
+                el.entryFn.history.addEventListener('click', () => _self.script.openRemoveHistory())
+              }
+              if (gm.config.headerMenuFnRemoveAll) {
+                el.entryFn.removeAll.setAttribute('enabled', '')
+                el.entryFn.removeAll.addEventListener('click', async function() {
+                  const success = await clearWatchlater()
+                  if (success) {
+                    el.entryList.innerText = ''
+                  }
+                })
+              }
+              if (gm.config.headerMenuFnShowAll) {
+                el.entryFn.showAll.setAttribute('enabled', '')
+              }
+              if (gm.config.headerMenuFnPlayAll) {
+                el.entryFn.playAll.setAttribute('enabled', '')
+              }
+              if (el.entryBottom.querySelectorAll('[enabled]').length < 1) {
+                el.entryBottom.style.display = 'none'
+              }
+            } catch (e) {
+              api.logger.error(gm.error.UNKNOWN)
+              api.logger.error(e)
+            }
+          }
+
+          /**
+           * 打开时弹出菜单时执行
+           * @async
+           */
+          const onOpen = async () => {
+            el.entryList.innerText = ''
+            el.entryList.style.opacity = '0'
+            let data = []
+            if (el.entryList.needReload) {
+              el.entryList.needReload = false
+              data = await gm.data.watchlaterListData(true)
+            } else {
+              data = await gm.data.watchlaterListData(false, true, true) // 启用本地缓存但禁用页面缓存
+            }
+            if (data && data.length > 0) {
+              const openLinkInCurrent = gm.config.openHeaderMenuLink == Enums.openHeaderMenuLink.openInCurrent
+              const redirect = gm.config.redirect
+              const autoRemove = gm.config.autoRemove == Enums.autoRemove.openFromList
+              const simplePopup = gm.config.headerMenu == Enums.headerMenu.enableSimple
+              try {
+                for (const item of data) {
+                  /** @type {HTMLAnchorElement} */
+                  const card = el.entryList.appendChild(document.createElement('a'))
+                  if (simplePopup) {
+                    card.innerText = item.title
+                    card.className = 'gm-entry-list-simple-item'
+                  } else {
+                    const multiP = item.videos > 1
+                    const duration = multiP ? `${item.videos}P` : _self.method.getSTimeString(item.duration)
+                    const played = item.progress > 0
+                    let progress = ''
+                    if (played) {
+                      if (multiP) {
+                        progress = '已观看'
+                      } else {
+                        progress = _self.method.getSTimeString(item.progress)
                       }
                     }
+                    card.className = 'gm-entry-list-item'
+                    card.innerHTML = `
+                      <div class="gm-card-left">
+                        <img class="gm-card-cover" src="${item.pic}">
+                        <div class="gm-card-switcher"></div>
+                        <div class="gm-card-duration">${duration}</div>
+                      </div>
+                      <div class="gm-card-right">
+                        <div class="gm-card-title">${item.title}</div>
+                        <div class="gm-card-uploader">${item.owner.name}</div>
+                        <div class="gm-card-progress">${progress}</div>
+                      </div>
+                    `
+                    if (played) {
+                      card.querySelector('.gm-card-progress').style.display = 'unset'
+                      card.querySelector('.gm-card-uploader').style.width = '13em'
+                    }
+
+                    const switcher = card.querySelector('.gm-card-switcher')
+                    switcher.added = true
+                    switcher.addEventListener('click', function(e) {
+                      e.preventDefault() // 不能放到 async 中
+                      setTimeout(async () => {
+                        const added = this.added
+                        // 先改了 UI 再说，不要给用户等待感
+                        if (added) {
+                          api.dom.addClass(card, 'removed')
+                        } else {
+                          api.dom.removeClass(card, 'removed')
+                        }
+                        const note = added ? '从稍后再看移除' : '添加到稍后再看'
+                        const success = await _self.method.switchVideoWatchlaterStatus(item.aid, !added)
+                        if (success) {
+                          el.entryList.needReload = true
+                          this.added = !added
+                          api.message.create(`${note}成功`)
+                        } else {
+                          if (added) {
+                            api.dom.removeClass(card, 'removed')
+                          } else {
+                            api.dom.addClass(card, 'removed')
+                          }
+                          api.message.create(`${note}失败`)
+                        }
+                      })
+                    })
                   }
-                  // 不要 observer.disconnect()，需一直监听变化
-                })
-                ob.observe(videoPanel.firstElementChild, { childList: true })
+                  card.target = openLinkInCurrent ? '_self' : '_blank'
+                  if (redirect) {
+                    card.href = `${gm.url.page_videoNormalMode}/${item.bvid}`
+                  } else {
+                    card.href = `${gm.url.page_videoWatchlaterMode}/${item.bvid}`
+                  }
+                  if (autoRemove) {
+                    card.href = card.href + `?${gm.id}_remove_from_list=true`
+                    card.addEventListener('mouseup', function(e) {
+                      if (e.target.className == 'gm-card-switcher') {
+                        return
+                      }
+                      // 不能 mousedown，隐藏之后无法触发事件
+                      if (e.button == 0 || e.button == 1) { // 左键或中键
+                        card.style.display = 'none'
+                      }
+                    })
+                  }
+                }
+                el.entryList.style.opacity = '1'
+                el.entryList.scrollTop = 0
               } catch (e) {
-                menu._addLinkObserver = false
-                api.logger.error(gm.error.DOM_PARSE)
+                api.logger.error(gm.error.NETWORK)
                 api.logger.error(e)
               }
-            }
-          }
-        }
-
-        /**
-         * 设置弹出菜单的顶上的小箭头位置
-         */
-        const setMenuArrow = () => {
-          setTimeout(() => {
-            const menuArrow = menu.querySelector('.popper__arrow')
-            let left = menuArrow.style.left
-            if (left) {
-              // 用常规的变量标识方式要处理的方式非常复杂，因为有很多个自变量会影响到该标识符
-              // 这里投机取巧，直接用 calc 作为特殊的标识符，大大简化了过程
-              if (watchlater.mouseOver) {
-                if (!left.startsWith('calc')) {
-                  // 向左移动
-                  menuArrow.style.left = `calc(${parseFloat(left) - 52}px)`
-                }
-              } else if (collect.mouseOver) {
-                if (left.startsWith('calc')) {
-                  // 还原
-                  left = parseFloat(left.replace(/calc\(/, ''))
-                  menuArrow.style.left = `${left + 52}px`
-                }
+              if (simplePopup) {
+                el.entryList.lastElementChild.style.borderBottom = 'none'
               }
             }
-          }, 50)
+            if (gm.config.removeHistory && gm.config.removeHistorySavePoint == Enums.removeHistorySavePoint.listAndMenu) {
+              _self.method.saveWatchlaterListData()
+            }
+          }
         }
       }
 
@@ -2175,7 +2321,7 @@
        * @param {headerButtonOp} op
        * @returns {{href: string, target: '_self'|'_blank'}}
        */
-      function getHeaderButtonOpConfig(op) {
+      const getHeaderButtonOpConfig = op => {
         /** @type {{href: string, target: '_self'|'_blank'}} */
         const result = {}
         switch (op) {
@@ -2408,12 +2554,12 @@
             })
             let reloaded = false
             gm.searchParams = new URL(location.href).searchParams
-            const removed = await _self.processAutoRemoveInNormalMode()
+            const removed = await _self.processAutoRemove()
             if (gm.config.removeHistory && gm.config.removeHistorySavePoint == Enums.removeHistorySavePoint.anypage) {
               await _self.method.saveWatchlaterListData(true)
               reloaded = true
             }
-            const status = removed ? false : await _self.method.getVideoWatchlaterStatusByAid(bus.aid, reloaded)
+            const status = removed ? false : await _self.method.getVideoWatchlaterStatusByAid(bus.aid, !reloaded)
             btn.added = status
             cb.checked = status
           } catch (e) {
@@ -2473,22 +2619,20 @@
     async redirect() {
       window.stop() // 停止原页面的加载
       // 这里不能用读取页面 Vue 或者 window.aid 的方式来直接获取目标 URL，那样太慢了，直接从 URL 反推才是最快的。
-      // 不要担心由于稍后再看列表在其他地方被改动，导致当前分 P 与实际位置对不上，从而导致重定向到另一个视频上。之所以
-      // 这样说，不是因为这种情况不会发生，而是因为这是 B 站自己的问题，即使不做重定向，在这种情况下也必然会打开到另一
-      // 个视频上。
-      // 为了彻底解决这种特殊情况，引入另一个功能“确保视频的一致性”。
       try {
-        const resp = await api.web.request({
-          method: 'GET',
-          url: gm.url.api_queryWatchlaterList,
-        })
-        let part = 1
-        if (api.web.urlMatch(/watchlater\/p\d+/)) {
-          part = parseInt(location.href.match(/(?<=\/watchlater\/p)\d+(?=\/?)/)[0])
-        } // 如果匹配不上，就是以 watchlater/ 直接结尾，等同于 watchlater/p1
-        const json = JSON.parse(resp.responseText)
-        const watchlaterList = json.data.list || []
-        location.replace(`${gm.url.page_videoNormalMode}/${watchlaterList[part - 1].bvid}`)
+        let bvid = null
+        if (api.web.urlMatch(/watchlater\/(B|b)(V|v)[0-9a-zA-Z]+/)) {
+          bvid = location.href.match(/(?<=\/watchlater\/)(B|b)(V|v)[0-9a-zA-Z]+(?=\/?)/)[0]
+        }
+        if (!bvid) { // 如果为空就是以 watchlater/ 直接结尾，等同于稍后再看中的第一个视频
+          const resp = await api.web.request({
+            method: 'GET',
+            url: gm.url.api_queryWatchlaterList,
+          })
+          const json = JSON.parse(resp.responseText)
+          bvid = json.data.list[0].bvid
+        }
+        location.replace(`${gm.url.page_videoNormalMode}/${bvid}`)
       } catch (e) {
         const errorInfo = gm.error.REDIRECT
         api.logger.error(errorInfo)
@@ -2510,161 +2654,7 @@
      * 稍后再看模式播放页加入快速切换稍后再看状态的按钮
      */
     addVideoButton_Watchlater() {
-      const _self = this
-      let bus = {}
-
-      /**
-       * 继续执行的条件
-       */
-      const executeCondition = () => {
-        // 必须在确定 Vue 加载完成后再修改 DOM 结构，否则会导致 Vue 加载出错造成页面错误
-        const app = document.querySelector('#app')
-        const vueLoad = app && app.__vue__
-        if (!vueLoad) {
-          return false
-        }
-        const playContainer = app.querySelector('#playContainer')
-        if (playContainer.__vue__.playId) {
-          // 等到能获取到 aid 再进入，免得等下处处都要异步处理
-          return playContainer
-        }
-      }
-
-      api.wait.waitForConditionPassed({
-        condition: executeCondition,
-      }).then(async playContainer => {
-        const more = playContainer.querySelector('#playContainer .left-container .play-options .play-options-more')
-        const btn = document.createElement('label')
-        btn.id = `${gm.id}-watchlater-video-btn`
-        btn.onclick = e => e.stopPropagation()
-        const cb = document.createElement('input')
-        cb.type = 'checkbox'
-        btn.appendChild(cb)
-        const text = document.createElement('span')
-        text.innerText = '稍后再看'
-        btn.appendChild(text)
-
-        // 确保与其他脚本配合时相关 UI 排列顺序不会乱
-        let gmContainer = more.querySelector('[id=gm-container]')
-        if (!gmContainer) {
-          gmContainer = more.appendChild(document.createElement('span'))
-          gmContainer.id = 'gm-container'
-          gmContainer.style.float = 'left'
-        }
-        gmContainer.appendChild(btn)
-
-        cb.onclick = () => processSwitch() // 不要附加到 btn 上，否则点击时会执行两次
-        bus = { ...bus, btn, cb }
-        bus.aid = await _self.method.getAid()
-        initButtonStatus()
-
-        // 切换视频时的处理
-        bus.pathname = location.pathname
-        api.dom.createLocationchangeEvent()
-        window.addEventListener('locationchange', async function() {
-          if (location.pathname == bus.pathname) { // 并非切换视频（如切分 P）
-            return
-          }
-          try {
-            bus.pathname = location.pathname
-            bus.aid = await api.wait.waitForConditionPassed({
-              condition: async () => {
-                // 要等 aid 跟之前存的不一样，才能说明是切换成功后获取到的 aid
-                const aid = await _self.method.getAid()
-                if (aid && aid != bus.aid) {
-                  return aid
-                }
-              },
-            })
-            let reloaded = false
-            gm.searchParams = new URL(location.href).searchParams
-            const removed = await _self.processAutoRemoveInWatchlaterMode()
-            if (gm.config.removeHistory && gm.config.removeHistorySavePoint == Enums.removeHistorySavePoint.anypage) {
-              await _self.method.saveWatchlaterListData(true)
-              reloaded = true
-            }
-            const status = removed ? false : await _self.method.getVideoWatchlaterStatusByAid(bus.aid, reloaded)
-            btn.added = status
-            cb.checked = status
-          } catch (e) {
-            api.logger.error(gm.error.DOM_PARSE)
-            api.logger.error(e)
-          }
-        })
-      }).catch(e => {
-        api.logger.error(gm.error.DOM_PARSE)
-        api.logger.error(e)
-      })
-
-      /**
-       * 初始化按钮的稍后再看状态
-       * @async
-       */
-      const initButtonStatus = async () => {
-        const setStatus = () => {
-          // 既然是稍后再看播放模式，那就默认视频在稍后再看中
-          bus.btn.added = true
-          bus.cb.checked = true
-        }
-
-        const alwaysAutoRemove = gm.config.autoRemove == Enums.autoRemove.always
-        const spRemove = gm.searchParams.get(`${gm.id}_remove_from_list`) === 'true'
-        if (!alwaysAutoRemove && !spRemove) {
-          setStatus()
-        } else {
-          const _self = this
-          let aid
-          const spBvid = gm.searchParams.get(`${gm.id}_bvid`)
-          if (spBvid) {
-            // 如果查询参数上存在 bvid，要作进一步处理
-            try {
-              const info = await _self.method.getVideoInfo(spBvid)
-              aid = String(info.aid)
-              // 必须要等到页面上的 aid 与之完全一致才行，那样说明已经切换到正确的视频上，然后再进行处理
-              await api.wait.waitForConditionPassed({ // 这里 await 是为了将异常抛出来统一处理，而不是在 catch() 中处理
-                condition: async () => {
-                  const currentAid = await _self.method.getAid()
-                  if (aid == currentAid) {
-                    return aid
-                  }
-                },
-              })
-              // 无需切换视频，那就不必读取状态了，默认不在稍后再看即可
-            } catch (e) {
-              api.logger.error(gm.error.NETWORK)
-              api.logger.error(e)
-              // 说明当前播放视频并非所寻的与 spBvid 对应的视频，则继续处理
-              setStatus()
-            }
-          }
-        }
-        // 如果当前视频应当被移除，那就不必读取状态了
-        // 注意，哪处代码先执行不确定，不过从理论上来说这里应该是会晚执行
-        // 当然，自动移除的操作有可能会失败，但两处代码联动太麻烦了，还会涉及到切换其他视频的问题，综合考虑之下对这种小概率事件不作处理
-      }
-
-      /**
-       * 处理视频状态的切换
-       * @async
-       */
-      const processSwitch = async () => {
-        const btn = bus.btn
-        const cb = bus.cb
-        const note = btn.added ? '从稍后再看移除' : '添加到稍后再看'
-        bus.aid = await _self.method.getAid()
-        if (bus.aid) {
-          const success = await _self.method.switchVideoWatchlaterStatus(bus.aid, !btn.added)
-          if (success) {
-            btn.added = !btn.added
-            cb.checked = btn.added
-            api.message.create(`${note}成功`)
-            return
-          }
-        }
-        // 获取不到 aid，或网络请求失败，或请求成功但添加失败
-        cb.checked = btn.added
-        api.message.create(`${note}失败${!btn.added ? '，可能是因为不支持当前稿件类型（如互动视频）' : ''}`)
-      }
+      return this.addVideoButton_Normal() // 改进后与普通模式播放页一致
     }
 
     /**
@@ -2690,18 +2680,11 @@
           for (const record of records) {
             for (const addedNode of record.addedNodes) {
               if (api.dom.containsClass(addedNode, 'list-box')) {
-                let watchlaterListData = null
-                if (gm.config.forceConsistentVideo) {
-                  watchlaterListData = await gm.data.watchlaterListData(false, false) // 此处若使用本地缓存可能会导致列表同步错位
-                }
                 const listBox = addedNode
                 const list = listBox.firstElementChild.children
                 for (let i = 0; i < list.length; i++) {
                   const links = list[i].querySelectorAll('a:not([class=user])') // 排除 .user，那是指向 UP 主的链接
                   for (const link of links) {
-                    if (gm.config.forceConsistentVideo) {
-                      processLink_forceConsistentVideo(link, watchlaterListData[i])
-                    }
                     if (gm.config.autoRemove != Enums.autoRemove.never) {
                       processLink_autoRemove(link)
                     }
@@ -2734,21 +2717,6 @@
       } catch (e) {
         api.logger.error(gm.error.DOM_PARSE)
         api.logger.error()
-      }
-
-      /**
-       * 根据 `forceConsistentVideo` 处理链接
-       * @param {HTMLAnchorElement} link 链接元素
-       * @param {GMObject_data_item0} itemData 对应项数据
-       */
-      const processLink_forceConsistentVideo = (link, itemData) => {
-        if (gm.config.redirect) {
-          link.href = `${gm.url.page_videoNormalMode}/${itemData.bvid}`
-        } else {
-          const url = new URL(link.href)
-          url.searchParams.set(`${gm.id}_bvid`, itemData.bvid)
-          link.href = url.href
-        }
       }
 
       /**
@@ -2787,11 +2755,11 @@
       const _self = this
       if (api.web.urlMatch(gm.regex.page_videoNormalMode)) {
         // 播放页面（正常模式）
-        await _self.processAutoRemoveInNormalMode()
+        await _self.processAutoRemove()
       } else if (api.web.urlMatch(gm.regex.page_videoWatchlaterMode)) {
         // 播放页面（稍后再看模式）
-        await _self.forceConsistentVideoInWatchlaterMode()
-        await _self.processAutoRemoveInWatchlaterMode()
+        // 推迟一段时间执行，否则稍后再看模式播放页会因为检测不到视频在稍后再看中而出错
+        await _self.processAutoRemove(5000)
       }
 
       // 移除 URL 上的查询参数
@@ -2810,66 +2778,12 @@
     }
 
     /**
-     * 对于稍后再看模式播放页，根据 URL 上的查询参数，强制切换到准确的视频上
+     * 根据用户配置或 URL 上的查询参数，将视频从稍后再看移除
      * @async
-     * @param {boolean} [selfCall] 自调用
-     */
-    async forceConsistentVideoInWatchlaterMode(selfCall) {
-      const _self = this
-      const spBvid = gm.searchParams.get(`${gm.id}_bvid`)
-      if (spBvid) {
-        try {
-          const playlist = await api.wait.waitForElementLoaded('.player-auxiliary-collapse-playlist')
-          try {
-            const targetItem = await api.wait.waitForElementLoaded({
-              selector: `[data-bvid=${spBvid}]`,
-              base: playlist,
-              interval: 50,
-              timeout: 800,
-            })
-            const itemImg = targetItem.querySelector('.player-auxiliary-playlist-item-img')
-            const playingImg = itemImg.querySelector('.player-auxiliary-playlist-item-img-playing')
-            if (getComputedStyle(playingImg).display == 'none') {
-              itemImg.click()
-            }
-          } catch (e) {
-            api.logger.error(gm.error.DOM_PARSE)
-            api.logger.error(e)
-
-            const result = confirm(`【${GM_info.script.name}】\n\n视频 ${spBvid} 不在稍后再看中，是否转到普通模式播放？`)
-            if (result) {
-              location.replace(`${gm.url.page_videoNormalMode}/${spBvid}`)
-            }
-          }
-        } catch (e) {
-          try {
-            if (selfCall) {
-              throw e
-            } else {
-              const rightContainer = await api.wait.waitForElementLoaded('.right-container')
-              const ob = new MutationObserver((records, observer) => {
-                observer.disconnect()
-                _self.forceConsistentVideoInWatchlaterMode(true)
-              })
-              ob.observe(rightContainer, {
-                childList: true,
-                subtree: true,
-              })
-            }
-          } catch (e) {
-            api.logger.error(gm.error.DOM_PARSE)
-            api.logger.error(e)
-          }
-        }
-      }
-    }
-
-    /**
-     * 对于正常模式播放页，根据用户配置或 URL 上的查询参数，将视频从稍后再看移除
-     * @async
+     * @param {number} [delay=0] 延迟执行（单位：ms）
      * @returns {Promise<boolean>} 执行后视频是否已经不在稍后再看中（可能是在本方法内被移除，也可能是本身就不在）
      */
-    async processAutoRemoveInNormalMode() {
+    async processAutoRemove(delay = 0) {
       const alwaysAutoRemove = gm.config.autoRemove == Enums.autoRemove.always
       const spRemove = gm.searchParams.get(`${gm.id}_remove_from_list`) === 'true'
       if (alwaysAutoRemove || spRemove) {
@@ -2881,58 +2795,8 @@
             return true
           }
         }
-        const success = await _self.method.switchVideoWatchlaterStatus(aid, false)
-        if (!success) {
-          api.message.create('从稍后再看移除失败')
-        }
-        return success
-      }
-      return false
-    }
-
-    /**
-     * 对于稍后再看模式播放页，根据用户配置或 URL 上的查询参数，将视频从稍后再看移除
-     * @async
-     * @returns {Promise<boolean>} 执行后视频是否已经不在稍后再看中（可能是在本方法内被移除，也可能是本身就不在）
-     */
-    async processAutoRemoveInWatchlaterMode() {
-      const alwaysAutoRemove = gm.config.autoRemove == Enums.autoRemove.always
-      const spRemove = gm.searchParams.get(`${gm.id}_remove_from_list`) === 'true'
-      if (alwaysAutoRemove || spRemove) {
-        const _self = this
-        let aid
-        const spBvid = gm.searchParams.get(`${gm.id}_bvid`)
-        if (spBvid) {
-          // 如果查询参数上存在 bvid，要作进一步处理
-          try {
-            const info = await _self.method.getVideoInfo(spBvid)
-            aid = String(info.aid)
-            // 必须要等到页面上的 aid 与之完全一致才行，那样说明已经切换到正确的视频上
-            // 否则，先将视频移除出稍后再看，那么根本就无法在稍后再看模式中观看该视频
-            await api.wait.waitForConditionPassed({
-              condition: async () => {
-                const currentAid = await _self.method.getAid()
-                if (aid == currentAid) {
-                  return aid
-                }
-              },
-            })
-          } catch (e) {
-            api.logger.error(gm.error.NETWORK)
-            api.logger.error(e)
-            return false
-          }
-        }
-        if (!aid) {
-          aid = await _self.method.getAid()
-        }
-
-        if (alwaysAutoRemove) { // 如果总是自动移除，要检查视频是否已经在稍后再看中，确定在再移除
-          // 尽管从理论上来说，稍后再看模式中的视频必然是在稍后再看中的，但由于本脚本的功能，未必如此，还是要检查一遍
-          const status = await _self.method.getVideoWatchlaterStatusByAid(aid)
-          if (!status) {
-            return true
-          }
+        if (delay > 0) {
+          await new Promise(resolve => setTimeout(resolve, delay))
         }
         const success = await _self.method.switchVideoWatchlaterStatus(aid, false)
         if (!success) {
@@ -3003,6 +2867,25 @@
     }
 
     /**
+     * 隐藏【收藏】中【稍后再看】
+     */
+    async hideWatchlaterInCollectStyle() {
+      api.wait.waitForElementLoaded('.user-con .mini-favorite').then(fav => {
+        fav.parentNode.addEventListener('mouseover', function() {
+          api.wait.waitForElementLoaded('[role=tooltip] .tab-item [title=稍后再看]').then(node => {
+            node.parentNode.style.display = 'none'
+          }).catch(e => {
+            api.logger.error(gm.error.DOM_PARSE)
+            api.logger.error(e)
+          })
+        }, { once: true })
+      }).catch(e => {
+        api.logger.error(gm.error.DOM_PARSE)
+        api.logger.error(e)
+      })
+    }
+
+    /**
      * 添加弹出菜单的滚动条样式
      */
     addMenuScrollbarStyle() {
@@ -3016,6 +2899,7 @@
               --scrollbar-thumb-color: #0000002b;
             }
 
+            #${gm.id} .gm-entrypopup .gm-entry-list::-webkit-scrollbar,
             [role=tooltip] ::-webkit-scrollbar,
             #app>.out-container>.container::-webkit-scrollbar {
               width: 6px;
@@ -3023,18 +2907,21 @@
               background-color: var(--scrollbar-background-color);
             }
 
+            #${gm.id} .gm-entrypopup .gm-entry-list::-webkit-scrollbar-thumb,
             [role=tooltip] ::-webkit-scrollbar-thumb,
             #app>.out-container>.container::-webkit-scrollbar-thumb {
               border-radius: 3px;
               background-color: var(--scrollbar-background-color);
             }
 
+            #${gm.id} .gm-entrypopup .gm-entry-list:hover::-webkit-scrollbar-thumb,
             [role=tooltip] :hover::-webkit-scrollbar-thumb,
             #app>.out-container>.container:hover::-webkit-scrollbar-thumb {
               border-radius: 3px;
               background-color: var(--scrollbar-thumb-color);
             }
 
+            #${gm.id} .gm-entrypopup .gm-entry-list::-webkit-scrollbar-corner,
             [role=tooltip] ::-webkit-scrollbar-corner,
             #app>.out-container>.container::-webkit-scrollbar-corner {
               background-color: var(--scrollbar-background-color);
@@ -3065,7 +2952,7 @@
       // 通用样式
       GM_addStyle(`
         :root {
-          --text-color: black;
+          --text-color: #0d0d0d;
           --text-bold-color: #3a3a3a;
           --light-text-color: white;
           --hint-text-color: gray;
@@ -3076,8 +2963,11 @@
           --update-hightlight-color: #c2ffc2;
           --update-hightlight-hover-color: #a90000;
           --border-color: black;
+          --light-border-color: #e7e7e7;
           --shadow-color: #000000bf;
-          --hightlight-color: #0075FF;
+          --text-shadow-color: #00000080;
+          --box-shadow-color: #00000033;
+          --hightlight-color: #0075ff;
           --important-color: red;
           --warn-color: #e37100;
           --disabled-color: gray;
@@ -3085,10 +2975,180 @@
           --scrollbar-background-color: transparent;
           --scrollbar-thumb-color: #0000002b;
           --opacity-fade-transition: opacity ${gm.const.fadeTime}ms ease-in-out;
+          --opacity-fade-popup-transition: opacity ${gm.const.fadeTime}ms cubic-bezier(0.68, -0.55, 0.27, 1.55);
         }
 
         #${gm.id} {
           color: var(--text-color);
+        }
+        #${gm.id} * {
+          box-sizing: content-box;
+        }
+
+        #${gm.id} .gm-entrypopup {
+          font-size: 12px;
+          line-height: normal;
+          transition: var(--opacity-fade-popup-transition);
+          opacity: 0;
+          display: none;
+          position: absolute;
+          z-index: 10000;
+          user-select: none;
+          border-radius: 4px;
+          width: 30em;
+          border: none;
+          box-shadow: var(--box-shadow-color) 0px 3px 6px;
+          background-color: var(--background-color);
+        }
+        #${gm.id} .gm-entrypopup .gm-popup-arrow {
+          position: absolute;
+          z-index: -1;
+          top: -14px;
+          left: calc(15em - 7px);
+          width: 0;
+          height: 0;
+          border-width: 8px;
+          border-bottom-width: 8px;
+          border-style: solid;
+          border-color: transparent;
+          border-bottom-color: var(--background-color);
+        }
+
+        #${gm.id} .gm-entrypopup .gm-entry-list {
+          height: 39em;
+          overflow-y: auto;
+          padding: 0.2em 0;
+          transition: var(--opacity-fade-popup-transition);
+        }
+
+        #${gm.id} .gm-entrypopup .gm-entry-list .gm-entry-list-item {
+          display: flex;
+          flex-shrink: 0;
+          height: 4.4em;
+          padding: 0.5em 1em;
+          color: var(--text-color);
+          font-size: 1.15em;
+          cursor: pointer;
+        }
+        #${gm.id} .gm-entrypopup .gm-entry-list .gm-entry-list-item.removed {
+          filter: grayscale(1);
+        }
+        #${gm.id} .gm-entrypopup .gm-entry-list .gm-entry-list-item .gm-card-left {
+          position: relative;
+          flex-shrink: 0;
+          cursor: default;
+        }
+        #${gm.id} .gm-entrypopup .gm-entry-list .gm-entry-list-item .gm-card-cover {
+          width: 7.8em;
+          height: 4.4em;
+          border-radius: 2px;
+        }
+        #${gm.id} .gm-entrypopup .gm-entry-list .gm-entry-list-item .gm-card-switcher {
+          position: absolute;
+          background-image: url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADgAAAA4CAYAAACohjseAAAACXBIWXMAAAsTAAALEwEAmpwYAAAFKmlUWHRYTUw6Y29tLmFkb2JlLnhtcAAAAAAAPD94cGFja2V0IGJlZ2luPSLvu78iIGlkPSJXNU0wTXBDZWhpSHpyZVN6TlRjemtjOWQiPz4gPHg6eG1wbWV0YSB4bWxuczp4PSJhZG9iZTpuczptZXRhLyIgeDp4bXB0az0iQWRvYmUgWE1QIENvcmUgNS42LWMxNDUgNzkuMTYzNDk5LCAyMDE4LzA4LzEzLTE2OjQwOjIyICAgICAgICAiPiA8cmRmOlJERiB4bWxuczpyZGY9Imh0dHA6Ly93d3cudzMub3JnLzE5OTkvMDIvMjItcmRmLXN5bnRheC1ucyMiPiA8cmRmOkRlc2NyaXB0aW9uIHJkZjphYm91dD0iIiB4bWxuczp4bXA9Imh0dHA6Ly9ucy5hZG9iZS5jb20veGFwLzEuMC8iIHhtbG5zOmRjPSJodHRwOi8vcHVybC5vcmcvZGMvZWxlbWVudHMvMS4xLyIgeG1sbnM6cGhvdG9zaG9wPSJodHRwOi8vbnMuYWRvYmUuY29tL3Bob3Rvc2hvcC8xLjAvIiB4bWxuczp4bXBNTT0iaHR0cDovL25zLmFkb2JlLmNvbS94YXAvMS4wL21tLyIgeG1sbnM6c3RFdnQ9Imh0dHA6Ly9ucy5hZG9iZS5jb20veGFwLzEuMC9zVHlwZS9SZXNvdXJjZUV2ZW50IyIgeG1wOkNyZWF0b3JUb29sPSJBZG9iZSBQaG90b3Nob3AgQ0MgMjAxOSAoV2luZG93cykiIHhtcDpDcmVhdGVEYXRlPSIyMDIxLTAzLTIyVDE5OjE5OjE5KzA4OjAwIiB4bXA6TW9kaWZ5RGF0ZT0iMjAyMS0wMy0yMlQyMDoxODozMSswODowMCIgeG1wOk1ldGFkYXRhRGF0ZT0iMjAyMS0wMy0yMlQyMDoxODozMSswODowMCIgZGM6Zm9ybWF0PSJpbWFnZS9wbmciIHBob3Rvc2hvcDpDb2xvck1vZGU9IjMiIHBob3Rvc2hvcDpJQ0NQcm9maWxlPSJzUkdCIElFQzYxOTY2LTIuMSIgeG1wTU06SW5zdGFuY2VJRD0ieG1wLmlpZDo2MDIzNzBkZi1hZmE3LTU5NDgtODhiYS1mMjAxYWE5MmI5NDUiIHhtcE1NOkRvY3VtZW50SUQ9ImFkb2JlOmRvY2lkOnBob3Rvc2hvcDoyN2ZmZjBhZC05MDUzLTZlNDMtODMwYi00ZTBkZTY2ODYxYjUiIHhtcE1NOk9yaWdpbmFsRG9jdW1lbnRJRD0ieG1wLmRpZDo2MDIzNzBkZi1hZmE3LTU5NDgtODhiYS1mMjAxYWE5MmI5NDUiPiA8eG1wTU06SGlzdG9yeT4gPHJkZjpTZXE+IDxyZGY6bGkgc3RFdnQ6YWN0aW9uPSJjcmVhdGVkIiBzdEV2dDppbnN0YW5jZUlEPSJ4bXAuaWlkOjYwMjM3MGRmLWFmYTctNTk0OC04OGJhLWYyMDFhYTkyYjk0NSIgc3RFdnQ6d2hlbj0iMjAyMS0wMy0yMlQxOToxOToxOSswODowMCIgc3RFdnQ6c29mdHdhcmVBZ2VudD0iQWRvYmUgUGhvdG9zaG9wIENDIDIwMTkgKFdpbmRvd3MpIi8+IDwvcmRmOlNlcT4gPC94bXBNTTpIaXN0b3J5PiA8L3JkZjpEZXNjcmlwdGlvbj4gPC9yZGY6UkRGPiA8L3g6eG1wbWV0YT4gPD94cGFja2V0IGVuZD0iciI/Po+WVbkAAACfSURBVGje7ds7CsMwEAVAXcE6o0/jxnWKnFWRSQQmRUiMweQxC68VjD6NtCrlWVPP3LP03P48y8sylR1uDYC9Zx3IORA3stkituWn7RqLGwEEBAQEBAQE/CHtYAECngRsFxUg4Enn7ptJOTIGICAgICAgICAgICBga7XW+xYrCAgIeMk9DSCgxxdAQEBAQEDABGB8Q2x8S3N8U3r0t4IHd1hYNxgUhTkAAAAASUVORK5CYII=);
+          background-size: contain;
+          width: 34px;
+          height: 34px;
+          top: calc(2.2em - 17px);
+          left: calc(3.9em - 17px);
+          z-index: 1;
+          display: none;
+          cursor: pointer;
+        }
+        #${gm.id} .gm-entrypopup .gm-entry-list .gm-entry-list-item.removed .gm-card-switcher {
+          background-image: url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADgAAAA4CAMAAACfWMssAAAAwFBMVEUAAAAGBgavr69EREQUFBQ1NTUODg7t7e3FxcV0dHRbW1sAAAAAAAAAAAD+/v77+/v4+Pj09PTj4+P8/PzV1dWpqamSkpIhISH19fXX19fLy8ulpaWdnZ1kZGRVVVUsLCz6+vrm5uba2tq9vb20tLSsrKyXl5eMjIx+fn54eHhsbGxpaWk+Pj4AAAAAAADv7+/e3t7AwMC3t7ehoaFLS0vo6OjR0dHOzs7CwsKCgoKCgoJiYmLp6enMzMywsLD////DVMIGAAAAP3RSTlOZmtOrnqec8927sopkEf38+ffu/eXPxqH45+DOyrWwpPvv6NnV0cjEv724t6qPAPTr2tbNru/j4tvAv7Tw4dTgAD9iAAABpElEQVRIx+ST13KCUBiEDyCCBRBQsaHGHrvp/Xv/twpDTBgRonjr3u0w38zu8h+xNsolkVGlsrEWxkpcoJUhyuISBVjpIi7Arli9bmE6mb0rUhZI6tZu2KuxK+TO5RYOB2pM8udgShWASlOXa8MnDYDN7DRX6AOVkf/bTemEqe9OdW0DluwdNH7VgKZ3knNUEVN+CGz/K3oLtJJGrJugp3MPFrSSy7wBnVRwAE7aTxuDq6YNCpaaehRN2KV8eoRaNMh8GesBKIlgEewoaAtTPoytw0gIXz4KJYMcORfQ5n/Wy4kuaMKHzzioQTFyhNJ7P27ZMNuSDb4Noxingi3FQSpTab8bWx0+YOMdV6yKIxAGSuCkZ6Dv9sEsJlzNSxKIex/ejgUkXkEdxokgLMJn4gBUpcygyH+BHYyVMWo4w/eMwXFIfOCgAVKiAxMQTgCYAH+S44MkOXRAOJGbYyRyHXU24rIVWgjqCNgbkZWRRYA+JrfoYKaksKK8eKS8QCZcBVBe6VBezRGuWGlalSMaD2KQxsMooCMgu6FLdtOa7MY82d0HAP3jZ1lFdjimAAAAAElFTkSuQmCC);
+        }
+        #${gm.id} .gm-entrypopup .gm-entry-list .gm-entry-list-item:hover .gm-card-switcher {
+          display: unset;
+        }
+        #${gm.id} .gm-entrypopup .gm-entry-list .gm-entry-list-item .gm-card-duration {
+          position: absolute;
+          bottom: 0;
+          right: 0;
+          background: var(--text-shadow-color);
+          color: var(--light-text-color);
+          border-radius: 2px;
+          padding: 2px 3px;
+          font-size: 0.8em;
+          z-index: 1;
+        }
+        #${gm.id} .gm-entrypopup .gm-entry-list .gm-entry-list-item .gm-card-right {
+          position: relative;
+          display: flex;
+          flex-direction: column;
+          flex-shrink: 0;
+          justify-content: space-between;
+          margin-left: 0.8em;
+        }
+        #${gm.id} .gm-entrypopup .gm-entry-list .gm-entry-list-item .gm-card-title {
+          display: -webkit-box;
+          -webkit-line-clamp: 2;
+          -webkit-box-orient: vertical;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          word-break: break-all;
+          width: 15em;
+          height: 2.8em;
+        }
+        #${gm.id} .gm-entrypopup .gm-entry-list .gm-entry-list-item.removed .gm-card-title {
+          text-decoration: line-through;
+        }
+        #${gm.id} .gm-entrypopup .gm-entry-list .gm-entry-list-item .gm-card-uploader {
+          font-size: 0.8em;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+          overflow: hidden;
+          width: 18em;
+          color: var(--hint-text-color);
+        }
+        #${gm.id} .gm-entrypopup .gm-entry-list .gm-entry-list-item .gm-card-progress {
+          text-align: right;
+          position: absolute;
+          bottom: 0;
+          right: 0;
+          font-size: 0.8em;
+          color: var(--hint-text-color);
+          display: none;
+        }
+        #${gm.id} .gm-entrypopup .gm-entry-list .gm-entry-list-item:hover .gm-card-progress {
+          color: var(--hightlight-color);
+        }
+        #${gm.id} .gm-entrypopup .gm-entry-list .gm-entry-list-item .gm-card-progress::before {
+          content: "▶";
+          padding-right: 1px;
+        }
+
+        #${gm.id} .gm-entrypopup .gm-entry-list .gm-entry-list-simple-item {
+          display: block;
+          color: var(--text-color);
+          font-size: 1.2em;
+          padding: 0.5em 1em;
+          border-bottom: 1px solid var(--light-border-color);
+          cursor: pointer;
+        }
+
+        #${gm.id} .gm-entrypopup .gm-entry-bottom {
+          display: flex;
+          border-top: 1px solid var(--light-border-color);
+          height: 3em;
+        }
+        #${gm.id} .gm-entrypopup .gm-entry-bottom .gm-entry-button {
+          flex: 1;
+          text-align: center;
+          padding: 0.6em 0;
+          font-size: 1.2em;
+          cursor: pointer;
+          color: var(--text-color);
+        }
+        #${gm.id} .gm-entrypopup .gm-entry-bottom .gm-entry-button:not([enabled]) {
+          display: none;
+        }
+
+        #${gm.id} .gm-entrypopup .gm-entry-list .gm-entry-list-item:hover,
+        #${gm.id} .gm-entrypopup .gm-entry-list .gm-entry-list-simple-item:hover,
+        #${gm.id} .gm-entrypopup .gm-entry-bottom .gm-entry-button:hover {
+          color: var(--hightlight-color);
+          background-color: var(--background-hightlight-color);
         }
 
         #${gm.id} .gm-setting {
@@ -3157,6 +3217,24 @@
         }
         #${gm.id} .gm-setting .gm-subitem:hover:not([disabled]) {
           color: var(--hightlight-color);
+        }
+
+        #${gm.id} .gm-setting .gm-subitem .gm-lineitems[disabled] {
+          color: var(--disabled-color);
+        }
+        #${gm.id} .gm-setting .gm-subitem .gm-lineitems {
+          color: var(--text-color);
+        }
+        #${gm.id} .gm-setting .gm-subitem .gm-lineitem {
+          display: inline-block;
+          padding-right: 8px;
+        }
+        #${gm.id} .gm-setting .gm-subitem .gm-lineitem:hover {
+          color: var(--hightlight-color);
+        }
+        #${gm.id} .gm-setting .gm-subitem .gm-lineitem input[type=checkbox] {
+          margin-left: 2px;
+          vertical-align: -1px;
         }
 
         #${gm.id} .gm-setting .gm-hint-option {
@@ -3651,13 +3729,16 @@
         if (gm.config.removeHistory) {
           webpage.processWatchlaterListDataSaving()
         }
+        if (gm.config.hideWatchlaterInCollect) {
+          webpage.hideWatchlaterInCollectStyle()
+        }
       }
 
       if (api.web.urlMatch(gm.regex.page_watchlaterList)) {
         // 列表页面
         webpage.processOpenListVideo()
         webpage.adjustWatchlaterListUI()
-        if (gm.config.forceConsistentVideo || gm.config.autoRemove != Enums.autoRemove.never) {
+        if (gm.config.autoRemove != Enums.autoRemove.never) {
           webpage.processWatchlaterListLink()
         }
       } else if (api.web.urlMatch(gm.regex.page_videoNormalMode)) {
