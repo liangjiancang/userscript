@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.9.0.20210322
+// @version         4.9.1.20210322
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -148,6 +148,7 @@
   // 将名称不完全对应的补上，这样校验才能生效
   Enums.headerButtonOpL = Enums.headerButtonOpR = Enums.headerButtonOpM = Enums.headerButtonOp
 
+  const gmId = 'gm395456'
   /**
    * 全局对象
    * @typedef GMObject
@@ -260,7 +261,7 @@
    * @property {string} page_watchlaterList 列表页面
    * @property {string} page_videoNormalMode 正常模式播放页
    * @property {string} page_videoWatchlaterMode 稍后再看模式播放页
-   * @property {string} page_watchlaterPlayAll 稍后再看播放全部
+   * @property {string} page_watchlaterPlayAll 稍后再看播放全部（临时禁用重定向）
    * @property {string} gm_changelog 更新日志
    * @property {string} noop 无操作
    */
@@ -303,9 +304,9 @@
    * @type {GMObject}
    */
   const gm = {
-    id: 'gm395456',
+    id: gmId,
     configVersion: GM_getValue('configVersion'),
-    configUpdate: 20210322,
+    configUpdate: 20210322.1,
     searchParams: new URL(location.href).searchParams,
     config: {},
     configMap: {
@@ -330,7 +331,7 @@
       hideWatchlaterInCollect: { default: true, attr: 'checked', configVersion: 20210322 },
       videoButton: { default: true, attr: 'checked' },
       autoRemove: { default: Enums.autoRemove.openFromList, attr: 'value', configVersion: 20200805 },
-      redirect: { default: false, attr: 'checked' },
+      redirect: { default: false, attr: 'checked', configVersion: 20210322.1 },
       openListVideo: { default: Enums.openListVideo.openInCurrent, attr: 'value', configVersion: 20200717 },
       removeButton_removeAll: { default: false, attr: 'checked', configVersion: 20200722 },
       removeButton_removeWatched: { default: false, attr: 'checked', configVersion: 20200722 },
@@ -352,7 +353,7 @@
       page_watchlaterList: 'https://www.bilibili.com/watchlater/#/list',
       page_videoNormalMode: 'https://www.bilibili.com/video',
       page_videoWatchlaterMode: 'https://www.bilibili.com/medialist/play/watchlater',
-      page_watchlaterPlayAll: 'https://www.bilibili.com/medialist/play/watchlater/',
+      page_watchlaterPlayAll: `https://www.bilibili.com/medialist/play/watchlater/?${gmId}_disable_redirect=true`,
       gm_changelog: 'https://gitee.com/liangjiancang/userscript/blob/master/BilibiliWatchlaterPlus/changelog.md',
       noop: 'javascript:void(0)',
     },
@@ -916,7 +917,7 @@
                     </td>
                   </tr>
 
-                  <tr class="gm-item" title="打开【${gm.url.page_videoWatchlaterMode}】页面时，自动切换至【${gm.url.page_videoNormalMode}】页面进行播放。">
+                  <tr class="gm-item" title="打开【${gm.url.page_videoWatchlaterMode}】页面时，自动切换至【${gm.url.page_videoNormalMode}】页面进行播放，但不影响【播放全部】等相关功能。">
                     <td><div>播放页面</div></td>
                     <td>
                       <label>
@@ -2117,7 +2118,6 @@
       const openEntryPopup = () => {
         const el = {}
         if (gm.el.entryPopup) {
-          // 重新打开的前置处理
           _self.script.openMenuItem('entryPopup')
         } else {
           setTimeout(() => {
@@ -2583,7 +2583,7 @@
           bus.cb.checked = status
         }
         const alwaysAutoRemove = gm.config.autoRemove == Enums.autoRemove.always
-        const spRemove = gm.searchParams.get(`${gm.id}_remove_from_list`) === 'true'
+        const spRemove = gm.searchParams.get(`${gm.id}_remove_from_list`) == 'true'
         if (!alwaysAutoRemove && !spRemove) {
           setStatus()
         }
@@ -2785,7 +2785,7 @@
      */
     async processAutoRemove(delay = 0) {
       const alwaysAutoRemove = gm.config.autoRemove == Enums.autoRemove.always
-      const spRemove = gm.searchParams.get(`${gm.id}_remove_from_list`) === 'true'
+      const spRemove = gm.searchParams.get(`${gm.id}_remove_from_list`) == 'true'
       if (alwaysAutoRemove || spRemove) {
         const _self = this
         const aid = await _self.method.getAid()
@@ -3707,7 +3707,8 @@
 
     script.initAtDocumentStart()
     if (api.web.urlMatch(gm.regex.page_videoWatchlaterMode)) {
-      if (gm.config.redirect) { // 重定向，document-start 就执行，尽可能快地将原页面掩盖过去
+      const disableRedirect = gm.searchParams.get(`${gm.id}_disable_redirect`) == 'true'
+      if (gm.config.redirect && !disableRedirect) { // 重定向，document-start 就执行，尽可能快地将原页面掩盖过去
         webpage.redirect()
         return // 必须 return，否则后面的内容还会执行使得加载速度超级慢
       }
