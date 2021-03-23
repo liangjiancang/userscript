@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.9.3.20210323
+// @version         4.9.4.20210323
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -2935,16 +2935,16 @@
     /**
      * 隐藏【收藏】中【稍后再看】
      */
-    async hideWatchlaterInCollectStyle() {
+    async hideWatchlaterInCollect() {
       api.wait.waitForElementLoaded('.user-con .mini-favorite').then(fav => {
-        fav.parentNode.addEventListener('mouseover', function() {
+        const collect = fav.parentNode
+        const process = function() {
           api.wait.waitForElementLoaded('[role=tooltip] .tab-item [title=稍后再看]').then(node => {
             node.parentNode.style.display = 'none'
-          }).catch(e => {
-            api.logger.error(gm.error.DOM_PARSE)
-            api.logger.error(e)
-          })
-        }, { once: true })
+            collect.removeEventListener('mouseover', process) // 确保移除后再手动解绑
+          }).catch(() => {}) // 有时候鼠标经过收藏也没弹出来，不知道什么原因，就不报错了
+        }
+        collect.addEventListener('mouseover', process)
       }).catch(e => {
         api.logger.error(gm.error.DOM_PARSE)
         api.logger.error(e)
@@ -3814,7 +3814,7 @@
           webpage.processWatchlaterListDataSaving()
         }
         if (gm.config.hideWatchlaterInCollect) {
-          webpage.hideWatchlaterInCollectStyle()
+          webpage.hideWatchlaterInCollect()
         }
       }
 
