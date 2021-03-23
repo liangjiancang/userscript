@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.9.5.20210323
+// @version         4.9.6.20210323
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -2336,6 +2336,7 @@
            */
           const onOpen = async () => {
             el.search.value = ''
+            el.searchClear.style.visibility = 'hidden'
             el.popupTotal.innerText = '0'
             el.entryList.innerText = ''
             el.entryList.style.opacity = '0'
