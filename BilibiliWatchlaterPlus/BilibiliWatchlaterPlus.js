@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.9.2.20210323
+// @version         4.9.3.20210323
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -78,6 +78,7 @@
       playAllInCurrent: 'playAllInCurrent',
       playAllInNew: 'playAllInNew',
       clearWatchlater: 'clearWatchlater',
+      clearWatchedInWatchlater: 'clearWatchedInWatchlater',
       openUserSetting: 'openUserSetting',
       openRemoveHistory: 'openRemoveHistory',
       noOperation: 'noOperation',
@@ -178,6 +179,7 @@
    * @property {boolean} headerMenuFnSetting 弹出菜单：设置
    * @property {boolean} headerMenuFnHistory 弹出菜单：历史
    * @property {boolean} headerMenuFnRemoveAll 弹出菜单：清空
+   * @property {boolean} headerMenuFnRemoveWatched 弹出菜单：移除已看
    * @property {boolean} headerMenuFnShowAll 弹出菜单：显示
    * @property {boolean} headerMenuFnPlayAll 弹出菜单：播放
    * @property {boolean} removeHistory 稍后再看移除记录
@@ -256,7 +258,7 @@
    * @property {string} api_queryWatchlaterList 稍后再看列表数据
    * @property {api_videoInfo} api_videoInfo 视频信息
    * @property {string} api_addToWatchlater 将视频添加至稍后再看，要求 POST 一个含 `aid` 和 `csrf` 的表单
-   * @property {string} api_removeFromWatchlater 将视频从稍后再看移除，要求 POST 一个含 `aid` 和 `csrf` 的表单
+   * @property {string} api_removeFromWatchlater 将视频从稍后再看移除，移除一个视频要求 POST 一个含 `aid` 和 `csrf` 的表单，移除已观看要求 POST 一个含 `viewed=true` 和 `csrf` 的表单
    * @property {string} api_clearWatchlater 清空稍后再看，要求 POST 一个含 `csrf` 的表单
    * @property {string} page_watchlaterList 列表页面
    * @property {string} page_videoNormalMode 正常模式播放页
@@ -306,20 +308,21 @@
   const gm = {
     id: gmId,
     configVersion: GM_getValue('configVersion'),
-    configUpdate: 20210322.1,
+    configUpdate: 20210323,
     searchParams: new URL(location.href).searchParams,
     config: {},
     configMap: {
       headerButton: { default: true, attr: 'checked' },
-      headerButtonOpL: { default: Enums.headerButtonOp.openListInCurrent, attr: 'value', configVersion: 20201016 },
-      headerButtonOpR: { default: Enums.headerButtonOp.openUserSetting, attr: 'value', configVersion: 20201016 },
-      headerButtonOpM: { default: Enums.headerButtonOp.openListInNew, attr: 'value', configVersion: 20201016 },
+      headerButtonOpL: { default: Enums.headerButtonOp.openListInCurrent, attr: 'value', configVersion: 20210323 },
+      headerButtonOpR: { default: Enums.headerButtonOp.openUserSetting, attr: 'value', configVersion: 20210323 },
+      headerButtonOpM: { default: Enums.headerButtonOp.openListInNew, attr: 'value', configVersion: 20210323 },
       headerMenu: { default: Enums.headerMenu.enable, attr: 'value', configVersion: 20210322 },
       openHeaderMenuLink: { default: Enums.openHeaderMenuLink.openInCurrent, attr: 'value', configVersion: 20200717 },
       menuScrollbarSetting: { default: Enums.menuScrollbarSetting.beautify, attr: 'value', configVersion: 20200722 },
       headerMenuFnSetting: { default: true, attr: 'checked', configVersion: 20210322 },
       headerMenuFnHistory: { default: true, attr: 'checked', configVersion: 20210322 },
       headerMenuFnRemoveAll: { default: false, attr: 'checked', configVersion: 20210322 },
+      headerMenuFnRemoveWatched: { default: true, attr: 'checked', configVersion: 20210323 },
       headerMenuFnShowAll: { default: false, attr: 'checked', configVersion: 20210322 },
       headerMenuFnPlayAll: { default: true, attr: 'checked', configVersion: 20210322 },
       removeHistory: { default: true, attr: 'checked', manual: true },
@@ -807,6 +810,9 @@
                           <span>清空</span><input id="gm-headerMenuFnRemoveAll" type="checkbox">
                         </label>
                         <label class="gm-lineitem">
+                          <span>移除已看</span><input id="gm-headerMenuFnRemoveWatched" type="checkbox">
+                        </label>
+                        <label class="gm-lineitem">
                           <span>显示</span><input id="gm-headerMenuFnShowAll" type="checkbox">
                         </label>
                         <label class="gm-lineitem">
@@ -1100,6 +1106,7 @@
             <option value="${Enums.headerButtonOp.playAllInCurrent}">在当前页面播放全部</option>
             <option value="${Enums.headerButtonOp.playAllInNew}">在新标签页播放全部</option>
             <option value="${Enums.headerButtonOp.clearWatchlater}">清空稍后再看</option>
+            <option value="${Enums.headerButtonOp.clearWatchedInWatchlater}">移除稍后再看已观看视频</option>
             <option value="${Enums.headerButtonOp.openUserSetting}">打开用户设置</option>
             <option value="${Enums.headerButtonOp.openRemoveHistory}">打开稍后再看移除记录</option>
             <option value="${Enums.headerButtonOp.noOperation}">不执行操作</option>
@@ -1124,7 +1131,7 @@
           }
           el.headerMenuFn = el.headerMenuFnSetting.parentNode.parentNode
           el.headerButton.init = el.headerButton.onchange = function() {
-            subitemChange(this, [el.headerButtonOpL, el.headerButtonOpR, el.headerButtonOpM, el.headerMenu, el.openHeaderMenuLink, el.menuScrollbarSetting, el.headerMenuFnSetting, el.headerMenuFnHistory, el.headerMenuFnRemoveAll, el.headerMenuFnShowAll, el.headerMenuFnPlayAll])
+            subitemChange(this, [el.headerButtonOpL, el.headerButtonOpR, el.headerButtonOpM, el.headerMenu, el.openHeaderMenuLink, el.menuScrollbarSetting, el.headerMenuFnSetting, el.headerMenuFnHistory, el.headerMenuFnRemoveAll, el.headerMenuFnRemoveWatched, el.headerMenuFnShowAll, el.headerMenuFnPlayAll])
             if (this.checked) {
               el.headerMenuFn.removeAttribute('disabled')
             } else {
@@ -1860,6 +1867,36 @@
         },
 
         /**
+         * 移除稍后再看已观看视频
+         * @async
+         * @returns {Promise<boolean>} 操作是否成功
+         */
+        async clearWatchedInWatchlater() {
+          try {
+            const data = new FormData()
+            data.append('viewed', true)
+            data.append('csrf', this.getCSRF())
+            const resp = await api.web.request({
+              method: 'POST',
+              url: gm.url.api_removeFromWatchlater,
+              data: data,
+            })
+            const success = JSON.parse(resp.response).code == 0
+            if (success) {
+              gm.data._.watchlaterListData = null
+              if (gm.config.watchlaterListCacheValidPeriod > 0) {
+                GM_setValue('watchlaterListCacheTime', 0)
+              }
+            }
+            return success
+          } catch (e) {
+            api.logger.error(gm.error.NETWORK)
+            api.logger.error(e)
+            return false
+          }
+        },
+
+        /**
          * 保存稍后再看列表数据，用于后续操作
          *
          * 此操作回引起稍后再看历史数据的保存
@@ -2005,6 +2042,24 @@
       }
 
       /**
+       * 移除稍后再看已观看视频
+       * @async
+       * @returns {boolean} 是否移除成功
+       */
+      const clearWatchedInWatchlater = async () => {
+        let success = false
+        const result = confirm(`【${GM_info.script.name}】\n\n是否移除稍后再看已观看视频？`)
+        if (result) {
+          success = await this.method.clearWatchedInWatchlater()
+          api.message.create(`移除稍后再看已观看视频${success ? '成功' : '失败'}`)
+          if (success && api.web.urlMatch(gm.regex.page_watchlaterList)) {
+            location.reload()
+          }
+        }
+        return success
+      }
+
+      /**
        * 处理鼠标点击事件
        * @param {HTMLElement} watchlater 稍后再看入口元素
        */
@@ -2027,6 +2082,9 @@
             }
             case Enums.headerButtonOp.clearWatchlater:
               clearWatchlater()
+              break
+            case Enums.headerButtonOp.clearWatchedInWatchlater:
+              clearWatchedInWatchlater()
               break
             case Enums.headerButtonOp.openUserSetting:
               _self.script.openUserSetting()
@@ -2075,7 +2133,7 @@
           this.mouseOver = true
           if (!gm.menu.entryPopup.state) {
             popup.style.top = `calc(${watchlater.offsetTop + watchlater.offsetHeight}px + 1em)`
-            popup.style.left = `calc(${watchlater.offsetLeft + watchlater.offsetWidth / 2}px - 15em)`
+            popup.style.left = `calc(${watchlater.offsetLeft + watchlater.offsetWidth / 2}px - 16em)`
             openEntryPopup()
           }
         }
@@ -2141,6 +2199,7 @@
                 <a class="gm-entry-button" fn="setting" href="${gm.url.noop}" target="${target}">设置</a>
                 <a class="gm-entry-button" fn="history" href="${gm.url.noop}" target="${target}">历史</a>
                 <a class="gm-entry-button" fn="removeAll" href="${gm.url.noop}" target="${target}">清空</a>
+                <a class="gm-entry-button" fn="removeWatched" href="${gm.url.noop}" target="${target}">移除已看</a>
                 <a class="gm-entry-button" fn="showAll" href="${gm.url.page_watchlaterList}" target="${target}">显示</a>
                 <a class="gm-entry-button" fn="playAll" href="${gm.url.page_watchlaterPlayAll}" target="${target}">播放</a>
               </div>
@@ -2173,11 +2232,16 @@
               }
               if (gm.config.headerMenuFnRemoveAll) {
                 el.entryFn.removeAll.setAttribute('enabled', '')
-                el.entryFn.removeAll.addEventListener('click', async function() {
-                  const success = await clearWatchlater()
-                  if (success) {
-                    el.entryList.innerText = ''
-                  }
+                el.entryFn.removeAll.addEventListener('click', function() {
+                  _self.script.closeMenuItem('entryPopup')
+                  clearWatchlater()
+                })
+              }
+              if (gm.config.headerMenuFnRemoveWatched) {
+                el.entryFn.removeWatched.setAttribute('enabled', '')
+                el.entryFn.removeWatched.addEventListener('click', function() {
+                  _self.script.closeMenuItem('entryPopup')
+                  clearWatchedInWatchlater()
                 })
               }
               if (gm.config.headerMenuFnShowAll) {
@@ -2248,7 +2312,7 @@
                     `
                     if (played) {
                       card.querySelector('.gm-card-progress').style.display = 'unset'
-                      card.querySelector('.gm-card-uploader').style.width = '13em'
+                      card.querySelector('.gm-card-uploader').style.width = '15em'
                     }
 
                     const switcher = card.querySelector('.gm-card-switcher')
@@ -2299,8 +2363,6 @@
                     })
                   }
                 }
-                el.entryList.style.opacity = '1'
-                el.entryList.scrollTop = 0
               } catch (e) {
                 api.logger.error(gm.error.NETWORK)
                 api.logger.error(e)
@@ -2308,7 +2370,11 @@
               if (simplePopup) {
                 el.entryList.lastElementChild.style.borderBottom = 'none'
               }
+            } else {
+              el.entryList.innerHTML = '<div class="gm-entry-list-empty">稍后再看列表为空</div>'
             }
+            el.entryList.style.opacity = '1'
+            el.entryList.scrollTop = 0
             if (gm.config.removeHistory && gm.config.removeHistorySavePoint == Enums.removeHistorySavePoint.listAndMenu) {
               _self.method.saveWatchlaterListData()
             }
@@ -2632,7 +2698,7 @@
           const json = JSON.parse(resp.responseText)
           bvid = json.data.list[0].bvid
         }
-        location.replace(`${gm.url.page_videoNormalMode}/${bvid}`)
+        location.replace(`${gm.url.page_videoNormalMode}/${bvid}${location.search}`)
       } catch (e) {
         const errorInfo = gm.error.REDIRECT
         api.logger.error(errorInfo)
@@ -2995,7 +3061,7 @@
           z-index: 10000;
           user-select: none;
           border-radius: 4px;
-          width: 30em;
+          width: 32em;
           border: none;
           box-shadow: var(--box-shadow-color) 0px 3px 6px;
           background-color: var(--background-color);
@@ -3004,7 +3070,7 @@
           position: absolute;
           z-index: -1;
           top: -14px;
-          left: calc(15em - 7px);
+          left: calc(16em - 7px);
           width: 0;
           height: 0;
           border-width: 8px;
@@ -3015,10 +3081,21 @@
         }
 
         #${gm.id} .gm-entrypopup .gm-entry-list {
+          position: relative;
           height: 39em;
           overflow-y: auto;
           padding: 0.2em 0;
           transition: var(--opacity-fade-popup-transition);
+        }
+        #${gm.id} .gm-entrypopup .gm-entry-list .gm-entry-list-empty {
+          position: absolute;
+          top: calc(50% - 2em);
+          left: calc(50% - 7em);
+          line-height: 4em;
+          width: 14em;
+          font-size: 1.4em;
+          text-align: center;
+          color: var(--hint-text-color);
         }
 
         #${gm.id} .gm-entrypopup .gm-entry-list .gm-entry-list-item {
@@ -3087,7 +3164,7 @@
           overflow: hidden;
           text-overflow: ellipsis;
           word-break: break-all;
-          width: 15em;
+          width: 17em;
           height: 2.8em;
         }
         #${gm.id} .gm-entrypopup .gm-entry-list .gm-entry-list-item.removed .gm-card-title {
@@ -3098,7 +3175,7 @@
           text-overflow: ellipsis;
           white-space: nowrap;
           overflow: hidden;
-          width: 18em;
+          width: 21em;
           color: var(--hint-text-color);
         }
         #${gm.id} .gm-entrypopup .gm-entry-list .gm-entry-list-item .gm-card-progress {
@@ -3231,6 +3308,9 @@
         }
         #${gm.id} .gm-setting .gm-subitem .gm-lineitem:hover {
           color: var(--hightlight-color);
+        }
+        #${gm.id} .gm-setting .gm-subitem .gm-lineitems[disabled] .gm-lineitem {
+          color: var(--disabled-color);
         }
         #${gm.id} .gm-setting .gm-subitem .gm-lineitem input[type=checkbox] {
           margin-left: 2px;

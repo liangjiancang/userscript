@@ -17,17 +17,17 @@
 
     ![设置入口](https://gitee.com/liangjiancang/userscript/raw/master/BilibiliWatchlaterPlus/screenshot/设置入口.png)
 
-* 移除记录
-
-    ![移除记录](https://gitee.com/liangjiancang/userscript/raw/master/BilibiliWatchlaterPlus/screenshot/移除记录.png)
-
 * 顶栏入口、快速切换（普通模式和稍后再看模式）
 
     ![顶栏入口、快速切换（普通模式和稍后再看模式）](https://gitee.com/liangjiancang/userscript/raw/master/BilibiliWatchlaterPlus/screenshot/顶栏入口、快速切换（普通模式和稍后再看模式）.png)
 
 * 入口菜单
 
-    ![入口菜单](https://gitee.com/liangjiancang/userscript/raw/master/BilibiliWatchlaterPlus/screenshot/入口菜单.png)
+  ![入口菜单](https://gitee.com/liangjiancang/userscript/raw/master/BilibiliWatchlaterPlus/screenshot/入口菜单.png)
+
+* 移除记录
+
+    ![移除记录](https://gitee.com/liangjiancang/userscript/raw/master/BilibiliWatchlaterPlus/screenshot/移除记录.png)
 
 * 列表页UI
 
