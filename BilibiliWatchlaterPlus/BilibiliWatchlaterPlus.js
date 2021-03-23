@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.9.4.20210323
+// @version         4.9.5.20210323
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -176,6 +176,7 @@
    * @property {headerMenu} headerMenu 顶栏入口弹出菜单设置
    * @property {openHeaderMenuLink} openHeaderMenuLink 顶栏弹出菜单链接点击行为
    * @property {menuScrollbarSetting} menuScrollbarSetting 弹出菜单的滚动条设置
+   * @property {boolean} headerMenuSearch 弹出菜单搜索框
    * @property {boolean} headerMenuFnSetting 弹出菜单：设置
    * @property {boolean} headerMenuFnHistory 弹出菜单：历史
    * @property {boolean} headerMenuFnRemoveAll 弹出菜单：清空
@@ -308,7 +309,7 @@
   const gm = {
     id: gmId,
     configVersion: GM_getValue('configVersion'),
-    configUpdate: 20210323,
+    configUpdate: 20210323.1,
     searchParams: new URL(location.href).searchParams,
     config: {},
     configMap: {
@@ -319,6 +320,7 @@
       headerMenu: { default: Enums.headerMenu.enable, attr: 'value', configVersion: 20210322 },
       openHeaderMenuLink: { default: Enums.openHeaderMenuLink.openInCurrent, attr: 'value', configVersion: 20200717 },
       menuScrollbarSetting: { default: Enums.menuScrollbarSetting.beautify, attr: 'value', configVersion: 20200722 },
+      headerMenuSearch: { default: true, attr: 'checked', configVersion: 20210323.1 },
       headerMenuFnSetting: { default: true, attr: 'checked', configVersion: 20210322 },
       headerMenuFnHistory: { default: true, attr: 'checked', configVersion: 20210322 },
       headerMenuFnRemoveAll: { default: false, attr: 'checked', configVersion: 20210322 },
@@ -729,7 +731,7 @@
               <div class="gm-items">
                 <table>
                   <tr class="gm-item" title="在顶栏“动态”和“收藏”之间加入稍后再看入口，鼠标移至上方时弹出列表菜单，支持点击功能设置。">
-                    <td rowspan="8"><div>全局功能</div></td>
+                    <td rowspan="9"><div>全局功能</div></td>
                     <td>
                       <label>
                         <span>在顶栏中加入稍后再看入口</span>
@@ -796,10 +798,18 @@
                       </div>
                     </td>
                   </tr>
+                  <tr class="gm-subitem" title="在弹出菜单顶部显示搜索框。">
+                    <td>
+                      <label>
+                        <span>在弹出菜单顶部显示搜索框</span>
+                        <input id="gm-headerMenuSearch" type="checkbox">
+                      </label>
+                    </td>
+                  </tr>
                   <tr class="gm-subitem" title="设置在弹出列表显示的快捷功能。">
                     <td>
                       <div class="gm-lineitems">
-                        <span>在弹出菜单中显示：</span>
+                        <span>在弹出菜单底部显示：</span>
                         <label class="gm-lineitem">
                           <span>设置</span><input id="gm-headerMenuFnSetting" type="checkbox">
                         </label>
@@ -1025,6 +1035,7 @@
           }
 
           el.settingPage = gm.el.setting.querySelector('#gm-setting-page')
+          el.items = gm.el.setting.querySelector('.gm-items')
           el.maintitle = gm.el.setting.querySelector('#gm-maintitle')
           el.changelog = gm.el.setting.querySelector('#gm-changelog')
           switch (type) {
@@ -1346,6 +1357,7 @@
           el.settingPage.parentNode.style.display = 'block'
           setTimeout(() => {
             api.dom.setAbsoluteCenter(el.settingPage)
+            el.items.scrollTop = 0
           }, 10)
         }
 
@@ -2194,6 +2206,13 @@
             gm.el.entryPopup.className = 'gm-entrypopup'
             gm.el.entryPopup.innerHTML = `
               <div class="gm-popup-arrow"></div>
+              <div class="gm-popup-header">
+                <div class="gm-popup-search">
+                  <input type="text" placeholder="在列表中搜索...">
+                  <div class="gm-popup-search-clear">✖</div>
+                </div>
+                <div class="gm-popup-total">0</div>
+              </div>
               <div class="gm-entry-list"></div>
               <div class="gm-entry-bottom">
                 <a class="gm-entry-button" fn="setting" href="${gm.url.noop}" target="${target}">设置</a>
@@ -2205,6 +2224,10 @@
               </div>
             `
             el.entryList = gm.el.entryPopup.querySelector('.gm-entry-list')
+            el.entryHeader = gm.el.entryPopup.querySelector('.gm-popup-header')
+            el.search = gm.el.entryPopup.querySelector('.gm-popup-search input')
+            el.searchClear = gm.el.entryPopup.querySelector('.gm-popup-search-clear')
+            el.popupTotal = gm.el.entryPopup.querySelector('.gm-popup-total')
             el.entryBottom = gm.el.entryPopup.querySelector('.gm-entry-bottom')
           }
 
@@ -2214,6 +2237,54 @@
           const processPopup = () => {
             gm.menu.entryPopup.openHandler = onOpen
             try {
+              if (gm.config.headerMenuSearch) {
+                el.search.oninput = function() {
+                  const val = this.value
+                  const list = el.entryList
+                  if (val.length > 0) {
+                    el.searchClear.style.visibility = 'visible'
+                  } else {
+                    el.searchClear.style.visibility = 'hidden'
+                  }
+                  if (list.total > 0) {
+                    let cnt = 0
+                    for (let i = 0; i < list.childElementCount; i++) {
+                      let valid = false
+                      const card = list.children[i]
+                      if (val.length > 0) {
+                        if (card.title && card.title.indexOf(val) > -1) {
+                          valid = true
+                        } else if (card.uploader && card.uploader.indexOf(val) > -1) {
+                          valid = true
+                        }
+                      } else {
+                        valid = true
+                      }
+                      if (valid) {
+                        cnt += 1
+                        if (card.searchHide) {
+                          api.dom.removeClass(card, 'gm-search-hide')
+                          card.searchHide = false
+                        }
+                      } else {
+                        if (!card.searchHide) {
+                          api.dom.addClass(card, 'gm-search-hide')
+                          card.searchHide = true
+                        }
+                      }
+                    }
+                    el.entryList.scrollTop = 0
+                    el.popupTotal.innerText = cnt != list.total ? `${cnt}/${list.total}` : list.total
+                  }
+                }
+                el.searchClear.onclick = function() {
+                  el.search.value = ''
+                  el.search.oninput()
+                }
+              } else {
+                el.entryHeader.style.display = 'none'
+              }
+
               el.entryFn = {}
               const buttons = el.entryBottom.querySelectorAll('.gm-entry-button')
               for (const button of buttons) {
@@ -2264,8 +2335,11 @@
            * @async
            */
           const onOpen = async () => {
+            el.search.value = ''
+            el.popupTotal.innerText = '0'
             el.entryList.innerText = ''
             el.entryList.style.opacity = '0'
+            el.entryList.total = 0
             let data = []
             if (el.entryList.needReload) {
               el.entryList.needReload = false
@@ -2282,8 +2356,10 @@
                 for (const item of data) {
                   /** @type {HTMLAnchorElement} */
                   const card = el.entryList.appendChild(document.createElement('a'))
+                  card.title = item.title
+                  card.uploader = item.owner.name
                   if (simplePopup) {
-                    card.innerText = item.title
+                    card.innerText = card.title
                     card.className = 'gm-entry-list-simple-item'
                   } else {
                     const multiP = item.videos > 1
@@ -2305,8 +2381,8 @@
                         <div class="gm-card-duration">${duration}</div>
                       </div>
                       <div class="gm-card-right">
-                        <div class="gm-card-title">${item.title}</div>
-                        <div class="gm-card-uploader">${item.owner.name}</div>
+                        <div class="gm-card-title">${card.title}</div>
+                        <div class="gm-card-uploader">${card.uploader}</div>
                         <div class="gm-card-progress">${progress}</div>
                       </div>
                     `
@@ -2315,29 +2391,29 @@
                       card.querySelector('.gm-card-uploader').style.width = '15em'
                     }
 
+                    card.added = true
                     const switcher = card.querySelector('.gm-card-switcher')
-                    switcher.added = true
                     switcher.addEventListener('click', function(e) {
                       e.preventDefault() // 不能放到 async 中
                       setTimeout(async () => {
-                        const added = this.added
+                        const added = card.added
                         // 先改了 UI 再说，不要给用户等待感
                         if (added) {
-                          api.dom.addClass(card, 'removed')
+                          api.dom.addClass(card, 'gm-removed')
                         } else {
-                          api.dom.removeClass(card, 'removed')
+                          api.dom.removeClass(card, 'gm-removed')
                         }
                         const note = added ? '从稍后再看移除' : '添加到稍后再看'
                         const success = await _self.method.switchVideoWatchlaterStatus(item.aid, !added)
                         if (success) {
                           el.entryList.needReload = true
-                          this.added = !added
+                          card.added = !added
                           api.message.create(`${note}成功`)
                         } else {
                           if (added) {
-                            api.dom.removeClass(card, 'removed')
+                            api.dom.removeClass(card, 'gm-removed')
                           } else {
-                            api.dom.addClass(card, 'removed')
+                            api.dom.addClass(card, 'gm-removed')
                           }
                           api.message.create(`${note}失败`)
                         }
@@ -2358,7 +2434,8 @@
                       }
                       // 不能 mousedown，隐藏之后无法触发事件
                       if (e.button == 0 || e.button == 1) { // 左键或中键
-                        card.style.display = 'none'
+                        api.dom.addClass(card, 'gm-removed')
+                        card.added = false
                       }
                     })
                   }
@@ -2370,6 +2447,9 @@
               if (simplePopup) {
                 el.entryList.lastElementChild.style.borderBottom = 'none'
               }
+              el.search.focus()
+              el.popupTotal.innerText = data.length
+              el.entryList.total = data.length
             } else {
               el.entryList.innerHTML = '<div class="gm-entry-list-empty">稍后再看列表为空</div>'
             }
@@ -3080,6 +3160,38 @@
           border-bottom-color: var(--background-color);
         }
 
+        #${gm.id} .gm-entrypopup .gm-popup-header {
+          position: relative;
+          height: 2.8em;
+          border-bottom: 1px solid var(--light-border-color);
+        }
+        #${gm.id} .gm-entrypopup .gm-popup-search {
+          font-size: 1.3em;
+          line-height: 2.6em;
+          padding-left: 0.9em;
+        }
+        #${gm.id} .gm-entrypopup .gm-popup-search input[type=text] {
+          outline: none;
+          border: none;
+          width: 18em;
+          padding-right: 6px;
+          color: var(--text-color);
+        }
+        #${gm.id} .gm-entrypopup .gm-popup-search-clear {
+          display: inline-block;
+          color: var(--hint-text-color);
+          cursor: pointer;
+          visibility: hidden;
+        }
+        #${gm.id} .gm-entrypopup .gm-popup-total {
+          position: absolute;
+          line-height: 2.6em;
+          right: 1.3em;
+          top: 0;
+          font-size: 1.2em;
+          color: var(--hint-text-color);
+        }
+
         #${gm.id} .gm-entrypopup .gm-entry-list {
           position: relative;
           height: 39em;
@@ -3107,7 +3219,7 @@
           font-size: 1.15em;
           cursor: pointer;
         }
-        #${gm.id} .gm-entrypopup .gm-entry-list .gm-entry-list-item.removed {
+        #${gm.id} .gm-entrypopup .gm-entry-list .gm-entry-list-item.gm-removed {
           filter: grayscale(1);
         }
         #${gm.id} .gm-entrypopup .gm-entry-list .gm-entry-list-item .gm-card-left {
@@ -3132,7 +3244,7 @@
           display: none;
           cursor: pointer;
         }
-        #${gm.id} .gm-entrypopup .gm-entry-list .gm-entry-list-item.removed .gm-card-switcher {
+        #${gm.id} .gm-entrypopup .gm-entry-list .gm-entry-list-item.gm-removed .gm-card-switcher {
           background-image: url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADgAAAA4CAMAAACfWMssAAAAwFBMVEUAAAAGBgavr69EREQUFBQ1NTUODg7t7e3FxcV0dHRbW1sAAAAAAAAAAAD+/v77+/v4+Pj09PTj4+P8/PzV1dWpqamSkpIhISH19fXX19fLy8ulpaWdnZ1kZGRVVVUsLCz6+vrm5uba2tq9vb20tLSsrKyXl5eMjIx+fn54eHhsbGxpaWk+Pj4AAAAAAADv7+/e3t7AwMC3t7ehoaFLS0vo6OjR0dHOzs7CwsKCgoKCgoJiYmLp6enMzMywsLD////DVMIGAAAAP3RSTlOZmtOrnqec8927sopkEf38+ffu/eXPxqH45+DOyrWwpPvv6NnV0cjEv724t6qPAPTr2tbNru/j4tvAv7Tw4dTgAD9iAAABpElEQVRIx+ST13KCUBiEDyCCBRBQsaHGHrvp/Xv/twpDTBgRonjr3u0w38zu8h+xNsolkVGlsrEWxkpcoJUhyuISBVjpIi7Arli9bmE6mb0rUhZI6tZu2KuxK+TO5RYOB2pM8udgShWASlOXa8MnDYDN7DRX6AOVkf/bTemEqe9OdW0DluwdNH7VgKZ3knNUEVN+CGz/K3oLtJJGrJugp3MPFrSSy7wBnVRwAE7aTxuDq6YNCpaaehRN2KV8eoRaNMh8GesBKIlgEewoaAtTPoytw0gIXz4KJYMcORfQ5n/Wy4kuaMKHzzioQTFyhNJ7P27ZMNuSDb4Noxingi3FQSpTab8bWx0+YOMdV6yKIxAGSuCkZ6Dv9sEsJlzNSxKIex/ejgUkXkEdxokgLMJn4gBUpcygyH+BHYyVMWo4w/eMwXFIfOCgAVKiAxMQTgCYAH+S44MkOXRAOJGbYyRyHXU24rIVWgjqCNgbkZWRRYA+JrfoYKaksKK8eKS8QCZcBVBe6VBezRGuWGlalSMaD2KQxsMooCMgu6FLdtOa7MY82d0HAP3jZ1lFdjimAAAAAElFTkSuQmCC);
         }
         #${gm.id} .gm-entrypopup .gm-entry-list .gm-entry-list-item:hover .gm-card-switcher {
@@ -3167,7 +3279,7 @@
           width: 17em;
           height: 2.8em;
         }
-        #${gm.id} .gm-entrypopup .gm-entry-list .gm-entry-list-item.removed .gm-card-title {
+        #${gm.id} .gm-entrypopup .gm-entry-list .gm-entry-list-item.gm-removed .gm-card-title {
           text-decoration: line-through;
         }
         #${gm.id} .gm-entrypopup .gm-entry-list .gm-entry-list-item .gm-card-uploader {
@@ -3202,6 +3314,14 @@
           padding: 0.5em 1em;
           border-bottom: 1px solid var(--light-border-color);
           cursor: pointer;
+        }
+        #${gm.id} .gm-entrypopup .gm-entry-list .gm-entry-list-simple-item.gm-removed {
+          text-decoration: line-through;
+          color: var(--hint-text-color);
+        }
+
+        #${gm.id} .gm-entrypopup .gm-entry-list .gm-search-hide {
+          display: none;
         }
 
         #${gm.id} .gm-entrypopup .gm-entry-bottom {
