@@ -23,7 +23,7 @@
 
 * 入口菜单
 
-  ![入口菜单](https://gitee.com/liangjiancang/userscript/raw/master/BilibiliWatchlaterPlus/screenshot/入口菜单.png)
+    ![入口菜单](https://gitee.com/liangjiancang/userscript/raw/master/BilibiliWatchlaterPlus/screenshot/入口菜单.png)
 
 * 移除记录
 
