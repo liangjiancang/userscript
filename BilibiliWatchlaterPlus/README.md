@@ -13,21 +13,23 @@
 
 ## 截图
 
+*截图中视频均从B站排行榜获取，请勿以此推测作者偏好。*
+
 * 设置入口
 
     ![设置入口](https://gitee.com/liangjiancang/userscript/raw/master/BilibiliWatchlaterPlus/screenshot/设置入口.png)
 
-* 顶栏入口、快速切换（普通模式和稍后再看模式）
+* 顶栏入口
 
-    ![顶栏入口、快速切换（普通模式和稍后再看模式）](https://gitee.com/liangjiancang/userscript/raw/master/BilibiliWatchlaterPlus/screenshot/顶栏入口、快速切换（普通模式和稍后再看模式）.png)
-
-* 入口菜单
-
-    ![入口菜单](https://gitee.com/liangjiancang/userscript/raw/master/BilibiliWatchlaterPlus/screenshot/入口菜单.png)
+    ![顶栏入口](https://gitee.com/liangjiancang/userscript/raw/master/BilibiliWatchlaterPlus/screenshot/顶栏入口.png)
 
 * 移除记录
 
     ![移除记录](https://gitee.com/liangjiancang/userscript/raw/master/BilibiliWatchlaterPlus/screenshot/移除记录.png)
+
+* 快速切换
+
+    ![快速切换](https://gitee.com/liangjiancang/userscript/raw/master/BilibiliWatchlaterPlus/screenshot/快速切换.png)
 
 * 列表页UI
 

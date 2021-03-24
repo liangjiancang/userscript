@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.9.6.20210323
+// @version         4.9.7.20210324
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -3222,6 +3222,7 @@
         }
         #${gm.id} .gm-entrypopup .gm-entry-list .gm-entry-list-item.gm-removed {
           filter: grayscale(1);
+          color: var(--hint-text-color);
         }
         #${gm.id} .gm-entrypopup .gm-entry-list .gm-entry-list-item .gm-card-left {
           position: relative;
