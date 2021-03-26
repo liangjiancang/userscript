@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.9.7.20210324
+// @version         4.9.8.20210326
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -2143,11 +2143,15 @@
             return
           }
           this.mouseOver = true
-          if (!gm.menu.entryPopup.state) {
-            popup.style.top = `calc(${watchlater.offsetTop + watchlater.offsetHeight}px + 1em)`
-            popup.style.left = `calc(${watchlater.offsetLeft + watchlater.offsetWidth / 2}px - 16em)`
-            openEntryPopup()
-          }
+          this.opening = true
+          setTimeout(() => {
+            if (!gm.menu.entryPopup.state) {
+              this.opening = false
+              popup.style.top = `calc(${watchlater.offsetTop + watchlater.offsetHeight}px + 1em)`
+              popup.style.left = `calc(${watchlater.offsetLeft + watchlater.offsetWidth / 2}px - 16em)`
+              openEntryPopup()
+            }
+          }, 140)
         }
 
         /**
@@ -2159,7 +2163,7 @@
             if (!popup.mouseOver) {
               _self.script.closeMenuItem('entryPopup')
             }
-          }, 100)
+          }, this.opening ? 150 : 100)
         }
 
         /**
@@ -3172,6 +3176,7 @@
           padding-left: 0.9em;
         }
         #${gm.id} .gm-entrypopup .gm-popup-search input[type=text] {
+          line-height: normal;
           outline: none;
           border: none;
           width: 18em;
