@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.9.8.20210326
+// @version         4.9.9.20210401
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -838,7 +838,7 @@
                       <label>
                         <span>开启稍后再看移除记录</span>
                         <input id="gm-removeHistory" type="checkbox">
-                        <span id="gm-rhWarning" class="gm-warning" title="">⚠</span>
+                        <span id="gm-rhWarning" class="gm-warning" title>⚠</span>
                       </label>
                     </td>
                   </tr>
@@ -851,7 +851,7 @@
                             <option value="${Enums.removeHistorySavePoint.listAndMenu}">在打开列表页面或弹出入口菜单时保存数据</option>
                             <option value="${Enums.removeHistorySavePoint.anypage}">在打开任意相关页面时保存数据</option>
                           </select>
-                          <span id="gm-rhspInformation" class="gm-information" title="">💬</span>
+                          <span id="gm-rhspInformation" class="gm-information" title>💬</span>
                         </div>
                       </td>
                   </tr>
@@ -859,7 +859,7 @@
                     <td>
                       <label>
                         <span>开启模糊比对模式以舍弃重复数据</span>
-                        <span id="gm-rhfcInformation" class="gm-information" title="">💬</span>
+                        <span id="gm-rhfcInformation" class="gm-information" title>💬</span>
                         <input id="gm-removeHistoryFuzzyCompare" type="checkbox">
                       </label>
                     </td>
@@ -870,7 +870,7 @@
                         <span>稍后再看历史数据保存次数</span>
                         <span id="gm-cleanRemoveHistoryData" class="gm-hint-option" title="清理已保存的稍后再看历史数据，不可恢复！">清空数据(0条)</span>
                         <input id="gm-removeHistorySaves" type="text">
-                        <span id="gm-rhsWarning" class="gm-warning" title="">⚠</span>
+                        <span id="gm-rhsWarning" class="gm-warning" title>⚠</span>
                       </div>
                     </td>
                   </tr>
@@ -894,7 +894,7 @@
                           <option value="${Enums.fillWatchlaterStatus.anypage}">所有页面</option>
                           <option value="${Enums.fillWatchlaterStatus.never}">禁用功能</option>
                         </select>
-                        <span id="gm-fwsInformation" class="gm-information" title="">💬</span>
+                        <span id="gm-fwsInformation" class="gm-information" title>💬</span>
                       </div>
                     </td>
                   </tr>
@@ -981,7 +981,7 @@
                     <td>
                       <label>
                         <span>禁用页面缓存</span>
-                        <span id="gm-dpcInformation" class="gm-information" title="">💬</span>
+                        <span id="gm-dpcInformation" class="gm-information" title>💬</span>
                         <input id="gm-disablePageCache" type="checkbox">
                       </label>
                     </td>
@@ -993,7 +993,7 @@
                       <div>
                         <span>稍后再看列表数据本地缓存有效期（单位：秒）</span>
                         <input id="gm-watchlaterListCacheValidPeriod" type="text">
-                        <span id="gm-wlcvpInformation" class="gm-information" title="">💬</span>
+                        <span id="gm-wlcvpInformation" class="gm-information" title>💬</span>
                       </div>
                     </td>
                   </tr>
@@ -2215,7 +2215,7 @@
                   <input type="text" placeholder="在列表中搜索...">
                   <div class="gm-popup-search-clear">✖</div>
                 </div>
-                <div class="gm-popup-total">0</div>
+                <div class="gm-popup-total" title="列表条目数">0</div>
               </div>
               <div class="gm-entry-list"></div>
               <div class="gm-entry-bottom">
@@ -2380,15 +2380,15 @@
                     }
                     card.className = 'gm-entry-list-item'
                     card.innerHTML = `
-                      <div class="gm-card-left">
+                      <div class="gm-card-left" title>
                         <img class="gm-card-cover" src="${item.pic}">
                         <div class="gm-card-switcher"></div>
                         <div class="gm-card-duration">${duration}</div>
                       </div>
-                      <div class="gm-card-right">
+                      <div class="gm-card-right" title>
                         <div class="gm-card-title">${card.title}</div>
                         <div class="gm-card-uploader">${card.uploader}</div>
-                        <div class="gm-card-progress">${progress}</div>
+                        <div class="gm-card-progress" title="已播放">${progress}</div>
                       </div>
                     `
                     if (played) {
