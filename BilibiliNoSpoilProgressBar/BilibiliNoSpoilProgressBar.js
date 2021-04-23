@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站防剧透进度条
-// @version         1.4.3.20210317
+// @version         1.4.4.20210423
 // @namespace       laster2800
 // @author          Laster2800
 // @description     看比赛、看番总是被进度条剧透？装上这个脚本再也不用担心这些问题了
@@ -85,7 +85,7 @@
    * @property {boolean} simpleScriptControl 是否简化进度条上方的脚本控制
    * @property {boolean} disableCurrentPoint 隐藏当前播放时间
    * @property {boolean} disableDuration 隐藏视频时长
-   * @property {boolean} disablePbp 隐藏【热度】曲线
+   * @property {boolean} disablePbp 隐藏「热度」曲线
    * @property {boolean} disablePreview 隐藏进度条预览
    * @property {boolean} disablePartInformation 隐藏分P信息
    * @property {number} offsetTransformFactor 进度条极端偏移因子
@@ -404,7 +404,7 @@
         }
         _self.openUserSetting(1)
         setTimeout(() => {
-          const result = confirm(`【${GM_info.script.name}】\n\n脚本有一定使用门槛，如果不理解防剧透机制效果将会剧减，这种情况下用户甚至完全不明白脚本在“干什么”，建议在阅读说明后使用。是否立即打开防剧透机制说明？`)
+          const result = confirm(`【${GM_info.script.name}】\n\n脚本有一定使用门槛，如果不理解防剧透机制效果将会剧减，这种情况下用户甚至完全不明白脚本在「干什么」，建议在阅读说明后使用。是否立即打开防剧透机制说明？`)
           if (result) {
             window.open(`${gm.url.gm_readme}#防剧透机制说明`)
           }
@@ -521,10 +521,10 @@
                       </label>
                     </td>
                   </tr>
-                  <tr class="gm-subitem" title="是否在防剧透进度条中隐藏【热度】曲线？该功能可能会造成剧透。（pakku 扩展的弹幕频率图也会被禁用）">
+                  <tr class="gm-subitem" title="是否在防剧透进度条中隐藏「热度」曲线？该功能可能会造成剧透。（pakku 扩展的弹幕频率图也会被禁用）">
                     <td>
                       <label>
-                        <span>隐藏【热度】曲线</span>
+                        <span>隐藏「热度」曲线</span>
                         <input id="gm-disablePbp" type="checkbox">
                       </label>
                     </td>
@@ -1052,7 +1052,7 @@
 
 
     /**
-     * 对“打开菜单项”这一操作进行处理，包括显示菜单项、设置当前菜单项的状态、关闭其他菜单项
+     * 对「打开菜单项」这一操作进行处理，包括显示菜单项、设置当前菜单项的状态、关闭其他菜单项
      * @param {string} name 菜单项的名称
      * @param {() => void} [callback] 打开菜单项后的回调函数
      * @param {boolean} [keepOthers] 打开时保留其他菜单项
@@ -1080,7 +1080,7 @@
     }
 
     /**
-     * 对“关闭菜单项”这一操作进行处理，包括隐藏菜单项、设置当前菜单项的状态
+     * 对「关闭菜单项」这一操作进行处理，包括隐藏菜单项、设置当前菜单项的状态
      * @param {string} name 菜单项的名称
      * @param {() => void} [callback] 关闭菜单项后的回调函数
      */
@@ -1390,7 +1390,7 @@
           api.logger.error(gm.error.DOM_PARSE)
           api.logger.error(e)
         })
-        // 隐藏【上次看到XX:XX 跳转播放】中的时间（可能存在）
+        // 隐藏「上次看到XX:XX 跳转播放」中的时间（可能存在）
         if (_self.enabled) {
           api.wait.waitForElementLoaded('.bilibili-player-video-toast-item-text').then(toast => {
             if (toast.innerText.indexOf('上次看到') >= 0 && toast.innerText.indexOf('???') < 0) {
@@ -1399,7 +1399,7 @@
           }).catch(() => {})
         }
 
-        // 隐藏高能进度条的【热度】曲线（可能存在）
+        // 隐藏高能进度条的「热度」曲线（可能存在）
         api.wait.waitForElementLoaded('#bilibili_pbp', _self.control).then(pbp => {
           const hide = _self.enabled && gm.config.disablePbp
           pbp.style.visibility = hide ? 'hidden' : ''

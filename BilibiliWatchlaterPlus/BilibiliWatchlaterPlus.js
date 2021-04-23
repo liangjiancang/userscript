@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.9.11.20210419
+// @version         4.9.12.20210423
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -189,13 +189,13 @@
    * @property {number} removeHistorySaves 稍后再看历史数据保存次数
    * @property {number} removeHistorySearchTimes 历史回溯深度
    * @property {fillWatchlaterStatus} fillWatchlaterStatus 填充稍后再看状态
-   * @property {boolean} hideWatchlaterInCollect 隐藏【收藏】中的【稍后再看】
+   * @property {boolean} hideWatchlaterInCollect 隐藏「收藏」中的「稍后再看」
    * @property {boolean} videoButton 视频播放页稍后再看状态快速切换
    * @property {autoRemove} autoRemove 自动将视频从播放列表移除
    * @property {boolean} redirect 稍后再看模式重定向至普通模式播放
    * @property {openListVideo} openListVideo 列表页面视频点击行为
-   * @property {boolean} removeButton_removeAll 移除【一键清空】按钮
-   * @property {boolean} removeButton_removeWatched 移除【移除已观看视频】按钮
+   * @property {boolean} removeButton_removeAll 移除「一键清空」按钮
+   * @property {boolean} removeButton_removeWatched 移除「移除已观看视频」按钮
    * @property {boolean} disablePageCache 禁用页面缓存
    * @property {number} watchlaterListCacheValidPeriod 稍后再看列表数据本地缓存有效期（单位：秒）
    * @property {boolean} openSettingAfterConfigUpdate 功能性更新后打开设置页面
@@ -730,7 +730,7 @@
               </div>
               <div class="gm-items">
                 <table>
-                  <tr class="gm-item" title="在顶栏“动态”和“收藏”之间加入稍后再看入口，鼠标移至上方时弹出列表菜单，支持点击功能设置。">
+                  <tr class="gm-item" title="在顶栏「动态」和「收藏」之间加入稍后再看入口，鼠标移至上方时弹出列表菜单，支持点击功能设置。">
                     <td rowspan="9"><div>全局功能</div></td>
                     <td>
                       <label>
@@ -786,7 +786,7 @@
                       </div>
                     </td>
                   </tr>
-                  <tr class="gm-subitem" title="对弹出菜单中滚动条样式进行设置。为了保持外观一致，这个选项也会影响“动态”、“收藏”、“历史”等其他入口的弹出菜单。">
+                  <tr class="gm-subitem" title="对弹出菜单中滚动条样式进行设置。为了保持外观一致，这个选项也会影响「动态」「收藏」「历史」等其他入口的弹出菜单。">
                     <td>
                       <div>
                         <span>对于弹出菜单中的滚动条</span>
@@ -832,7 +832,7 @@
                     </td>
                   </tr>
 
-                  <tr class="gm-item" title="保留最近几次打开【${gm.url.page_watchlaterList}】页面时稍后再看列表的记录，以查找出这段时间内将哪些视频移除出稍后再看，用于防止误删操作。关闭该选项后，会将内部历史数据清除！">
+                  <tr class="gm-item" title="保留最近几次打开「${gm.url.page_watchlaterList}」页面时稍后再看列表的记录，以查找出这段时间内将哪些视频移除出稍后再看，用于防止误删操作。关闭该选项后，会将内部历史数据清除！">
                     <td rowspan="5"><div>全局功能</div></td>
                     <td>
                       <label>
@@ -899,11 +899,11 @@
                     </td>
                   </tr>
 
-                  <tr class="gm-item" title="隐藏顶栏【收藏】入口弹出菜单中的【稍后再看】。">
+                  <tr class="gm-item" title="隐藏顶栏「收藏」入口弹出菜单中的「稍后再看」。">
                     <td><div>全局功能</div></td>
                     <td>
                       <label>
-                        <span>隐藏【收藏】中的【稍后再看】</span>
+                        <span>隐藏「收藏」中的「稍后再看」</span>
                         <input id="gm-hideWatchlaterInCollect" type="checkbox">
                       </label>
                     </td>
@@ -933,7 +933,7 @@
                     </td>
                   </tr>
 
-                  <tr class="gm-item" title="打开【${gm.url.page_videoWatchlaterMode}】页面时，自动切换至【${gm.url.page_videoNormalMode}】页面进行播放，但不影响【播放全部】等相关功能。">
+                  <tr class="gm-item" title="打开「${gm.url.page_videoWatchlaterMode}」页面时，自动切换至「${gm.url.page_videoNormalMode}」页面进行播放，但不影响「播放全部」等相关功能。">
                     <td><div>播放页面</div></td>
                     <td>
                       <label>
@@ -943,7 +943,7 @@
                     </td>
                   </tr>
 
-                  <tr class="gm-item" title="设置在【${gm.url.page_watchlaterList}】页面点击视频时的行为。">
+                  <tr class="gm-item" title="设置在「${gm.url.page_watchlaterList}」页面点击视频时的行为。">
                     <td><div>列表页面</div></td>
                     <td>
                       <div>
@@ -960,7 +960,7 @@
                     <td><div>列表页面</div></td>
                     <td>
                       <label>
-                        <span>移除【一键清空】按钮</span>
+                        <span>移除「一键清空」按钮</span>
                         <input id="gm-removeButton_removeAll" type="checkbox">
                       </label>
                     </td>
@@ -970,7 +970,7 @@
                     <td><div>列表页面</div></td>
                     <td>
                       <label>
-                        <span>移除【移除已观看视频】按钮</span>
+                        <span>移除「移除已观看视频」按钮</span>
                         <input id="gm-removeButton_removeWatched" type="checkbox">
                       </label>
                     </td>
@@ -1075,7 +1075,7 @@
           api.message.advanced(el.rhspInformation, `
             <div style="text-indent:2em;line-height:1.6em">
               <p>选择更多的保存时间点，可以提高移除记录的准确度，降低遗漏历史数据的情况。但是数据冲刷速度更快，数据利用率低，可能会导致真正有价值的记录被冲洗掉，并且增大IO和运算负担。无论选择哪一种方式，在同一个URL对应的页面下至多保存一次。</p>
-              <p>如果你习惯于先点开稍后再看列表页面，再点击视频观看，建议选择第一项，当然选择第二项提高准确度也是合理的。如果你习惯于直接在顶栏弹出菜单中点击视频观看，请选择第二项。第三项【在打开任意相关页面时保存数据】性价比低，如果没有特别需求请不要选择，否则务必开启模糊比对模式。</p>
+              <p>如果你习惯于先点开稍后再看列表页面，再点击视频观看，建议选择第一项，当然选择第二项提高准确度也是合理的。如果你习惯于直接在顶栏弹出菜单中点击视频观看，请选择第二项。第三项「在打开任意相关页面时保存数据」性价比低，如果没有特别需求请不要选择，否则务必开启模糊比对模式。</p>
             </div>
           `, '💬', { width: '36em', flagSize: '2em', disabled: () => el.rhspInformation.parentNode.hasAttribute('disabled') })
           el.rhfcInformation = gm.el.setting.querySelector('#gm-rhfcInformation')
@@ -1088,7 +1088,7 @@
           api.message.advanced(el.fwsInformation, `
             <div style="text-indent:2em;line-height:1.6em">
               <p>在动态页、视频播放页以及其他页面，视频卡片的右下角方存在一个将视频加入或移除出稍后再看的快捷按钮。然而，在刷新页面后，B站不会为之加载稍后再看的状态——即使视频已经在稍后再看中，也不会显示出来。启用该功能后，会自动填充这些缺失的状态信息。</p>
-              <p>第三项【所有页面】，会用一套固定的逻辑对脚本能匹配到的所有非特殊页面尝试进行信息填充。脚本本身没有匹配所有B站页面，如果有需要，请在脚本管理器（如Tampermonkey）中为脚本设置额外的页面匹配规则。由于B站各页面的设计不是很规范，某些页面中视频卡片的设计可能跟其他地方不一致，所以不保证必定能填充成功。</p>
+              <p>第三项「所有页面」，会用一套固定的逻辑对脚本能匹配到的所有非特殊页面尝试进行信息填充。脚本本身没有匹配所有B站页面，如果有需要，请在脚本管理器（如Tampermonkey）中为脚本设置额外的页面匹配规则。由于B站各页面的设计不是很规范，某些页面中视频卡片的设计可能跟其他地方不一致，所以不保证必定能填充成功。</p>
             </div>
           `, '💬', { width: '36em', flagSize: '2em' })
           el.dpcInformation = gm.el.setting.querySelector('#gm-dpcInformation')
@@ -1274,7 +1274,7 @@
             resetMaxSize = true
             needReload = true
           }
-          // “因”中无 removeHistory，就说明 needReload 需要设置为 true，除非“果”不需要刷新页面就能生效
+          // 「因」中无 removeHistory，就说明 needReload 需要设置为 true，除非「果」不需要刷新页面就能生效
           if (gm.config.removeHistory) {
             const rhsV = parseInt(el.removeHistorySaves.value)
             if (rhsV != gm.config.removeHistorySaves && !isNaN(rhsV)) {
@@ -1678,7 +1678,7 @@
     }
 
     /**
-     * 对“打开菜单项”这一操作进行处理，包括显示菜单项、设置当前菜单项的状态、关闭其他菜单项
+     * 对「打开菜单项」这一操作进行处理，包括显示菜单项、设置当前菜单项的状态、关闭其他菜单项
      * @param {string} name 菜单项的名称
      * @param {() => void} [callback] 打开菜单项后的回调函数
      */
@@ -1705,7 +1705,7 @@
     }
 
     /**
-     * 对“关闭菜单项”这一操作进行处理，包括隐藏菜单项、设置当前菜单项的状态
+     * 对「关闭菜单项」这一操作进行处理，包括隐藏菜单项、设置当前菜单项的状态
      * @param {string} name 菜单项的名称
      * @param {() => void} [callback] 关闭菜单项后的回调函数
      */
@@ -2996,29 +2996,29 @@
       const _self = this
       const r_con = await api.wait.waitForElementLoaded('.watch-later-list.bili-wrapper header .r-con')
       if (gm.config.removeHistory) {
-        // 在列表页面加入“移除记录”
+        // 在列表页面加入「移除记录」
         const removeHistoryButton = r_con.appendChild(document.createElement('div'))
         removeHistoryButton.innerText = '移除记录'
         removeHistoryButton.className = 's-btn'
         removeHistoryButton.onclick = () => _self.script.openRemoveHistory() // 要避免 MouseEvent 的传递
       }
-      // 在列表页面加如“增强设置”
+      // 在列表页面加如「增强设置」
       const plusButton = r_con.appendChild(document.createElement('div'))
       plusButton.innerText = '增强设置'
       plusButton.className = 's-btn'
       plusButton.onclick = () => _self.script.openUserSetting() // 要避免 MouseEvent 的传递
-      // 移除【一键清空】按钮
+      // 移除「一键清空」按钮
       if (gm.config.removeButton_removeAll) {
         r_con.children[1].style.display = 'none'
       }
-      // 移除【移除已观看视频】按钮
+      // 移除「移除已观看视频」按钮
       if (gm.config.removeButton_removeWatched) {
         r_con.children[2].style.display = 'none'
       }
     }
 
     /**
-     * 隐藏【收藏】中【稍后再看】
+     * 隐藏「收藏」中「稍后再看」
      */
     async hideWatchlaterInCollect() {
       api.wait.waitForElementLoaded('.user-con .mini-favorite').then(fav => {
