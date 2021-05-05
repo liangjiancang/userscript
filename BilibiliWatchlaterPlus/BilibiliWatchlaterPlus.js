@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.9.14.20210505
+// @version         4.9.15.20210505
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -3049,7 +3049,7 @@
     }
 
     /**
-     * 隐藏「收藏」中「稍后再看」
+     * 隐藏「收藏」中的「稍后再看」
      */
     async hideWatchlaterInCollect() {
       api.wait.waitForElementLoaded('.user-con .mini-favorite').then(fav => {
