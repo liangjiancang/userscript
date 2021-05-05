@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.9.13.20210505
+// @version         4.9.14.20210505
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -48,7 +48,7 @@
   }
   if (incompatible) {
     const label = GM_info && GM_info.script && GM_info.script.name ? `【${GM_info.script.name}】\n\n` : ''
-    alert(`${label}脚本不支持 ${scriptHandler}！请改用Tampermonkey或Violentmonkey。`)
+    alert(`${label}脚本不支持${scriptHandler}！请改用Tampermonkey或Violentmonkey。`)
     return
   }
   if (scriptHandler != 'Tampermonkey') {
