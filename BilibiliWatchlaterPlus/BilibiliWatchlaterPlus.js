@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.9.12.20210423
+// @version         4.9.13.20210505
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -18,7 +18,7 @@
 // @exclude         *://t.bilibili.com/h5/dynamic/specification
 // @exclude         *://www.bilibili.com/page-proxy/game-nav.html
 // @exclude         /.*:\/\/.*:\/\/.*/
-// @require         https://greasyfork.org/scripts/409641-api/code/API.js?version=849812
+// @require         https://greasyfork.org/scripts/409641-api/code/API.js?version=927901
 // @grant           GM_addStyle
 // @grant           GM_xmlhttpRequest
 // @grant           GM_registerMenuCommand
@@ -48,7 +48,7 @@
   }
   if (incompatible) {
     const label = GM_info && GM_info.script && GM_info.script.name ? `【${GM_info.script.name}】\n\n` : ''
-    alert(`${label}脚本不支持${scriptHandler}！请改用Tampermonkey或Violentmonkey。`)
+    alert(`${label}脚本不支持 ${scriptHandler}！请改用Tampermonkey或Violentmonkey。`)
     return
   }
   if (scriptHandler != 'Tampermonkey') {
@@ -198,6 +198,7 @@
    * @property {boolean} removeButton_removeWatched 移除「移除已观看视频」按钮
    * @property {boolean} disablePageCache 禁用页面缓存
    * @property {number} watchlaterListCacheValidPeriod 稍后再看列表数据本地缓存有效期（单位：秒）
+   * @property {boolean} hideDisabledSubitems 设置页隐藏被禁用项的子项
    * @property {boolean} openSettingAfterConfigUpdate 功能性更新后打开设置页面
    * @property {boolean} reloadAfterSetting 设置生效后刷新页面
    */
@@ -342,6 +343,7 @@
       removeButton_removeWatched: { default: false, attr: 'checked', configVersion: 20200722 },
       disablePageCache: { default: false, attr: 'checked', configVersion: 20210322 },
       watchlaterListCacheValidPeriod: { default: 15, attr: 'value', manual: true, needNotReload: true, max: 600, configVersion: 20200927 },
+      hideDisabledSubitems: { default: true, attr: 'checked', configVersion: 20210505 },
       openSettingAfterConfigUpdate: { default: true, attr: 'checked', configVersion: 20200805 },
       reloadAfterSetting: { default: true, attr: 'checked', needNotReload: true, configVersion: 20200715 },
     },
@@ -719,7 +721,11 @@
         const initSetting = () => {
           gm.el.setting = gm.el.gmRoot.appendChild(document.createElement('div'))
           gm.menu.setting.el = gm.el.setting
-          gm.el.setting.className = 'gm-setting'
+          if (gm.config.hideDisabledSubitems) {
+            gm.el.setting.className = 'gm-setting gm-hideDisabledSubitems'
+          } else {
+            gm.el.setting.className = 'gm-setting'
+          }
           gm.el.setting.innerHTML = `
             <div id="gm-setting-page">
               <div class="gm-title">
@@ -998,6 +1004,16 @@
                     </td>
                   </tr>
 
+                  <tr class="gm-item" title="一般情况下，是否在用户设置中隐藏被禁用项的子项？">
+                    <td><div>用户设置</div></td>
+                    <td>
+                      <label>
+                        <span>一般情况下隐藏被禁用项的子项</span>
+                        <input id="gm-hideDisabledSubitems" type="checkbox">
+                      </label>
+                    </td>
+                  </tr>
+
                   <tr class="gm-item" title="功能性更新后，是否打开用户设置？">
                     <td><div>用户设置</div></td>
                     <td>
@@ -1141,7 +1157,7 @@
             }
           }
           el.headerMenuFn = el.headerMenuFnSetting.parentNode.parentNode
-          el.headerButton.init = el.headerButton.onchange = function() {
+          el.headerButton.init = function() {
             subitemChange(this, [el.headerButtonOpL, el.headerButtonOpR, el.headerButtonOpM, el.headerMenu, el.openHeaderMenuLink, el.menuScrollbarSetting, el.headerMenuSearch, el.headerMenuFnSetting, el.headerMenuFnHistory, el.headerMenuFnRemoveAll, el.headerMenuFnRemoveWatched, el.headerMenuFnShowAll, el.headerMenuFnPlayAll])
             if (this.checked) {
               el.headerMenuFn.removeAttribute('disabled')
@@ -1149,9 +1165,21 @@
               el.headerMenuFn.setAttribute('disabled', '')
             }
           }
-          el.removeHistory.init = el.removeHistory.onchange = function() {
+          el.headerButton.onchange = function() {
+            this.init()
+            if (gm.config.hideDisabledSubitems) {
+              api.dom.setAbsoluteCenter(el.settingPage)
+            }
+          }
+          el.removeHistory.init = function() {
             subitemChange(this, [el.removeHistorySavePoint, el.removeHistoryFuzzyCompare, el.removeHistorySaves, el.removeHistorySearchTimes])
             setRhWaring()
+          }
+          el.removeHistory.onchange = function() {
+            this.init()
+            if (gm.config.hideDisabledSubitems) {
+              api.dom.setAbsoluteCenter(el.settingPage)
+            }
           }
 
           // 输入框内容处理
@@ -2147,6 +2175,9 @@
           setTimeout(() => {
             if (!gm.menu.entryPopup.state) {
               this.opening = false
+              if (gm.config.hideDisabledSubitems) {
+                popup.style.position = api.dom.isFixed(watchlater.parentNode) ? 'fixed' : ''
+              }
               popup.style.top = `calc(${watchlater.offsetTop + watchlater.offsetHeight}px + 1em)`
               popup.style.left = `calc(${watchlater.offsetLeft + watchlater.offsetWidth / 2}px - 16em)`
               openEntryPopup()
@@ -3498,6 +3529,10 @@
           opacity: 0;
           display: none;
           cursor: pointer;
+        }
+
+        #${gm.id} .gm-setting.gm-hideDisabledSubitems #gm-setting-page:not([setting-type]) [disabled] {
+          display: none;
         }
 
         #${gm.id} .gm-history {
