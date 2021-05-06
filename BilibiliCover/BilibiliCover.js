@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站封面获取
-// @version         4.8.2.20210505
+// @version         4.8.3.20210506
 // @namespace       laster2800
 // @author          Laster2800
 // @description     B站视频播放页（普通模式、稍后再看模式）、番剧播放页、直播间添加获取封面的按钮
@@ -16,7 +16,7 @@
 // @exclude         *://live.bilibili.com/
 // @exclude         *://live.bilibili.com/*/*
 // @exclude         /.*:\/\/.*:\/\/.*/
-// @require         https://greasyfork.org/scripts/409641-api/code/API.js?version=927901
+// @require         https://greasyfork.org/scripts/409641-api/code/API.js?version=928340
 // @grant           GM_addStyle
 // @grant           GM_download
 // @grant           GM_setValue
@@ -68,14 +68,18 @@
   })
 
   const createMenu = name => {
-    const afterSwitch = () => !gm.enable[name] ? '开启' : '关闭'
-    let id = GM_registerMenuCommand(afterSwitch() + gm.fnName[name], menuCallback)
+    const cName = () => {
+      const current = gm.enable[name] ? '开启' : '关闭'
+      const switched = !gm.enable[name] ? '开启' : '关闭'
+      return `${switched}${gm.fnName[name]} [当前${current}]`
+    }
+    let id = GM_registerMenuCommand(cName(), menuCallback)
 
     function menuCallback() {
       gm.enable[name] = !gm.enable[name]
       GM_setValue(name, gm.enable[name])
       GM_unregisterMenuCommand(id)
-      id = GM_registerMenuCommand(afterSwitch() + gm.fnName[name], menuCallback)
+      id = GM_registerMenuCommand(cName(), menuCallback)
     }
   }
   for (const name in gm.enable) {
@@ -214,7 +218,7 @@
         preview.src = ''
         cover.onclick = function(e) {
           e.preventDefault()
-          alert(errorMsg)
+          api.message.create(errorMsg)
         }
       }
       cover.title = gm.title || errorMsg
@@ -274,7 +278,7 @@
       addDownloadEvent(cover)
       createPreview(cover).src = coverUrl
     } else {
-      cover.onclick = () => alert(errorMsg)
+      cover.onclick = () => api.message.create(errorMsg)
     }
     cover.title = gm.title || errorMsg
     cover.className = `${gm.id}_cover_btn`
@@ -314,7 +318,7 @@
       createPreview(cover).src = kfUrl
     } else {
       const errorMsg = '获取失败，若非网络问题请提供反馈'
-      cover.onclick = () => alert(errorMsg)
+      cover.onclick = () => api.message.create(errorMsg)
       cover.title = errorMsg
     }
     cover.className = `${gm.id}_cover_btn`
@@ -341,7 +345,7 @@
         e.preventDefault()
         target.dispatchEvent(new Event('mouseleave'))
         target.disablePreview = true
-        GM_download(this.href, document.title || 'Cover')
+        download(this.href, document.title)
       }
     }
   }
@@ -419,7 +423,7 @@
     preview.onclick = function() {
       if (this.src) {
         if (gm.enable.download) {
-          GM_download(this.src, document.title)
+          download(this.src, document.title)
         } else {
           window.open(this.src)
         }
@@ -461,4 +465,27 @@
     `)
     return preview
   }
+
+  /**
+   * 下载封面
+   * @param {string} url 封面 URL
+   * @param {string} [name='Cover'] 保存文件名
+   */
+  function download(url, name) {
+    name = name || 'Cover'
+    const onerror = function(error) {
+      if (error && error.error == 'not_whitelisted') {
+        alert('该封面的文件格式不在下载模式白名单中，从而触发安全限制导致无法直接下载。可修改脚本管理器的「下载模式」或「文件扩展名白名单」设置以放开限制。')
+        window.open(url)
+      } else {
+        alert('下载错误')
+      }
+    }
+    const ontimeout = function() {
+      alert('下载超时')
+      window.open(url)
+    }
+    api.web.download({ url, name, onerror, ontimeout })
+  }
+
 })()
