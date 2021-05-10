@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name            S1战斗力屏蔽
 // @namespace       laster2800
-// @version         3.1.0.20210510
+// @version         3.1.1.20210510
 // @author          Laster2800
 // @description     屏蔽S1的战斗力系统，眼不见为净
 // @author          Laster2800
@@ -22,12 +22,15 @@ const enabledAttr = `${gmId}-enabled`
 const enabledSelector = `body[${enabledAttr}]`
 
 /* global API */
-var api = new API({ id: gmId })
+var api = new API({
+  id: gmId,
+  label: GM_info.script.name,
+})
 
 ;(function() {
   api.wait.waitForElementLoaded('body').then(body => {
     body.setAttribute(enabledAttr, '')
-  })
+  }).catch(errorHandler)
 
   // 在导航栏中加入脚本开关
   api.wait.waitForElementLoaded('#nv').then(nv => {
@@ -50,7 +53,7 @@ var api = new API({ id: gmId })
       }
       sw.enabled = enabled
     }
-  })
+  }).catch(errorHandler)
 
   // 系统提醒
   api.wait.waitForElementLoaded({
@@ -67,8 +70,9 @@ var api = new API({ id: gmId })
       api.wait.waitForConditionPassed({
         condition: () => menu.getAttribute('initialized') === 'true',
         interval: 5,
-      }).then(() => ignore_notice.click())
-    })
+      }).then(() => ignore_notice.click()).catch(errorHandler)
+    }).catch(() => {}) // 没有通知时，没有捕获到是正常的
+
     // 有系统提醒处于未读状态时，相关位置会有高亮显示，网页标题也会有所不同
     // 将这些差异化显示，在用户没有反应出来之前去除
     api.wait.waitForElementLoaded({
@@ -90,15 +94,15 @@ var api = new API({ id: gmId })
         })
       }
       menu_system && menu_system.parentNode.parentNode.remove()
-    })
-  })
+    }).catch(errorHandler)
+  }).catch(errorHandler)
 
   // 右上角「积分」的弹出菜单移除
   api.wait.waitForElementLoaded('#extcreditmenu').then(extcreditmenu => {
     extcreditmenu.className = ''
     extcreditmenu.style.paddingRight = '1em'
     extcreditmenu.onmouseover = null
-  })
+  }).catch(errorHandler)
 
   if (/thread-|mod=viewthread/.test(location.href)) {
     GM_addStyle(`
@@ -160,4 +164,8 @@ function replaceTitle() {
   if (reg.test(document.title)) {
     document.title = document.title.replace(reg, '')
   }
+}
+
+function errorHandler(e) {
+  api.logger.error(e)
 }
