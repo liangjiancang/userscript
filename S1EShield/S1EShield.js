@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name            S1战斗力屏蔽
 // @namespace       laster2800
-// @version         3.0.0.20210510
+// @version         3.0.1.20210510
 // @author          Laster2800
 // @description     屏蔽S1的战斗力系统，眼不见为净
 // @author          Laster2800
@@ -29,7 +29,7 @@ var api = new API({ id: gmId })
     body.setAttribute(enabledAttr, '')
   })
 
-  // 在导航栏中脚本开关
+  // 在导航栏中加入脚本开关
   api.wait.waitForElementLoaded('#nv').then(nv => {
     var sw = document.createElement('label')
     sw.innerHTML = `
