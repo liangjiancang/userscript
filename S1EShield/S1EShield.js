@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name            S1战斗力屏蔽
 // @namespace       laster2800
-// @version         3.0.2.20210510
+// @version         3.1.0.20210510
 // @author          Laster2800
 // @description     屏蔽S1的战斗力系统，眼不见为净
 // @author          Laster2800
@@ -79,8 +79,6 @@ var api = new API({ id: gmId })
       var menu_system = menu.querySelector('.notice_system') // 右上角菜单「系统提醒」
       if (menu_mypost || menu_system) {
         menu_button.innerText = '提醒'
-      }
-      if (menu_mypost && menu_system) {
         menu_button.className = 'a showmenu'
         // 极小概率的情况下，此时页面标题已经改变（貌似只会发生在后台打开时），覆盖以确保处理
         replaceTitle()
@@ -91,7 +89,6 @@ var api = new API({ id: gmId })
           }
         })
       }
-      menu_mypost && menu_mypost.parentNode.parentNode.remove()
       menu_system && menu_system.parentNode.parentNode.remove()
     })
   })
