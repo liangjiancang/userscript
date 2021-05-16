@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.9.16.20210506
+// @version         4.9.17.20210516
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -2412,7 +2412,7 @@
                     card.className = 'gm-entry-list-item'
                     card.innerHTML = `
                       <div class="gm-card-left" title>
-                        <img class="gm-card-cover" src="${item.pic}">
+                        <img class="gm-card-cover" src="${item.pic}@156w_88h_1c_100q.webp">
                         <div class="gm-card-switcher"></div>
                         <div class="gm-card-duration">${duration}</div>
                       </div>
@@ -3266,8 +3266,8 @@
           cursor: default;
         }
         #${gm.id} .gm-entrypopup .gm-entry-list .gm-entry-list-item .gm-card-cover {
-          width: 7.8em;
-          height: 4.4em;
+          width: 7.82em;
+          height: 4.40em;
           border-radius: 2px;
         }
         #${gm.id} .gm-entrypopup .gm-entry-list .gm-entry-list-item .gm-card-switcher {
@@ -3314,7 +3314,8 @@
           overflow: hidden;
           text-overflow: ellipsis;
           word-break: break-all;
-          width: 17em;
+          text-align: justify;
+          width: 16.8em;
           height: 2.8em;
         }
         #${gm.id} .gm-entrypopup .gm-entry-list .gm-entry-list-item.gm-removed .gm-card-title {
