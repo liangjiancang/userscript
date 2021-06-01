@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.9.17.20210516
+// @version         4.9.18.20210601
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -3426,6 +3426,7 @@
         #${gm.id} .gm-setting table {
           width: 100%;
           border-collapse: separate;
+          border-spacing: 0;
         }
         #${gm.id} .gm-setting td {
           position: relative;
@@ -3695,6 +3696,7 @@
         #${gm.id} input,
         #${gm.id} select,
         #${gm.id} button {
+          font-size: 100%;
           color: var(--text-color);
           outline: none;
           border: 1px solid var(--border-color); /* 在某些页面被覆盖 */
