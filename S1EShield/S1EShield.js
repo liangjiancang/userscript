@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name            S1战斗力屏蔽
 // @namespace       laster2800
-// @version         3.1.2.20210510
+// @version         3.1.3.20210609
 // @author          Laster2800
 // @description     屏蔽S1的战斗力系统，眼不见为净
 // @author          Laster2800
@@ -54,13 +54,25 @@ var api = new API({
   }).catch(errorHandler)
 
   // 系统提醒
+  // 在正式处理之前，通过样式将该隐藏的隐藏住，避免被用户观察到
+  GM_addStyle(`
+    #myprompt.new {
+      background: url(https://static.saraba1st.com/image/s1/arrwd.gif) no-repeat 100% 50%;
+      background-position: 3px 50%;
+      color: #444;
+      font-weight: unset;
+    }
+    #myprompt_menu {
+      visibility: hidden;
+    }
+  `)
   api.wait.waitForElementLoaded({
     selector: '#myprompt_menu',
     interval: 5,
   }).then(menu => {
     // 有系统提醒时，每次打开页面时都会弹出一个通知菜单
     // 点击网页提供的关闭按键后，此菜单在有新提醒前不会再次弹出
-    api.wait.waitForElementLoaded({
+    const p1 = api.wait.waitForElementLoaded({
       selector: '.ignore_notice',
       interval: 5,
       timeout: 1000,
@@ -73,7 +85,7 @@ var api = new API({
 
     // 有系统提醒处于未读状态时，相关位置会有高亮显示，网页标题也会有所不同
     // 将这些差异化显示，在用户没有反应出来之前去除
-    api.wait.waitForElementLoaded({
+    const p2 = api.wait.waitForElementLoaded({
       selector: '#myprompt',
       interval: 5,
     }).then(menu_button => {
@@ -93,12 +105,21 @@ var api = new API({
       }
       menu_system && menu_system.parentNode.parentNode.remove()
     }).catch(errorHandler)
+
+    Promise.allSettled([p1, p2]).then(() => { // 无意关心 p1 和 p2 死活，只要它们都处理完就还原为可见状态
+      menu.style.visibility = 'visible'
+    }).catch(errorHandler)
   }).catch(errorHandler)
 
   // 右上角「积分」的弹出菜单移除
+  GM_addStyle(`
+    #extcreditmenu {
+      background: none;
+      padding-right: 1em;
+    }
+  `)
   api.wait.waitForElementLoaded('#extcreditmenu').then(extcreditmenu => {
     extcreditmenu.className = ''
-    extcreditmenu.style.paddingRight = '1em'
     extcreditmenu.onmouseover = null
   }).catch(errorHandler)
 
