@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.10.1.20210612
+// @version         4.10.2.20210612
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -3020,8 +3020,28 @@
       const _self = this
       /** @type {HTMLElement} */
       const r_con = await api.wait.waitForElementLoaded('.watch-later-list.bili-wrapper header .r-con')
+      // 页面上本来就存在的「全部播放」按钮不要触发重定向
+      const setPlayAll = el => {
+        el.href = gm.url.page_watchlaterPlayAll
+        el.target = gm.config.openListVideo == Enums.openListVideo.openInCurrent ? '_self' : '_blank'
+      }
+      const playAll = r_con.children[0]
+      if (api.dom.containsClass(playAll, 's-btn')) {
+        // 理论上不会进来
+        setPlayAll(playAll)
+      } else {
+        const ob = new MutationObserver((records, observer) => {
+          for (const record of records) {
+            if (record.attributeName == 'href') {
+              setPlayAll(record.target)
+              observer.disconnect()
+            }
+          }
+        })
+        ob.observe(playAll, { attributes: true })
+      }
+      // 在列表页面加入「移除记录」
       if (gm.config.removeHistory) {
-        // 在列表页面加入「移除记录」
         const removeHistoryButton = r_con.appendChild(document.createElement('div'))
         removeHistoryButton.innerText = '移除记录'
         removeHistoryButton.className = 's-btn'
