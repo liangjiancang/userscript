@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.10.0.20210612
+// @version         4.10.1.20210612
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -3041,8 +3041,8 @@
         r_con.children[2].style.display = 'none'
       }
 
+      // 增加临时切换自动移除功能的「打开后自动移除」按钮
       if (gm.config.autoRemove != Enums.autoRemove.absoluteNever) {
-        // 增加临时切换自动移除功能的「打开后自动移除」按钮
         GM_addStyle(`
           .watch-later-list header .s-btn.gm-s-btn.gm-s-btn-enabled {
             background: #00a1d6;
