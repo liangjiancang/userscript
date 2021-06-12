@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.9.18.20210601
+// @version         4.9.19.20210612
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -2250,10 +2250,10 @@
               </div>
               <div class="gm-entry-list"></div>
               <div class="gm-entry-bottom">
-                <a class="gm-entry-button" fn="setting" href="${gm.url.noop}" target="${target}">设置</a>
-                <a class="gm-entry-button" fn="history" href="${gm.url.noop}" target="${target}">历史</a>
-                <a class="gm-entry-button" fn="removeAll" href="${gm.url.noop}" target="${target}">清空</a>
-                <a class="gm-entry-button" fn="removeWatched" href="${gm.url.noop}" target="${target}">移除已看</a>
+                <a class="gm-entry-button" fn="setting" href="${gm.url.noop}">设置</a>
+                <a class="gm-entry-button" fn="history" href="${gm.url.noop}">历史</a>
+                <a class="gm-entry-button" fn="removeAll" href="${gm.url.noop}">清空</a>
+                <a class="gm-entry-button" fn="removeWatched" href="${gm.url.noop}">移除已看</a>
                 <a class="gm-entry-button" fn="showAll" href="${gm.url.page_watchlaterList}" target="${target}">显示</a>
                 <a class="gm-entry-button" fn="playAll" href="${gm.url.page_watchlaterPlayAll}" target="${target}">播放</a>
               </div>
