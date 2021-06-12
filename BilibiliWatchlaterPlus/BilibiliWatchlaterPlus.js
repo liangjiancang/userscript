@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.10.2.20210612
+// @version         4.10.3.20210612
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -3061,7 +3061,7 @@
         r_con.children[2].style.display = 'none'
       }
 
-      // 增加临时切换自动移除功能的「打开后自动移除」按钮
+      // 增加临时切换自动移除功能的「自动移除」按钮
       if (gm.config.autoRemove != Enums.autoRemove.absoluteNever) {
         GM_addStyle(`
           .watch-later-list header .s-btn.gm-s-btn.gm-s-btn-enabled {
@@ -3076,7 +3076,7 @@
         const autoRemove = gm.config.autoRemove == Enums.autoRemove.always || gm.config.autoRemove == Enums.autoRemove.openFromList
         const autoRemoveButton = r_con.insertBefore(document.createElement('div'), r_con.children[0])
         autoRemoveButton.id = 'gm-auto-remove'
-        autoRemoveButton.innerText = '打开后自动移除'
+        autoRemoveButton.innerText = '自动移除'
         autoRemoveButton.title = '临时切换在当前页面打开视频后是否将其自动移除出「稍后再看」。若要默认开启/关闭自动移除功能，请在「设置」中配置。'
         autoRemoveButton.className = 's-btn gm-s-btn'
         autoRemoveButton.autoRemove = autoRemove
