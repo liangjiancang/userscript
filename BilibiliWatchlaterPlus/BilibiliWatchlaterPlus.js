@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.9.19.20210612
+// @version         4.10.0.20210612
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -136,6 +136,7 @@
       always: 'always',
       openFromList: 'openFromList',
       never: 'never',
+      absoluteNever: 'absoluteNever',
     },
     /**
      * @readonly
@@ -310,7 +311,7 @@
   const gm = {
     id: gmId,
     configVersion: GM_getValue('configVersion'),
-    configUpdate: 20210323.1,
+    configUpdate: 20210612,
     searchParams: new URL(location.href).searchParams,
     config: {},
     configMap: {
@@ -336,7 +337,7 @@
       fillWatchlaterStatus: { default: Enums.fillWatchlaterStatus.dynamicAndVideo, attr: 'value', configVersion: 20200819 },
       hideWatchlaterInCollect: { default: true, attr: 'checked', configVersion: 20210322 },
       videoButton: { default: true, attr: 'checked' },
-      autoRemove: { default: Enums.autoRemove.openFromList, attr: 'value', configVersion: 20200805 },
+      autoRemove: { default: Enums.autoRemove.openFromList, attr: 'value', configVersion: 20210612 },
       redirect: { default: false, attr: 'checked', configVersion: 20210322.1 },
       openListVideo: { default: Enums.openListVideo.openInCurrent, attr: 'value', configVersion: 20200717 },
       removeButton_removeAll: { default: false, attr: 'checked', configVersion: 20200722 },
@@ -933,7 +934,8 @@
                         <select id="gm-autoRemove">
                           <option value="${Enums.autoRemove.always}">若视频在稍后再看中，则移除出稍后再看</option>
                           <option value="${Enums.autoRemove.openFromList}">若是从列表页面或弹出菜单列表点击进入，则移除出稍后再看</option>
-                          <option value="${Enums.autoRemove.never}">从不执行自动移除功能</option>
+                          <option value="${Enums.autoRemove.never}">不执行自动移除功能，但在列表页面中可临时开启功能</option>
+                          <option value="${Enums.autoRemove.absoluteNever}">彻底禁用自动移除功能</option>
                         </select>
                       </div>
                     </td>
@@ -2386,7 +2388,7 @@
             if (data && data.length > 0) {
               const openLinkInCurrent = gm.config.openHeaderMenuLink == Enums.openHeaderMenuLink.openInCurrent
               const redirect = gm.config.redirect
-              const autoRemove = gm.config.autoRemove == Enums.autoRemove.openFromList
+              const autoRemove = gm.config.autoRemove == Enums.autoRemove.always || gm.config.autoRemove == Enums.autoRemove.openFromList
               const simplePopup = gm.config.headerMenu == Enums.headerMenu.enableSimple
               try {
                 for (const item of data) {
@@ -2463,7 +2465,7 @@
                     card.href = `${gm.url.page_videoWatchlaterMode}/${item.bvid}`
                   }
                   if (autoRemove) {
-                    card.href = card.href + `?${gm.id}_remove_from_list=true`
+                    card.href = card.href + `?${gm.id}_remove=true`
                     card.addEventListener('mouseup', function(e) {
                       if (e.target.className == 'gm-card-switcher') {
                         return
@@ -2765,8 +2767,9 @@
           bus.cb.checked = status
         }
         const alwaysAutoRemove = gm.config.autoRemove == Enums.autoRemove.always
-        const spRemove = gm.searchParams.get(`${gm.id}_remove_from_list`) == 'true'
-        if (!alwaysAutoRemove && !spRemove) {
+        const spRemove = gm.searchParams.get(`${gm.id}_remove`) == 'true'
+        const spDisableRemove = gm.searchParams.get(`${gm.id}_disable_remove`) == 'true'
+        if ((!alwaysAutoRemove && !spRemove) || spDisableRemove) {
           setStatus()
         }
         // 如果当前视频应当被移除，那就不必读取状态了
@@ -2840,56 +2843,29 @@
     }
 
     /**
-     * 处理列表页面点击视频时的行为
-     */
-    processOpenListVideo() {
-      if (gm.config.openListVideo == Enums.openListVideo.openInNew) {
-        // 如果列表页面在新标签页打开视频
-        const base = document.head.appendChild(document.createElement('base'))
-        base.id = 'gm-base'
-        base.target = '_blank'
-      }
-    }
-
-    /**
-     * 对稍后再看列表页面的链接进行处理
+     * 对稍后再看列表页面进行处理
      * @async
      */
-    async processWatchlaterListLink() {
+    async processWatchlaterList() {
       try {
+        let autoRemoveButton = null
+        if (gm.config.autoRemove != Enums.autoRemove.absoluteNever) {
+          autoRemoveButton = await api.wait.waitForElementLoaded('#gm-auto-remove')
+        }
         const watchLaterList = await api.wait.waitForElementLoaded('.watch-later-list')
-        let ob = new MutationObserver(async (records, observer) => {
+        const ob = new MutationObserver(async (records, observer) => {
           for (const record of records) {
             for (const addedNode of record.addedNodes) {
               if (api.dom.containsClass(addedNode, 'list-box')) {
                 const listBox = addedNode
                 const list = listBox.firstElementChild.children
                 for (let i = 0; i < list.length; i++) {
-                  const links = list[i].querySelectorAll('a:not([class=user])') // 排除 .user，那是指向 UP 主的链接
+                  const links = list[i].querySelectorAll('a:not([class=user])') // 排除指向 UP 主的链接
                   for (const link of links) {
-                    if (gm.config.autoRemove != Enums.autoRemove.never) {
-                      processLink_autoRemove(link)
-                    }
-                    link._processedLink = link.href
+                    processLink(link, autoRemoveButton)
                   }
                 }
                 observer.disconnect()
-
-                // 当从列表页面移除视频时，所有 <a> 的 href 会被改变，需要监听并重新修改
-                const obCfg = { // 以 <a> 父节点为对象，再监听其子节点
-                  attributes: true,
-                  subtree: true, // 监听子节点
-                }
-                ob = new MutationObserver((records, observer) => {
-                  observer.disconnect() // 先把 ob 停一下，不然你自己改的时候也会被监听到，死循环了
-                  for (const record of records) {
-                    if (record.target.nodeName == 'A' && record.attributeName == 'href') {
-                      record.target.href = record.target._processedLink
-                    }
-                  }
-                  observer.observe(listBox.firstElementChild, obCfg) // 继续
-                })
-                ob.observe(listBox.firstElementChild, obCfg)
                 return
               }
             }
@@ -2904,28 +2880,44 @@
       /**
        * 根据 `autoRemove` 处理链接
        * @param {HTMLAnchorElement} link 链接元素
+       * @param {HTMLElement} [arb] 自动移除按钮，为 `null` 时表示彻底禁用自动移除功能
        */
-      const processLink_autoRemove = link => {
-        if (gm.config.autoRemove == Enums.autoRemove.openFromList) {
-          const url = new URL(link.href)
-          url.searchParams.set(`${gm.id}_remove_from_list`, 'true')
-          link.href = url.href
-        }
-
-        let base = link
-        while (base.className.split(' ').indexOf('av-item') < 0) {
-          base = base.parentNode
-          if (!base) {
-            api.logger.error(gm.error.DOM_PARSE)
-            return
+      const processLink = (link, arb) => {
+        link.target = gm.config.openListVideo == Enums.openListVideo.openInCurrent ? '_self' : '_blank'
+        if (arb) {
+          let base = link
+          while (base.className.split(' ').indexOf('av-item') < 0) {
+            base = base.parentNode
+            if (!base) {
+              api.logger.error(gm.error.DOM_PARSE)
+              return
+            }
           }
+          link.addEventListener('mousedown', function(e) {
+            if (e.button == 0 || e.button == 1) { // 左键或中键
+              if (arb.autoRemove) {
+                if (gm.config.autoRemove != Enums.autoRemove.always) {
+                  const url = new URL(link.href)
+                  url.searchParams.set(`${gm.id}_remove`, 'true')
+                  link.href = url.href
+                }
+              } else {
+                if (gm.config.autoRemove == Enums.autoRemove.always) {
+                  const url = new URL(link.href)
+                  url.searchParams.set(`${gm.id}_disable_remove`, 'true')
+                  link.href = url.href
+                }
+              }
+            }
+          })
+          link.addEventListener('mouseup', function(e) {
+            if (e.button == 0 || e.button == 1) { // 左键或中键
+              if (arb.autoRemove) {
+                base.style.display = 'none'
+              }
+            }
+          })
         }
-        link.addEventListener('mouseup', function(e) {
-          // 不能 mousedown，隐藏之后无法触发事件
-          if (e.button == 0 || e.button == 1) { // 左键或中键
-            base.style.display = 'none'
-          }
-        })
       }
     }
 
@@ -2967,8 +2959,9 @@
      */
     async processAutoRemove(delay = 0) {
       const alwaysAutoRemove = gm.config.autoRemove == Enums.autoRemove.always
-      const spRemove = gm.searchParams.get(`${gm.id}_remove_from_list`) == 'true'
-      if (alwaysAutoRemove || spRemove) {
+      const spRemove = gm.searchParams.get(`${gm.id}_remove`) == 'true'
+      const spDisableRemove = gm.searchParams.get(`${gm.id}_disable_remove`) == 'true'
+      if ((alwaysAutoRemove || spRemove) && !spDisableRemove) {
         const _self = this
         const aid = await _self.method.getAid()
         if (alwaysAutoRemove) { // 如果总是自动移除，要检查视频是否已经在稍后再看中，确定在再移除
@@ -3025,6 +3018,7 @@
      */
     async adjustWatchlaterListUI() {
       const _self = this
+      /** @type {HTMLElement} */
       const r_con = await api.wait.waitForElementLoaded('.watch-later-list.bili-wrapper header .r-con')
       if (gm.config.removeHistory) {
         // 在列表页面加入「移除记录」
@@ -3045,6 +3039,38 @@
       // 移除「移除已观看视频」按钮
       if (gm.config.removeButton_removeWatched) {
         r_con.children[2].style.display = 'none'
+      }
+
+      if (gm.config.autoRemove != Enums.autoRemove.absoluteNever) {
+        // 增加临时切换自动移除功能的「打开后自动移除」按钮
+        GM_addStyle(`
+          .watch-later-list header .s-btn.gm-s-btn.gm-s-btn-enabled {
+            background: #00a1d6;
+            color: #fff;
+          }
+          .watch-later-list header .s-btn.gm-s-btn:not(.gm-s-btn-enabled):hover {
+            background: #fff;
+            color: #00a1d6;
+          }
+        `)
+        const autoRemove = gm.config.autoRemove == Enums.autoRemove.always || gm.config.autoRemove == Enums.autoRemove.openFromList
+        const autoRemoveButton = r_con.insertBefore(document.createElement('div'), r_con.children[0])
+        autoRemoveButton.id = 'gm-auto-remove'
+        autoRemoveButton.innerText = '打开后自动移除'
+        autoRemoveButton.title = '临时切换在当前页面打开视频后是否将其自动移除出「稍后再看」。若要默认开启/关闭自动移除功能，请在「设置」中配置。'
+        autoRemoveButton.className = 's-btn gm-s-btn'
+        autoRemoveButton.autoRemove = autoRemove
+        if (autoRemove) {
+          api.dom.addClass(autoRemoveButton, 'gm-s-btn-enabled')
+        }
+        autoRemoveButton.onclick = function() {
+          if (this.autoRemove) {
+            api.dom.removeClass(this, 'gm-s-btn-enabled')
+          } else {
+            api.dom.addClass(autoRemoveButton, 'gm-s-btn-enabled')
+          }
+          this.autoRemove = !this.autoRemove
+        }
       }
     }
 
@@ -3985,11 +4011,8 @@
 
       if (api.web.urlMatch(gm.regex.page_watchlaterList)) {
         // 列表页面
-        webpage.processOpenListVideo()
         webpage.adjustWatchlaterListUI()
-        if (gm.config.autoRemove != Enums.autoRemove.never) {
-          webpage.processWatchlaterListLink()
-        }
+        webpage.processWatchlaterList()
       } else if (api.web.urlMatch(gm.regex.page_videoNormalMode)) {
         // 播放页面（正常模式）
         if (gm.config.videoButton) {
