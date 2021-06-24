@@ -6,7 +6,7 @@
 
 在GF找了几个脚本都是不能用的，真NM离谱，只好自己上了。还是得吐槽下B站新版的稍后再看模式播放页，真尼玛离谱兼反人类，本身还BUG一堆，服了。
 
-更新说明见 [提交记录](https://gitee.com/liangjiancang/userscript/commits/master/BilibiliCover/BilibiliCover.js)。
+更新说明见 [提交记录](https://gitee.com/liangjiancang/userscript/commits/master/script/BilibiliCover/BilibiliCover.js)。
 
 ## 补充说明
 
@@ -16,24 +16,24 @@
 
 * 脚本设置
 
-    ![脚本设置](https://gitee.com/liangjiancang/userscript/raw/master/BilibiliCover/screenshot/脚本设置.png)
+    ![脚本设置](https://gitee.com/liangjiancang/userscript/raw/master/script/BilibiliCover/screenshot/脚本设置.png)
 
 * 视频（普通模式和稍后再看模式）
 
-    ![视频（普通模式和稍后再看模式）](https://gitee.com/liangjiancang/userscript/raw/master/BilibiliCover/screenshot/视频（普通模式和稍后再看模式）.png)
+    ![视频（普通模式和稍后再看模式）](https://gitee.com/liangjiancang/userscript/raw/master/script/BilibiliCover/screenshot/视频（普通模式和稍后再看模式）.png)
 
 * 番剧
 
-    ![番剧](https://gitee.com/liangjiancang/userscript/raw/master/BilibiliCover/screenshot/番剧.png)
+    ![番剧](https://gitee.com/liangjiancang/userscript/raw/master/script/BilibiliCover/screenshot/番剧.png)
 
 * 直播间
 
-    ![直播间](https://gitee.com/liangjiancang/userscript/raw/master/BilibiliCover/screenshot/直播间.png)
+    ![直播间](https://gitee.com/liangjiancang/userscript/raw/master/script/BilibiliCover/screenshot/直播间.png)
 
 * 封面预览
 
-    ![封面预览](https://gitee.com/liangjiancang/userscript/raw/master/BilibiliCover/screenshot/封面预览.jpg)
+    ![封面预览](https://gitee.com/liangjiancang/userscript/raw/master/script/BilibiliCover/screenshot/封面预览.jpg)
 
-*gitee: [BilibiliCover](https://gitee.com/liangjiancang/userscript/tree/master/BilibiliCover)*
+*gitee: [BilibiliCover](https://gitee.com/liangjiancang/userscript/tree/master/script/BilibiliCover)*
 
 *by Laster2800*

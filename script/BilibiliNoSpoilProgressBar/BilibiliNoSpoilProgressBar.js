@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站防剧透进度条
-// @version         1.4.7.20210624
+// @version         1.4.8.20210624
 // @namespace       laster2800
 // @author          Laster2800
 // @description     看比赛、看番总是被进度条剧透？装上这个脚本再也不用担心这些问题了
@@ -213,8 +213,8 @@
     },
     url: {
       api_videoInfo: (id, type) => `https://api.bilibili.com/x/web-interface/view?${type}=${id}`,
-      gm_readme: 'https://gitee.com/liangjiancang/userscript/blob/master/BilibiliNoSpoilProgressBar/README.md',
-      gm_changelog: 'https://gitee.com/liangjiancang/userscript/blob/master/BilibiliNoSpoilProgressBar/changelog.md',
+      gm_readme: 'https://gitee.com/liangjiancang/userscript/blob/master/script/BilibiliNoSpoilProgressBar/README.md',
+      gm_changelog: 'https://gitee.com/liangjiancang/userscript/blob/master/script/BilibiliNoSpoilProgressBar/changelog.md',
       noop: 'javascript:void(0)',
     },
     regex: {

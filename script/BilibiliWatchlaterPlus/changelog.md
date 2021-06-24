@@ -1,6 +1,6 @@
 # [B站稍后再看功能增强](https://greasyfork.org/zh-CN/scripts/395456) 更新日志
 
-本日志只记录用户友好的更新说明，影响不大的问题修复与修改不作记录，具体修改见 [提交记录](https://gitee.com/liangjiancang/userscript/commits/master/BilibiliWatchlaterPlus/BilibiliWatchlaterPlus.js)。
+本日志只记录用户友好的更新说明，影响不大的问题修复与修改不作记录，具体修改见 [提交记录](https://gitee.com/liangjiancang/userscript/commits/master/script/BilibiliWatchlaterPlus/BilibiliWatchlaterPlus.js)。
 
 ## V4.10
 
@@ -52,7 +52,7 @@
 
 ## V4.5
 
-1. API：将 `API` 类剥离出来，作为一个通用代码库使用。以后关于 API 的更新说明见 [API.js 提交记录](https://gitee.com/liangjiancang/userscript/commits/master/lib/API.js)。
+1. API：将 `API` 类剥离出来，作为一个通用代码库使用。以后关于 API 的更新说明见 [API.js 提交记录](https://gitee.com/liangjiancang/userscript/commits/master/script/lib/API.js)。
 
 ## V4.4
 

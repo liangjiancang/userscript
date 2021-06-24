@@ -2,9 +2,9 @@
 
 相关脚本：**[B站稍后再看功能增强](https://greasyfork.org/zh-CN/scripts/395456)**、**[B站封面获取](https://greasyfork.org/zh-CN/scripts/395575)**
 
-看比赛、看番总是被进度条剧透？装上这个脚本再也不用担心这些问题了。一图胜千言，无须多言。求好评，求收藏💔。点击查看 [更新日志](https://gitee.com/liangjiancang/userscript/blob/master/BilibiliNoSpoilProgressBar/changelog.md)。
+看比赛、看番总是被进度条剧透？装上这个脚本再也不用担心这些问题了。一图胜千言，无须多言。求好评，求收藏💔。点击查看 [更新日志](https://gitee.com/liangjiancang/userscript/blob/master/script/BilibiliNoSpoilProgressBar/changelog.md)。
 
-![用户设置](https://gitee.com/liangjiancang/userscript/raw/master/BilibiliNoSpoilProgressBar/screenshot/用户设置.png)
+![用户设置](https://gitee.com/liangjiancang/userscript/raw/master/script/BilibiliNoSpoilProgressBar/screenshot/用户设置.png)
 
 ## 防剧透机制说明
 
@@ -47,14 +47,14 @@
 
 * 设置入口
 
-    ![设置入口](https://gitee.com/liangjiancang/userscript/raw/master/BilibiliNoSpoilProgressBar/screenshot/设置入口.png)
+    ![设置入口](https://gitee.com/liangjiancang/userscript/raw/master/script/BilibiliNoSpoilProgressBar/screenshot/设置入口.png)
 
 * 脚本控制
 
-    ![脚本控制-1](https://gitee.com/liangjiancang/userscript/raw/master/BilibiliNoSpoilProgressBar/screenshot/脚本控制-1.png)
+    ![脚本控制-1](https://gitee.com/liangjiancang/userscript/raw/master/script/BilibiliNoSpoilProgressBar/screenshot/脚本控制-1.png)
 
-    ![脚本控制-2](https://gitee.com/liangjiancang/userscript/raw/master/BilibiliNoSpoilProgressBar/screenshot/脚本控制-2.png)
+    ![脚本控制-2](https://gitee.com/liangjiancang/userscript/raw/master/script/BilibiliNoSpoilProgressBar/screenshot/脚本控制-2.png)
 
-*gitee: [BilibiliNoSpoilProgressBar](https://gitee.com/liangjiancang/userscript/tree/master/BilibiliNoSpoilProgressBar)*
+*gitee: [BilibiliNoSpoilProgressBar](https://gitee.com/liangjiancang/userscript/tree/master/script/BilibiliNoSpoilProgressBar)*
 
 *by Laster2800*

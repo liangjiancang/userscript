@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.10.4.20210624
+// @version         4.10.5.20210624
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -362,7 +362,7 @@
       page_videoNormalMode: 'https://www.bilibili.com/video',
       page_videoWatchlaterMode: 'https://www.bilibili.com/medialist/play/watchlater',
       page_watchlaterPlayAll: `https://www.bilibili.com/medialist/play/watchlater/?${gmId}_disable_redirect=true`,
-      gm_changelog: 'https://gitee.com/liangjiancang/userscript/blob/master/BilibiliWatchlaterPlus/changelog.md',
+      gm_changelog: 'https://gitee.com/liangjiancang/userscript/blob/master/script/BilibiliWatchlaterPlus/changelog.md',
       noop: 'javascript:void(0)',
     },
     regex: {
