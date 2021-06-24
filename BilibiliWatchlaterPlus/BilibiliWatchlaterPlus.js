@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.10.3.20210612
+// @version         4.10.4.20210624
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -18,7 +18,7 @@
 // @exclude         *://t.bilibili.com/h5/dynamic/specification
 // @exclude         *://www.bilibili.com/page-proxy/game-nav.html
 // @exclude         /.*:\/\/.*:\/\/.*/
-// @require         https://greasyfork.org/scripts/409641-api/code/API.js?version=928340
+// @require         https://greasyfork.org/scripts/409641-api/code/API.js?version=943615
 // @grant           GM_addStyle
 // @grant           GM_xmlhttpRequest
 // @grant           GM_registerMenuCommand
@@ -2853,6 +2853,20 @@
           autoRemoveButton = await api.wait.waitForElementLoaded('#gm-auto-remove')
         }
         const watchLaterList = await api.wait.waitForElementLoaded('.watch-later-list')
+
+        // 如果打开列表页面后，立即切换到其他标签页，那么执行到此处时，（部分或全部）列表项已被加载出来
+        // 此时，需要对这些意外加载出来的列表项进行处理
+        const links = watchLaterList.querySelectorAll('.list-box a:not([class=user])') // 排除指向 UP 主的链接
+        if (links.length > 0) {
+          setTimeout(() => {
+            for (const link of links) {
+              processLink(link, autoRemoveButton)
+            }
+          })
+        }
+
+        // 正常情况下，执行到此处时，所有列表项均未加载出来，监听并进行处理
+        // 即使是前面所说的非正常情况，也继续监听，避免出现意外
         const ob = new MutationObserver(async (records, observer) => {
           for (const record of records) {
             for (const addedNode of record.addedNodes) {
@@ -2874,7 +2888,7 @@
         ob.observe(watchLaterList, { childList: true })
       } catch (e) {
         api.logger.error(gm.error.DOM_PARSE)
-        api.logger.error()
+        api.logger.error(e)
       }
 
       /**
