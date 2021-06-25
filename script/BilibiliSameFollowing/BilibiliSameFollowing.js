@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站共同关注快速查看
-// @version         1.0.0
+// @version         1.1.0.20210625
 // @namespace       laster2800
 // @author          Laster2800
 // @description     快速查看特定用户的共同关注（视频播放页、动态页、用户空间）
@@ -17,17 +17,56 @@
 // @exclude         /.*:\/\/.*:\/\/.*/
 // @require         https://greasyfork.org/scripts/409641-api/code/API.js?version=944014
 // @grant           GM_xmlhttpRequest
+// @grant           GM_registerMenuCommand
+// @grant           GM_unregisterMenuCommand
+// @grant           GM_setValue
+// @grant           GM_getValue
 // @grant           GM_addStyle
 // @connect         api.bilibili.com
 // @incompatible    firefox 不支持 Greasemonkey！Tampermonkey、Violentmonkey 可用
 // ==/UserScript==
 
-const gmId = 'gm428453'
+const gm = {
+  id: 'gm428453',
+  enable: {
+    failMessage: true,
+    commonCard: true,
+    uploaderCard: true,
+    userSpace: true,
+  },
+  fnName: {
+    failMessage: '查询失败提示信息',
+    commonCard: '常规用户卡片快速查看',
+    uploaderCard: 'UP主卡片快速查看',
+    userSpace: '用户空间快速查看',
+  }
+}
 /* global API */
 const api = new API({
-  id: gmId,
+  id: gm.id,
   label: GM_info.script.name,
 })
+
+const createMenu = name => {
+  const cName = () => {
+    const current = gm.enable[name] ? '开启' : '关闭'
+    const switched = !gm.enable[name] ? '开启' : '关闭'
+    return `${switched}${gm.fnName[name]} [当前${current}]`
+  }
+  let id = GM_registerMenuCommand(cName(), menuCallback)
+
+  function menuCallback() {
+    gm.enable[name] = !gm.enable[name]
+    GM_setValue(name, gm.enable[name])
+    GM_unregisterMenuCommand(id)
+    id = GM_registerMenuCommand(cName(), menuCallback)
+  }
+}
+for (const name in gm.enable) {
+  const eb = GM_getValue(name)
+  gm.enable[name] = typeof eb == 'boolean' ? eb : gm.enable[name]
+  createMenu(name)
+}
 
 const regex = {
   page_videoNormalMode: /\.com\/video(?=\/|$)/,
@@ -40,58 +79,68 @@ const regex = {
 (async function() {
   if (api.web.urlMatch([regex.page_videoNormalMode, regex.page_videoWatchlaterMode, regex.page_dynamic], 'OR')) {
     // 动态评论区、视频评论区中的用户弹出卡片
-    cardLogic({
-      cardClz: 'user-card',
-      user: '.face',
-      info: '.info',
-    })
+    if (gm.enable.commonCard) {
+      cardLogic({
+        cardClz: 'user-card',
+        user: '.face',
+        info: '.info',
+      })
+    }
     if (api.web.urlMatch(regex.page_videoNormalMode)) {
       // 普通模式播放页中的 UP 主头像
-      cardLogic({
-        cardClz: 'user-card-m',
-        container: '#app .v-wrap',
-        user: '.face',
-        info: '.info',
-        lazy: true,
-      })
+      if (gm.enable.uploaderCard) {
+        cardLogic({
+          cardClz: 'user-card-m',
+          container: '#app .v-wrap',
+          user: '.face',
+          info: '.info',
+          lazy: true,
+        })
+      }
     } else if (api.web.urlMatch(regex.page_videoWatchlaterMode)) {
       // 稍后再看模式播放页中的 UP 主头像
-      cardLogic({
-        cardClz: 'user-card-m',
-        container: '#app #app', // 这是什么阴间玩意？
-        user: '.face',
-        info: '.info',
-        lazy: true,
-      })
+      if (gm.enable.uploaderCard) {
+        cardLogic({
+          cardClz: 'user-card-m',
+          container: '#app #app', // 这是什么阴间玩意？
+          user: '.face',
+          info: '.info',
+          lazy: true,
+        })
+      }
     } else if (api.web.urlMatch(regex.page_dynamic)) {
       // 动态页左边「正在直播」主播的用户弹出卡片
-      cardLogic({
-        cardClz: 'userinfo-wrapper',
-        user: '.face',
-        info: '.info',
-        lazy: true,
-      })
+      if (gm.enable.commonCard) {
+        cardLogic({
+          cardClz: 'userinfo-wrapper',
+          user: '.face',
+          info: '.info',
+          lazy: true,
+        })
+      }
     }
   } else if (api.web.urlMatch(regex.page_space)) {
     // 用户空间
-    generalLogic({
-      uid: getUidFromUrl(location.href),
-      target: await api.wait.waitForElementLoaded('.h .wrapper'),
-      className: `${gmId}-space-same-followings`,
-    })
+    if (gm.enable.userSpace) {
+      generalLogic({
+        uid: getUidFromUrl(location.href),
+        target: await api.wait.waitForElementLoaded('.h .wrapper'),
+        className: `${gm.id}-space-same-followings`,
+      })
+    }
   }
 
   GM_addStyle(`
-    .${gmId}-card-same-followings {
+    .${gm.id}-card-same-followings {
       color: #99a2aa;
       padding: 1em 0 0;
     }
-    .${gmId}-card-same-followings :first-child {
+    .${gm.id}-card-same-followings :first-child {
       position: absolute;
       margin-left: -5em;
     }
 
-    .${gmId}-space-same-followings {
+    .${gm.id}-space-same-followings {
       color: black;
       margin: 0.5em 0;
       padding: 0.5em;
@@ -99,10 +148,10 @@ const regex = {
       box-shadow: 0 0 0 1px #eee;
       border-radius: 0 0 4px 4px;
     }
-    .${gmId}-space-same-followings div {
+    .${gm.id}-space-same-followings div {
       display: inline-block;
     }
-    .${gmId}-space-same-followings :first-child {
+    .${gm.id}-space-same-followings :first-child {
       font-weight: bold;
       padding-right: 0.5em;
     }
@@ -144,7 +193,7 @@ async function cardLogic(config) {
                 await generalLogic({
                   uid: getUidFromUrl(face.href),
                   target: info,
-                  className: `${gmId}-card-same-followings`,
+                  className: `${gm.id}-card-same-followings`,
                 })
               }
             } catch (e) {
@@ -173,18 +222,35 @@ async function generalLogic(config) {
     method: 'GET',
     url: `https://api.bilibili.com/x/relation/same/followings?vmid=${config.uid}`,
   })
-  const data = JSON.parse(resp.responseText).data
-  const sameFollowings = []
-  for (const item of data.list) {
-    sameFollowings.push(item.uname)
-  }
-  if (sameFollowings.length > 0) {
-    const sf = config.target.appendChild(document.createElement('div'))
-    sf.className = config.className || ''
-    sf.innerHTML = `
-      <div>共同关注</div>
-      <div>${sameFollowings.join('，&nbsp;')}</div>
-    `
+  const json = JSON.parse(resp.responseText)
+  if (json.code == 0) {
+    const data = json.data
+    const sameFollowings = []
+    for (const item of data.list) {
+      sameFollowings.push(item.uname)
+    }
+    if (sameFollowings.length > 0) {
+      const sf = config.target.appendChild(document.createElement('div'))
+      sf.className = config.className || ''
+      sf.innerHTML = `
+        <div>共同关注</div>
+        <div>${sameFollowings.join('，&nbsp;')}</div>
+      `
+    }
+  } else {
+    if (gm.enable.failMessage && json.message) { // 没有出错，但有其他原因导致查询失败
+      const sf = config.target.appendChild(document.createElement('div'))
+      sf.className = config.className || ''
+      sf.innerHTML = `
+          <div>共同关注</div>
+          <div>${json.message}</div>
+        `
+    }
+    if (json.code > 0) {
+      api.logger.info([json.code, json.message])
+    } else {
+      throw [json.code, json.message]
+    }
   }
 }
 
