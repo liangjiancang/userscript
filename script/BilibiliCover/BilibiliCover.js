@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站封面获取
-// @version         4.8.4.20210624
+// @version         4.8.5.20210625
 // @namespace       laster2800
 // @author          Laster2800
 // @description     B站视频播放页（普通模式、稍后再看模式）、番剧播放页、直播间添加获取封面的按钮
@@ -212,7 +212,7 @@
         cover.href = coverUrl
         preview.src = coverUrl
         addDownloadEvent(cover)
-        createPreview(cover).src = coverUrl
+        preview.src = coverUrl
       } else {
         cover.href = 'javascript:void(0)'
         preview.src = ''
@@ -222,26 +222,6 @@
         }
       }
       cover.title = gm.title || errorMsg
-    }
-
-    const getAid = async () => {
-      let aid
-      try {
-        if (unsafeWindow.aid) {
-          aid = unsafeWindow.aid
-        } else {
-          aid = await api.wait.waitForConditionPassed({
-            condition: () => {
-              const player = unsafeWindow.player
-              const message = player && player.getVideoMessage && player.getVideoMessage()
-              return message && message.aid
-            },
-          })
-        }
-      } catch (e) {
-        api.logger.error(e)
-      }
-      return String(aid || '')
     }
 
     const getCover = async () => {
@@ -267,22 +247,46 @@
   }
 
   function addBangumiBtn(tm) {
-    const coverMeta = document.querySelector('head meta[property="og:image"]')
-    const coverUrl = coverMeta && coverMeta.content
+    const bus = {}
     const cover = document.createElement('a')
     const errorMsg = '获取失败，若非网络问题请提供反馈'
     cover.innerText = '获取封面'
     cover.target = '_blank'
-    if (coverUrl) {
-      cover.href = coverUrl
-      addDownloadEvent(cover)
-      createPreview(cover).src = coverUrl
-    } else {
-      cover.onclick = () => api.message.create(errorMsg)
-    }
-    cover.title = gm.title || errorMsg
     cover.className = `${gm.id}_cover_btn`
+    cover.onclick = e => e.stopPropagation()
     tm.appendChild(cover)
+    const preview = createPreview(cover)
+
+    setTimeout(async () => {
+      try {
+        const cover = await getCover()
+        bus.cover = cover
+        bus.aid = await getAid()
+        setCover(cover)
+
+        api.dom.createLocationchangeEvent()
+        window.addEventListener('locationchange', async function() {
+          try {
+            bus.aid = await api.wait.waitForConditionPassed({
+              condition: async () => {
+                // 要等 aid 跟之前存的不一样，才能说明是切换成功后获取到的 aid
+                const aid = await getAid()
+                if (aid && aid != bus.aid) {
+                  return aid
+                }
+              },
+            })
+            updateCover()
+          } catch (e) {
+            setCover(false)
+            api.logger.error(e)
+          }
+        })
+      } catch (e) {
+        setCover(false)
+        api.logger.error(e)
+      }
+    })
 
     GM_addStyle(`
       .${gm.id}_cover_btn {
@@ -297,6 +301,50 @@
         color: #00a1d6;
       }
     `)
+
+    const updateCover = async () => {
+      try {
+        bus.cover = await api.wait.waitForConditionPassed({
+          condition: async () => {
+            // aid 变化只能说明视频确实变了，但 cover 可能还没变
+            const cover = await getCover()
+            if (cover && cover != bus.cover) {
+              return cover
+            }
+          },
+          timeout: 2500,
+        })
+        setCover(bus.cover)
+      } catch (e) {
+        // 在番剧中，切换 URL 后封面不变是正常的，说明切换后还是同一部番
+      }
+    }
+
+    const setCover = coverUrl => {
+      if (coverUrl) {
+        cover.href = coverUrl
+        preview.src = coverUrl
+        addDownloadEvent(cover)
+        preview.src = coverUrl
+      } else {
+        cover.href = 'javascript:void(0)'
+        preview.src = ''
+        cover.onclick = function(e) {
+          e.preventDefault()
+          api.message.create(errorMsg)
+        }
+      }
+      cover.title = gm.title || errorMsg
+    }
+
+    const getCover = async () => {
+      let cover = ''
+      const img = await api.wait.waitForElementLoaded('.media-cover img')
+      if (img && img.src) {
+        cover = img.src.replace(/@[^@]*$/, '') // 不要缩略图
+      }
+      return cover
+    }
   }
 
   function addLiveBtn(urc) {
@@ -486,6 +534,31 @@
       window.open(url)
     }
     api.web.download({ url, name, onerror, ontimeout })
+  }
+
+  /**
+   * 获取 `aid`
+   * @async
+   * @returns {Promise<string>} `aid`
+   */
+  async function getAid() {
+    let aid
+    try {
+      if (unsafeWindow.aid) {
+        aid = unsafeWindow.aid
+      } else {
+        aid = await api.wait.waitForConditionPassed({
+          condition: () => {
+            const player = unsafeWindow.player
+            const message = player && player.getVideoMessage && player.getVideoMessage()
+            return message && message.aid
+          },
+        })
+      }
+    } catch (e) {
+      api.logger.error(e)
+    }
+    return String(aid || '')
   }
 
 })()
