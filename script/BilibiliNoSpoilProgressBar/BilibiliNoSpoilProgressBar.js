@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站防剧透进度条
-// @version         1.5.0.20210625
+// @version         1.5.1.20210625
 // @namespace       laster2800
 // @author          Laster2800
 // @description     看比赛、看番总是被进度条剧透？装上这个脚本再也不用担心这些问题了
@@ -13,7 +13,7 @@
 // @include         *://www.bilibili.com/medialist/play/watchlater/*
 // @include         *://www.bilibili.com/bangumi/play/*
 // @exclude         /.*:\/\/.*:\/\/.*/
-// @require         https://greasyfork.org/scripts/409641-api/code/API.js?version=943615
+// @require         https://greasyfork.org/scripts/409641-api/code/API.js?version=944014
 // @grant           GM_addStyle
 // @grant           GM_xmlhttpRequest
 // @grant           GM_registerMenuCommand
@@ -1284,7 +1284,7 @@
         new MutationObserver((records, ob) => {
           for (const record of records) {
             for (const addedNode of record.addedNodes) {
-              if (api.dom.containsClass(addedNode, selector.progress.slider.slice(1))) {
+              if (api.dom.containsClass(addedNode, selector.progress.slider)) {
                 initCore()
                 ob.disconnect()
                 break
