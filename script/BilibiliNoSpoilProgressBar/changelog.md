@@ -2,6 +2,12 @@
 
 本日志只记录用户友好的更新说明，影响不大的问题修复与修改不作记录，具体修改见 [提交记录](https://gitee.com/liangjiancang/userscript/commits/master/script/BilibiliNoSpoilProgressBar/BilibiliNoSpoilProgressBar.js)。
 
+## V1.5
+
+1. 脚本：适配 20210624 的B站播放页面的超级脑残且越改越难用的升级。
+
+> B站产品经理是吃💩的吗？现在 APP 已经被抖音化得连💩都不如，求你们放过网页版吧……
+
 ## V1.4
 
 1. 功能实现：隐藏分P信息。

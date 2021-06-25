@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站防剧透进度条
-// @version         1.4.8.20210624
+// @version         1.5.0.20210625
 // @namespace       laster2800
 // @author          Laster2800
 // @description     看比赛、看番总是被进度条剧透？装上这个脚本再也不用担心这些问题了
@@ -1114,6 +1114,7 @@
        * @typedef ProgressBar
        * @property {HTMLElement} root 进度条根元素
        * @property {HTMLElement} bar 进度条主体
+       * @property {HTMLElement} slider 进度条滑槽块
        * @property {HTMLElement} thumb 进度条滑块
        * @property {HTMLElement} track 进度条滑槽
        * @property {HTMLElement} buffer 进度条缓冲显示
@@ -1258,21 +1259,63 @@
       _self.uploaderEnabled = false
       _self.enabled = await _self.detectEnabled()
 
-      _self.control = await api.wait.waitForElementLoaded('.bilibili-player-video-control')
-      _self.progress.root = await api.wait.waitForElementLoaded('.bilibili-player-video-progress', _self.control)
-      _self.progress.bar = await api.wait.waitForElementLoaded('.bilibili-player-video-progress-slider', _self.progress.root)
-      _self.progress.thumb = await api.wait.waitForElementLoaded('.bui-thumb', _self.progress.bar)
-      _self.progress.track = await api.wait.waitForElementLoaded('.bui-bar-wrap', _self.progress.bar)
-      _self.progress.buffer = await api.wait.waitForElementLoaded('.bui-bar-buffer', _self.progress.track)
-      _self.progress.played = await api.wait.waitForElementLoaded('.bui-bar-normal', _self.progress.track)
-      _self.progress.preview = await api.wait.waitForElementLoaded('.bilibili-player-video-progress-detail', _self.progress.root)
-      _self.shadowProgress = await api.wait.waitForElementLoaded('.bilibili-player-video-progress-shadow', this.control)
+      const selector = {
+        control: '.bilibili-player-video-control',
+        progress: {
+          root: '.bilibili-player-video-progress',
+          bar: '.bilibili-player-video-progress-slider',
+          slider: '.bui-track',
+          thumb: '.bui-thumb',
+          track: '.bui-bar-wrap, .bui-schedule-wrap',
+          buffer: '.bui-bar-buffer, .bui-schedule-buffer',
+          played: '.bui-bar-normal, .bui-schedule-current',
+          preview: '.bilibili-player-video-progress-detail',
+        },
+        shadowProgress: '.bilibili-player-video-progress-shadow',
+      }
 
-      _self.fakeTrack = _self.progress.track.insertAdjacentElement('afterend', _self.progress.track.cloneNode(true)) // 必须在 thumb 前，否则 z 轴层次错误
-      _self.fakeTrack.style.visibility = 'hidden'
-      _self.fakeTrack.querySelector('.bui-bar-buffer').style.visibility = 'hidden'
-      _self.fakePlayed = _self.fakeTrack.querySelector('.bui-bar-normal')
+      const initCore = async () => {
+        _self.control = await api.wait.waitForElementLoaded(selector.control)
+        _self.progress.root = await api.wait.waitForElementLoaded(selector.progress.root, _self.control)
+        _self.progress.bar = await api.wait.waitForElementLoaded(selector.progress.bar, _self.progress.root)
+        _self.progress.slider = await api.wait.waitForElementLoaded(selector.progress.slider, _self.progress.bar)
+        // slider 在某些情况下被重新生成，监听到就重新处理
+        // ob 一定要加在这个地方，放其他地方可能会错过时机！
+        new MutationObserver((records, ob) => {
+          for (const record of records) {
+            for (const addedNode of record.addedNodes) {
+              if (api.dom.containsClass(addedNode, selector.progress.slider.slice(1))) {
+                initCore()
+                ob.disconnect()
+                break
+              }
+            }
+          }
+        }).observe(_self.progress.bar, { childList: true })
+        _self.progress.thumb = await api.wait.waitForElementLoaded(selector.progress.thumb, _self.progress.slider)
+        _self.progress.track = await api.wait.waitForElementLoaded(selector.progress.track, _self.progress.slider)
+        _self.progress.buffer = await api.wait.waitForElementLoaded(selector.progress.buffer, _self.progress.track)
+        _self.progress.played = await api.wait.waitForElementLoaded(selector.progress.played, _self.progress.track)
+        _self.progress.preview = await api.wait.waitForElementLoaded(selector.progress.preview, _self.progress.root)
+        _self.shadowProgress = await api.wait.waitForElementLoaded(selector.shadowProgress, this.control)
+  
+        _self.fakeTrack = _self.progress.track.insertAdjacentElement('afterend', _self.progress.track.cloneNode(true)) // 必须在 thumb 前，否则 z 轴层次错误
+        _self.fakeTrack.style.visibility = 'hidden'
+        _self.fakeTrack.querySelector(selector.progress.buffer).style.visibility = 'hidden'
+        _self.fakePlayed = _self.fakeTrack.querySelector(selector.progress.played)
 
+        api.wait.waitForConditionPassed({
+          condition: () => {
+            // 不知道为什么，反正有时候原来的 thumb 被会替换成新的，而且用 MutationObserver 监听不到？！
+            // 似乎最多只会变一次，暂时就只处理一次；如果后续发现会变多次，就在每次处理伪进度条时实时更新一次 thumb
+            return _self.progress.thumb != _self.progress.bar.querySelector(selector.progress.thumb)
+          },
+        }).then(() => {
+          _self.progress.thumb = _self.progress.bar.querySelector(selector.progress.thumb)
+        }).catch(() => {})
+      }
+
+      await initCore()
       _self.initScriptControl()
 
       // 卡住，等条件通过才结束函数执行
@@ -1481,9 +1524,24 @@
        * 处理视频控制的显隐
        */
       const processContrlShow = () => {
+        const addObserver = target => {
+          if (!target._obPlayRate) {
+            target._obPlayRate = new MutationObserver(records => {
+              for (const record of records) {
+                if (record.attributeName == 'style') {
+                  _self.processFakePlayed()
+                  break
+                }
+              }
+            })
+            target._obPlayRate.observe(_self.progress.thumb, { attributes: true })
+          }
+        }
+
         const clzControlShow = 'video-control-show'
         const playerArea = document.querySelector('.bilibili-player-area')
         if (!playerArea._obControlShow) {
+          // 切换视频控制显隐时，添加或删除 ob 以控制伪进度条
           playerArea._obControlShow = new MutationObserver(records => {
             for (const record of records) {
               if (record.attributeName == 'class') {
@@ -1493,17 +1551,7 @@
                   if (current) {
                     if (_self.enabled) {
                       core(true)
-                      if (!playerArea._obPlayRate) {
-                        playerArea._obPlayRate = new MutationObserver(records => {
-                          for (const record of records) {
-                            if (record.attributeName == 'style') {
-                              _self.processFakePlayed()
-                              break
-                            }
-                          }
-                        })
-                        playerArea._obPlayRate.observe(_self.progress.thumb, { attributes: true })
-                      }
+                      addObserver(playerArea)
                     }
                   } else if (playerArea._obPlayRate) {
                     playerArea._obPlayRate.disconnect()
@@ -1518,6 +1566,11 @@
             attributes: true,
             attributeOldValue: true,
           })
+        }
+
+        // 执行到此处时，若视频控制已处于显示状态，则直接添加 ob
+        if (_self.enabled && api.dom.containsClass(playerArea, clzControlShow)) {
+          addObserver(playerArea)
         }
       }
 
