@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站共同关注快速查看
-// @version         1.1.1.20210625
+// @version         1.1.2.20210626
 // @namespace       laster2800
 // @author          Laster2800
 // @description     快速查看特定用户的共同关注（视频播放页、动态页、用户空间）
@@ -242,14 +242,15 @@ async function generalLogic(config) {
       const sf = config.target.appendChild(document.createElement('div'))
       sf.className = config.className || ''
       sf.innerHTML = `
-          <div>共同关注</div>
-          <div>${json.message}</div>
-        `
+        <div>共同关注</div>
+        <div>${json.message}</div>
+      `
     }
+    const msg = [json.code, json.message]
     if (json.code > 0) {
-      api.logger.info([json.code, json.message])
+      api.logger.info(msg)
     } else {
-      throw [json.code, json.message]
+      throw msg
     }
   }
 }
