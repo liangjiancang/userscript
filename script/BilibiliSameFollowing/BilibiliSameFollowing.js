@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站共同关注快速查看
-// @version         1.1.0.20210625
+// @version         1.1.1.20210625
 // @namespace       laster2800
 // @author          Laster2800
 // @description     快速查看特定用户的共同关注（视频播放页、动态页、用户空间）
@@ -238,7 +238,7 @@ async function generalLogic(config) {
       `
     }
   } else {
-    if (gm.enable.failMessage && json.message) { // 没有出错，但有其他原因导致查询失败
+    if (gm.enable.failMessage && json.message) {
       const sf = config.target.appendChild(document.createElement('div'))
       sf.className = config.className || ''
       sf.innerHTML = `
