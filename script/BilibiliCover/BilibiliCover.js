@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站封面获取
-// @version         4.9.1.20210626
+// @version         4.9.2.20210626
 // @namespace       laster2800
 // @author          Laster2800
 // @description     B站视频播放页（普通模式、稍后再看模式）、番剧播放页、直播间添加获取封面的按钮
@@ -87,8 +87,9 @@
           config[id] = !config[id]
           GM_setValue(id, config[id])
           GM_notification({
-            text: `已${config[id] ? '开启' : '关闭'}「${configMap[id].name}」功能${configMap[id].needNotReload ? '' : '，刷新网页以生效。'}`,
-            timeout: 5000,
+            text: `已${config[id] ? '开启' : '关闭'}「${configMap[id].name}」功能${configMap[id].needNotReload ? '' : '，刷新页面以生效（点击通知以刷新）'}`,
+            timeout: 5600,
+            onclick: configMap[id].needNotReload ? null : () => location.reload(),
           })
           clearMenu()
           this.initScriptMenu()
