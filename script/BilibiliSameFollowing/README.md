@@ -11,6 +11,10 @@
 
 ## 截图
 
+* 脚本设置
+
+    ![脚本设置](https://gitee.com/liangjiancang/userscript/raw/master/script/BilibiliSameFollowing/screenshot/脚本设置.png)
+
 * 用户卡片
 
     ![用户卡片](https://gitee.com/liangjiancang/userscript/raw/master/script/BilibiliSameFollowing/screenshot/用户卡片.png)
@@ -18,10 +22,6 @@
 * 用户空间
 
     ![用户空间](https://gitee.com/liangjiancang/userscript/raw/master/script/BilibiliSameFollowing/screenshot/用户空间.png)
-
-* 脚本设置
-
-    ![脚本设置](https://gitee.com/liangjiancang/userscript/raw/master/script/BilibiliSameFollowing/screenshot/脚本设置.png)
 
 *gitee: [BilibiliSameFollowing](https://gitee.com/liangjiancang/userscript/tree/master/script/BilibiliSameFollowing)*
 
