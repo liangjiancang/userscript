@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.10.9.20210626
+// @version         4.10.10.20210626
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -2790,8 +2790,8 @@
       // 这里不能用读取页面 Vue 或者 window.aid 的方式来直接获取目标 URL，那样太慢了，直接从 URL 反推才是最快的。
       try {
         let bvid = null
-        if (api.web.urlMatch(/watchlater\/(B|b)(V|v)[0-9a-zA-Z]+/)) {
-          bvid = location.href.match(/(?<=\/watchlater\/)(B|b)(V|v)[0-9a-zA-Z]+(?=\/?)/)[0]
+        if (api.web.urlMatch(/watchlater\/(B|b)(V|v)[0-9a-zA-Z]+(?=[/?#]|$)/)) {
+          bvid = location.href.match(/(?<=\/watchlater\/)(B|b)(V|v)[0-9a-zA-Z]+/)[0]
         }
         if (!bvid) { // 如果为空就是以 watchlater/ 直接结尾，等同于稍后再看中的第一个视频
           const resp = await api.web.request({
@@ -2801,7 +2801,7 @@
           const json = JSON.parse(resp.responseText)
           bvid = json.data.list[0].bvid
         }
-        location.replace(`${gm.url.page_videoNormalMode}/${bvid}${location.search}`)
+        location.replace(`${gm.url.page_videoNormalMode}/${bvid}${location.search}${location.hash}`)
       } catch (e) {
         const errorInfo = gm.error.REDIRECT
         api.logger.error(errorInfo)
