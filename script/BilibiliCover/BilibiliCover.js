@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站封面获取
-// @version         4.9.2.20210626
+// @version         4.9.3.20210626
 // @namespace       laster2800
 // @author          Laster2800
 // @description     B站视频播放页（普通模式、稍后再看模式）、番剧播放页、直播间添加获取封面的按钮
@@ -44,10 +44,10 @@
       download: { name: '点击下载', needNotReload: true },
     },
     regex: {
-      page_videoNormalMode: /\.com\/video(?=\/|$)/,
-      page_videoWatchlaterMode: /\.com\/medialist\/play\/watchlater(?=\/|$)/,
-      page_bangumi: /\/bangumi\/play(?=\/|$)/,
-      page_live: /live\.bilibili\.com\/\d/, // 只含具体的直播间页面
+      page_videoNormalMode: /\.com\/video(?=[/?#]|$)/,
+      page_videoWatchlaterMode: /\.com\/medialist\/play\/watchlater(?=[/?#]|$)/,
+      page_bangumi: /\/bangumi\/play(?=[/?#]|$)/,
+      page_live: /live\.bilibili\.com\/\d+(?=[/?#]|$)/, // 只含具体的直播间页面
     },
   }
 
