@@ -2,11 +2,9 @@
 
 相关脚本：**[B站稍后再看功能增强](https://greasyfork.org/zh-CN/scripts/395456)**、**[B站共同关注快速查看](https://greasyfork.org/zh-CN/scripts/428453)**、**[B站防剧透进度条](https://greasyfork.org/zh-CN/scripts/411092)**
 
-在视频播放页（包括普通模式和稍后再看模式）、番剧播放页和直播间添加一个获取封面的按钮，支持封面预览（可关闭）。左键点击下载或在新标签页中打开封面（点击行为可选），右键点击可基于图片链接作进一步的处理，如通过「另存为」直接保存图片。
+在视频播放页（包括普通模式和稍后再看模式）、番剧播放页和直播间添加一个获取封面的按钮，支持封面预览（可关闭）。左键点击下载或在新标签页中打开封面（点击行为可选），右键点击可基于图片链接作进一步的处理，如通过「另存为」直接保存图片。点击查看 [更新日志](https://gitee.com/liangjiancang/userscript/blob/master/script/BilibiliCover/changelog.md)。
 
 在GF找了几个脚本都是不能用的，真NM离谱，只好自己上了。还是得吐槽下B站新版的稍后再看模式播放页，真尼玛离谱兼反人类，本身还BUG一堆，服了。
-
-更新说明见 [提交记录](https://gitee.com/liangjiancang/userscript/commits/master/script/BilibiliCover/BilibiliCover.js)。
 
 ## 补充说明
 
