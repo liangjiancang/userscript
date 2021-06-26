@@ -2,7 +2,7 @@
 
 相关脚本：**[B站稍后再看功能增强](https://greasyfork.org/zh-CN/scripts/395456)**、**[B站封面获取](https://greasyfork.org/zh-CN/scripts/395575)**、**[B站防剧透进度条](https://greasyfork.org/zh-CN/scripts/411092)**
 
-快速查看特定用户的共同关注（视频播放页、动态页、用户空间），详情查看下方截图。求好评，求收藏💔。点击查看 [更新日志](https://gitee.com/liangjiancang/userscript/blob/master/script/BilibiliSameFollowing/changelog.md)。
+快速查看与特定用户的共同关注（视频播放页、动态页、用户空间），详情查看下方截图。求好评，求收藏💔。点击查看 [更新日志](https://gitee.com/liangjiancang/userscript/blob/master/script/BilibiliSameFollowing/changelog.md)。
 
 ## 补充说明
 
