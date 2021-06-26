@@ -7,7 +7,7 @@
 ## 补充说明
 
 1. 脚本基于 Microsoft Edge 浏览器和 Tampermonkey 脚本管理器开发，明确不支持 Greasemonkey。在其他浏览器及脚本管理器上运行可能会出现问题，请提供反馈。
-2. 脚本灵感来源于 [B站共同关注查询](https://greasyfork.org/zh-CN/scripts/428381)。由于很容易就能猜到但不便明说的原因，本人选择将这一想法从零开始重新编写一遍。注：本脚本发布时，[B站共同关注查询](https://greasyfork.org/zh-CN/scripts/428381) 的版本号为 `0.1`。
+2. 脚本灵感来源于 [B站共同关注查询 `v0.1`](https://greasyfork.org/zh-CN/scripts/428381?version=943607)。由于很容易就能猜到但不便明说的原因，本人选择将这一想法从零开始重新编写一遍。
 
 ## 截图
 
