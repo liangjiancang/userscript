@@ -17,7 +17,7 @@
 
 * 用户卡片
 
-    ![用户卡片](https://gitee.com/liangjiancang/userscript/raw/master/script/BilibiliSameFollowing/screenshot/用户卡片.png)
+    ![用户卡片👍](https://gitee.com/liangjiancang/userscript/raw/master/script/BilibiliSameFollowing/screenshot/用户卡片👍.png)![用户卡片😅](https://gitee.com/liangjiancang/userscript/raw/master/script/BilibiliSameFollowing/screenshot/用户卡片😅.png)
 
 * 用户空间
 
