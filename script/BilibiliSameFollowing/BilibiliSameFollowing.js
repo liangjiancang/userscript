@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站共同关注快速查看
-// @version         1.2.1.20210626
+// @version         1.2.2.20210626
 // @namespace       laster2800
 // @author          Laster2800
 // @description     快速查看与特定用户的共同关注（视频播放页、动态页、用户空间）
@@ -11,7 +11,6 @@
 // @include         *://www.bilibili.com/*
 // @include         *://t.bilibili.com/*
 // @include         *://space.bilibili.com/*
-// @exclude         *://message.bilibili.com/pages/nav/index_new_pc_sync
 // @exclude         *://t.bilibili.com/h5/dynamic/specification
 // @exclude         *://www.bilibili.com/page-proxy/game-nav.html
 // @exclude         /.*:\/\/.*:\/\/.*/
@@ -34,6 +33,7 @@
     id: 'gm428453',
     config: {
       failMessage: true,
+      withoutSameMessage: true,
       dispInText: false,
       commonCard: true,
       extendedCard: true,
@@ -41,16 +41,17 @@
     },
     configMap: {
       failMessage: { name: '查询失败时提示信息' },
+      withoutSameMessage: { name: '无共同关注时提示信息' },
       dispInText: { name: '以纯文本形式显示共同关注' },
       commonCard: { name: '在常规用户卡片中快速查看' },
       extendedCard: { name: '在扩展用户卡片中快速查看' },
       userSpace: { name: '在用户空间中快速查看' },
     },
     regex: {
-      page_videoNormalMode: /\.com\/video(?=\/|$)/,
-      page_videoWatchlaterMode: /\.com\/medialist\/play\/watchlater(?=\/|$)/,
-      page_dynamic: /t\.bilibili\.com(?=\/|$)/,
-      page_space: /space\.bilibili\.com\/\d+(?=\/|$)/,
+      page_videoNormalMode: /\.com\/video(?=[/?#]|$)/,
+      page_videoWatchlaterMode: /\.com\/medialist\/play\/watchlater(?=[/?#]|$)/,
+      page_dynamic: /t\.bilibili\.com(?=[/?#]|$)/,
+      page_space: /space\.bilibili\.com\/\d+(?=[/?#]|$)/,
     }
   }
 
@@ -116,8 +117,9 @@
          * @returns {string} UID
          */
         getUidFromUrl(url) {
-          let uid = null
-          const parts = url.split('/')
+          let uid = ''
+          // URL 先「?」后「#」，先判断「?」运算量期望稍低一点
+          const parts = url.split('?')[0].split('#')[0].split('/')
           while (parts.length > 0) {
             const part = parts.pop()
             if (part && !isNaN(part)) {
@@ -191,48 +193,56 @@
      * @param {string} [config.className=''] 显示元素的类名
      */
     async generalLogic(config) {
-      const resp = await api.web.request({
-        method: 'GET',
-        url: `https://api.bilibili.com/x/relation/same/followings?vmid=${config.uid}`,
-      })
-      const json = JSON.parse(resp.responseText)
-      if (json.code == 0) {
-        const data = json.data
-        const sameFollowings = []
-        if (gm.config.dispInText) {
-          for (const item of data.list) {
-            sameFollowings.push(item.uname)
-          }
-        } else {
-          for (const item of data.list) {
-            sameFollowings.push([item.uname, `https://space.bilibili.com/${item.mid}`])
-          }
-        }
-        if (sameFollowings.length > 0) {
-          const sf = config.target.appendChild(document.createElement('div'))
-          sf.className = config.className || ''
+      try {
+        const resp = await api.web.request({
+          method: 'GET',
+          url: `https://api.bilibili.com/x/relation/same/followings?vmid=${config.uid}`,
+        })
+        const json = JSON.parse(resp.responseText)
+        if (json.code == 0) {
+          const data = json.data
+          const sameFollowings = []
           if (gm.config.dispInText) {
-            sf.innerHTML = `<div>共同关注</div><div class="same-following">${sameFollowings.join('，&nbsp;')}</div>`
-          } else {
-            let innerHTML = '<div>共同关注</div>'
-            for (const item of sameFollowings) {
-              innerHTML += `<div><a href="${item[1]}" target="_blank" class="same-following">${item[0]}</a></div>，&nbsp;`
+            for (const item of data.list) {
+              sameFollowings.push(item.uname)
             }
-            sf.innerHTML = innerHTML.slice(0, -7)
+          } else {
+            for (const item of data.list) {
+              sameFollowings.push([item.uname, `https://space.bilibili.com/${item.mid}`])
+            }
+          }
+          if (sameFollowings.length > 0 || gm.config.withoutSameMessage) {
+            const sf = config.target.appendChild(document.createElement('div'))
+            sf.className = config.className || ''
+            if (sameFollowings.length > 0) {
+              if (gm.config.dispInText) {
+                sf.innerHTML = `<div>共同关注</div><div class="same-following">${sameFollowings.join('，&nbsp;')}</div>`
+              } else {
+                let innerHTML = '<div>共同关注</div><div>'
+                for (const item of sameFollowings) {
+                  innerHTML += `<a href="${item[1]}" target="_blank" class="same-following">${item[0]}</a><span>，&nbsp;</span>`
+                }
+                sf.innerHTML = innerHTML.slice(0, -'<span>，&nbsp;</span>'.length) + '</div>'
+              }
+            } else if (gm.config.withoutSameMessage) {
+              sf.innerHTML = '<div>共同关注</div><div class="same-following">[ 无 ]</div>'
+            }
+          }
+        } else {
+          if (gm.config.failMessage && json.message) {
+            const sf = config.target.appendChild(document.createElement('div'))
+            sf.className = config.className || ''
+            sf.innerHTML = `<div>共同关注</div><div>[ ${json.message} ]</div>`
+          }
+          const msg = [json.code, json.message]
+          if (json.code > 0) {
+            api.logger.info(msg)
+          } else {
+            throw msg
           }
         }
-      } else {
-        if (gm.config.failMessage && json.message) {
-          const sf = config.target.appendChild(document.createElement('div'))
-          sf.className = config.className || ''
-          sf.innerHTML = `<div>共同关注</div><div>${json.message}</div>`
-        }
-        const msg = [json.code, json.message]
-        if (json.code > 0) {
-          api.logger.info(msg)
-        } else {
-          throw msg
-        }
+      } catch (e) {
+        api.logger.error(e)
       }
     }
 
@@ -251,6 +261,7 @@
           padding: 0;
           border: 0;
           vertical-align: baseline;
+          white-space: pre-wrap;
           word-break: break-word;
         }
         .${gm.id} a.same-following:hover {
@@ -276,7 +287,7 @@
         }
         .${gm.id}.space-same-followings > :first-child {
           font-weight: bold;
-          padding-right: 0.5em;
+          padding-right: 1em;
         }
       `)
     }
@@ -333,7 +344,7 @@
       // 用户空间
       if (gm.config.userSpace) {
         webpage.generalLogic({
-          uid: webpage.method.getUidFromUrl(location.href),
+          uid: webpage.method.getUidFromUrl(location.pathname),
           target: await api.wait.waitForElementLoaded('.h .wrapper'),
           className: `${gm.id} space-same-followings`,
         })
