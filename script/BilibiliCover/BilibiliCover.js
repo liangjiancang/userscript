@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站封面获取
-// @version         4.9.0.20210626
+// @version         4.9.1.20210626
 // @namespace       laster2800
 // @author          Laster2800
 // @description     B站视频播放页（普通模式、稍后再看模式）、番剧播放页、直播间添加获取封面的按钮
@@ -31,24 +31,6 @@
 
 (function() {
   'use strict'
-
-  // 脚本兼容
-  let incompatible = false
-  let scriptHandler = '当前脚本管理器'
-  if (!GM_info || !GM_info.script || !GM_info.scriptHandler) {
-    incompatible = true
-  }
-  if (GM_info && GM_info.scriptHandler) {
-    scriptHandler = GM_info.scriptHandler
-    if (scriptHandler == 'Greasemonkey') {
-      incompatible = true
-    }
-  }
-  if (incompatible) {
-    const label = GM_info && GM_info.script && GM_info.script.name ? `【${GM_info.script.name}】\n\n` : ''
-    alert(`${label}脚本不支持${scriptHandler}！请改用Tampermonkey或Violentmonkey。`)
-    return
-  }
 
   const gm = {
     id: 'gm395575',

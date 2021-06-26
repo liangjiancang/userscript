@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站防剧透进度条
-// @version         1.5.2.20210626
+// @version         1.5.3.20210626
 // @namespace       laster2800
 // @author          Laster2800
 // @description     看比赛、看番总是被进度条剧透？装上这个脚本再也不用担心这些问题了
@@ -29,23 +29,7 @@
   'use strict'
 
   // 脚本兼容
-  let incompatible = false
-  let scriptHandler = '当前脚本管理器'
-  if (!GM_info || !GM_info.script || !GM_info.scriptHandler) {
-    incompatible = true
-  }
-  if (GM_info && GM_info.scriptHandler) {
-    scriptHandler = GM_info.scriptHandler
-    if (scriptHandler == 'Greasemonkey') {
-      incompatible = true
-    }
-  }
-  if (incompatible) {
-    const label = GM_info && GM_info.script && GM_info.script.name ? `【${GM_info.script.name}】\n\n` : ''
-    alert(`${label}脚本不支持${scriptHandler}！请改用Tampermonkey或Violentmonkey。`)
-    return
-  }
-  if (scriptHandler != 'Tampermonkey') {
+  if (GM_info.scriptHandler != 'Tampermonkey') {
     const script = GM_info.script
     if (!script.author) {
       script.author = 'Laster2800'
