@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站封面获取
-// @version         4.9.3.20210626
+// @version         4.9.4.20210627
 // @namespace       laster2800
 // @author          Laster2800
 // @description     B站视频播放页（普通模式、稍后再看模式）、番剧播放页、直播间添加获取封面的按钮
@@ -21,6 +21,8 @@
 // @grant           GM_download
 // @grant           GM_setValue
 // @grant           GM_getValue
+// @grant           GM_deleteValue
+// @grant           GM_listValues
 // @grant           GM_xmlhttpRequest
 // @grant           GM_registerMenuCommand
 // @grant           GM_unregisterMenuCommand
@@ -34,6 +36,8 @@
 
   const gm = {
     id: 'gm395575',
+    configVersion: GM_getValue('configVersion'),
+    configUpdate: 20210627,
     title: '点击保存封面或在新标签页中打开图片（可在脚本菜单中设置）。\n此外，可在脚本菜单中开启或关闭封面预览功能。\n右键点击可基于图片链接作进一步的处理，如通过「另存为」直接保存图片。',
     config: {
       preview: true,
@@ -62,6 +66,7 @@
      * 初始化脚本
      */
     init() {
+      this.updateVersion()
       for (const name in gm.config) {
         const eb = GM_getValue(name)
         gm.config[name] = typeof eb == 'boolean' ? eb : gm.config[name]
@@ -87,7 +92,7 @@
           config[id] = !config[id]
           GM_setValue(id, config[id])
           GM_notification({
-            text: `已${config[id] ? '开启' : '关闭'}「${configMap[id].name}」功能${configMap[id].needNotReload ? '' : '，刷新页面以生效（点击通知以刷新）'}`,
+            text: `已${config[id] ? '开启' : '关闭'}「${configMap[id].name}」功能${configMap[id].needNotReload ? '' : '，刷新页面以生效（点击通知以刷新）'}。`,
             timeout: 5600,
             onclick: configMap[id].needNotReload ? null : () => location.reload(),
           })
@@ -100,6 +105,40 @@
           GM_unregisterMenuCommand(menuId[id])
         }
         menuId = {}
+      }
+    }
+
+    /**
+     * 版本更新处理
+     */
+    updateVersion() {
+      let updated = false
+      if (isNaN(gm.configVersion) || gm.configVersion < 0) {
+        const gmKeys = GM_listValues()
+        if (gmKeys.length > 0) {
+          updated = true
+          for (const gmKey of gmKeys) {
+            GM_deleteValue(gmKey)
+          }
+        }
+        gm.configVersion = gm.configUpdate
+        GM_setValue('configVersion', gm.configVersion)
+      } else if (gm.configVersion < gm.configUpdate) {
+        // 必须按从旧到新的顺序写
+        // 内部不能使用 gm.configUpdate，必须手写更新后的配置版本号！
+
+        gm.configVersion = gm.configUpdate
+        GM_setValue('configVersion', gm.configVersion)
+        updated = true
+      }
+      if (updated) {
+        const noNotification = new Set([]) // 此处添加 configUpdate 变化但不需要提示的配置版本
+        if (!noNotification.has(gm.configUpdate)) {
+          GM_notification({
+            text: '功能性更新完毕，您可能需要重新设置脚本。',
+            timeout: 0,
+          })
+        }
       }
     }
   }
