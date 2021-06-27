@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站共同关注快速查看
-// @version         1.2.2.20210626
+// @version         1.2.3.20210627
 // @namespace       laster2800
 // @author          Laster2800
 // @description     快速查看与特定用户的共同关注（视频播放页、动态页、用户空间）
@@ -21,6 +21,8 @@
 // @grant           GM_notification
 // @grant           GM_setValue
 // @grant           GM_getValue
+// @grant           GM_deleteValue
+// @grant           GM_listValues
 // @grant           GM_addStyle
 // @connect         api.bilibili.com
 // @incompatible    firefox 不支持 Greasemonkey！Tampermonkey、Violentmonkey 可用
@@ -31,28 +33,35 @@
 
   const gm = {
     id: 'gm428453',
+    configVersion: GM_getValue('configVersion'),
+    configUpdate: 20210627,
     config: {
       failMessage: true,
       withoutSameMessage: true,
       dispInText: false,
-      commonCard: true,
-      extendedCard: true,
       userSpace: true,
+      lv1Card: true,
+      lv2Card: true,
+      lv3Card: false,
     },
     configMap: {
       failMessage: { name: '查询失败时提示信息' },
       withoutSameMessage: { name: '无共同关注时提示信息' },
       dispInText: { name: '以纯文本形式显示共同关注' },
-      commonCard: { name: '在常规用户卡片中快速查看' },
-      extendedCard: { name: '在扩展用户卡片中快速查看' },
       userSpace: { name: '在用户空间中快速查看' },
+      lv1Card: { name: '在常规用户卡片中快速查看' },
+      lv2Card: { name: '在扩展用户卡片中快速查看' },
+      lv3Card: { name: '在罕见用户卡片中快速查看' },
     },
     regex: {
       page_videoNormalMode: /\.com\/video(?=[/?#]|$)/,
       page_videoWatchlaterMode: /\.com\/medialist\/play\/watchlater(?=[/?#]|$)/,
       page_dynamic: /t\.bilibili\.com(?=[/?#]|$)/,
       page_space: /space\.bilibili\.com\/\d+(?=[/?#]|$)/,
-    }
+    },
+    const: {
+      notificationTimeout: 5600,
+    },
   }
 
   /* global API */
@@ -66,6 +75,7 @@
      * 初始化脚本
      */
     init() {
+      this.updateVersion()
       for (const name in gm.config) {
         const eb = GM_getValue(name)
         gm.config[name] = typeof eb == 'boolean' ? eb : gm.config[name]
@@ -83,6 +93,11 @@
         for (const id in config) {
           menuId[id] = createMenuItem(id)
         }
+        // 其他菜单
+        menuId.reset = GM_registerMenuCommand('[ * ] 初始化脚本', () => this.resetScript())
+        menuId.help = GM_registerMenuCommand('配置说明', () => {
+          window.open('https://gitee.com/liangjiancang/userscript/tree/master/script/BilibiliSameFollowing#配置说明')
+        })
       })
 
       const cfgName = id => `[ ${config[id] ? '√' : '×'} ] ${configMap[id].name}`
@@ -91,8 +106,8 @@
           config[id] = !config[id]
           GM_setValue(id, config[id])
           GM_notification({
-            text: `已${config[id] ? '开启' : '关闭'}「${configMap[id].name}」功能${configMap[id].needNotReload ? '' : '，刷新页面以生效（点击通知以刷新）'}`,
-            timeout: 5600,
+            text: `已${config[id] ? '开启' : '关闭'}「${configMap[id].name}」功能${configMap[id].needNotReload ? '' : '，刷新页面以生效（点击通知以刷新）'}。`,
+            timeout: gm.const.notificationTimeout,
             onclick: configMap[id].needNotReload ? null : () => location.reload(),
           })
           clearMenu()
@@ -100,10 +115,57 @@
         })
       }
       const clearMenu = () => {
-        for (const id in config) {
+        for (const id in menuId) {
           GM_unregisterMenuCommand(menuId[id])
         }
         menuId = {}
+      }
+    }
+
+    /**
+     * 版本更新处理
+     */
+    updateVersion() {
+      let updated = false
+      if (isNaN(gm.configVersion) || gm.configVersion < 0) {
+        const gmKeys = GM_listValues()
+        if (gmKeys.length > 0) {
+          updated = true
+          for (const gmKey of gmKeys) {
+            GM_deleteValue(gmKey)
+          }
+        }
+        gm.configVersion = gm.configUpdate
+        GM_setValue('configVersion', gm.configVersion)
+      } else if (gm.configVersion < gm.configUpdate) {
+        // 必须按从旧到新的顺序写
+        // 内部不能使用 gm.configUpdate，必须手写更新后的配置版本号！
+
+        gm.configVersion = gm.configUpdate
+        GM_setValue('configVersion', gm.configVersion)
+        updated = true
+      }
+      if (updated) {
+        const noNotification = new Set([]) // 此处添加 configUpdate 变化但不需要提示的配置版本
+        if (!noNotification.has(gm.configUpdate)) {
+          GM_notification({ text: '功能性更新完毕，您可能需要重新设置脚本。' })
+        }
+      }
+    }
+
+    /**
+     * 初始化脚本
+     */
+    resetScript() {
+      const result = confirm(`【${GM_info.script.name}】\n\n是否要初始化脚本？`)
+      if (result) {
+        const gmKeys = GM_listValues()
+        for (const gmKey of gmKeys) {
+          GM_deleteValue(gmKey)
+        }
+        gm.configVersion = gm.configUpdate
+        GM_setValue('configVersion', gm.configVersion)
+        location.reload()
       }
     }
   }
@@ -134,15 +196,20 @@
 
     /**
      * 卡片处理逻辑
+     * 
+     * `cardId` 与 `cardClz` 中至少要传入一个，两者采取 `OR` 规则查找元素。
      * @async
      * @param {Object} config 配置
-     * @param {string} config.cardClz 卡片元素类名
+     * @param {string} [config.cardId] 卡片 ID
+     * @param {string} [config.cardClz] 卡片元素类名
      * @param {string} [config.container=body] 卡片父元素选择器
      * @param {string} config.user 用户元素选择器
      * @param {string} config.info 信息元素选择器
-     * @param {boolean} [config.lazy] 卡片内容是否为懒加载
+     * @param {boolean} [config.lazy=true] 卡片内容是否为懒加载
+     * @param {boolean} [config.ancestor] 将 `container` 视为祖先节点而非父节点
      */
     async cardLogic(config) {
+      config = { lazy: true, ancestor: false, ...config }
       const _self = this
       try {
         let container = document.body
@@ -152,7 +219,14 @@
         new MutationObserver(async records => {
           for (const record of records) {
             for (const addedNode of record.addedNodes) {
-              if (api.dom.containsClass(addedNode, config.cardClz)) {
+              let isCard = false
+              if (config.cardClz && api.dom.containsClass(addedNode, config.cardClz)) {
+                isCard = true
+              }
+              if (!isCard && config.cardId && addedNode.id == config.cardId) {
+                isCard = true
+              }
+              if (isCard) {
                 const card = addedNode
                 try {
                   let userLink = null
@@ -178,7 +252,7 @@
               }
             }
           }
-        }).observe(container, { childList: true })
+        }).observe(container, { childList: true, subtree: config.ancestor })
       } catch (e) {
         api.logger.error(e)
       }
@@ -262,7 +336,7 @@
           border: 0;
           vertical-align: baseline;
           white-space: pre-wrap;
-          word-break: break-word;
+          word-break: break-all;
         }
         .${gm.id} a.same-following:hover {
           color: #00a1d6;
@@ -300,53 +374,68 @@
     script.init()
     script.initScriptMenu()
 
-    // 遍布全站的常规用户卡片，如视频评论区、动态评论区、用户空间评论区……
-    if (gm.config.commonCard) {
+    if (gm.config.lv1Card) {
+      // 遍布全站的常规用户卡片，如视频评论区、动态评论区、用户空间评论区……
       webpage.cardLogic({
         cardClz: 'user-card',
         user: '.face',
         info: '.info',
+        lazy: false,
       })
     }
     if (api.web.urlMatch(gm.regex.page_videoNormalMode)) {
-      // 普通模式播放页中的 UP 主头像
-      if (gm.config.extendedCard) {
+      if (gm.config.lv2Card) {
+        // 普通模式播放页中的 UP 主头像
         webpage.cardLogic({
           cardClz: 'user-card-m',
           container: '#app .v-wrap',
           user: '.face',
           info: '.info',
-          lazy: true,
         })
       }
     } else if (api.web.urlMatch(gm.regex.page_videoWatchlaterMode)) {
-      // 稍后再看模式播放页中的 UP 主头像
-      if (gm.config.extendedCard) {
+      if (gm.config.lv2Card) {
+        // 稍后再看模式播放页中的 UP 主头像
         webpage.cardLogic({
           cardClz: 'user-card-m',
           container: '#app #app', // 这是什么阴间玩意？
           user: '.face',
           info: '.info',
-          lazy: true,
         })
       }
     } else if (api.web.urlMatch(gm.regex.page_dynamic)) {
-      // 动态页左边「正在直播」主播的用户卡片
-      if (gm.config.extendedCard) {
+      if (gm.config.lv2Card) {
+        // 1. 动态页左边「正在直播」主播的用户卡片
+        // 2. 动态页中，被转发动态的所有者的用户卡片
         webpage.cardLogic({
           cardClz: 'userinfo-wrapper',
           user: '.face',
           info: '.info',
-          lazy: true,
+          ancestor: true,
         })
       }
     } else if (api.web.urlMatch(gm.regex.page_space)) {
-      // 用户空间
       if (gm.config.userSpace) {
+        // 用户空间顶部显示
         webpage.generalLogic({
           uid: webpage.method.getUidFromUrl(location.pathname),
           target: await api.wait.waitForElementLoaded('.h .wrapper'),
           className: `${gm.id} space-same-followings`,
+        })
+      }
+      if (gm.config.lv3Card) {
+        // 用户空间的动态中，被转发动态的所有者的用户卡片
+        webpage.cardLogic({
+          cardClz: 'userinfo-wrapper',
+          user: '.face',
+          info: '.info',
+          ancestor: true,
+        })
+        // 用户空间右侧充电中的用户卡片
+        webpage.cardLogic({
+          cardId: 'id-card',
+          user: '.idc-avatar-container',
+          info: '.idc-info',
         })
       }
     }
