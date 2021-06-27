@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站封面获取
-// @version         4.9.5.20210627
+// @version         4.9.6.20210627
 // @namespace       laster2800
 // @author          Laster2800
 // @description     B站视频播放页（普通模式、稍后再看模式）、番剧播放页、直播间添加获取封面的按钮
@@ -38,7 +38,6 @@
     id: 'gm395575',
     configVersion: GM_getValue('configVersion'),
     configUpdate: 20210627,
-    title: '点击保存封面或在新标签页中打开图片（可在脚本菜单中设置）。\n此外，可在脚本菜单中开启或关闭封面预览功能。\n右键点击可基于图片链接作进一步的处理，如通过「另存为」直接保存图片。',
     config: {
       preview: true,
       download: true,
@@ -52,6 +51,10 @@
       page_videoWatchlaterMode: /\.com\/medialist\/play\/watchlater(?=[/?#]|$)/,
       page_bangumi: /\/bangumi\/play(?=[/?#]|$)/,
       page_live: /live\.bilibili\.com\/\d+(?=[/?#]|$)/, // 只含具体的直播间页面
+    },
+    const: {
+      title: '点击保存封面或在新标签页中打开图片（可在脚本菜单中设置）。\n此外，可在脚本菜单中开启或关闭封面预览功能。\n右键点击可基于图片链接作进一步的处理，如通过「另存为」直接保存图片。',
+      notificationTimeout: 5600,
     },
   }
 
@@ -93,7 +96,7 @@
           GM_setValue(id, config[id])
           GM_notification({
             text: `已${config[id] ? '开启' : '关闭'}「${configMap[id].name}」功能${configMap[id].needNotReload ? '' : '，刷新页面以生效（点击通知以刷新）'}。`,
-            timeout: 5600,
+            timeout: gm.const.notificationTimeout,
             onclick: configMap[id].needNotReload ? null : () => location.reload(),
           })
           clearMenu()
@@ -134,10 +137,7 @@
       if (updated) {
         const noNotification = new Set([]) // 此处添加 configUpdate 变化但不需要提示的配置版本
         if (!noNotification.has(gm.configUpdate)) {
-          GM_notification({
-            text: '功能性更新完毕，您可能需要重新设置脚本。',
-            timeout: 0,
-          })
+          GM_notification({ text: '功能性更新完毕，您可能需要重新设置脚本。' })
         }
       }
     }
@@ -158,11 +158,17 @@
               alert('该封面的文件格式不在下载模式白名单中，从而触发安全限制导致无法直接下载。可修改脚本管理器的「下载模式」或「文件扩展名白名单」设置以放开限制。')
               window.open(url)
             } else {
-              alert('下载错误')
+              GM_notification({
+                text: '下载错误',
+                timeout: gm.const.notificationTimeout,
+              })
             }
           }
           const ontimeout = function() {
-            alert('下载超时')
+            GM_notification({
+              text: '下载超时',
+              timeout: gm.const.notificationTimeout,
+            })
             window.open(url)
           }
           api.web.download({ url, name, onerror, ontimeout })
@@ -415,7 +421,7 @@
             api.message.create(errorMsg)
           }
         }
-        cover.title = gm.title || errorMsg
+        cover.title = gm.const.title || errorMsg
       }
 
       const getCover = async () => {
@@ -529,7 +535,7 @@
             api.message.create(errorMsg)
           }
         }
-        cover.title = gm.title || errorMsg
+        cover.title = gm.const.title || errorMsg
       }
 
       const getCover = async () => {
@@ -552,7 +558,7 @@
       cover.target = '_blank'
       if (coverUrl) {
         cover.href = coverUrl
-        cover.title = gm.title
+        cover.title = gm.const.title
         _self.method.addDownloadEvent(cover)
         _self.method.createPreview(cover).src = coverUrl
       } else if (kfUrl) {
