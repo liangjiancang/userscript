@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站防剧透进度条
-// @version         1.5.4.20210626
+// @version         1.5.5.20210627
 // @namespace       laster2800
 // @author          Laster2800
 // @description     看比赛、看番总是被进度条剧透？装上这个脚本再也不用担心这些问题了
@@ -78,7 +78,6 @@
    * @property {number} reservedLeft 进度条左侧预留区
    * @property {number} reservedRight 进度条右侧预留区
    * @property {boolean} postponeOffset 延后进度条偏移的时间点
-   * @property {boolean} openSettingAfterConfigUpdate 功能性更新后打开设置页面
    * @property {boolean} reloadAfterSetting 设置生效后刷新页面
    */
   /**
@@ -156,7 +155,7 @@
   const gm = {
     id: 'gm411092',
     configVersion: GM_getValue('configVersion'),
-    configUpdate: 20210302,
+    configUpdate: 20210627,
     config: {
       bangumiEnabled: false,
       simpleScriptControl: false,
@@ -171,7 +170,6 @@
       reservedLeft: null,
       reservedRight: null,
       postponeOffset: true,
-      openSettingAfterConfigUpdate: true,
       reloadAfterSetting: true,
     },
     configMap: {
@@ -188,7 +186,6 @@
       reservedLeft: { default: 10, attr: 'value', manual: true, needNotReload: true },
       reservedRight: { default: 10, attr: 'value', manual: true, needNotReload: true },
       postponeOffset: { default: true, attr: 'checked', needNotReload: true, configVersion: 20200911 },
-      openSettingAfterConfigUpdate: { default: true, attr: 'checked' },
       reloadAfterSetting: { default: true, attr: 'checked', needNotReload: true },
     },
     data: {
@@ -338,16 +335,10 @@
      */
     updateVersion() {
       const _self = this
-      // 该项与更新相关，在此处处理
-      gm.config.openSettingAfterConfigUpdate = _self.method.gmValidate('openSettingAfterConfigUpdate', gm.config.openSettingAfterConfigUpdate)
       if (gm.configVersion > 0) {
         if (gm.configVersion < gm.configUpdate) {
-          if (gm.config.openSettingAfterConfigUpdate) {
-            _self.openUserSetting(2)
-          }
-
           // 必须按从旧到新的顺序写
-          // 内部不能使用 gm.cofigUpdate，必须手写更新后的配置版本号！
+          // 内部不能使用 gm.configUpdate，必须手写更新后的配置版本号！
 
           // 1.1.0.20200911
           if (gm.configVersion < 20200911) {
@@ -358,6 +349,19 @@
           // 1.2.4.20200912
           if (gm.configVersion < 20200912) {
             GM_setValue('disableCurrentPoint', true)
+          }
+
+          // 1.5.5.20210627
+          if (gm.configVersion < 20210627) {
+            GM_deleteValue('openSettingAfterConfigUpdate')
+          }
+
+          const noSetting = new Set([20210627]) // 此处添加 configUpdate 变化但不是功能性更新的配置版本
+          if (!noSetting.has(gm.configUpdate)) {
+            _self.openUserSetting(2)
+          } else {
+            gm.configVersion = gm.configUpdate
+            GM_setValue('configVersion', gm.configVersion)
           }
         }
       }
@@ -370,12 +374,8 @@
       const _self = this
       if (gm.configVersion > 0) {
         // 对配置进行校验
-        const cfgManual = { openSettingAfterConfigUpdate: true } // 手动处理的配置
-        const cfgNoWriteback = {} // 不进行回写的配置
         for (const name in gm.config) {
-          if (!cfgManual[name]) {
-            gm.config[name] = _self.method.gmValidate(name, gm.config[name], !cfgNoWriteback[name])
-          }
+          gm.config[name] = _self.method.gmValidate(name, gm.config[name])
         }
       } else {
         // 用户强制初始化，或者第一次安装脚本
@@ -1282,7 +1282,7 @@
         _self.progress.played = await api.wait.waitForElementLoaded(selector.progress.played, _self.progress.track)
         _self.progress.preview = await api.wait.waitForElementLoaded(selector.progress.preview, _self.progress.root)
         _self.shadowProgress = await api.wait.waitForElementLoaded(selector.shadowProgress, this.control)
-  
+
         _self.fakeTrack = _self.progress.track.insertAdjacentElement('afterend', _self.progress.track.cloneNode(true)) // 必须在 thumb 前，否则 z 轴层次错误
         _self.fakeTrack.style.visibility = 'hidden'
         _self.fakeTrack.querySelector(selector.progress.buffer).style.visibility = 'hidden'
