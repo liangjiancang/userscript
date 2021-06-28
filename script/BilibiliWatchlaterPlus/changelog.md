@@ -2,6 +2,17 @@
 
 本日志只记录用户友好的更新说明，影响不大的问题修复与修改不作记录，具体修改见 [提交记录](https://gitee.com/liangjiancang/userscript/commits/master/script/BilibiliWatchlaterPlus/BilibiliWatchlaterPlus.js)。
 
+## V4.11
+
+1. 脚本：优化脚本菜单运行流程。
+2. 脚本：优化更新处理机制。
+3. 移除记录：推倒重做，大幅优化存读及处理逻辑。
+4. 顶栏入口：优化菜单弹出逻辑，让数据以最快的速度显示出来，且避免误弹出及特定情况下无法关闭的问题。
+5. 填充缺失状态信息：支持动态入口菜单。
+6. 重定向：优化错误处理流程。
+7. 功能移除：功能性更新后打开设置页面。现在总是强制打开功能性更新设置。
+8. UI：文本及排版优化。
+
 ## V4.10
 
 1. 自动移除：列表页面中增加一个「自动移除」按钮，用于直接控制在列表页面中打开视频时是否执行自动移除逻辑，也就是给予用户一个临时切换的开关。相应地，为该功能新增「彻底禁用自动移除」选项。
@@ -53,7 +64,7 @@
 
 ## V4.5
 
-1. API：将 `API` 类剥离出来，作为一个通用代码库使用。以后关于 API 的更新说明见 [API.js 提交记录](https://gitee.com/liangjiancang/userscript/commits/master/script/lib/API.js)。
+1. API：将 `API` 类剥离出来，作为一个通用代码库使用。以后关于 API 的更新说明见 [UserscriptAPI.js 提交记录](https://gitee.com/liangjiancang/userscript/commits/master/script/lib/UserscriptAPI.js)。
 
 ## V4.4
 
