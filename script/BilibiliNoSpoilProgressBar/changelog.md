@@ -2,6 +2,11 @@
 
 本日志只记录用户友好的更新说明，影响不大的问题修复与修改不作记录，具体修改见 [提交记录](https://gitee.com/liangjiancang/userscript/commits/master/script/BilibiliNoSpoilProgressBar/BilibiliNoSpoilProgressBar.js)。
 
+## V1.6
+
+1. 脚本：优化脚本菜单运行流程。
+2. UI：优化文本。
+
 ## V1.5
 
 1. 脚本：适配 20210624 的B站播放页面的超级脑残且越改越难用的升级。

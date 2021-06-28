@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站防剧透进度条
-// @version         1.5.5.20210627
+// @version         1.6.0a.20210628
 // @namespace       laster2800
 // @author          Laster2800
 // @description     看比赛、看番总是被进度条剧透？装上这个脚本再也不用担心这些问题了
@@ -71,7 +71,7 @@
    * @property {boolean} disableDuration 隐藏视频时长
    * @property {boolean} disablePbp 隐藏「热度」曲线
    * @property {boolean} disablePreview 隐藏进度条预览
-   * @property {boolean} disablePartInformation 隐藏分P信息
+   * @property {boolean} disablePartInformation 隐藏分 P 信息
    * @property {number} offsetTransformFactor 进度条极端偏移因子
    * @property {number} offsetLeft 进度条偏移极左值
    * @property {number} offsetRight 进度条偏移极右值
@@ -138,7 +138,7 @@
    */
   /**
    * @typedef GMObject_menu_item
-   * @property {boolean} state 打开状态
+   * @property {0 | 1 | 2 | 3} state 打开状态（关闭 | 开启中 | 打开 | 关闭中）
    * @property {HTMLElement} el 菜单元素
    * @property {() => void} [openHandler] 打开菜单的回调函数
    * @property {() => void} [closeHandler] 关闭菜单的回调函数
@@ -207,8 +207,8 @@
       fadeTime: 400,
     },
     menu: {
-      setting: { state: false, el: null },
-      uploaderList: { state: false, el: null },
+      setting: { state: 0, el: null },
+      uploaderList: { state: 0, el: null },
     },
     el: {
       gmRoot: null,
@@ -216,8 +216,8 @@
       uploaderList: null,
     },
     error: {
-      DOM_PARSE: `DOM解析错误。大部分情况下是由于网络加载速度不足造成的，不影响脚本工作；否则就是B站网页改版，请联系脚本作者进行修改：${GM_info.script.supportURL}`,
-      NETWORK: `网络连接错误，出现这个问题有可能是因为网络加载速度不足或者B站后台API被改动。也不排除是脚本内部数据出错造成的，初始化脚本也许能解决问题。无法解决请联系脚本作者：${GM_info.script.supportURL}`,
+      DOM_PARSE: `DOM 解析错误。大部分情况下是由于网络加载速度不足造成的，不影响脚本工作；否则就是B站网页改版，请联系脚本作者进行修改：${GM_info.script.supportURL}`,
+      NETWORK: `网络连接错误，出现这个问题有可能是因为网络加载速度不足或者B站后台 API 被改动。也不排除是脚本内部数据出错造成的，初始化脚本也许能解决问题。无法解决请联系脚本作者：${GM_info.script.supportURL}`,
     }
   }
 
@@ -404,7 +404,7 @@
       // 用户配置设置
       GM_registerMenuCommand('用户设置', () => _self.openUserSetting())
       // 防剧透 UP 主名单
-      GM_registerMenuCommand('防剧透UP主名单', () => _self.openUploaderList())
+      GM_registerMenuCommand('防剧透 UP 主名单', () => _self.openUploaderList())
       // 强制初始化
       GM_registerMenuCommand('初始化脚本', () => _self.resetScript())
     }
@@ -453,10 +453,10 @@
                     </td>
                   </tr>
 
-                  <tr class="gm-item" title="加入防剧透名单UP主的视频，会在打开视自动开启防剧透进度条。">
+                  <tr class="gm-item" title="加入防剧透名单 UP 主的视频，会在打开视自动开启防剧透进度条。">
                     <td><div>自动化</div></td>
                     <td>
-                      <span>防剧透UP主名单</span>
+                      <span>防剧透 UP 主名单</span>
                       <span id="gm-uploaderList" class="gm-hint-option">点击编辑</span>
                     </td>
                   </tr>
@@ -521,10 +521,10 @@
                       </label>
                     </td>
                   </tr>
-                  <tr class="gm-subitem" title="是否隐藏视频分P信息？它们可能会造成剧透。该功能对番剧无效。">
+                  <tr class="gm-subitem" title="是否隐藏视频分 P 信息？它们可能会造成剧透。该功能对番剧无效。">
                     <td>
                       <label>
-                        <span>隐藏分P信息</span>
+                        <span>隐藏分 P 信息</span>
                         <input id="gm-disablePartInformation" type="checkbox">
                       </label>
                     </td>
@@ -963,9 +963,9 @@
           gm.el.uploaderList.className = 'gm-uploaderList'
           gm.el.uploaderList.innerHTML = `
             <div class="gm-uploaderList-page">
-              <div class="gm-title">防剧透UP主名单</div>
+              <div class="gm-title">防剧透 UP 主名单</div>
               <div class="gm-comment">
-                <div>当打开名单内UP主的视频时，会自动启用防剧透进度条。在下方文本框内填入UP主的UID，其中UID可在UP主的个人空间中找到。每行必须以UID开头，UID后可以用空格隔开进行注释。<b>第一行以&nbsp;&nbsp;*&nbsp;&nbsp;开头</b>时，匹配所有UP主。<span id="gm-uploader-list-example" class="gm-hint-option">点击填充示例。</span></div>
+                <div>当打开名单内 UP 主的视频时，会自动启用防剧透进度条。在下方文本框内填入 UP 主的 UID，其中 UID 可在 UP 主的个人空间中找到。每行必须以 UID 开头，UID 后可以用空格隔开进行注释。<b>第一行以&nbsp;&nbsp;*&nbsp;&nbsp;开头</b>时，匹配所有 UP 主。<span id="gm-uploader-list-example" class="gm-hint-option">点击填充示例。</span></div>
               </div>
               <div class="gm-list-editor">
                 <textarea id="gm-uploaderList"></textarea>
@@ -991,7 +991,7 @@
         const processItem = () => {
           gm.menu.uploaderList.openHandler = onOpen
           el.uploaderListExample.onclick = () => {
-            el.uploaderList.value = '# 非UID起始的行不会影响名单读取\n204335848 # 皇室战争电竞频道\n50329118 # 哔哩哔哩英雄联盟赛事'
+            el.uploaderList.value = '# 非 UID 起始的行不会影响名单读取\n204335848 # 皇室战争电竞频道\n50329118 # 哔哩哔哩英雄联盟赛事'
           }
           el.save.onclick = onSave
           el.cancel.onclick = el.shadow.onclick = () => _self.closeMenuItem('uploaderList')
@@ -1037,47 +1037,91 @@
 
     /**
      * 对「打开菜单项」这一操作进行处理，包括显示菜单项、设置当前菜单项的状态、关闭其他菜单项
+     * @async
      * @param {string} name 菜单项的名称
      * @param {() => void} [callback] 打开菜单项后的回调函数
      * @param {boolean} [keepOthers] 打开时保留其他菜单项
+     * @returns {Promise<boolean>} 操作是否成功
      */
-    openMenuItem(name, callback, keepOthers) {
+    async openMenuItem(name, callback, keepOthers) {
       const _self = this
-      if (!gm.menu[name].state) {
-        for (const key in gm.menu) {
-          /** @type {GMObject_menu_item} */
-          const menu = gm.menu[key]
-          if (key == name) {
-            menu.state = true
-            menu.openHandler && menu.openHandler.call(menu)
-            api.dom.fade(true, menu.el, callback)
-            if (document.fullscreenElement) {
-              document.exitFullscreen()
-            }
-          } else if (!keepOthers) {
-            if (menu.state) {
-              _self.closeMenuItem(key)
+      let success = false
+      try {
+        if (gm.menu[name].state == 3) {
+          await api.wait.waitForConditionPassed({
+            condition: () => {
+              return gm.menu[name].state == 0
+            },
+          })
+        }
+        if (gm.menu[name].state == 0) {
+          for (const key in gm.menu) {
+            /** @type {GMObject_menu_item} */
+            const menu = gm.menu[key]
+            if (key == name) {
+              menu.state = 1
+              menu.openHandler && await menu.openHandler.call(menu)
+              await new Promise(resolve => {
+                api.dom.fade(true, menu.el, () => {
+                  resolve()
+                  callback && callback.call(menu)
+                })
+              })
+              menu.state = 2
+              success = true
+              // 不要返回，需将其他菜单项关闭
+            } else if (!keepOthers) {
+              if (menu.state == 2) {
+                _self.closeMenuItem(key)
+              }
             }
           }
         }
+        if (success && document.fullscreenElement) {
+          document.exitFullscreen()
+        }
+      } catch (e) {
+        api.logger.error(gm.error.UNKNOWN)
+        api.logger.error(e)
       }
+      return success
     }
 
     /**
      * 对「关闭菜单项」这一操作进行处理，包括隐藏菜单项、设置当前菜单项的状态
+     * @async
      * @param {string} name 菜单项的名称
      * @param {() => void} [callback] 关闭菜单项后的回调函数
+     * @returns {Promise<boolean>} 操作是否成功
      */
-    closeMenuItem(name, callback) {
-      /** @type {GMObject_menu_item} */
-      const menu = gm.menu[name]
-      if (menu.state) {
-        menu.state = false
-        api.dom.fade(false, menu.el, () => {
-          menu.closeHandler && menu.closeHandler.call(menu)
-          callback && callback.call(menu)
-        })
+    async closeMenuItem(name, callback) {
+      try {
+        /** @type {GMObject_menu_item} */
+        const menu = gm.menu[name]
+        if (menu.state == 1) {
+          await api.wait.waitForConditionPassed({
+            condition: () => {
+              return gm.menu[name].state == 2
+            },
+          })
+        }
+        if (menu.state == 2) {
+          menu.state = 3
+          menu.closeHandler && await menu.closeHandler.call(menu)
+          await new Promise(resolve => {
+            api.dom.fade(false, menu.el, () => {
+              resolve()
+              callback && callback.call(menu)
+            })
+          })
+          menu.state = 0
+          return true
+        }
+      } catch (e) {
+        api.logger.error(gm.error.UNKNOWN)
+        api.logger.error(e)
       }
+      return false
     }
   }
 
@@ -1417,7 +1461,7 @@
           api.logger.error(gm.error.DOM_PARSE)
           api.logger.error(e)
         })
-        // 隐藏「上次看到XX:XX 跳转播放」中的时间（可能存在）
+        // 隐藏「上次看到 XX:XX 跳转播放」中的时间（可能存在）
         if (_self.enabled) {
           api.wait.waitForElementLoaded('.bilibili-player-video-toast-item-text').then(toast => {
             if (toast.innerText.indexOf('上次看到') >= 0 && toast.innerText.indexOf('???') < 0) {
@@ -1438,9 +1482,9 @@
           pakku.style.visibility = hide ? 'hidden' : ''
         }).catch(() => {})
 
-        // 隐藏分P信息（番剧没有必要隐藏）
+        // 隐藏分 P 信息（番剧没有必要隐藏）
         if (gm.config.disablePartInformation && !api.web.urlMatch(gm.regex.page_bangumi)) {
-          // 全屏播放时的分P选择
+          // 全屏播放时的分 P 选择
           if (_self.enabled) {
             api.wait.waitForElementLoaded('.bilibili-player-video-btn-menu').then(menu => {
               /** @type HTMLElement[] */
@@ -1453,14 +1497,14 @@
               api.logger.error(e)
             })
           }
-          // 全屏播放时显示的分P标题
+          // 全屏播放时显示的分 P 标题
           api.wait.waitForElementLoaded('.bilibili-player-video-top-title').then(el => {
             el.style.visibility = _self.enabled ? 'hidden' : 'visible'
           }).catch(e => {
             api.logger.error(gm.error.DOM_PARSE)
             api.logger.error(e)
           })
-          // 播放页右侧分P选择
+          // 播放页右侧分 P 选择
           if (api.web.urlMatch(gm.regex.page_videoNormalMode)) {
             api.wait.waitForElementLoaded('#multi_page').then(multiPage => {
               const hideTypes = [multiPage.querySelectorAll('.clickitem .part'), multiPage.querySelectorAll('.clickitem .duration')]
