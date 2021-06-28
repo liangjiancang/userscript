@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站防剧透进度条
-// @version         1.6.0b.20210628
+// @version         1.6.0c.20210628
 // @namespace       laster2800
 // @author          Laster2800
 // @description     看比赛、看番总是被进度条剧透？装上这个脚本再也不用担心这些问题了
@@ -1009,9 +1009,9 @@
      * 初始化脚本
      */
     resetScript() {
-      const result = confirm(`【${GM_info.script.name}】\n\n是否要初始化脚本？`)
+      const result = confirm(`【${GM_info.script.name}】\n\n是否要初始化脚本？\n\n注意：本操作不会重置「防剧透 UP 主名单」。`)
       if (result) {
-        const keyNoReset = {}
+        const keyNoReset = { uploaderList: true }
         const gmKeys = GM_listValues()
         for (const gmKey of gmKeys) {
           if (!keyNoReset[gmKey]) {
