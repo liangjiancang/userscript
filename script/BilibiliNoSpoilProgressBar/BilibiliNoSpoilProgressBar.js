@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站防剧透进度条
-// @version         1.6.0a.20210628
+// @version         1.6.0b.20210628
 // @namespace       laster2800
 // @author          Laster2800
 // @description     看比赛、看番总是被进度条剧透？装上这个脚本再也不用担心这些问题了
@@ -590,16 +590,6 @@
                         <span>延后进度条偏移的时间点</span>
                         <span id="gm-postponeOffsetInformation" class="gm-information" title="">💬</span>
                         <input id="gm-postponeOffset" type="checkbox">
-                      </label>
-                    </td>
-                  </tr>
-
-                  <tr class="gm-item" title="功能性更新后，是否打开用户设置？">
-                    <td><div>用户设置</div></td>
-                    <td>
-                      <label>
-                        <span>功能性更新后打开用户设置</span>
-                        <input id="gm-openSettingAfterConfigUpdate" type="checkbox">
                       </label>
                     </td>
                   </tr>
