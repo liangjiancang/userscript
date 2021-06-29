@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.11.0a.20210628
+// @version         4.11.0.20210629
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -18,10 +18,10 @@
 // @exclude         *://t.bilibili.com/h5/dynamic/specification
 // @exclude         *://www.bilibili.com/page-proxy/game-nav.html
 // @exclude         /.*:\/\/.*:\/\/.*/
-// @require         https://greasyfork.org/scripts/409641-api/code/API.js?version=944165
+// @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=945083
 // @grant           GM_addStyle
-// @grant           GM_xmlhttpRequest
 // @grant           GM_registerMenuCommand
+// @grant           GM_xmlhttpRequest
 // @grant           GM_setValue
 // @grant           GM_getValue
 // @grant           GM_deleteValue
@@ -374,8 +374,8 @@
     },
   }
 
-  /* global API */
-  const api = new API({
+  /* global UserscriptAPI */
+  const api = new UserscriptAPI({
     id: gm.id,
     label: GM_info.script.name,
     fadeTime: gm.const.fadeTime,
@@ -2166,7 +2166,7 @@
      */
     addHeaderButton() {
       const _self = this
-      api.wait.waitForElementLoaded('.user-con.signin').then(header => {
+      api.wait.waitQuerySelector('.user-con.signin').then(header => {
         const collect = header.children[4]
         const watchlater = document.createElement('div')
         watchlater.className = 'item'
@@ -2692,16 +2692,16 @@
 
       /**
        * 填充动态页稍后再看状态
+       * @async
        */
-      const fillWatchlaterStatus_dynamic = () => {
-        const execute = async root => {
-          let videos
-          if (api.dom.containsClass(root, 'video-container')) {
-            videos = [root]
-          } else {
-            videos = root.querySelectorAll('.video-container')
-          }
-          for (const video of videos) {
+      const fillWatchlaterStatus_dynamic = async () => {
+        api.wait.executeAfterElementLoaded({
+          selector: '.video-container',
+          base: await api.wait.waitQuerySelector('.feed-card'),
+          multiple: true,
+          repeat: true,
+          timeout: 0,
+          callback: async video => {
             if (!video._fillWatchlaterStatus) {
               try {
                 // 这个 video 未必是最后加入到页面的视频卡片，有可能是作为 Vue 处理过程中的中转元素
@@ -2721,37 +2721,22 @@
                 api.logger.error(e)
               }
             }
-          }
-        }
-
-        execute(document.body)
-        const ob = new MutationObserver(async records => {
-          for (const record of records) {
-            for (const addedNode of record.addedNodes) {
-              if (addedNode instanceof HTMLElement) {
-                execute(addedNode)
-              }
-            }
-          }
-        })
-        ob.observe(document.body, {
-          childList: true,
-          subtree: true,
+          },
         })
       }
 
       /**
        * 填充动态入口菜单
+       * @async
        */
-      const fillWatchlaterStatus_dynamicMenu = () => {
-        const execute = async root => {
-          let videos
-          if (api.dom.containsClass(root, 'list-item')) {
-            videos = [root]
-          } else {
-            videos = root.querySelectorAll('.list-item')
-          }
-          for (const video of videos) {
+      const fillWatchlaterStatus_dynamicMenu = async () => {
+        api.wait.executeAfterElementLoaded({
+          selector: '.list-item',
+          base: await api.wait.waitQuerySelector('.video-list'),
+          multiple: true,
+          repeat: true,
+          timeout: 0,
+          callback: async video => {
             if (!video._fillWatchlaterStatus) {
               try {
                 // 这个 video 未必是最后加入到页面的视频卡片，有可能是作为 Vue 处理过程中的中转元素
@@ -2771,22 +2756,7 @@
                 api.logger.error(e)
               }
             }
-          }
-        }
-
-        execute(document.body)
-        const ob = new MutationObserver(async records => {
-          for (const record of records) {
-            for (const addedNode of record.addedNodes) {
-              if (addedNode instanceof HTMLElement) {
-                execute(addedNode)
-              }
-            }
-          }
-        })
-        ob.observe(document.body, {
-          childList: true,
-          subtree: true,
+          },
         })
       }
 
@@ -2794,14 +2764,13 @@
        * 填充稍后再看状态（通用逻辑）
        */
       const fillWatchlaterStatus_main = () => {
-        const execute = async root => {
-          let videos
-          if (api.dom.containsClass(root, ['watch-later-video', 'watch-later-trigger', 'watch-later', 'w-later'])) {
-            videos = [root]
-          } else {
-            videos = root.querySelectorAll('.watch-later-video, .watch-later-trigger, .watch-later, .w-later')
-          }
-          for (const video of videos) {
+        api.wait.executeAfterElementLoaded({
+          selector: '.watch-later-video, .watch-later-trigger, .watch-later, .w-later',
+          base: document.body,
+          multiple: true,
+          repeat: true,
+          timeout: 0,
+          callback: async video => {
             if (!video._fillWatchlaterStatus) {
               try {
                 video._fillWatchlaterStatus = true
@@ -2818,22 +2787,7 @@
                 api.logger.error(e)
               }
             }
-          }
-        }
-
-        execute(document.body)
-        const ob = new MutationObserver(async records => {
-          for (const record of records) {
-            for (const addedNode of record.addedNodes) {
-              if (addedNode instanceof HTMLElement) {
-                execute(addedNode)
-              }
-            }
-          }
-        })
-        ob.observe(document.body, {
-          childList: true,
-          subtree: true,
+          },
         })
       }
     }
@@ -2869,16 +2823,14 @@
       }).then(async ({ atr, original }) => {
         const btn = document.createElement('label')
         btn.id = `${gm.id}-normal-video-btn`
-        const cb = document.createElement('input')
+        const cb = btn.appendChild(document.createElement('input'))
         cb.type = 'checkbox'
-        btn.appendChild(cb)
-        const text = document.createElement('span')
+        const text = btn.appendChild(document.createElement('span'))
         text.innerText = '稍后再看'
         btn.className = 'appeal-text'
         cb.onclick = function() { // 不要附加到 btn 上，否则点击时会执行两次
           processSwitch()
         }
-        btn.appendChild(text)
         atr.appendChild(btn)
 
         const aid = await _self.method.getAid()
@@ -3017,42 +2969,19 @@
       try {
         let autoRemoveButton = null
         if (gm.config.autoRemove != Enums.autoRemove.absoluteNever) {
-          autoRemoveButton = await api.wait.waitForElementLoaded('#gm-auto-remove')
+          autoRemoveButton = await api.wait.waitQuerySelector('#gm-auto-remove')
         }
-        const watchLaterList = await api.wait.waitForElementLoaded('.watch-later-list')
-
-        // 如果打开列表页面后，立即切换到其他标签页，那么执行到此处时，（部分或全部）列表项已被加载出来
-        // 此时，需要对这些意外加载出来的列表项进行处理
-        const links = watchLaterList.querySelectorAll('.list-box a:not([class=user])') // 排除指向 UP 主的链接
-        if (links.length > 0) {
-          setTimeout(() => {
-            for (const link of links) {
-              processLink(link, autoRemoveButton)
-            }
-          })
-        }
-
-        // 正常情况下，执行到此处时，所有列表项均未加载出来，监听并进行处理
-        // 即使是前面所说的非正常情况，也继续监听，避免出现意外
-        const ob = new MutationObserver(async (records, observer) => {
-          for (const record of records) {
-            for (const addedNode of record.addedNodes) {
-              if (api.dom.containsClass(addedNode, 'list-box')) {
-                const listBox = addedNode
-                const list = listBox.firstElementChild.children
-                for (let i = 0; i < list.length; i++) {
-                  const links = list[i].querySelectorAll('a:not([class=user])') // 排除指向 UP 主的链接
-                  for (const link of links) {
-                    processLink(link, autoRemoveButton)
-                  }
-                }
-                observer.disconnect()
-                return
-              }
-            }
-          }
+        const watchLaterList = await api.wait.waitQuerySelector('.watch-later-list')
+        api.wait.executeAfterElementLoaded({
+          selector: '.list-box a:not([class=user])',
+          base: watchLaterList,
+          multiple: true,
+          repeat: true,
+          timeout: 0,
+          callback: link => {
+            processLink(link, autoRemoveButton)
+          },
         })
-        ob.observe(watchLaterList, { childList: true })
       } catch (e) {
         api.logger.error(gm.error.DOM_PARSE)
         api.logger.error(e)
@@ -3199,7 +3128,7 @@
     async adjustWatchlaterListUI() {
       const _self = this
       /** @type {HTMLElement} */
-      const r_con = await api.wait.waitForElementLoaded('.watch-later-list.bili-wrapper header .r-con')
+      const r_con = await api.wait.waitQuerySelector('.watch-later-list.bili-wrapper header .r-con')
       // 页面上本来就存在的「全部播放」按钮不要触发重定向
       const setPlayAll = el => {
         el.href = gm.url.page_watchlaterPlayAll
@@ -3211,14 +3140,10 @@
         setPlayAll(playAll)
       } else {
         const ob = new MutationObserver((records, observer) => {
-          for (const record of records) {
-            if (record.attributeName == 'href') {
-              setPlayAll(record.target)
-              observer.disconnect()
-            }
-          }
+          setPlayAll(records[0].target)
+          observer.disconnect()
         })
-        ob.observe(playAll, { attributes: true })
+        ob.observe(playAll, { attributeFilter: ['href'] })
       }
       // 在列表页面加入「移除记录」
       if (gm.config.removeHistory) {
@@ -3278,10 +3203,10 @@
      * 隐藏「收藏」中的「稍后再看」
      */
     async hideWatchlaterInCollect() {
-      api.wait.waitForElementLoaded('.user-con .mini-favorite').then(fav => {
+      api.wait.waitQuerySelector('.user-con .mini-favorite').then(fav => {
         const collect = fav.parentNode
         const process = function() {
-          api.wait.waitForElementLoaded('[role=tooltip] .tab-item [title=稍后再看]').then(node => {
+          api.wait.waitQuerySelector('[role=tooltip] .tab-item [title=稍后再看]').then(node => {
             node.parentNode.style.display = 'none'
             collect.removeEventListener('mouseover', process) // 确保移除后再手动解绑
           }).catch(() => {}) // 有时候鼠标经过收藏也没弹出来，不知道什么原因，就不报错了

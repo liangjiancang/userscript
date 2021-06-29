@@ -4,14 +4,17 @@
 
 ## V4.11
 
-1. 脚本：优化脚本菜单运行流程。
-2. 脚本：优化更新处理机制。
-3. 移除记录：推倒重做，大幅优化存读及处理逻辑。
-4. 顶栏入口：优化菜单弹出逻辑，让数据以最快的速度显示出来，且避免误弹出及特定情况下无法关闭的问题。
-5. 填充缺失状态信息：支持动态入口菜单。
-6. 重定向：优化错误处理流程。
-7. 功能移除：功能性更新后打开设置页面。现在总是强制打开功能性更新设置。
-8. UI：文本及排版优化。
+1. API：升级至 V1.0，大幅优化元素等待逻辑。详见 [UserscriptAPI 更新日志](https://gitee.com/liangjiancang/userscript/blob/master/lib/UserscriptAPI/changelog.md)。
+2. 移除记录：推倒重做，大幅优化存读及处理逻辑。
+3. 顶栏入口：优化菜单弹出逻辑，让数据以最快的速度显示出来，且避免误弹出及特定情况下无法关闭的问题。
+4. 填充缺失状态信息：支持动态入口菜单。
+5. 重定向：优化错误处理流程。
+6. 功能移除：功能性更新后打开设置页面。现在总是强制打开功能性更新设置。
+7. 脚本：优化部分监听器的处理。
+8. 脚本：优化脚本菜单运行流程。
+9. 脚本：优化更新处理机制。
+10. 代码：借助新版元素等待 API 进行大幅简化。
+11. UI：文本及排版优化。
 
 ## V4.10
 
@@ -64,7 +67,7 @@
 
 ## V4.5
 
-1. API：将 `API` 类剥离出来，作为一个通用代码库使用。以后关于 API 的更新说明见 [UserscriptAPI.js 提交记录](https://gitee.com/liangjiancang/userscript/commits/master/script/lib/UserscriptAPI.js)。
+1. API：将 `API` 类剥离出来，作为一个通用代码库使用。以后关于 API 的更新说明见 [UserscriptAPI.js 更新日志](https://gitee.com/liangjiancang/userscript/blob/master/lib/UserscriptAPI/changelog.md)。
 
 ## V4.4
 
