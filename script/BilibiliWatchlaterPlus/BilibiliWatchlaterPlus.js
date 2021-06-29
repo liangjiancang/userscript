@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.11.0.20210629
+// @version         4.11.1.20210629
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -2726,7 +2726,7 @@
       }
 
       /**
-       * 填充动态入口菜单
+       * 填充动态入口菜单稍后再看状态
        * @async
        */
       const fillWatchlaterStatus_dynamicMenu = async () => {
