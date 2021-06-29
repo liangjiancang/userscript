@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站封面获取
-// @version         4.9.6.20210627
+// @version         4.9.7.20210629
 // @namespace       laster2800
 // @author          Laster2800
 // @description     B站视频播放页（普通模式、稍后再看模式）、番剧播放页、直播间添加获取封面的按钮
@@ -16,17 +16,17 @@
 // @exclude         *://live.bilibili.com/
 // @exclude         *://live.bilibili.com/*/*
 // @exclude         /.*:\/\/.*:\/\/.*/
-// @require         https://greasyfork.org/scripts/409641-api/code/API.js?version=944165
+// @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=945083
 // @grant           GM_addStyle
 // @grant           GM_download
+// @grant           GM_notification
+// @grant           GM_xmlhttpRequest
 // @grant           GM_setValue
 // @grant           GM_getValue
 // @grant           GM_deleteValue
 // @grant           GM_listValues
-// @grant           GM_xmlhttpRequest
 // @grant           GM_registerMenuCommand
 // @grant           GM_unregisterMenuCommand
-// @grant           GM_notification
 // @connect         api.bilibili.com
 // @incompatible    firefox 不支持 Greasemonkey！Tampermonkey、Violentmonkey 可用
 // ==/UserScript==
@@ -58,8 +58,8 @@
     },
   }
 
-  /* global API */
-  const api = new API({
+  /* global UserscriptAPI */
+  const api = new UserscriptAPI({
     id: gm.id,
     label: GM_info.script.name,
   })
@@ -540,7 +540,7 @@
 
       const getCover = async () => {
         let cover = ''
-        const img = await api.wait.waitForElementLoaded('.media-cover img')
+        const img = await api.wait.waitQuerySelector('.media-cover img')
         if (img && img.src) {
           cover = img.src.replace(/@[^@]*$/, '') // 不要缩略图
         }

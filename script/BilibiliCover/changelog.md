@@ -8,6 +8,7 @@
 2. 脚本：不再检查脚本兼容。
 3. 脚本：添加版本更新处理机制。
 4. 代码：不算是重构的重构。
+5. API：升级至 V1.0，大幅优化元素等待逻辑。详见 [Userscript 更新日志](https://gitee.com/liangjiancang/userscript/blob/master/lib/UserscriptAPI/changelog.md)。
 
 ## V0.1 - V4.8
 
