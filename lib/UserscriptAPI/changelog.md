@@ -6,7 +6,7 @@
 
 1. `wait`：重做元素等待 API，检测方式从轮询改为 `MutationObserver`。
 2. `wait`：整体处理流程优化。
-3. `dom`：移除 `createLocationchangeEvent()`，因为 Tampermonkey 支持 `urlchange` 事件了。
+3. `dom`：修改 `createLocationchangeEvent()` 为 `initUrlchangeEvent()`，用于兼容不支持 `urlchange` 事件的脚本管理器。
 4. 库：移除对 `GM_addStyle()` 的依赖。
 5. 库：移除对 `unsafeWindow` 的依赖。
 
