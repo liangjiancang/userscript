@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name            S1战斗力屏蔽
 // @namespace       laster2800
-// @version         3.1.5.20210626
+// @version         3.2.0.20210629
 // @author          Laster2800
 // @description     屏蔽S1的战斗力系统，眼不见为净
 // @author          Laster2800
@@ -9,7 +9,7 @@
 // @homepage        https://greasyfork.org/zh-CN/scripts/394407
 // @supportURL      https://greasyfork.org/zh-CN/scripts/394407/feedback
 // @license         LGPL-3.0
-// @require         https://greasyfork.org/scripts/409641-api/code/API.js?version=944165
+// @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=945083
 // @match           *.saraba1st.com/*
 // @grant           GM_addStyle
 // @run-at          document-start
@@ -19,19 +19,19 @@ const gmId = 'gm394407'
 const enabledAttr = `${gmId}-enabled`
 const enabledSelector = `body[${enabledAttr}]`
 
-/* global API */
-var api = new API({
+/* global UserscriptAPI */
+var api = new UserscriptAPI({
   id: gmId,
   label: GM_info.script.name,
 })
 
 ;(function() {
-  api.wait.waitForElementLoaded('body').then(body => {
+  api.wait.waitQuerySelector('body').then(body => {
     body.setAttribute(enabledAttr, '')
   }).catch(errorHandler)
 
   // 在导航栏中加入脚本开关
-  api.wait.waitForElementLoaded('#nv').then(nv => {
+  api.wait.waitQuerySelector('#nv').then(nv => {
     var sw = document.createElement('label')
     sw.innerHTML = `
       <span>战斗力系统</span>
@@ -66,17 +66,10 @@ var api = new API({
       visibility: hidden;
     }
   `)
-  api.wait.waitForElementLoaded({
-    selector: '#myprompt_menu',
-    interval: 5,
-  }).then(menu => {
+  api.wait.waitQuerySelector('#myprompt_menu').then(menu => {
     // 有系统提醒时，每次打开页面时都会弹出一个通知菜单
     // 点击网页提供的关闭按键后，此菜单在有新提醒前不会再次弹出
-    const p1 = api.wait.waitForElementLoaded({
-      selector: '.ignore_notice',
-      interval: 5,
-      timeout: 1000,
-    }).then(ignore_notice => {
+    const p1 = api.wait.waitQuerySelector('.ignore_notice').then(ignore_notice => {
       api.wait.waitForConditionPassed({
         condition: () => menu.getAttribute('initialized') === 'true',
         interval: 5,
@@ -85,10 +78,7 @@ var api = new API({
 
     // 有系统提醒处于未读状态时，相关位置会有高亮显示，网页标题也会有所不同
     // 将这些差异化显示，在用户没有反应出来之前去除
-    const p2 = api.wait.waitForElementLoaded({
-      selector: '#myprompt',
-      interval: 5,
-    }).then(menu_button => {
+    const p2 = api.wait.waitQuerySelector('#myprompt').then(menu_button => {
       var menu_mypost = menu.querySelector('.notice_mypost') // 右上角菜单「我的帖子」
       var menu_system = menu.querySelector('.notice_system') // 右上角菜单「系统提醒」
       if (menu_mypost || menu_system) {
@@ -118,7 +108,7 @@ var api = new API({
       padding-right: 1em;
     }
   `)
-  api.wait.waitForElementLoaded('#extcreditmenu').then(extcreditmenu => {
+  api.wait.waitQuerySelector('#extcreditmenu').then(extcreditmenu => {
     extcreditmenu.className = ''
     extcreditmenu.onmouseover = null
   }).catch(errorHandler)
