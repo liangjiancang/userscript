@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站防剧透进度条
-// @version         1.6.1.20210629
+// @version         1.6.2.20210629
 // @namespace       laster2800
 // @author          Laster2800
 // @description     看比赛、看番总是被进度条剧透？装上这个脚本再也不用担心这些问题了
@@ -13,7 +13,7 @@
 // @include         *://www.bilibili.com/medialist/play/watchlater/*
 // @include         *://www.bilibili.com/bangumi/play/*
 // @exclude         /.*:\/\/.*:\/\/.*/
-// @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=945119
+// @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=945235
 // @grant           GM_addStyle
 // @grant           GM_registerMenuCommand
 // @grant           GM_xmlhttpRequest
@@ -22,14 +22,14 @@
 // @grant           GM_deleteValue
 // @grant           GM_listValues
 // @grant           unsafeWindow
+// @grant           window.onurlchange
 // @connect         api.bilibili.com
-// @incompatible    firefox 不支持 Greasemonkey！Tampermonkey、Violentmonkey 可用
+// @incompatible    firefox 完全不兼容 Greasemonkey，不完全兼容 Violentmonkey
 // ==/UserScript==
 
 (function() {
   'use strict'
 
-  // 脚本兼容
   if (GM_info.scriptHandler != 'Tampermonkey') {
     const script = GM_info.script
     if (!script.author) {
@@ -228,6 +228,9 @@
     label: GM_info.script.name,
     fadeTime: gm.const.fadeTime,
   })
+  if (GM_info.scriptHandler != 'Tampermonkey') {
+    api.dom.initUrlchangeEvent()
+  }
 
   /**
    * 脚本运行的抽象，脚本独立于网站、为脚本本身服务的部分
@@ -1755,34 +1758,38 @@
      */
     async initLocationChangeProcess() {
       const _self = this
-      let currentPathname = location.pathname
-      let currentCid = await _self.method.getCid()
-      api.dom.createLocationchangeEvent()
-      window.addEventListener('locationchange', function() {
-        api.wait.waitForConditionPassed({
-          condition: async () => {
-            if (location.pathname == currentPathname) {
-              // 并非切换视频（如切分 P）
-              return currentCid
-            } else {
-              const cid = await _self.method.getCid()
-              if (cid != currentCid) { // cid 改变才能说明页面真正切换过去
-                currentPathname = location.pathname
-                return cid
+      try {
+        let currentPathname = location.pathname
+        let currentCid = await _self.method.getCid()
+        window.addEventListener('urlchange', function() {
+          api.wait.waitForConditionPassed({
+            condition: async () => {
+              if (location.pathname == currentPathname) {
+                // 并非切换视频（如切分 P）
+                return currentCid
+              } else {
+                const cid = await _self.method.getCid()
+                if (cid != currentCid) { // cid 改变才能说明页面真正切换过去
+                  currentPathname = location.pathname
+                  return cid
+                }
               }
+            },
+          }).then(cid => {
+            currentCid = cid
+            _self.initNoSpoil()
+            if (api.web.urlMatch(gm.regex.page_videoWatchlaterMode)) {
+              _self.initSwitchingPartProcess()
             }
-          },
-        }).then(cid => {
-          currentCid = cid
-          _self.initNoSpoil()
-          if (api.web.urlMatch(gm.regex.page_videoWatchlaterMode)) {
-            _self.initSwitchingPartProcess()
-          }
-        }).catch(e => {
-          api.logger.error(gm.error.DOM_PARSE)
-          api.logger.error(e)
+          }).catch(e => {
+            api.logger.error(gm.error.DOM_PARSE)
+            api.logger.error(e)
+          })
         })
-      })
+      } catch (e) {
+        api.logger.error(gm.error.DOM_PARSE)
+        api.logger.error(e)
+      }
     }
 
     /**

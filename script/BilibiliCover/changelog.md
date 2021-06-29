@@ -5,10 +5,11 @@
 ## V4.9
 
 1. 脚本：大幅优化用户配置方式。
-2. 脚本：不再检查脚本兼容。
+2. 脚本：改用 Tampermonkey 引入的 urlchange 事件对 URL 变化进行跟踪（采用旧版逻辑对 Violentmonkey 作兼容）。
 3. 脚本：添加版本更新处理机制。
-4. 代码：不算是重构的重构。
-5. API：升级至 V1.0，大幅优化元素等待逻辑。详见 [UserscriptAPI 更新日志](https://gitee.com/liangjiancang/userscript/blob/master/lib/UserscriptAPI/changelog.md)。
+4. 脚本：不再检查脚本兼容。
+5. 代码：不算是重构的重构。
+6. API：升级至 V1.0，大幅优化元素等待逻辑。详见 [UserscriptAPI 更新日志](https://gitee.com/liangjiancang/userscript/blob/master/lib/UserscriptAPI/changelog.md)。
 
 ## V0.1 - V4.8
 

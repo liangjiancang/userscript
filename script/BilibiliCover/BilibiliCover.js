@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站封面获取
-// @version         4.9.8.20210629
+// @version         4.9.9.20210629
 // @namespace       laster2800
 // @author          Laster2800
 // @description     B站视频播放页（普通模式、稍后再看模式）、番剧播放页、直播间添加获取封面的按钮
@@ -16,7 +16,7 @@
 // @exclude         *://live.bilibili.com/
 // @exclude         *://live.bilibili.com/*/*
 // @exclude         /.*:\/\/.*:\/\/.*/
-// @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=945119
+// @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=945235
 // @grant           GM_addStyle
 // @grant           GM_download
 // @grant           GM_notification
@@ -28,8 +28,9 @@
 // @grant           GM_registerMenuCommand
 // @grant           GM_unregisterMenuCommand
 // @grant           unsafeWindow
+// @grant           window.onurlchange
 // @connect         api.bilibili.com
-// @incompatible    firefox 不支持 Greasemonkey！Tampermonkey、Violentmonkey 可用
+// @incompatible    firefox 完全不兼容 Greasemonkey，不完全兼容 Violentmonkey
 // ==/UserScript==
 
 (function() {
@@ -64,6 +65,9 @@
     id: gm.id,
     label: GM_info.script.name,
   })
+  if (GM_info.scriptHandler != 'Tampermonkey') {
+    api.dom.initUrlchangeEvent()
+  }
 
   class Script {
     /**
@@ -361,9 +365,7 @@
           bus.aid = await _self.method.getAid()
           bus.pathname = location.pathname
           setCover(cover)
-
-          api.dom.createLocationchangeEvent()
-          window.addEventListener('locationchange', async function() {
+          window.addEventListener('urlchange', async function() {
             if (location.pathname == bus.pathname) { // 并非切换视频（如切分 P）
               return
             }
@@ -465,9 +467,7 @@
           bus.cover = cover
           bus.aid = await _self.method.getAid()
           setCover(cover)
-
-          api.dom.createLocationchangeEvent()
-          window.addEventListener('locationchange', async function() {
+          window.addEventListener('urlchange', async function() {
             try {
               bus.aid = await api.wait.waitForConditionPassed({
                 condition: async () => {

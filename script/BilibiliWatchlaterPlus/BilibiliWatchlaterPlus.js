@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.11.2.20210629
+// @version         4.11.3.20210629
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -18,7 +18,7 @@
 // @exclude         *://t.bilibili.com/h5/dynamic/specification
 // @exclude         *://www.bilibili.com/page-proxy/game-nav.html
 // @exclude         /.*:\/\/.*:\/\/.*/
-// @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=945119
+// @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=945235
 // @grant           GM_addStyle
 // @grant           GM_registerMenuCommand
 // @grant           GM_xmlhttpRequest
@@ -27,15 +27,15 @@
 // @grant           GM_deleteValue
 // @grant           GM_listValues
 // @grant           unsafeWindow
+// @grant           window.onurlchange
 // @connect         api.bilibili.com
 // @run-at          document-start
-// @incompatible    firefox 不支持 Greasemonkey！Tampermonkey、Violentmonkey 可用
+// @incompatible    firefox 完全不兼容 Greasemonkey，不完全兼容 Violentmonkey
 // ==/UserScript==
 
 (function() {
   'use strict'
 
-  // 脚本兼容
   if (GM_info.scriptHandler != 'Tampermonkey') {
     const script = GM_info.script
     if (!script.author) {
@@ -381,6 +381,9 @@
     label: GM_info.script.name,
     fadeTime: gm.const.fadeTime,
   })
+  if (GM_info.scriptHandler != 'Tampermonkey') {
+    api.dom.initUrlchangeEvent()
+  }
 
   /**
    * 脚本运行的抽象，脚本独立于网站、为脚本本身服务的部分
@@ -2840,8 +2843,7 @@
         original.parentNode.style.display = 'none'
 
         bus.pathname = location.pathname
-        api.dom.createLocationchangeEvent()
-        window.addEventListener('locationchange', async function() {
+        window.addEventListener('urlchange', async function() {
           if (location.pathname == bus.pathname) { // 并非切换视频（如切分 P）
             return
           }
