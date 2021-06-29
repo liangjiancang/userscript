@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站共同关注快速查看
-// @version         1.2.3.20210627
+// @version         1.3.0.20210629
 // @namespace       laster2800
 // @author          Laster2800
 // @description     快速查看与特定用户的共同关注（视频播放页、动态页、用户空间）
@@ -14,16 +14,16 @@
 // @exclude         *://t.bilibili.com/h5/dynamic/specification
 // @exclude         *://www.bilibili.com/page-proxy/game-nav.html
 // @exclude         /.*:\/\/.*:\/\/.*/
-// @require         https://greasyfork.org/scripts/409641-api/code/API.js?version=944165
-// @grant           GM_xmlhttpRequest
-// @grant           GM_registerMenuCommand
-// @grant           GM_unregisterMenuCommand
+// @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=945083
+// @grant           GM_addStyle
 // @grant           GM_notification
+// @grant           GM_xmlhttpRequest
 // @grant           GM_setValue
 // @grant           GM_getValue
 // @grant           GM_deleteValue
 // @grant           GM_listValues
-// @grant           GM_addStyle
+// @grant           GM_registerMenuCommand
+// @grant           GM_unregisterMenuCommand
 // @connect         api.bilibili.com
 // @incompatible    firefox 不支持 Greasemonkey！Tampermonkey、Violentmonkey 可用
 // ==/UserScript==
@@ -64,8 +64,8 @@
     },
   }
 
-  /* global API */
-  const api = new API({
+  /* global UserscriptAPI */
+  const api = new UserscriptAPI({
     id: gm.id,
     label: GM_info.script.name,
   })
@@ -200,9 +200,8 @@
      * `cardId` 与 `cardClz` 中至少要传入一个，两者采取 `OR` 规则查找元素。
      * @async
      * @param {Object} config 配置
-     * @param {string} [config.cardId] 卡片 ID
-     * @param {string} [config.cardClz] 卡片元素类名
      * @param {string} [config.container=body] 卡片父元素选择器
+     * @param {string} config.card 卡片元素选择器
      * @param {string} config.user 用户元素选择器
      * @param {string} config.info 信息元素选择器
      * @param {boolean} [config.lazy=true] 卡片内容是否为懒加载
@@ -214,45 +213,37 @@
       try {
         let container = document.body
         if (config.container) {
-          container = await api.wait.waitForElementLoaded(config.container)
+          container = await api.wait.waitQuerySelector(config.container)
         }
-        new MutationObserver(async records => {
-          for (const record of records) {
-            for (const addedNode of record.addedNodes) {
-              let isCard = false
-              if (config.cardClz && api.dom.containsClass(addedNode, config.cardClz)) {
-                isCard = true
+        api.wait.executeAfterElementLoaded({
+          selector: config.card,
+          base: container,
+          subtree: config.ancestor,
+          repeat: true,
+          timeout: 0,
+          callback: async card => {
+            try {
+              let userLink = null
+              if (config.lazy) {
+                userLink = await api.wait.waitQuerySelector(config.user, card)
+              } else {
+                // 此时并不是在「正在加载」状态的 user-card 中添加新节点以转向「已完成」状态
+                // 而是将「正在加载」的 user-card 彻底移除，然后直接将「已完成」的 user-card 添加到 DOM 中
+                userLink = card.querySelector(config.user)
               }
-              if (!isCard && config.cardId && addedNode.id == config.cardId) {
-                isCard = true
+              if (userLink) {
+                const info = await api.wait.waitQuerySelector(config.info, card)
+                await _self.generalLogic({
+                  uid: _self.method.getUidFromUrl(userLink.href),
+                  target: info,
+                  className: `${gm.id} card-same-followings`,
+                })
               }
-              if (isCard) {
-                const card = addedNode
-                try {
-                  let userLink = null
-                  if (config.lazy) {
-                    userLink = await api.wait.waitForElementLoaded(config.user, card)
-                  } else {
-                    // 此时并不是在「正在加载」状态的 user-card 中添加新节点以转向「已完成」状态
-                    // 而是将「正在加载」的 user-card 彻底移除，然后直接将「已完成」的 user-card 添加到 DOM 中
-                    userLink = card.querySelector(config.user)
-                  }
-                  if (userLink) {
-                    const info = await api.wait.waitForElementLoaded(config.info, card)
-                    await _self.generalLogic({
-                      uid: _self.method.getUidFromUrl(userLink.href),
-                      target: info,
-                      className: `${gm.id} card-same-followings`,
-                    })
-                  }
-                } catch (e) {
-                  api.logger.error(e)
-                }
-                break
-              }
+            } catch (e) {
+              api.logger.error(e)
             }
-          }
-        }).observe(container, { childList: true, subtree: config.ancestor })
+          },
+        })
       } catch (e) {
         api.logger.error(e)
       }
@@ -377,7 +368,7 @@
     if (gm.config.lv1Card) {
       // 遍布全站的常规用户卡片，如视频评论区、动态评论区、用户空间评论区……
       webpage.cardLogic({
-        cardClz: 'user-card',
+        card: '.user-card',
         user: '.face',
         info: '.info',
         lazy: false,
@@ -387,8 +378,8 @@
       if (gm.config.lv2Card) {
         // 普通模式播放页中的 UP 主头像
         webpage.cardLogic({
-          cardClz: 'user-card-m',
           container: '#app .v-wrap',
+          card: '.user-card-m',
           user: '.face',
           info: '.info',
         })
@@ -397,8 +388,8 @@
       if (gm.config.lv2Card) {
         // 稍后再看模式播放页中的 UP 主头像
         webpage.cardLogic({
-          cardClz: 'user-card-m',
           container: '#app #app', // 这是什么阴间玩意？
+          card: '.user-card-m',
           user: '.face',
           info: '.info',
         })
@@ -408,7 +399,7 @@
         // 1. 动态页左边「正在直播」主播的用户卡片
         // 2. 动态页中，被转发动态的所有者的用户卡片
         webpage.cardLogic({
-          cardClz: 'userinfo-wrapper',
+          card: '.userinfo-wrapper',
           user: '.face',
           info: '.info',
           ancestor: true,
@@ -419,21 +410,21 @@
         // 用户空间顶部显示
         webpage.generalLogic({
           uid: webpage.method.getUidFromUrl(location.pathname),
-          target: await api.wait.waitForElementLoaded('.h .wrapper'),
+          target: await api.wait.waitQuerySelector('.h .wrapper'),
           className: `${gm.id} space-same-followings`,
         })
       }
       if (gm.config.lv3Card) {
         // 用户空间的动态中，被转发动态的所有者的用户卡片
         webpage.cardLogic({
-          cardClz: 'userinfo-wrapper',
+          card: '.userinfo-wrapper',
           user: '.face',
           info: '.info',
           ancestor: true,
         })
         // 用户空间右侧充电中的用户卡片
         webpage.cardLogic({
-          cardId: 'id-card',
+          card: '#id-card',
           user: '.idc-avatar-container',
           info: '.idc-info',
         })

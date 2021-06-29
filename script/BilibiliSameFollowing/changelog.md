@@ -2,6 +2,11 @@
 
 本日志只记录用户友好的更新说明，影响不大的问题修复与修改不作记录，具体修改见 [提交记录](https://gitee.com/liangjiancang/userscript/commits/master/script/BilibiliSameFollowing/BilibiliSameFollowing.js)。
 
+## V1.3
+
+1. API：升级至 V1.0，大幅优化元素等待逻辑。详见 [UserscriptAPI 更新日志](https://gitee.com/liangjiancang/userscript/blob/master/lib/UserscriptAPI/changelog.md)。
+2. 代码：借助新版元素等待 API 进行大幅简化。
+
 ## V1.2
 
 1. 脚本：大幅优化用户配置方式，优化配置项分类及功能，并添加配置说明。
