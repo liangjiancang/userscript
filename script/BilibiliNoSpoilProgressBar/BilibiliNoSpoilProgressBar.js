@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站防剧透进度条
-// @version         1.6.0d.20210628
+// @version         1.6.0.20210629
 // @namespace       laster2800
 // @author          Laster2800
 // @description     看比赛、看番总是被进度条剧透？装上这个脚本再也不用担心这些问题了
@@ -13,10 +13,10 @@
 // @include         *://www.bilibili.com/medialist/play/watchlater/*
 // @include         *://www.bilibili.com/bangumi/play/*
 // @exclude         /.*:\/\/.*:\/\/.*/
-// @require         https://greasyfork.org/scripts/409641-api/code/API.js?version=944165
+// @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=945083
 // @grant           GM_addStyle
-// @grant           GM_xmlhttpRequest
 // @grant           GM_registerMenuCommand
+// @grant           GM_xmlhttpRequest
 // @grant           GM_setValue
 // @grant           GM_getValue
 // @grant           GM_deleteValue
@@ -86,7 +86,7 @@
   /**
    * @typedef GMObject_configMap_item
    * @property {*} default 默认值
-   * @property {'checked'|'value'} attr 对应 `DOM` 节点上的属性
+   * @property {'checked' | 'value'} attr 对应 `DOM` 节点上的属性
    * @property {boolean} [manual] 配置保存时是否需要手动处理
    * @property {boolean} [needNotReload] 配置改变后是否不需要重新加载就能生效
    * @property {number} [min] 最小值
@@ -111,7 +111,7 @@
   /**
    * @callback api_videoInfo
    * @param {string} id `aid` 或 `bvid`
-   * @param {'aid'|'bvid'} type `id` 类型
+   * @param {'aid' | 'bvid'} type `id` 类型
    * @returns {string} 查询视频信息的 URL
    */
   /**
@@ -221,11 +221,10 @@
     }
   }
 
-  /* global API */
-  const api = new API({
+  /* global UserscriptAPI */
+  const api = new UserscriptAPI({
     id: gm.id,
     label: GM_info.script.name,
-    waitTimeout: 8000, // 相关元素加载较慢，等待时间可以稍长
     fadeTime: gm.const.fadeTime,
   })
 
@@ -1249,7 +1248,7 @@
          * 获取视频信息
          * @async
          * @param {string} id `aid` 或 `bvid`
-         * @param {'aid'|'bvid'} [type='bvid'] `id` 类型
+         * @param {'aid' | 'bvid'} [type='bvid'] `id` 类型
          * @returns {Promise<JSON>} 视频信息
          */
         async getVideoInfo(id, type = 'bvid') {
@@ -1293,44 +1292,44 @@
       }
 
       const initCore = async () => {
-        _self.control = await api.wait.waitForElementLoaded(selector.control)
-        _self.progress.root = await api.wait.waitForElementLoaded(selector.progress.root, _self.control)
-        _self.progress.bar = await api.wait.waitForElementLoaded(selector.progress.bar, _self.progress.root)
-        _self.progress.slider = await api.wait.waitForElementLoaded(selector.progress.slider, _self.progress.bar)
+        _self.control = await api.wait.waitQuerySelector(selector.control)
+        _self.progress.root = await api.wait.waitQuerySelector(selector.progress.root, _self.control)
+        _self.progress.bar = await api.wait.waitQuerySelector(selector.progress.bar, _self.progress.root)
+        _self.progress.slider = await api.wait.waitQuerySelector(selector.progress.slider, _self.progress.bar)
         // slider 在某些情况下被重新生成，监听到就重新处理
-        // ob 一定要加在这个地方，放其他地方可能会错过时机！
-        new MutationObserver((records, ob) => {
-          for (const record of records) {
-            for (const addedNode of record.addedNodes) {
-              if (api.dom.containsClass(addedNode, selector.progress.slider)) {
-                initCore()
-                ob.disconnect()
-                break
-              }
-            }
-          }
-        }).observe(_self.progress.bar, { childList: true })
-        _self.progress.thumb = await api.wait.waitForElementLoaded(selector.progress.thumb, _self.progress.slider)
-        _self.progress.track = await api.wait.waitForElementLoaded(selector.progress.track, _self.progress.slider)
-        _self.progress.buffer = await api.wait.waitForElementLoaded(selector.progress.buffer, _self.progress.track)
-        _self.progress.played = await api.wait.waitForElementLoaded(selector.progress.played, _self.progress.track)
-        _self.progress.preview = await api.wait.waitForElementLoaded(selector.progress.preview, _self.progress.root)
-        _self.shadowProgress = await api.wait.waitForElementLoaded(selector.shadowProgress, this.control)
+        // 一定要在这个地方检测，放其他地方可能会错过时机！
+        api.wait.waitForElementLoaded({
+          selector: selector.progress.slider,
+          base: _self.progress.bar,
+          exclude: [_self.progress.slider],
+          subtree: false,
+          timeout: 0,
+        }).then(() => {
+          initCore()
+        })
+        _self.progress.thumb = await api.wait.waitQuerySelector(selector.progress.thumb, _self.progress.slider)
+        _self.progress.track = await api.wait.waitQuerySelector(selector.progress.track, _self.progress.slider)
+        _self.progress.buffer = await api.wait.waitQuerySelector(selector.progress.buffer, _self.progress.track)
+        _self.progress.played = await api.wait.waitQuerySelector(selector.progress.played, _self.progress.track)
+        _self.progress.preview = await api.wait.waitQuerySelector(selector.progress.preview, _self.progress.root)
+        _self.shadowProgress = await api.wait.waitQuerySelector(selector.shadowProgress, this.control)
 
         _self.fakeTrack = _self.progress.track.insertAdjacentElement('afterend', _self.progress.track.cloneNode(true)) // 必须在 thumb 前，否则 z 轴层次错误
         _self.fakeTrack.style.visibility = 'hidden'
         _self.fakeTrack.querySelector(selector.progress.buffer).style.visibility = 'hidden'
         _self.fakePlayed = _self.fakeTrack.querySelector(selector.progress.played)
 
-        api.wait.waitForConditionPassed({
-          condition: () => {
-            // 不知道为什么，反正有时候原来的 thumb 被会替换成新的，而且用 MutationObserver 监听不到？！
-            // 似乎最多只会变一次，暂时就只处理一次；如果后续发现会变多次，就在每次处理伪进度条时实时更新一次 thumb
-            return _self.progress.thumb != _self.progress.bar.querySelector(selector.progress.thumb)
+        // 有些播放页面，自动跳转到上次播放进度时，thumb 被会被替换成新的
+        // 似乎最多只会变一次，暂时就只处理一次
+        api.wait.executeAfterElementLoaded({
+          selector: selector.progress.thumb,
+          base: _self.progress.bar,
+          exclude: [_self.progress.thumb],
+          onTimeout: null,
+          callback: thumb => {
+            _self.progress.thumb = thumb
           },
-        }).then(() => {
-          _self.progress.thumb = _self.progress.bar.querySelector(selector.progress.thumb)
-        }).catch(() => {})
+        })
       }
 
       await initCore()
@@ -1384,7 +1383,7 @@
       const _self = this
       setTimeout(() => {
         hideElementStatic()
-        processContrlShow()
+        processControlShow()
         core()
       })
 
@@ -1400,7 +1399,7 @@
         }
 
         // 隐藏当前播放时间
-        api.wait.waitForElementLoaded('.bilibili-player-video-time-now:not(.fake)').then(currentPoint => {
+        api.wait.waitQuerySelector('.bilibili-player-video-time-now:not(.fake)').then(currentPoint => {
           if (_self.enabled && gm.config.disableCurrentPoint) {
             if (!currentPoint._fake) {
               currentPoint._fake = currentPoint.insertAdjacentElement('afterend', currentPoint.cloneNode(true))
@@ -1420,7 +1419,7 @@
           api.logger.error(e)
         })
         // 隐藏视频预览上的当前播放时间（鼠标移至进度条上显示）
-        api.wait.waitForElementLoaded('.bilibili-player-video-progress-detail-time').then(currentPoint => {
+        api.wait.waitQuerySelector('.bilibili-player-video-progress-detail-time').then(currentPoint => {
           if (_self.enabled && gm.config.disableCurrentPoint) {
             currentPoint.style.visibility = 'hidden'
           } else {
@@ -1432,7 +1431,7 @@
         })
 
         // 隐藏视频时长
-        api.wait.waitForElementLoaded('.bilibili-player-video-time-total:not(.fake)').then(duration => {
+        api.wait.waitQuerySelector('.bilibili-player-video-time-total:not(.fake)').then(duration => {
           if (_self.enabled && gm.config.disableDuration) {
             if (!duration._fake) {
               duration._fake = duration.insertAdjacentElement('afterend', duration.cloneNode(true))
@@ -1453,7 +1452,7 @@
         })
         // 隐藏「上次看到 XX:XX 跳转播放」中的时间（可能存在）
         if (_self.enabled) {
-          api.wait.waitForElementLoaded('.bilibili-player-video-toast-item-text').then(toast => {
+          api.wait.waitQuerySelector('.bilibili-player-video-toast-item-text').then(toast => {
             if (toast.innerText.indexOf('上次看到') >= 0 && toast.innerText.indexOf('???') < 0) {
               toast.innerHTML = toast.innerHTML.replace(/(?<=<span>)\d+:\d+(?=<\/span>)/, '???')
             }
@@ -1461,13 +1460,13 @@
         }
 
         // 隐藏高能进度条的「热度」曲线（可能存在）
-        api.wait.waitForElementLoaded('#bilibili_pbp', _self.control).then(pbp => {
+        api.wait.waitQuerySelector('#bilibili_pbp', _self.control).then(pbp => {
           const hide = _self.enabled && gm.config.disablePbp
           pbp.style.visibility = hide ? 'hidden' : ''
         }).catch(() => {})
 
         // 隐藏 pakku 扩展引入的弹幕密度显示（可能存在）
-        api.wait.waitForElementLoaded('canvas.pakku-fluctlight', _self.control).then(pakku => {
+        api.wait.waitQuerySelector('canvas.pakku-fluctlight', _self.control).then(pakku => {
           const hide = _self.enabled && gm.config.disablePbp
           pakku.style.visibility = hide ? 'hidden' : ''
         }).catch(() => {})
@@ -1476,7 +1475,7 @@
         if (gm.config.disablePartInformation && !api.web.urlMatch(gm.regex.page_bangumi)) {
           // 全屏播放时的分 P 选择
           if (_self.enabled) {
-            api.wait.waitForElementLoaded('.bilibili-player-video-btn-menu').then(menu => {
+            api.wait.waitQuerySelector('.bilibili-player-video-btn-menu').then(menu => {
               /** @type HTMLElement[] */
               const items = menu.querySelectorAll('.bilibili-player-video-btn-menu-list')
               for (let i = 0; i < items.length; i++) {
@@ -1488,7 +1487,7 @@
             })
           }
           // 全屏播放时显示的分 P 标题
-          api.wait.waitForElementLoaded('.bilibili-player-video-top-title').then(el => {
+          api.wait.waitQuerySelector('.bilibili-player-video-top-title').then(el => {
             el.style.visibility = _self.enabled ? 'hidden' : 'visible'
           }).catch(e => {
             api.logger.error(gm.error.DOM_PARSE)
@@ -1496,7 +1495,7 @@
           })
           // 播放页右侧分 P 选择
           if (api.web.urlMatch(gm.regex.page_videoNormalMode)) {
-            api.wait.waitForElementLoaded('#multi_page').then(multiPage => {
+            api.wait.waitQuerySelector('#multi_page').then(multiPage => {
               const hideTypes = [multiPage.querySelectorAll('.clickitem .part'), multiPage.querySelectorAll('.clickitem .duration')]
               for (const hideType of hideTypes) {
                 for (const hideElement of hideType) {
@@ -1512,7 +1511,7 @@
             }).catch(() => {})
           } else if (api.web.urlMatch(gm.regex.page_videoWatchlaterMode)) {
             if (_self.enabled) {
-              api.wait.waitForElementLoaded('.player-auxiliary-playlist-list').then(list => {
+              api.wait.waitQuerySelector('.player-auxiliary-playlist-list').then(list => {
                 const exec = () => {
                   /** @type HTMLElement[] */
                   const items = list.querySelectorAll('.player-auxiliary-playlist-item-p-item')
@@ -1541,18 +1540,17 @@
       /**
        * 处理视频控制的显隐
        */
-      const processContrlShow = () => {
+      const processControlShow = () => {
+        if (!_self.enabled) {
+          return
+        }
+
         const addObserver = target => {
           if (!target._obPlayRate) {
-            target._obPlayRate = new MutationObserver(records => {
-              for (const record of records) {
-                if (record.attributeName == 'style') {
-                  _self.processFakePlayed()
-                  break
-                }
-              }
+            target._obPlayRate = new MutationObserver(() => {
+              _self.processFakePlayed()
             })
-            target._obPlayRate.observe(_self.progress.thumb, { attributes: true })
+            target._obPlayRate.observe(_self.progress.thumb, { attributeFilter: ['style'] })
           }
         }
 
@@ -1561,33 +1559,31 @@
         if (!playerArea._obControlShow) {
           // 切换视频控制显隐时，添加或删除 ob 以控制伪进度条
           playerArea._obControlShow = new MutationObserver(records => {
-            for (const record of records) {
-              if (record.attributeName == 'class') {
-                const before = api.dom.containsClass({ className: record.oldValue }, clzControlShow)
-                const current = api.dom.containsClass(playerArea, clzControlShow)
-                if (before != current) {
-                  if (current) {
-                    if (_self.enabled) {
-                      core(true)
-                      addObserver(playerArea)
-                    }
-                  } else if (playerArea._obPlayRate) {
-                    playerArea._obPlayRate.disconnect()
-                    playerArea._obPlayRate = null
-                  }
-                  break
+            if (records[0].oldValue == playerArea.className) {
+              return
+            }
+            const before = api.dom.containsClass({ className: records[0].oldValue }, clzControlShow)
+            const current = api.dom.containsClass(playerArea, clzControlShow)
+            if (before != current) {
+              if (current) {
+                if (_self.enabled) {
+                  core(true)
+                  addObserver(playerArea)
                 }
+              } else if (playerArea._obPlayRate) {
+                playerArea._obPlayRate.disconnect()
+                playerArea._obPlayRate = null
               }
             }
           })
           playerArea._obControlShow.observe(playerArea, {
-            attributes: true,
+            attributeFilter: ['class'],
             attributeOldValue: true,
           })
         }
 
         // 执行到此处时，若视频控制已处于显示状态，则直接添加 ob
-        if (_self.enabled && api.dom.containsClass(playerArea, clzControlShow)) {
+        if (api.dom.containsClass(playerArea, clzControlShow)) {
           addObserver(playerArea)
         }
       }
@@ -1726,6 +1722,7 @@
           },
           interval: 250,
           timePadding: 1000,
+          onTimeout: null,
         })
       } catch (e) {
         // 抛出异常，有可能确实是 B 站改版导致，但更多情况下，是因为网页还未加载完成导致的
@@ -1734,7 +1731,7 @@
           if (selfCall) {
             throw e
           } else {
-            const control = await api.wait.waitForElementLoaded('.bilibili-player-video-control')
+            const control = await api.wait.waitQuerySelector('.bilibili-player-video-control')
             const ob = new MutationObserver((records, observer) => {
               observer.disconnect()
               _self.initNoSpoil(true)
@@ -1796,27 +1793,22 @@
       const _self = this
       try {
         let obActiveP, obList
-        const list = await api.wait.waitForElementLoaded('.player-auxiliary-playlist-list')
+        const list = await api.wait.waitQuerySelector('.player-auxiliary-playlist-list')
         try {
-          const activeVideo = await api.wait.waitForElementLoaded('.player-auxiliary-playlist-item-active', list)
-          const pList = await api.wait.waitForElementLoaded('.player-auxiliary-playlist-item-p-list', activeVideo)
+          const activeVideo = await api.wait.waitQuerySelector('.player-auxiliary-playlist-item-active', list)
+          const pList = await api.wait.waitQuerySelector('.player-auxiliary-playlist-item-p-list', activeVideo)
           if (pList) {
-            const activeP = await api.wait.waitForElementLoaded('.player-auxiliary-playlist-item-p-item-active', pList)
+            const activeP = await api.wait.waitQuerySelector('.player-auxiliary-playlist-item-p-item-active', pList)
             obActiveP = new MutationObserver(async (records, observer) => {
-              for (const record of records) {
-                if (record.attributeName == 'class') {
-                  observer.disconnect()
-                  obList && obList.disconnect()
-                  const currentActive = await api.wait.waitForElementLoaded('.player-auxiliary-playlist-item-active')
-                  if (currentActive === activeVideo) {
-                    _self.initNoSpoil()
-                    _self.initSwitchingPartProcess()
-                  }
-                  break
-                }
+              observer.disconnect()
+              obList && obList.disconnect()
+              const currentActive = await api.wait.waitQuerySelector('.player-auxiliary-playlist-item-active')
+              if (currentActive === activeVideo) {
+                _self.initNoSpoil()
+                _self.initSwitchingPartProcess()
               }
             })
-            obActiveP.observe(activeP, { attributes: true })
+            obActiveP.observe(activeP, { attributeFilter: ['class'] })
           }
         } catch (e) {
           // 只是因为 list 已经变化，导致在原 list 下找不到对应的元素而已，实际并无错误
@@ -1834,7 +1826,7 @@
           if (selfCall) {
             throw e
           } else {
-            const rightContainer = await api.wait.waitForElementLoaded('.right-container')
+            const rightContainer = await api.wait.waitQuerySelector('.right-container')
             const ob = new MutationObserver((records, observer) => {
               observer.disconnect()
               _self.initSwitchingPartProcess(true)
