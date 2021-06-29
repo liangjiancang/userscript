@@ -7,6 +7,7 @@
 1. `wait`：重做元素等待 API，检测方式从轮询改为 `MutationObserver`。
 2. `wait`：整体处理流程优化。
 3. 库：移除对 `GM_addStyle()` 的依赖。
+4. 库：移除对 `unsafeWindow` 的依赖。
 
 ## V0
 
