@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.11.5.20210630
+// @version         4.11.6.20210630
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -18,7 +18,7 @@
 // @exclude         *://t.bilibili.com/h5/dynamic/specification
 // @exclude         *://www.bilibili.com/page-proxy/game-nav.html
 // @exclude         /.*:\/\/.*:\/\/.*/
-// @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=945235
+// @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=945829
 // @grant           GM_addStyle
 // @grant           GM_registerMenuCommand
 // @grant           GM_xmlhttpRequest
@@ -215,11 +215,11 @@
    */
   /**
    * `api_queryWatchlaterList` 返回数据中的视频单元
-   * @see {@link https://github.com/SocialSisterYi/bilibili-API-collect/blob/master/history%26toview/toview.md#获取稍后再看视频列表 获取稍后再看视频列表}
    * @typedef GMObject_data_item0
    * @property {number} aid 视频 AV 号，务必统一为字符串格式再使用
    * @property {string} bvid 视频 BV 号
    * @property {string} title 视频标题
+   * @see {@link https://github.com/SocialSisterYi/bilibili-API-collect/blob/master/history%26toview/toview.md#获取稍后再看视频列表 获取稍后再看视频列表}
    */
   /**
    * @typedef GMObject_data_item
@@ -1855,24 +1855,29 @@
         _: {},
 
         /**
+         * 获取指定 Cookie
+         * @param {string} key 键
+         * @returns {string} 值
+         * @see {@link https://developer.mozilla.org/zh-CN/docs/Web/API/Document/cookie#示例2_得到名为test2的cookie Document.cookie - Web API 接口参考 | MDN}
+         */
+        cookie(key) {
+          return document.cookie.replace(RegExp(String.raw`(?:(?:^|.*;\s*)${key}\s*=\s*([^;]*).*$)|^.*$`), '$1')
+        },
+
+        /**
+         * 判断用户是否已登录
+         * @returns {boolean} 用户是否已登录
+         */
+        isLogin() {
+          return Boolean(this.getCSRF())
+        },
+
+        /**
          * 获取 CSRF
-         * @param {boolean} [reload] 是否重新从 Cookie 中获取
          * @returns {string} `csrf`
          */
-        getCSRF(reload) {
-          const _ = this._
-          if (!_.csrf || reload) {
-            let cookies = document.cookie.split('; ')
-            cookies = cookies.reduce((prev, val) => {
-              const parts = val.split('=')
-              const key = parts[0]
-              const value = parts[1]
-              prev[key] = value
-              return prev
-            }, {})
-            _.csrf = cookies.bili_jct
-          }
-          return _.csrf
+        getCSRF() {
+          return this.cookie('bili_jct')
         },
 
         /**
@@ -4113,6 +4118,10 @@
   (function() {
     const script = new Script()
     const webpage = new Webpage()
+    if (!webpage.method.isLogin()) {
+      api.logger.info('终止执行：脚本只能工作在B站登录状态下。')
+      return
+    }
 
     script.initAtDocumentStart()
     if (api.web.urlMatch(gm.regex.page_videoWatchlaterMode)) {
