@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.11.4.20210629
+// @version         4.11.5.20210630
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -486,19 +486,21 @@
           const _ = gm.data._
           if (_.watchlaterListData === undefined || reload || disablePageCache || gm.config.disablePageCache) {
             if (_.watchlaterListData_loading) {
+              // 一旦数据已在加载中，那么直接等待该次加载完成
+              // 无论加载成功与否，所有被阻塞的数据请求均都使用该次加载的结果，完全保持一致
+              // 注意：加载失败时，返回的空数组并非同一对象
               try {
                 return await api.wait.waitForConditionPassed({
                   condition: () => {
                     if (!_.watchlaterListData_loading) {
-                      return _.watchlaterListData
+                      return _.watchlaterListData || []
                     }
                   },
                 })
               } catch (e) {
-                _.watchlaterListData_loading = false
                 api.logger.error(gm.error.NETWORK)
                 api.logger.error(e)
-                // 不要 return，继续执行，重新请求
+                return []
               }
             }
 
