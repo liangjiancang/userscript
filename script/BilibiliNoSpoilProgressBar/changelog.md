@@ -7,10 +7,12 @@
 1. API：升级至 V1.0，大幅优化元素等待逻辑。详见 [UserscriptAPI 更新日志](https://gitee.com/liangjiancang/userscript/blob/master/lib/UserscriptAPI/changelog.md)。
 2. 脚本：大幅优化防剧透处理流程，提高运行效率，并避免在没有启用功能时执行大量无意义的逻辑。
 3. 脚本：优化脚本菜单运行流程。
-4. 脚本：改用 Tampermonkey 引入的 urlchange 事件对 URL 变化进行跟踪（采用旧版逻辑对 Violentmonkey 作兼容）。
-5. 防剧透 UP 主名单：修复空名单无法保存的问题。
-6. 初始化脚本：不再重置「防剧透 UP 主名单」。
-7. UI：优化文本。
+4. 脚本：优化配置保存流程。
+5. 脚本：改用 Tampermonkey 引入的 urlchange 事件对 URL 变化进行跟踪（采用旧版逻辑对 Violentmonkey 作兼容）。
+6. 脚本：移除过于陈旧的版本更新处理。
+7. 防剧透 UP 主名单：修复空名单无法保存的问题。
+8. 初始化脚本：不再重置「防剧透 UP 主名单」。
+9. UI：优化文本。
 
 ## V1.5
 

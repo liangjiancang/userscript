@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站防剧透进度条
-// @version         1.6.3.20210630
+// @version         1.6.4.20210701
 // @namespace       laster2800
 // @author          Laster2800
 // @description     看比赛、看番总是被进度条剧透？装上这个脚本再也不用担心这些问题了
@@ -87,6 +87,7 @@
   /**
    * @typedef GMObject_configMap_item
    * @property {*} default 默认值
+   * @property {'string' | 'boolean' | 'int' | 'float'} [type] 数据类型
    * @property {'checked' | 'value'} attr 对应 `DOM` 节点上的属性
    * @property {boolean} [manual] 配置保存时是否需要手动处理
    * @property {boolean} [needNotReload] 配置改变后是否不需要重新加载就能生效
@@ -181,11 +182,11 @@
       disablePbp: { default: true, attr: 'checked' },
       disablePreview: { default: false, attr: 'checked' },
       disablePartInformation: { default: true, attr: 'checked', configVersion: 20210302 },
-      offsetTransformFactor: { default: 0.65, attr: 'value', manual: true, needNotReload: true, max: 5.0, configVersion: 20200911.1 },
-      offsetLeft: { default: 40, attr: 'value', manual: true, needNotReload: true, configVersion: 20200911 },
-      offsetRight: { default: 40, attr: 'value', manual: true, needNotReload: true, configVersion: 20200911 },
-      reservedLeft: { default: 10, attr: 'value', manual: true, needNotReload: true },
-      reservedRight: { default: 10, attr: 'value', manual: true, needNotReload: true },
+      offsetTransformFactor: { default: 0.65, type: 'float', attr: 'value', needNotReload: true, max: 5.0, configVersion: 20200911.1 },
+      offsetLeft: { default: 40, type: 'int', attr: 'value', needNotReload: true, configVersion: 20200911 },
+      offsetRight: { default: 40, type: 'int', attr: 'value', needNotReload: true, configVersion: 20200911 },
+      reservedLeft: { default: 10, type: 'int', attr: 'value', needNotReload: true },
+      reservedRight: { default: 10, type: 'int', attr: 'value', needNotReload: true },
       postponeOffset: { default: true, attr: 'checked', needNotReload: true, configVersion: 20200911 },
       reloadAfterSetting: { default: true, attr: 'checked', needNotReload: true },
     },
@@ -342,17 +343,6 @@
         if (gm.configVersion < gm.configUpdate) {
           // 必须按从旧到新的顺序写
           // 内部不能使用 gm.configUpdate，必须手写更新后的配置版本号！
-
-          // 1.1.0.20200911
-          if (gm.configVersion < 20200911) {
-            GM_setValue('offsetLeft', 40)
-            GM_setValue('offsetRight', 40)
-          }
-
-          // 1.2.4.20200912
-          if (gm.configVersion < 20200912) {
-            GM_setValue('disableCurrentPoint', true)
-          }
 
           // 1.5.5.20210627
           if (gm.configVersion < 20210627) {
@@ -833,48 +823,6 @@
             }
           }
 
-          // 特殊处理
-          let offsetTransformFactor = parseFloat(el.offsetTransformFactor.value)
-          let offsetLeft = parseInt(el.offsetLeft.value)
-          let offsetRight = parseInt(el.offsetRight.value)
-          let reservedLeft = parseInt(el.reservedLeft.value)
-          let reservedRight = parseInt(el.reservedRight.value)
-          if (isNaN(offsetTransformFactor)) {
-            offsetTransformFactor = gm.configMap.offsetTransformFactor.default
-          }
-          if (isNaN(offsetLeft)) {
-            offsetLeft = gm.configMap.offsetLeft.default
-          }
-          if (isNaN(offsetRight)) {
-            offsetRight = gm.configMap.offsetRight.default
-          }
-          if (isNaN(reservedLeft)) {
-            reservedLeft = gm.configMap.reservedLeft.default
-          }
-          if (isNaN(reservedRight)) {
-            reservedRight = gm.configMap.reservedRight.default
-          }
-          if (offsetTransformFactor != gm.config.offsetTransformFactor) {
-            gm.config.offsetTransformFactor = offsetTransformFactor
-            GM_setValue('offsetTransformFactor', gm.config.offsetTransformFactor)
-          }
-          if (offsetLeft != gm.config.offsetLeft) {
-            gm.config.offsetLeft = offsetLeft
-            GM_setValue('offsetLeft', gm.config.offsetLeft)
-          }
-          if (offsetRight != gm.config.offsetRight) {
-            gm.config.offsetRight = offsetRight
-            GM_setValue('offsetRight', gm.config.offsetRight)
-          }
-          if (reservedLeft != gm.config.reservedLeft) {
-            gm.config.reservedLeft = reservedLeft
-            GM_setValue('reservedLeft', gm.config.reservedLeft)
-          }
-          if (reservedRight != gm.config.reservedRight) {
-            gm.config.reservedRight = reservedRight
-            GM_setValue('reservedRight', gm.config.reservedRight)
-          }
-
           _self.closeMenuItem('setting')
           if (type > 0) {
             // 更新配置版本
@@ -921,9 +869,14 @@
          * @returns {boolean} 是否有实际更新
          */
         const saveConfig = (name, attr) => {
-          const elValue = el[name][attr]
-          if (gm.config[name] != elValue) {
-            gm.config[name] = elValue
+          let val = el[name][attr]
+          if (gm.configMap[name].type == 'int') {
+            val = parseInt(val) || gm.configMap[name].default
+          } else if (gm.configMap[name].type == 'float') {
+            val = parseFloat(val) || gm.configMap[name].default
+          }
+          if (gm.config[name] != val) {
+            gm.config[name] = val
             GM_setValue(name, gm.config[name])
             return true
           }
