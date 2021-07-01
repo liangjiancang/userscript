@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.11.6.20210630
+// @version         4.11.7.20210701
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -193,6 +193,7 @@
   /**
    * @typedef GMObject_configMap_item
    * @property {*} default 默认值
+   * @property {'string' | 'boolean' | 'int' | 'float'} [type] 数据类型
    * @property {'checked' | 'value'} attr 对应 `DOM` 节点上的属性
    * @property {boolean} [manual] 配置保存时是否需要手动处理
    * @property {boolean} [needNotReload] 配置改变后是否不需要重新加载就能生效
@@ -292,7 +293,7 @@
   const gm = {
     id: gmId,
     configVersion: GM_getValue('configVersion'),
-    configUpdate: 20210628,
+    configUpdate: 20210701,
     searchParams: new URL(location.href).searchParams,
     config: {},
     configMap: {
@@ -312,9 +313,9 @@
       headerMenuFnPlayAll: { default: true, attr: 'checked', configVersion: 20210322 },
       removeHistory: { default: true, attr: 'checked', manual: true, configVersion: 20210628 },
       removeHistorySavePoint: { default: Enums.removeHistorySavePoint.listAndMenu, attr: 'value', configVersion: 20210628 },
-      removeHistoryFuzzyCompare: { default: 1, attr: 'value', min: 0, max: 5, needNotReload: true, configVersion: 20210628 },
-      removeHistorySaves: { default: 500, attr: 'value', manual: true, needNotReload: true, min: 10, max: 100000, configVersion: 20210628 },
-      removeHistorySearchTimes: { default: 50, attr: 'value', manual: true, needNotReload: true, min: 1, max: 100000, configVersion: 20210628 },
+      removeHistoryFuzzyCompare: { default: 1, type: 'int', attr: 'value', min: 0, max: 5, needNotReload: true, configVersion: 20210628 },
+      removeHistorySaves: { default: 500, type: 'int', attr: 'value', manual: true, needNotReload: true, min: 10, max: 100000, configVersion: 20210628 },
+      removeHistorySearchTimes: { default: 50, type: 'int', attr: 'value', manual: true, needNotReload: true, min: 1, max: 100000, configVersion: 20210628 },
       fillWatchlaterStatus: { default: Enums.fillWatchlaterStatus.dynamicAndVideo, attr: 'value', configVersion: 20200819 },
       hideWatchlaterInCollect: { default: true, attr: 'checked', configVersion: 20210322 },
       videoButton: { default: true, attr: 'checked' },
@@ -324,7 +325,7 @@
       removeButton_removeAll: { default: false, attr: 'checked', configVersion: 20200722 },
       removeButton_removeWatched: { default: false, attr: 'checked', configVersion: 20200722 },
       disablePageCache: { default: false, attr: 'checked', configVersion: 20210322 },
-      watchlaterListCacheValidPeriod: { default: 15, attr: 'value', manual: true, needNotReload: true, max: 600, configVersion: 20200927 },
+      watchlaterListCacheValidPeriod: { default: 15, type: 'int', attr: 'value', needNotReload: true, max: 600, configVersion: 20210701 },
       hideDisabledSubitems: { default: true, attr: 'checked', configVersion: 20210505 },
       reloadAfterSetting: { default: true, attr: 'checked', needNotReload: true, configVersion: 20200715 },
     },
@@ -564,56 +565,6 @@
           // 必须按从旧到新的顺序写
           // 内部不能使用 gm.configUpdate，必须手写更新后的配置版本号！
 
-          // 2.8.0.20200718
-          if (gm.configVersion < 20200718) {
-            // 强制设置为新的默认值
-            GM_setValue('removeHistorySaves', gm.config.removeHistorySaves)
-            const removeHistory = GM_getValue('removeHistory')
-            if (removeHistory) {
-              // 修改容量
-              const removeHistoryData = GM_getValue('removeHistoryData')
-              if (removeHistoryData) {
-                Object.setPrototypeOf(removeHistoryData, PushQueue.prototype)
-                removeHistoryData.setCapacity(gm.configMap.removeHistorySaves.max)
-                GM_setValue('removeHistoryData', removeHistoryData)
-              }
-            } else {
-              // 如果 removeHistory 关闭则移除 removeHistoryData
-              GM_setValue('removeHistoryData', null)
-            }
-          }
-
-          // 3.0.0.20200721
-          if (gm.configVersion < 20200721) {
-            const openHeaderMenuLink = _self.method.gmValidate('openHeaderDropdownLink', gm.config.openHeaderMenuLink, false)
-            GM_setValue('openHeaderMenuLink', openHeaderMenuLink)
-            GM_deleteValue('openHeaderDropdownLink')
-          }
-
-          // 3.1.0.20200722
-          if (gm.configVersion < 20200722) {
-            const exec = name => {
-              let cfg = GM_getValue(name)
-              if (typeof cfg == 'string') {
-                cfg = cfg.replace(/^[a-z]*_/, '')
-              }
-              GM_setValue(name, cfg)
-            }
-            for (const name of ['headerButtonOpL', 'headerButtonOpR', 'openHeaderMenuLink', 'openListVideo']) {
-              exec(name)
-            }
-          }
-
-          // 4.0.0.20200806
-          if (gm.configVersion < 20200805) {
-            GM_deleteValue('resetAfterFnUpdate')
-          }
-
-          // 4.7.4.20200927
-          if (gm.configVersion < 20200927) {
-            GM_setValue('watchlaterListCacheValidPeriod', 15)
-          }
-
           // 4.9.0.20210322
           if (gm.configVersion < 20210322) {
             GM_deleteValue('forceConsistentVideo')
@@ -631,7 +582,15 @@
             GM_deleteValue('removeHistorySearchTimes')
           }
 
-          const noSetting = new Set([20210612]) // 此处添加 configUpdate 变化但不是功能性更新的配置版本
+          // 4.11.7.20210701
+          if (gm.configVersion < 20210701) {
+            const cvp = GM_getValue('watchlaterListCacheValidPeriod')
+            if (cvp > 0 && cvp <= 2) {
+              GM_setValue('watchlaterListCacheValidPeriod', 5)
+            }
+          }
+
+          const noSetting = new Set([20210612, 20210701]) // 此处添加 configUpdate 变化但不是功能性更新的配置版本
           if (!noSetting.has(gm.configUpdate)) {
             _self.openUserSetting(2)
           } else {
@@ -1147,7 +1106,7 @@
             <div style="text-indent:2em;line-height:1.6em">
               <p>在本地缓存的有效期内脚本将会使用本地缓存来代替网络请求，除非是在有必要确保数据正确性的场合。设置为 <b>0</b> 可以禁止使用本地缓存。</p>
               <p>本地缓存无法确保数据的正确性，设置过长时甚至可能导致各种诡异的现象。请根据个人需要将本地缓存有效期设置为一个合理的值。</p>
-              <p>不推荐设置为 0 将其完全禁用，而是设置为一个较小值（如 2）。这样几乎不会影响正确性，同时保留从 0 到 1 的质变。</p>
+              <p>不推荐设置为 0 将其完全禁用，而是设置为一个较小值（如 5）。这样几乎不会影响正确性，同时避免大量无意义的网络请求。</p>
             </div>
           `, '💬', { width: '36em', flagSize: '2em' })
 
@@ -1401,12 +1360,6 @@
             GM_deleteValue('removeHistorySaves')
           }
 
-          const wlcvp = parseInt(el.watchlaterListCacheValidPeriod.value)
-          if (wlcvp != gm.config.watchlaterListCacheValidPeriod && !isNaN(wlcvp)) {
-            gm.config.watchlaterListCacheValidPeriod = wlcvp
-            GM_setValue('watchlaterListCacheValidPeriod', wlcvp)
-          }
-
           _self.closeMenuItem('setting')
           if (type > 0) {
             // 更新配置版本
@@ -1460,9 +1413,14 @@
          * @returns {boolean} 是否有实际更新
          */
         const saveConfig = (name, attr) => {
-          const elValue = el[name][attr]
-          if (gm.config[name] != elValue) {
-            gm.config[name] = elValue
+          let val = el[name][attr]
+          if (gm.configMap[name].type == 'int') {
+            val = parseInt(val) || gm.configMap[name].default
+          } else if (gm.configMap[name].type == 'float') {
+            val = parseFloat(val) || gm.configMap[name].default
+          }
+          if (gm.config[name] != val) {
+            gm.config[name] = val
             GM_setValue(name, gm.config[name])
             return true
           }
@@ -1861,7 +1819,7 @@
          * @see {@link https://developer.mozilla.org/zh-CN/docs/Web/API/Document/cookie#示例2_得到名为test2的cookie Document.cookie - Web API 接口参考 | MDN}
          */
         cookie(key) {
-          return document.cookie.replace(RegExp(String.raw`(?:(?:^|.*;\s*)${key}\s*=\s*([^;]*).*$)|^.*$`), '$1')
+          return document.cookie.replace(RegExp(String.raw `(?:(?:^|.*;\s*)${key}\s*=\s*([^;]*).*$)|^.*$`), '$1')
         },
 
         /**
