@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站防剧透进度条
-// @version         1.6.4.20210701
+// @version         1.6.5.20210701
 // @namespace       laster2800
 // @author          Laster2800
 // @description     看比赛、看番总是被进度条剧透？装上这个脚本再也不用担心这些问题了
@@ -1682,7 +1682,7 @@
           onTimeout: null,
         })
       } catch (e) {
-        // 抛出异常，有可能确实是 B 站改版导致，但更多情况下，是因为网页还未加载完成导致的
+        // 抛出异常，有可能确实是B站改版导致，但更多情况下，是因为网页还未加载完成导致的
         // 出现这种情况，往往是因为用户一次性打开多个页面，过了非常久之后才切换过去导致的
         try {
           if (selfCall) {
@@ -1828,7 +1828,7 @@
 
       // 临时将 z-index 调至底层，不要影响信息的显示
       // 不通过样式直接将 z-index 设为最底层，是因为会被 pbp 遮盖导致点击不了
-      // 问题的关键在于，B 站已经给进度条和 pbp 内所有元素都设定好 z-index，只能用这种奇技淫巧来解决
+      // 问题的关键在于，B站已经给进度条和 pbp 内所有元素都设定好 z-index，只能用这种奇技淫巧来解决
       _self.progress.bar.addEventListener('mouseenter', function() {
         _self.scriptControl.style.zIndex = '-1'
       })
