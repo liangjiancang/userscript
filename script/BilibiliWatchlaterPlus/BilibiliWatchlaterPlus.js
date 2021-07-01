@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.11.7.20210701
+// @version         4.11.8.20210701
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -2971,23 +2971,25 @@
               return
             }
           }
-          link.addEventListener('mousedown', function(e) {
-            if (e.button == 0 || e.button == 1) { // 左键或中键
-              if (arb.autoRemove) {
-                if (gm.config.autoRemove != Enums.autoRemove.always) {
-                  const url = new URL(link.href)
-                  url.searchParams.set(`${gm.id}_remove`, 'true')
-                  link.href = url.href
-                }
-              } else {
-                if (gm.config.autoRemove == Enums.autoRemove.always) {
-                  const url = new URL(link.href)
-                  url.searchParams.set(`${gm.id}_disable_remove`, 'true')
-                  link.href = url.href
+          if (link.href) { // 视频被和谐或其他特殊情况
+            link.addEventListener('mousedown', function(e) {
+              if (e.button == 0 || e.button == 1) { // 左键或中键
+                if (arb.autoRemove) {
+                  if (gm.config.autoRemove != Enums.autoRemove.always) {
+                    const url = new URL(link.href)
+                    url.searchParams.set(`${gm.id}_remove`, 'true')
+                    link.href = url.href
+                  }
+                } else {
+                  if (gm.config.autoRemove == Enums.autoRemove.always) {
+                    const url = new URL(link.href)
+                    url.searchParams.set(`${gm.id}_disable_remove`, 'true')
+                    link.href = url.href
+                  }
                 }
               }
-            }
-          })
+            })
+          }
           link.addEventListener('mouseup', function(e) {
             if (e.button == 0 || e.button == 1) { // 左键或中键
               if (arb.autoRemove) {
