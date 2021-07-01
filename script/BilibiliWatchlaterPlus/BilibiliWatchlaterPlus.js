@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.11.8.20210701
+// @version         4.11.9.20210701
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -354,7 +354,7 @@
       page_dynamicMenu: /\.com\/pages\/nav\/index_new(?=[/?#]|$)/,
     },
     const: {
-      rhsWarning: 20000,
+      rhsWarning: 10000,
       fadeTime: 400,
       textFadeTime: 100,
     },
@@ -1059,7 +1059,7 @@
           api.message.advanced(el.rhsInformation, `
             <style type="text/css">
               .${gm.id}-rhsTmp {
-                margin: 1em 0;
+                margin: 0.5em 0;
               }
               .${gm.id}-rhsTmp table {
                 width: 100%;
@@ -1071,16 +1071,15 @@
                 border-collapse: separate;
                 border-spacing: 4px;
               }
-              .${gm.id}-rhsTmp caption,
               .${gm.id}-rhsTmp th,
               .${gm.id}-rhsTmp td {
                 text-align: center;
               }
             </style>
-            <div>作者所作的简单性能测试结果如下。测试条件为设想中的最差情况，100 次取平均。测试环境是不可能写的，反正仅供参考。</div>
+            <div>作者所作的简单性能测试结果如下（单位：毫秒）。注意，此处「读取」不含脚本管理器对数据进行预加载的时间。</div>
+            <div>测试条件为设想中的最差情况，100 次取平均。测试环境是不可能写的，反正仅供参考。</div>
             <div class="${gm.id}-rhsTmp">
               <table>
-                <caption>性能测试结果（单位：毫秒）</caption>
                 <tr><th>N</th><th>读取</th><th>写入</th><th>处理</th></tr>
                 <tr><td>5000</td><td>3</td><td>7</td><td>1</td></tr>
                 <tr><td>10000</td><td>6</td><td>15</td><td>3</td></tr>
