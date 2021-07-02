@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站防剧透进度条
-// @version         1.6.5.20210701
+// @version         1.6.6.20210702
 // @namespace       laster2800
 // @author          Laster2800
 // @description     看比赛、看番总是被进度条剧透？装上这个脚本再也不用担心这些问题了
@@ -229,9 +229,6 @@
     label: GM_info.script.name,
     fadeTime: gm.const.fadeTime,
   })
-  if (GM_info.scriptHandler != 'Tampermonkey') {
-    api.dom.initUrlchangeEvent()
-  }
 
   /**
    * 脚本运行的抽象，脚本独立于网站、为脚本本身服务的部分
@@ -2305,6 +2302,9 @@
   }
 
   (function() {
+    if (GM_info.scriptHandler != 'Tampermonkey') {
+      api.dom.initUrlchangeEvent()
+    }
     const script = new Script()
     const webpage = new Webpage()
 
