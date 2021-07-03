@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.11.9.20210701
+// @version         4.12.0.20210703
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -173,6 +173,7 @@
    * @property {removeHistorySavePoint} removeHistorySavePoint 保存稍后再看历史数据的时间点
    * @property {number} removeHistoryFuzzyCompare 模糊比对深度
    * @property {number} removeHistorySaves 稍后再看历史数据记录保存数
+   * @property {boolean} removeHistoryTimestamp 使用时间戳优化移除记录
    * @property {number} removeHistorySearchTimes 历史回溯深度
    * @property {fillWatchlaterStatus} fillWatchlaterStatus 填充稍后再看状态
    * @property {boolean} hideWatchlaterInCollect 隐藏「收藏」中的「稍后再看」
@@ -223,9 +224,12 @@
    * @see {@link https://github.com/SocialSisterYi/bilibili-API-collect/blob/master/history%26toview/toview.md#获取稍后再看视频列表 获取稍后再看视频列表}
    */
   /**
-   * @typedef GMObject_data_item
-   * @property {string} bvid 视频 BV 号
-   * @property {string} title 视频标题
+   * @typedef {[bvid: string, title: string, lastModified: number]} GMObject_data_item
+   * `bvid` 视频 BV 号
+   * 
+   * `title` 视频标题
+   * 
+   * `[lastModified]` 时间戳：最后被观察到的时间点
    */
   /**
    * @typedef GMObject_data
@@ -293,7 +297,7 @@
   const gm = {
     id: gmId,
     configVersion: GM_getValue('configVersion'),
-    configUpdate: 20210701,
+    configUpdate: 20210703,
     searchParams: new URL(location.href).searchParams,
     config: {},
     configMap: {
@@ -315,7 +319,8 @@
       removeHistorySavePoint: { default: Enums.removeHistorySavePoint.listAndMenu, attr: 'value', configVersion: 20210628 },
       removeHistoryFuzzyCompare: { default: 1, type: 'int', attr: 'value', min: 0, max: 5, needNotReload: true, configVersion: 20210628 },
       removeHistorySaves: { default: 500, type: 'int', attr: 'value', manual: true, needNotReload: true, min: 10, max: 100000, configVersion: 20210628 },
-      removeHistorySearchTimes: { default: 50, type: 'int', attr: 'value', manual: true, needNotReload: true, min: 1, max: 100000, configVersion: 20210628 },
+      removeHistoryTimestamp: { default: true, attr: 'checked', needNotReload: true, configVersion: 20210703 },
+      removeHistorySearchTimes: { default: 500, type: 'int', attr: 'value', manual: true, needNotReload: true, min: 1, max: 100000, configVersion: 20210703 },
       fillWatchlaterStatus: { default: Enums.fillWatchlaterStatus.dynamicAndVideo, attr: 'value', configVersion: 20200819 },
       hideWatchlaterInCollect: { default: true, attr: 'checked', configVersion: 20210322 },
       videoButton: { default: true, attr: 'checked' },
@@ -382,9 +387,6 @@
     label: GM_info.script.name,
     fadeTime: gm.const.fadeTime,
   })
-  if (GM_info.scriptHandler != 'Tampermonkey') {
-    api.dom.initUrlchangeEvent()
-  }
 
   /**
    * 脚本运行的抽象，脚本独立于网站、为脚本本身服务的部分
@@ -530,7 +532,18 @@
               const current = json.data.list || []
               if (gm.config.watchlaterListCacheValidPeriod > 0) {
                 GM_setValue('watchlaterListCacheTime', new Date().getTime())
-                GM_setValue('watchlaterListCache', current)
+                GM_setValue('watchlaterListCache', current.map(item => {
+                  return {
+                    aid: item.aid,
+                    bvid: item.bvid,
+                    title: item.title,
+                    pic: item.pic,
+                    owner: { name: item.owner.name },
+                    progress: item.progress,
+                    duration: item.duration,
+                    videos: item.videos,
+                  }
+                }))
               }
               _.watchlaterListData = current
               return current
@@ -585,9 +598,18 @@
           // 4.11.7.20210701
           if (gm.configVersion < 20210701) {
             const cvp = GM_getValue('watchlaterListCacheValidPeriod')
-            if (cvp > 0 && cvp <= 2) {
+            if (!isNaN(cvp) && cvp > 0 && cvp <= 2) {
               GM_setValue('watchlaterListCacheValidPeriod', 5)
             }
+          }
+
+          // 4.12.0.20210703
+          if (gm.configVersion < 20210703) {
+            GM_deleteValue('removeHistoryData')
+            GM_deleteValue('removeHistoryFuzzyCompareReference')
+            GM_deleteValue('removeHistorySearchTimes')
+            GM_deleteValue('watchlaterListCacheTime')
+            GM_deleteValue('watchlaterListCache')
           }
 
           const noSetting = new Set([20210612, 20210701]) // 此处添加 configUpdate 变化但不是功能性更新的配置版本
@@ -609,36 +631,19 @@
       const cfgDocumentStart = { redirect: true } // document-start 时期就处理过的配置
       if (gm.configVersion > 0) {
         // 对配置进行校验
-        const cfgNoWriteback = { removeHistorySearchTimes: true } // 不进行回写的配置
         for (const name in gm.config) {
           if (!cfgDocumentStart[name]) {
-            gm.config[name] = _self.method.gmValidate(name, gm.config[name], !cfgNoWriteback[name])
+            gm.config[name] = _self.method.gmValidate(name, gm.config[name])
           }
-        }
-        // 特殊处理
-        if (gm.config.removeHistorySearchTimes > gm.config.removeHistorySaves) {
-          gm.config.removeHistorySearchTimes = gm.config.removeHistorySaves
-          GM_setValue('removeHistorySearchTimes', gm.config.removeHistorySearchTimes)
         }
       } else {
         // 用户强制初始化，或者第一次安装脚本
         gm.configVersion = 0
-        const cfgManual = { removeHistorySaves: true, removeHistorySearchTimes: true }
         for (const name in gm.config) {
-          if (!cfgDocumentStart[name] && !cfgManual[name]) {
+          if (!cfgDocumentStart[name]) {
             GM_setValue(name, gm.config[name])
           }
         }
-
-        // 特殊处理
-        // removeHistorySaves 读取旧值
-        gm.config.removeHistorySaves = _self.method.gmValidate('removeHistorySaves', gm.config.removeHistorySaves, true)
-        // removeHistorySearchTimes 使用默认值，但不能比 removeHistorySaves 大
-        if (gm.config.removeHistorySearchTimes > gm.config.removeHistorySaves) {
-          gm.config.removeHistorySearchTimes = gm.config.removeHistorySaves
-        }
-        GM_setValue('removeHistorySearchTimes', gm.config.removeHistorySearchTimes)
-
         _self.openUserSetting(1)
       }
     }
@@ -801,7 +806,7 @@
                   </tr>
 
                   <tr class="gm-item" title="保留稍后再看列表中的数据，以查找出一段时间内将哪些视频移除出稍后再看，用于拯救误删操作。关闭该选项会将内部历史数据清除！">
-                    <td rowspan="5"><div>全局功能</div></td>
+                    <td rowspan="6"><div>全局功能</div></td>
                     <td>
                       <label>
                         <span>开启稍后再看移除记录</span>
@@ -843,7 +848,16 @@
                       </div>
                     </td>
                   </tr>
-                  <tr class="gm-subitem" title="搜寻时在最近多少条数据记录中查找，设置较小的值能较好地定位最近移除的视频。">
+                  <tr class="gm-subitem" title="在稍后再看历史数据记录中保存时间戳，以其优化对数据记录的排序及展示。">
+                    <td>
+                      <label>
+                        <span>使用时间戳优化移除记录</span>
+                        <span id="gm-rhtInformation" class="gm-information" title>💬</span>
+                        <input id="gm-removeHistoryTimestamp" type="checkbox">
+                      </label>
+                    </td>
+                  </tr>
+                  <tr class="gm-subitem" title="搜寻时在最近多少条数据记录中查找，设置较小的值能较好地定位最近被添加到稍后再看的视频。">
                     <td>
                       <div>
                         <span>默认历史回溯深度</span>
@@ -1081,12 +1095,18 @@
             <div class="${gm.id}-rhsTmp">
               <table>
                 <tr><th>N</th><th>读取</th><th>写入</th><th>处理</th></tr>
-                <tr><td>5000</td><td>3</td><td>7</td><td>1</td></tr>
-                <tr><td>10000</td><td>6</td><td>15</td><td>3</td></tr>
-                <tr><td>100000</td><td>56</td><td>137</td><td>45</td></tr>
+                <tr><td>5000</td><td>2.2</td><td>7.2</td><td>1.0</td></tr>
+                <tr><td>10000</td><td>4.4</td><td>16</td><td>1.9</td></tr>
+                <tr><td>100000</td><td>69</td><td>170</td><td>22</td></tr>
               </table>
             </div>
           `, '💬', { width: '36em', flagSize: '2em', disabled: () => el.rhfcInformation.parentNode.hasAttribute('disabled') })
+          el.rhtInformation = gm.el.setting.querySelector('#gm-rhtInformation')
+          api.message.advanced(el.rhtInformation, `
+            <div style="line-height:1.6em">
+              在历史数据记录中添加时间戳，用于改善移除记录中的数据排序，使得排序以「视频『最后一次』被观察到处于稍后再看的时间点」为基准，而非以「视频『第一次』被观察到处于稍后再看的时间点」为基准；同时也利于数据展示与查看。注意，此功能在数据存读及处理上都有额外开销。
+            </div>
+          `, '💬', { width: '36em', flagSize: '2em' })
           el.fwsInformation = gm.el.setting.querySelector('#gm-fwsInformation')
           api.message.advanced(el.fwsInformation, `
             <div style="text-indent:2em;line-height:1.6em">
@@ -1159,7 +1179,7 @@
             }
           }
           el.removeHistory.init = function() {
-            subitemChange(this, [el.removeHistorySavePoint, el.removeHistoryFuzzyCompare, el.removeHistorySaves, el.removeHistorySearchTimes])
+            subitemChange(this, [el.removeHistorySavePoint, el.removeHistoryFuzzyCompare, el.removeHistorySaves, el.removeHistoryTimestamp, el.removeHistorySearchTimes])
             setRhWaring()
           }
           el.removeHistory.onchange = function() {
@@ -1221,9 +1241,6 @@
                 value = gm.configMap.removeHistorySaves.min
               }
               this.value = value
-              if (parseInt(el.removeHistorySearchTimes.value) > value) {
-                el.removeHistorySearchTimes.value = value
-              }
             }
             setRhWaring()
             setRhsWarning()
@@ -1252,11 +1269,6 @@
                 value = gm.configMap.removeHistorySearchTimes.min
               }
               this.value = value
-              if (parseInt(el.removeHistorySaves.value) < value) {
-                el.removeHistorySaves.value = value
-                setRhWaring()
-                setRhsWarning()
-              }
             }
           }
 
@@ -1493,7 +1505,7 @@
       const el = {}
       if (gm.el.history) {
         el.searchTimes = gm.el.history.querySelector('#gm-search-times')
-        el.searchTimes.current = gm.config.removeHistorySearchTimes < gm.data.removeHistoryData().size ? gm.config.removeHistorySearchTimes : gm.data.removeHistoryData().size
+        el.searchTimes.current = gm.config.removeHistorySearchTimes
         el.searchTimes.value = el.searchTimes.current
 
         el.historySort = gm.el.history.querySelector('#gm-history-sort')
@@ -1520,10 +1532,10 @@
             <div class="gm-history-page">
               <div class="gm-title">稍后再看移除记录</div>
               <div class="gm-comment">
-                <div>根据最近<span id="gm-save-times">0</span>条不重复数据记录生成，共筛选出<span id="gm-removed-num">0</span>条移除记录。排序由视频第一次加入到稍后再看的时间决定，与移除出稍后再看的时间无关。如果记录太少请在下方设置增加历史回溯深度；记录太多则减少之，并善用浏览器的搜索功能辅助定位。鼠标移动到内容区域可向下滚动翻页，点击对话框以外的位置退出。</div>
+                <div>根据最近<span id="gm-save-times">0</span>条不重复数据记录生成，共筛选出<span id="gm-removed-num">0</span>条移除记录。排序由视频<span id="gm-history-time-point"></span>被观察到处于稍后再看的时间决定，与被移除出稍后再看的时间无关。如果记录太少请在下方设置增加历史回溯深度；记录太多则减少之，并善用浏览器的搜索功能辅助定位。鼠标移动到内容区域可向下滚动翻页，点击对话框以外的位置退出。</div>
                 <div style="text-align:right;font-weight:bold">
                   <span id="gm-history-sort" style="text-decoration:underline;cursor:pointer">倒序</span>
-                  <span title="搜寻时在最近保存的多少条稍后再看历史数据记录中查找，设置较小的值能较好地定位最近移除的视频。按下回车键或输入框失去焦点时刷新数据，输入框为空时自动设为可取的最大值。">历史回溯深度：<input type="text" id="gm-search-times" value="0"></span>
+                  <span title="搜寻时在最近保存的多少条稍后再看历史数据记录中查找。按下回车键或输入框失去焦点时刷新数据，设置较小的值能较好地定位最近被添加到稍后再看的视频。">历史回溯深度：<input type="text" id="gm-search-times" value="0"></span>
                 </div>
               </div>
             </div>
@@ -1532,6 +1544,7 @@
           el.historyPage = gm.el.history.querySelector('.gm-history-page')
           el.comment = gm.el.history.querySelector('.gm-comment')
           el.content = null
+          el.timePoint = gm.el.history.querySelector('#gm-history-time-point')
           el.saveTimes = gm.el.history.querySelector('#gm-save-times')
           el.removedNum = gm.el.history.querySelector('#gm-removed-num')
           el.shadow = gm.el.history.querySelector('.gm-shadow')
@@ -1543,16 +1556,15 @@
         const processItem = () => {
           // 使用 el.searchTimes.current 代替本地变量记录数据，可以保证任何情况下闭包中都能获取到正确数据
           el.searchTimes = gm.el.history.querySelector('#gm-search-times')
-          el.searchTimes.current = gm.config.removeHistorySearchTimes < gm.data.removeHistoryData().size ? gm.config.removeHistorySearchTimes : gm.data.removeHistoryData().size
+          el.searchTimes.current = gm.config.removeHistorySearchTimes
           el.searchTimes.value = el.searchTimes.current
-
-          const stMin = 1
+          const stMin = gm.configMap.removeHistorySearchTimes.min
           el.searchTimes.oninput = function() {
             const v0 = this.value.replace(/[^\d]/g, '')
             if (v0 === '') {
               this.value = ''
             } else {
-              const stMax = gm.data.removeHistoryData().size
+              const stMax = gm.configMap.removeHistorySearchTimes.max
               let value = parseInt(v0)
               if (value > stMax) {
                 value = stMax
@@ -1564,7 +1576,7 @@
           }
           el.searchTimes.onblur = function() {
             if (this.value === '') {
-              this.value = gm.data.removeHistoryData().size
+              this.value = gm.config.removeHistorySearchTimes
             }
             if (this.value != el.searchTimes.current) {
               el.searchTimes.current = this.value
@@ -1612,6 +1624,7 @@
           }
           el.content = el.historyPage.appendChild(document.createElement('div'))
           el.content.className = 'gm-content'
+          el.timePoint.innerText = gm.config.removeHistoryTimestamp ? '最后一次' : '第一次'
 
           el.historyPage.parentNode.style.display = 'block'
           setTimeout(() => {
@@ -1620,29 +1633,67 @@
 
           try {
             const set = new Set()
-            const watchlaterList = await gm.data.watchlaterListData()
+            const watchlaterList = await gm.data.watchlaterListData(true)
             for (const e of watchlaterList) {
               set.add(e.bvid)
             }
             const data = gm.data.removeHistoryData().toArray(el.searchTimes.current)
             el.saveTimes.innerText = data.length
-            const history = []
+            let history = []
+            const result = []
             for (const record of data) {
-              if (!set.has(record.bvid)) {
+              if (!set.has(record[0])) {
                 history.push(record)
               }
             }
-            const result = []
-            for (const rm of history) {
-              result.push(`<div><a href="${gm.url.page_videoNormalMode}/${rm.bvid}" target="_blank">${rm.title}</a></div>`)
+            if (gm.config.removeHistoryTimestamp) {
+              // 万恶的标准并没有对 Array.prototype.sort() 的稳定性作规定
+              // 尽管目前 Chromium 上的 sort() 似乎是稳定排序，但还是手动处理一下吧
+              const tsMap = new Map()
+              for (let i = 0; i < history.length; i++) {
+                const ts = history[i][2] || 0
+                if (tsMap.has(ts)) {
+                  const ar = tsMap.get(ts)
+                  ar.push(history[i])
+                } else {
+                  const ar = []
+                  ar.push(history[i])
+                  tsMap.set(ts, ar)
+                }
+              }
+              const tsIdx = Array.from(tsMap.keys())
+              tsIdx.sort()
+              history = []
+              if (el.historySort.type != 1) {
+                for (let i = tsIdx.length - 1; i >= 0; i--) {
+                  history = history.concat(tsMap.get(tsIdx[i]))
+                }
+              } else {
+                for (let i = 0; i < tsIdx.length; i++) {
+                  history = history.concat(tsMap.get(tsIdx[i]).reverse())
+                }
+              }
+
+              for (const rm of history) {
+                result.push(`
+                  <div>
+                    <a href="${gm.url.page_videoNormalMode}/${rm[0]}" target="_blank">${rm[1]}</a>
+                    ${rm[2] ? `<div class="gm-history-date">${new Date(rm[2]).toLocaleString()}</div>` : ''}
+                  </div>
+                `)
+              }
+            } else {
+              if (history.length > 1 && el.historySort.type == 1) {
+                history.reverse()
+              }
+              for (const rm of history) {
+                result.push(`<div><a href="${gm.url.page_videoNormalMode}/${rm[0]}" target="_blank">${rm[1]}</a></div>`)
+              }
             }
             el.removedNum.innerText = result.length
 
             setContentTop() // 在设置内容前设置好 top，这样看不出修改的痕迹
             if (result.length > 0) {
-              if (el.historySort.type === 1) {
-                result.reverse()
-              }
               el.content.innerHTML = result.join('')
             } else {
               el.content.innerText = '没有找到移除记录，请尝试增大历史回溯深度'
@@ -1945,11 +1996,11 @@
             })
             const success = JSON.parse(resp.response).code == 0
             if (success) {
-              const current = []
-              gm.data._.watchlaterListData = current
+              const empty = []
+              gm.data._.watchlaterListData = empty
               if (gm.config.watchlaterListCacheValidPeriod > 0) {
                 GM_setValue('watchlaterListCacheTime', new Date().getTime())
-                GM_setValue('watchlaterListCache', current)
+                GM_setValue('watchlaterListCache', empty)
               }
             }
             return success
@@ -2043,19 +2094,34 @@
                     }
 
                     const data = gm.data.removeHistoryData()
-                    const set = new Set()
-                    for (let i = 0; i < data.size; i++) {
-                      set.add(data.get(i).bvid)
-                    }
                     let updated = false
-                    for (let i = current.length - 1; i >= 0; i--) {
-                      const item = current[i]
-                      if (!set.has(item.bvid)) {
-                        data.push({
-                          bvid: item.bvid,
-                          title: item.title,
-                        })
-                        updated = true
+                    if (gm.config.removeHistoryTimestamp) {
+                      const timestamp = new Date().getTime()
+                      const map = new Map()
+                      for (let i = 0; i < data.size; i++) {
+                        map.set(data.get(i)[0], i)
+                      }
+                      for (let i = current.length - 1; i >= 0; i--) {
+                        const item = current[i]
+                        if (map.has(item.bvid)) {
+                          const idx = map.get(item.bvid)
+                          data.get(idx)[2] = timestamp
+                        } else {
+                          data.push([item.bvid, item.title, timestamp])
+                        }
+                      }
+                      updated = true
+                    } else {
+                      const set = new Set()
+                      for (let i = 0; i < data.size; i++) {
+                        set.add(data.get(i)[0])
+                      }
+                      for (let i = current.length - 1; i >= 0; i--) {
+                        const item = current[i]
+                        if (!set.has(item.bvid)) {
+                          data.push([item.bvid, item.title])
+                          updated = true
+                        }
                       }
                     }
                     if (updated) {
@@ -3691,7 +3757,7 @@
         }
         #${gm.id} .gm-history .gm-comment input{
           text-align: center;
-          width: 3em;
+          width: 3.5em;
           border-width: 0 0 1px 0;
         }
 
@@ -3720,6 +3786,10 @@
         #${gm.id} .gm-history .gm-content a:hover {
           font-weight: bold;
           color: var(--hightlight-color);
+        }
+        #${gm.id} .gm-history .gm-content .gm-history-date {
+          font-size: 0.5em;
+          color: var(--hint-text-color);
         }
 
         #${gm.id} .gm-bottom {
@@ -3931,10 +4001,9 @@
         if (this.size > capacity) {
           this.size = capacity
         }
-        // no need to gc()
+        // no need to gc() here
       }
-      const raw = this.toArray()
-      const data = [...raw.reverse()]
+      const data = this.toArray().reverse()
       this.index = data.length
       data.length = capacity
       this.data = data
@@ -4021,14 +4090,29 @@
     }
 
     /**
+     * 使用数组初始化推入队列
+     * @param {Array<T>} array 初始化数组
+     */
+    fromArray(array) {
+      if (this.maxSize < array.length) {
+        this.data = array.slice(0, this.maxSize).reverse()
+      } else {
+        this.data = array.reverse()
+      }
+      this.index = this.data.length
+      if (this.index >= this.capacity) {
+        this.index = 0
+      }
+      this.size = this.data.length
+      this.data.length = this.capacity
+    }
+
+    /**
      * 将推入队列以数组的形式返回
      * @param {number} [maxLength=size] 读取的最大长度
      * @returns {Array<T>} 队列数据的数组形式
      */
     toArray(maxLength) {
-      if (typeof maxLength != 'number') {
-        maxLength = parseInt(maxLength)
-      }
       if (isNaN(maxLength) || maxLength > this.size || maxLength < 0) {
         maxLength = this.size
       }
@@ -4075,6 +4159,9 @@
   }
 
   (function() {
+    if (GM_info.scriptHandler != 'Tampermonkey') {
+      api.dom.initUrlchangeEvent()
+    }
     const script = new Script()
     const webpage = new Webpage()
     if (!webpage.method.isLogin()) {
