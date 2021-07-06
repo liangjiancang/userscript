@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.12.0.20210703
+// @version         4.12.1.20210706
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -221,6 +221,13 @@
    * @property {number} aid 视频 AV 号，务必统一为字符串格式再使用
    * @property {string} bvid 视频 BV 号
    * @property {string} title 视频标题
+   * @property {string} [pic] 视频封面
+   * @property {Object} [owner] UP 主信息
+   * @property {number} [owner.mid] UP 主 ID
+   * @property {string} [owner.name] UP 主名字
+   * @property {number} [progress] 视频播放进度
+   * @property {number} [duration] 视频时长
+   * @property {number} [videos] 稿件分 P 数
    * @see {@link https://github.com/SocialSisterYi/bilibili-API-collect/blob/master/history%26toview/toview.md#获取稍后再看视频列表 获取稍后再看视频列表}
    */
   /**
@@ -243,6 +250,11 @@
    * @returns {string} 查询视频信息的 URL
    */
   /**
+   * @callback page_userSpace
+   * @param {number} [uid] `uid`
+   * @returns {string} 用户空间 URL
+   */
+  /**
    * @typedef GMObject_url
    * @property {string} api_queryWatchlaterList 稍后再看列表数据
    * @property {api_videoInfo} api_videoInfo 视频信息
@@ -253,6 +265,7 @@
    * @property {string} page_videoNormalMode 正常模式播放页
    * @property {string} page_videoWatchlaterMode 稍后再看模式播放页
    * @property {string} page_watchlaterPlayAll 稍后再看播放全部（临时禁用重定向）
+   * @property {page_userSpace} page_userSpace 用户空间
    * @property {string} gm_changelog 更新日志
    * @property {string} noop 无操作
    */
@@ -297,7 +310,7 @@
   const gm = {
     id: gmId,
     configVersion: GM_getValue('configVersion'),
-    configUpdate: 20210703,
+    configUpdate: 20210706,
     searchParams: new URL(location.href).searchParams,
     config: {},
     configMap: {
@@ -305,7 +318,7 @@
       headerButtonOpL: { default: Enums.headerButtonOp.openListInCurrent, attr: 'value', configVersion: 20210323 },
       headerButtonOpR: { default: Enums.headerButtonOp.openUserSetting, attr: 'value', configVersion: 20210323 },
       headerButtonOpM: { default: Enums.headerButtonOp.openListInNew, attr: 'value', configVersion: 20210323 },
-      headerMenu: { default: Enums.headerMenu.enable, attr: 'value', configVersion: 20210322 },
+      headerMenu: { default: Enums.headerMenu.enable, attr: 'value', manual: true, configVersion: 20210706 },
       openHeaderMenuLink: { default: Enums.openHeaderMenuLink.openInCurrent, attr: 'value', configVersion: 20200717 },
       menuScrollbarSetting: { default: Enums.menuScrollbarSetting.beautify, attr: 'value', configVersion: 20200722 },
       headerMenuSearch: { default: true, attr: 'checked', configVersion: 20210323.1 },
@@ -348,6 +361,7 @@
       page_videoNormalMode: 'https://www.bilibili.com/video',
       page_videoWatchlaterMode: 'https://www.bilibili.com/medialist/play/watchlater',
       page_watchlaterPlayAll: `https://www.bilibili.com/medialist/play/watchlater/?${gmId}_disable_redirect=true`,
+      page_userSpace: uid => `https://space.bilibili.com/${uid}`,
       gm_changelog: 'https://gitee.com/liangjiancang/userscript/blob/master/script/BilibiliWatchlaterPlus/changelog.md',
       noop: 'javascript:void(0)',
     },
@@ -531,19 +545,31 @@
               const json = JSON.parse(resp.responseText)
               const current = json.data.list || []
               if (gm.config.watchlaterListCacheValidPeriod > 0) {
-                GM_setValue('watchlaterListCacheTime', new Date().getTime())
-                GM_setValue('watchlaterListCache', current.map(item => {
+                const base = item => {
                   return {
                     aid: item.aid,
                     bvid: item.bvid,
                     title: item.title,
-                    pic: item.pic,
-                    owner: { name: item.owner.name },
-                    progress: item.progress,
-                    duration: item.duration,
-                    videos: item.videos,
                   }
-                }))
+                }
+                GM_setValue('watchlaterListCacheTime', new Date().getTime())
+                if (gm.config.headerMenu == Enums.headerMenu.enable) {
+                  GM_setValue('watchlaterListCache', current.map(item => {
+                    return {
+                      ...base(item),
+                      pic: item.pic,
+                      owner: {
+                        mid: item.owner.mid,
+                        name: item.owner.name,
+                      },
+                      progress: item.progress,
+                      duration: item.duration,
+                      videos: item.videos,
+                    }
+                  }))
+                } else {
+                  GM_setValue('watchlaterListCache', current.map(item => base(item)))
+                }
               }
               _.watchlaterListData = current
               return current
@@ -612,7 +638,13 @@
             GM_deleteValue('watchlaterListCache')
           }
 
-          const noSetting = new Set([20210612, 20210701]) // 此处添加 configUpdate 变化但不是功能性更新的配置版本
+          // 4.12.1.20210706
+          if (gm.configVersion < 20210706) {
+            GM_deleteValue('watchlaterListCacheTime')
+            GM_deleteValue('watchlaterListCache')
+          }
+
+          const noSetting = new Set([20210612, 20210701, 20210706]) // 此处添加 configUpdate 变化但不是功能性更新的配置版本
           if (!noSetting.has(gm.configUpdate)) {
             _self.openUserSetting(2)
           } else {
@@ -1331,6 +1363,13 @@
           }
 
           // 特殊处理
+          if (gm.config.headerMenu != el.headerMenu.value) {
+            gm.config.headerMenu = el.headerMenu.value
+            GM_setValue('headerMenu', gm.config.headerMenu)
+            GM_deleteValue('watchlaterListCacheTime')
+            GM_deleteValue('watchlaterListCache')
+            needReload = true
+          }
           let shutDownRemoveHistory = false
           // removeHistory
           if (gm.config.removeHistory != el.removeHistory.checked) {
@@ -2542,11 +2581,11 @@
                   /** @type {HTMLAnchorElement} */
                   const card = el.entryList.appendChild(document.createElement('a'))
                   card.title = item.title
-                  card.uploader = item.owner.name
                   if (simplePopup) {
                     card.innerText = card.title
                     card.className = 'gm-entry-list-simple-item'
                   } else {
+                    card.uploader = item.owner.name
                     const multiP = item.videos > 1
                     const duration = multiP ? `${item.videos}P` : _self.method.getSTimeString(item.duration)
                     const played = item.progress > 0
@@ -2573,7 +2612,7 @@
                     `
                     if (played) {
                       card.querySelector('.gm-card-progress').style.display = 'unset'
-                      card.querySelector('.gm-card-uploader').style.width = '15em'
+                      card.querySelector('.gm-card-uploader').style.maxWidth = '15em'
                     }
 
                     card.added = true
@@ -2604,7 +2643,14 @@
                         }
                       })
                     })
+
+                    const uploader = card.querySelector('.gm-card-uploader')
+                    uploader.addEventListener('click', function(e) {
+                      e.preventDefault()
+                      window.open(gm.url.page_userSpace(item.owner.mid), '_blank')
+                    })
                   }
+
                   card.target = openLinkInCurrent ? '_self' : '_blank'
                   if (redirect) {
                     card.href = `${gm.url.page_videoNormalMode}/${item.bvid}`
@@ -2614,10 +2660,9 @@
                   if (autoRemove) {
                     card.href = card.href + `?${gm.id}_remove=true`
                     card.addEventListener('mouseup', function(e) {
-                      if (e.target.className == 'gm-card-switcher') {
+                      if (api.dom.containsClass(e.target, ['gm-card-switcher', 'gm-card-uploader'])) {
                         return
                       }
-                      // 不能 mousedown，隐藏之后无法触发事件
                       if (e.button == 0 || e.button == 1) { // 左键或中键
                         api.dom.addClass(card, 'gm-removed')
                         card.added = false
@@ -3055,6 +3100,7 @@
               }
             })
           }
+          // 不能 mousedown，隐藏之后无法触发事件
           link.addEventListener('mouseup', function(e) {
             if (e.button == 0 || e.button == 1) { // 左键或中键
               if (arb.autoRemove) {
@@ -3511,11 +3557,16 @@
           text-overflow: ellipsis;
           white-space: nowrap;
           overflow: hidden;
-          width: 21em;
+          width: fit-content;
+          max-width: 21em;
           color: var(--hint-text-color);
         }
+        #${gm.id} .gm-entrypopup .gm-entry-list .gm-entry-list-item .gm-card-uploader:hover {
+          text-decoration: underline;
+          font-weight: bold;
+          color: var(--text-bold-color);
+        }
         #${gm.id} .gm-entrypopup .gm-entry-list .gm-entry-list-item .gm-card-progress {
-          text-align: right;
           position: absolute;
           bottom: 0;
           right: 0;
