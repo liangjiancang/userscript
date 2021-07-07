@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站防剧透进度条
-// @version         1.6.6.20210702
+// @version         1.6.7.20210708
 // @namespace       laster2800
 // @author          Laster2800
 // @description     看比赛、看番总是被进度条剧透？装上这个脚本再也不用担心这些问题了
@@ -289,6 +289,8 @@
         uploaderList: updateData => {
           const _ = gm.data._
           if (typeof updateData == 'string') {
+            // 除空行及行尾空白符，注意多行模式「\n」不在「^」「$」之间
+            updateData = updateData.replaceAll(/^\s*$\n/gm, '').replaceAll(/\s+$/gm, '').replace(/\n\s*$/, '')
             GM_setValue('uploaderList', updateData)
             _.uploaderListSet = null
             return updateData
@@ -1865,13 +1867,13 @@
                   this.setAttribute('enabled', '')
                   if (!ulSet.has(uid)) {
                     const ul = gm.data.uploaderList()
-                    gm.data.uploaderList(`${ul}\n${uid}`)
+                    gm.data.uploaderList(`${ul}\n${uid} # ${videoInfo.owner.name}`)
                   }
                 } else {
                   this.removeAttribute('enabled')
                   if (ulSet.has(uid)) {
                     let ul = gm.data.uploaderList()
-                    ul = ul.replaceAll(new RegExp(`^${uid}(?=\\D|$).*\n?`, 'gm'), '')
+                    ul = ul.replaceAll(new RegExp(String.raw `^${uid}(?=\D|$).*\n?`, 'gm'), '')
                     gm.data.uploaderList(ul)
                   }
                 }
