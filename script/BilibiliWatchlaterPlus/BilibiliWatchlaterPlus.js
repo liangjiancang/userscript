@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.12.1.20210706
+// @version         4.12.2.20210707
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -334,7 +334,7 @@
       removeHistorySaves: { default: 500, type: 'int', attr: 'value', manual: true, needNotReload: true, min: 10, max: 100000, configVersion: 20210628 },
       removeHistoryTimestamp: { default: true, attr: 'checked', needNotReload: true, configVersion: 20210703 },
       removeHistorySearchTimes: { default: 500, type: 'int', attr: 'value', manual: true, needNotReload: true, min: 1, max: 100000, configVersion: 20210703 },
-      fillWatchlaterStatus: { default: Enums.fillWatchlaterStatus.dynamicAndVideo, attr: 'value', configVersion: 20200819 },
+      fillWatchlaterStatus: { default: Enums.fillWatchlaterStatus.dynamic, attr: 'value', configVersion: 20200819 },
       hideWatchlaterInCollect: { default: true, attr: 'checked', configVersion: 20210322 },
       videoButton: { default: true, attr: 'checked' },
       autoRemove: { default: Enums.autoRemove.openFromList, attr: 'value', configVersion: 20210612 },
