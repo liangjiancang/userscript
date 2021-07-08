@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.12.2.20210707
+// @version         4.12.3.20210708
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -221,6 +221,7 @@
    * @property {number} aid 视频 AV 号，务必统一为字符串格式再使用
    * @property {string} bvid 视频 BV 号
    * @property {string} title 视频标题
+   * @property {number} state 视频状态
    * @property {string} [pic] 视频封面
    * @property {Object} [owner] UP 主信息
    * @property {number} [owner.mid] UP 主 ID
@@ -310,7 +311,7 @@
   const gm = {
     id: gmId,
     configVersion: GM_getValue('configVersion'),
-    configUpdate: 20210706,
+    configUpdate: 20210708,
     searchParams: new URL(location.href).searchParams,
     config: {},
     configMap: {
@@ -550,6 +551,7 @@
                     aid: item.aid,
                     bvid: item.bvid,
                     title: item.title,
+                    state: item.state,
                   }
                 }
                 GM_setValue('watchlaterListCacheTime', new Date().getTime())
@@ -638,14 +640,14 @@
             GM_deleteValue('watchlaterListCache')
           }
 
-          // 4.12.1.20210706
-          if (gm.configVersion < 20210706) {
+          // 4.12.3.20210708
+          if (gm.configVersion < 20210708) {
             GM_deleteValue('watchlaterListCacheTime')
             GM_deleteValue('watchlaterListCache')
           }
 
-          const noSetting = new Set([20210612, 20210701, 20210706]) // 此处添加 configUpdate 变化但不是功能性更新的配置版本
-          if (!noSetting.has(gm.configUpdate)) {
+          // 功能性更新后更新此处配置版本
+          if (gm.configVersion < 20210703) {
             _self.openUserSetting(2)
           } else {
             gm.configVersion = gm.configUpdate
@@ -2580,9 +2582,14 @@
                 for (const item of data) {
                   /** @type {HTMLAnchorElement} */
                   const card = el.entryList.appendChild(document.createElement('a'))
+                  const valid = item.state >= 0
                   card.title = item.title
                   if (simplePopup) {
-                    card.innerText = card.title
+                    if (valid) {
+                      card.innerText = card.title
+                    } else {
+                      card.innerHTML = `<b>[已失效]</b> ${card.title}`
+                    }
                     card.className = 'gm-entry-list-simple-item'
                   } else {
                     card.uploader = item.owner.name
@@ -2605,7 +2612,7 @@
                         <div class="gm-card-duration">${duration}</div>
                       </div>
                       <div class="gm-card-right" title>
-                        <div class="gm-card-title">${card.title}</div>
+                        <div class="gm-card-title">${valid ? card.title : `<b>[已失效]</b> ${card.title}`}</div>
                         <div class="gm-card-uploader">${card.uploader}</div>
                         <div class="gm-card-progress" title="已观看">${progress}</div>
                       </div>
@@ -2650,24 +2657,29 @@
                       window.open(gm.url.page_userSpace(item.owner.mid), '_blank')
                     })
                   }
-
-                  card.target = openLinkInCurrent ? '_self' : '_blank'
-                  if (redirect) {
-                    card.href = `${gm.url.page_videoNormalMode}/${item.bvid}`
+                  if (valid) {
+                    card.target = openLinkInCurrent ? '_self' : '_blank'
+                    if (redirect) {
+                      card.href = `${gm.url.page_videoNormalMode}/${item.bvid}`
+                    } else {
+                      card.href = `${gm.url.page_videoWatchlaterMode}/${item.bvid}`
+                    }
+                    if (autoRemove) {
+                      card.href = card.href + `?${gm.id}_remove=true`
+                      card.addEventListener('mouseup', function(e) {
+                        if (api.dom.containsClass(e.target, ['gm-card-switcher', 'gm-card-uploader'])) {
+                          return
+                        }
+                        if (e.button == 0 || e.button == 1) { // 左键或中键
+                          api.dom.addClass(card, 'gm-removed')
+                          card.added = false
+                        }
+                      })
+                    }
                   } else {
-                    card.href = `${gm.url.page_videoWatchlaterMode}/${item.bvid}`
-                  }
-                  if (autoRemove) {
-                    card.href = card.href + `?${gm.id}_remove=true`
-                    card.addEventListener('mouseup', function(e) {
-                      if (api.dom.containsClass(e.target, ['gm-card-switcher', 'gm-card-uploader'])) {
-                        return
-                      }
-                      if (e.button == 0 || e.button == 1) { // 左键或中键
-                        api.dom.addClass(card, 'gm-removed')
-                        card.added = false
-                      }
-                    })
+                    api.dom.addClass(card, 'gm-invalid')
+                    card.target = '_self'
+                    card.href = gm.url.noop
                   }
                 }
               } catch (e) {
@@ -3081,7 +3093,7 @@
               return
             }
           }
-          if (link.href) { // 视频被和谐或其他特殊情况
+          if (link.href && gm.regex.page_videoWatchlaterMode.test(link.href)) { // 视频被和谐或其他特殊情况
             link.addEventListener('mousedown', function(e) {
               if (e.button == 0 || e.button == 1) { // 左键或中键
                 if (arb.autoRemove) {
@@ -3099,15 +3111,15 @@
                 }
               }
             })
-          }
-          // 不能 mousedown，隐藏之后无法触发事件
-          link.addEventListener('mouseup', function(e) {
-            if (e.button == 0 || e.button == 1) { // 左键或中键
-              if (arb.autoRemove) {
-                base.style.display = 'none'
+            // 不能 mousedown，隐藏之后无法触发事件
+            link.addEventListener('mouseup', function(e) {
+              if (e.button == 0 || e.button == 1) { // 左键或中键
+                if (arb.autoRemove) {
+                  base.style.display = 'none'
+                }
               }
-            }
-          })
+            })
+          }
         }
       }
     }
@@ -3487,6 +3499,10 @@
           font-size: 1.15em;
           cursor: pointer;
         }
+        #${gm.id} .gm-entrypopup .gm-entry-list .gm-entry-list-item.gm-invalid {
+          cursor: not-allowed;
+        }
+        #${gm.id} .gm-entrypopup .gm-entry-list .gm-entry-list-item.gm-invalid,
         #${gm.id} .gm-entrypopup .gm-entry-list .gm-entry-list-item.gm-removed {
           filter: grayscale(1);
           color: var(--hint-text-color);
@@ -3560,6 +3576,7 @@
           width: fit-content;
           max-width: 21em;
           color: var(--hint-text-color);
+          cursor: pointer;
         }
         #${gm.id} .gm-entrypopup .gm-entry-list .gm-entry-list-item .gm-card-uploader:hover {
           text-decoration: underline;
@@ -3589,6 +3606,11 @@
           padding: 0.5em 1em;
           border-bottom: 1px solid var(--light-border-color);
           cursor: pointer;
+        }
+        #${gm.id} .gm-entrypopup .gm-entry-list .gm-entry-list-simple-item.gm-invalid,
+        #${gm.id} .gm-entrypopup .gm-entry-list .gm-entry-list-simple-item.gm-invalid:hover {
+          cursor: not-allowed;
+          color: var(--hint-text-color);
         }
         #${gm.id} .gm-entrypopup .gm-entry-list .gm-entry-list-simple-item.gm-removed {
           text-decoration: line-through;
