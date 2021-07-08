@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站防剧透进度条
-// @version         1.6.7.20210708
+// @version         1.6.8.20210708
 // @namespace       laster2800
 // @author          Laster2800
 // @description     看比赛、看番总是被进度条剧透？装上这个脚本再也不用担心这些问题了
@@ -348,8 +348,8 @@
             GM_deleteValue('openSettingAfterConfigUpdate')
           }
 
-          const noSetting = new Set([20210627]) // 此处添加 configUpdate 变化但不是功能性更新的配置版本
-          if (!noSetting.has(gm.configUpdate)) {
+          // 功能性更新后更新此处配置版本
+          if (gm.configVersion < 20200912) {
             _self.openUserSetting(2)
           } else {
             gm.configVersion = gm.configUpdate
