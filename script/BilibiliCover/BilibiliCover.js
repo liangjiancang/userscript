@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站封面获取
-// @version         4.9.11.20210702
+// @version         4.9.12.20210708
 // @namespace       laster2800
 // @author          Laster2800
 // @description     B站视频播放页（普通模式、稍后再看模式）、番剧播放页、直播间添加获取封面的按钮
@@ -23,8 +23,6 @@
 // @grant           GM_xmlhttpRequest
 // @grant           GM_setValue
 // @grant           GM_getValue
-// @grant           GM_deleteValue
-// @grant           GM_listValues
 // @grant           GM_registerMenuCommand
 // @grant           GM_unregisterMenuCommand
 // @grant           unsafeWindow
@@ -117,30 +115,19 @@
      * 版本更新处理
      */
     updateVersion() {
-      let updated = false
       if (isNaN(gm.configVersion) || gm.configVersion < 0) {
-        const gmKeys = GM_listValues()
-        if (gmKeys.length > 0) {
-          updated = true
-          for (const gmKey of gmKeys) {
-            GM_deleteValue(gmKey)
-          }
-        }
         gm.configVersion = gm.configUpdate
         GM_setValue('configVersion', gm.configVersion)
       } else if (gm.configVersion < gm.configUpdate) {
         // 必须按从旧到新的顺序写
         // 内部不能使用 gm.configUpdate，必须手写更新后的配置版本号！
 
-        gm.configVersion = gm.configUpdate
-        GM_setValue('configVersion', gm.configVersion)
-        updated = true
-      }
-      if (updated) {
-        const noNotification = new Set([]) // 此处添加 configUpdate 变化但不需要提示的配置版本
-        if (!noNotification.has(gm.configUpdate)) {
+        // 功能性更新后更新此处配置版本
+        if (gm.configVersion < 0) {
           GM_notification({ text: '功能性更新完毕，您可能需要重新设置脚本。' })
         }
+        gm.configVersion = gm.configUpdate
+        GM_setValue('configVersion', gm.configVersion)
       }
     }
   }

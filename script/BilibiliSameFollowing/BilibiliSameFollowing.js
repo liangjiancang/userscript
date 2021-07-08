@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站共同关注快速查看
-// @version         1.3.5.20210630
+// @version         1.3.6.20210708
 // @namespace       laster2800
 // @author          Laster2800
 // @description     快速查看与特定用户的共同关注（视频播放页、动态页、用户空间）
@@ -126,30 +126,19 @@
      * 版本更新处理
      */
     updateVersion() {
-      let updated = false
       if (isNaN(gm.configVersion) || gm.configVersion < 0) {
-        const gmKeys = GM_listValues()
-        if (gmKeys.length > 0) {
-          updated = true
-          for (const gmKey of gmKeys) {
-            GM_deleteValue(gmKey)
-          }
-        }
         gm.configVersion = gm.configUpdate
         GM_setValue('configVersion', gm.configVersion)
       } else if (gm.configVersion < gm.configUpdate) {
         // 必须按从旧到新的顺序写
         // 内部不能使用 gm.configUpdate，必须手写更新后的配置版本号！
 
-        gm.configVersion = gm.configUpdate
-        GM_setValue('configVersion', gm.configVersion)
-        updated = true
-      }
-      if (updated) {
-        const noNotification = new Set([]) // 此处添加 configUpdate 变化但不需要提示的配置版本
-        if (!noNotification.has(gm.configUpdate)) {
+        // 功能性更新后更新此处配置版本
+        if (gm.configVersion < 0) {
           GM_notification({ text: '功能性更新完毕，您可能需要重新设置脚本。' })
         }
+        gm.configVersion = gm.configUpdate
+        GM_setValue('configVersion', gm.configVersion)
       }
     }
 
