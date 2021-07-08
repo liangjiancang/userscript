@@ -6,6 +6,7 @@
 
 1. API：升级至 V1.0，大幅优化元素等待逻辑。详见 [UserscriptAPI 更新日志](https://gitee.com/liangjiancang/userscript/blob/master/lib/UserscriptAPI/changelog.md)。
 2. 代码：借助新版元素等待 API 进行大幅简化。
+3. 脚本：优化更新处理机制。
 
 ## V1.2
 
