@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.13.0.20210710
+// @version         4.13.1.20210711
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -2413,7 +2413,7 @@
        * 打开入口弹出菜单
        */
       const openEntryPopup = () => {
-        const callback = () => el.search.focus()
+        const callback = () => gm.config.headerMenuSearch && el.search.focus()
         if (gm.el.entryPopup) {
           _self.script.openMenuItem('entryPopup', callback)
         } else {
