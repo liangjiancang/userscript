@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.12.3.20210708
+// @version         4.13.0.20210710
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -2385,7 +2385,7 @@
             if (!popup.mouseOver) {
               _self.script.closeMenuItem('entryPopup')
             }
-          }, 80)
+          }, 180)
         }
 
         /**
@@ -2404,22 +2404,23 @@
             if (!watchlater.mouseOver) {
               _self.script.closeMenuItem('entryPopup')
             }
-          }, 100)
+          }, 80)
         }
       }
 
+      const el = {}
       /**
        * 打开入口弹出菜单
        */
       const openEntryPopup = () => {
-        const el = {}
+        const callback = () => el.search.focus()
         if (gm.el.entryPopup) {
-          _self.script.openMenuItem('entryPopup')
+          _self.script.openMenuItem('entryPopup', callback)
         } else {
           setTimeout(() => {
             initPopup()
             processPopup()
-            _self.script.openMenuItem('entryPopup')
+            _self.script.openMenuItem('entryPopup', callback)
           })
 
           /**
@@ -2440,6 +2441,7 @@
                 <div class="gm-popup-total" title="列表条目数">0</div>
               </div>
               <div class="gm-entry-list"></div>
+              <div class="gm-entry-list gm-entry-removed-list"></div>
               <div class="gm-entry-bottom">
                 <a class="gm-entry-button" fn="setting" href="${gm.url.noop}">设置</a>
                 <a class="gm-entry-button" fn="history" href="${gm.url.noop}">历史</a>
@@ -2450,6 +2452,7 @@
               </div>
             `
             el.entryList = gm.el.entryPopup.querySelector('.gm-entry-list')
+            el.entryRemovedList = gm.el.entryPopup.querySelector('.gm-entry-removed-list')
             el.entryHeader = gm.el.entryPopup.querySelector('.gm-popup-header')
             el.search = gm.el.entryPopup.querySelector('.gm-popup-search input')
             el.searchClear = gm.el.entryPopup.querySelector('.gm-popup-search-clear')
@@ -2466,42 +2469,45 @@
               if (gm.config.headerMenuSearch) {
                 el.search.oninput = function() {
                   const val = this.value
-                  const list = el.entryList
+                  const lists = [el.entryList, el.entryRemovedList]
                   if (val.length > 0) {
                     el.searchClear.style.visibility = 'visible'
                   } else {
                     el.searchClear.style.visibility = 'hidden'
                   }
-                  if (list.total > 0) {
-                    let cnt = 0
-                    for (let i = 0; i < list.childElementCount; i++) {
-                      let valid = false
-                      const card = list.children[i]
-                      if (val.length > 0) {
-                        if (card.title && card.title.indexOf(val) > -1) {
+                  let cnt = 0
+                  for (const list of lists) {
+                    if (list.total > 0) {
+                      for (let i = 0; i < list.childElementCount; i++) {
+                        let valid = false
+                        const card = list.children[i]
+                        if (val.length > 0) {
+                          if (card.title && card.title.indexOf(val) > -1) {
+                            valid = true
+                          } else if (card.uploader && card.uploader.indexOf(val) > -1) {
+                            valid = true
+                          }
+                        } else {
                           valid = true
-                        } else if (card.uploader && card.uploader.indexOf(val) > -1) {
-                          valid = true
                         }
-                      } else {
-                        valid = true
-                      }
-                      if (valid) {
-                        cnt += 1
-                        if (card.searchHide) {
-                          api.dom.removeClass(card, 'gm-search-hide')
-                          card.searchHide = false
-                        }
-                      } else {
-                        if (!card.searchHide) {
-                          api.dom.addClass(card, 'gm-search-hide')
-                          card.searchHide = true
+                        if (valid) {
+                          cnt += 1
+                          if (card.searchHide) {
+                            api.dom.removeClass(card, 'gm-search-hide')
+                            card.searchHide = false
+                          }
+                        } else {
+                          if (!card.searchHide) {
+                            api.dom.addClass(card, 'gm-search-hide')
+                            card.searchHide = true
+                          }
                         }
                       }
+                      list.scrollTop = 0
                     }
-                    el.entryList.scrollTop = 0
-                    el.popupTotal.innerText = cnt != list.total ? `${cnt}/${list.total}` : list.total
                   }
+                  const total = lists.reduce((acc, cur) => acc + cur.total, 0)
+                  el.popupTotal.innerText = cnt != total ? `${cnt}/${total}` : total
                 }
                 el.searchClear.onclick = function() {
                   el.search.value = ''
@@ -2561,11 +2567,20 @@
            * @async
            */
           const onOpen = async () => {
+            const rmCards = gm.el.entryPopup.querySelectorAll('.gm-removed')
+            let rmBvid = null
+            if (rmCards.length > 0) {
+              rmBvid = new Set()
+              for (const rmCard of rmCards) {
+                rmBvid.add(rmCard.bvid)
+              }
+            }
             el.search.value = ''
             el.searchClear.style.visibility = 'hidden'
             el.popupTotal.innerText = '0'
             el.entryList.innerText = ''
             el.entryList.total = 0
+            el.entryRemovedList.total = 0
             let data = []
             if (el.entryList.needReload) {
               el.entryList.needReload = false
@@ -2584,6 +2599,12 @@
                   const card = el.entryList.appendChild(document.createElement('a'))
                   const valid = item.state >= 0
                   card.title = item.title
+                  card.bvid = item.bvid
+                  if (rmBvid && rmBvid.size > 0) {
+                    if (rmBvid.has(card.bvid)) {
+                      rmBvid.delete(card.bvid)
+                    }
+                  }
                   if (simplePopup) {
                     if (valid) {
                       card.innerText = card.title
@@ -2625,6 +2646,7 @@
                     card.added = true
                     const switcher = card.querySelector('.gm-card-switcher')
                     switcher.addEventListener('click', function(e) {
+                      el.entryList.needReload = true
                       e.preventDefault() // 不能放到 async 中
                       setTimeout(async () => {
                         const added = card.added
@@ -2637,7 +2659,6 @@
                         const note = added ? '从稍后再看移除' : '添加到稍后再看'
                         const success = await _self.method.switchVideoWatchlaterStatus(item.aid, !added)
                         if (success) {
-                          el.entryList.needReload = true
                           card.added = !added
                           api.message.create(`${note}成功`)
                         } else {
@@ -2670,6 +2691,7 @@
                         if (api.dom.containsClass(e.target, ['gm-card-switcher', 'gm-card-uploader'])) {
                           return
                         }
+                        el.entryList.needReload = true
                         if (e.button == 0 || e.button == 1) { // 左键或中键
                           api.dom.addClass(card, 'gm-removed')
                           card.added = false
@@ -2686,12 +2708,28 @@
                 api.logger.error(gm.error.NETWORK)
                 api.logger.error(e)
               }
-              if (simplePopup) {
-                el.entryList.lastElementChild.style.borderBottom = 'none'
+
+              // 添加已移除视频
+              if (rmBvid && rmBvid.size > 0) {
+                const only1 = rmBvid.size == 1
+                const h = simplePopup ? (only1 ? 2.9 : 6) : (only1 ? 6.5 : 8.5)
+                el.entryList.style.height = `${39 - h}em`
+                el.entryRemovedList.style.height = `${h}em`
+                el.entryRemovedList.style.display = 'block'
+                el.entryRemovedList.innerHTML = ''
+                for (const rmCard of rmCards) {
+                  if (rmBvid.has(rmCard.bvid)) {
+                    el.entryRemovedList.appendChild(rmCard)
+                  }
+                }
+                el.entryRemovedList.total = rmBvid.size
+              } else {
+                el.entryList.style.height = ''
+                el.entryRemovedList.style.display = ''
               }
-              el.search.focus()
-              el.popupTotal.innerText = data.length
+
               el.entryList.total = data.length
+              el.popupTotal.innerText = el.entryList.total + el.entryRemovedList.total
             } else {
               el.entryList.innerHTML = '<div class="gm-entry-list-empty">稍后再看列表为空</div>'
             }
@@ -3479,6 +3517,10 @@
           overflow-y: auto;
           padding: 0.2em 0;
         }
+        #${gm.id} .gm-entrypopup .gm-entry-list.gm-entry-removed-list {
+          border-top: 2px solid var(--light-border-color);
+          display: none;
+        }
         #${gm.id} .gm-entrypopup .gm-entry-list .gm-entry-list-empty {
           position: absolute;
           top: calc(50% - 2em);
@@ -3604,8 +3646,10 @@
           color: var(--text-color);
           font-size: 1.2em;
           padding: 0.5em 1em;
-          border-bottom: 1px solid var(--light-border-color);
           cursor: pointer;
+        }
+        #${gm.id} .gm-entrypopup .gm-entry-list .gm-entry-list-simple-item:not(:last-child) {
+          border-bottom: 1px solid var(--light-border-color);
         }
         #${gm.id} .gm-entrypopup .gm-entry-list .gm-entry-list-simple-item.gm-invalid,
         #${gm.id} .gm-entrypopup .gm-entry-list .gm-entry-list-simple-item.gm-invalid:hover {
