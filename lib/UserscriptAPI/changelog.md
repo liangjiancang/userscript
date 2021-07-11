@@ -2,6 +2,13 @@
 
 本日志只记录用户友好的更新说明，影响不大的问题修复与修改不作记录，具体修改见 [提交记录](https://gitee.com/liangjiancang/userscript/commits/master/lib/UserscriptAPI/UserscriptAPI.js)。
 
+## V1.1
+
+1. 库：新增 `tool` API 集合。
+2. `tool`：增加 `debounce()` 和 `throttle()` 用于消抖与节流。
+3. `wait`：元素等待 API 引入节流控制，仅当 `repeat` 为 `false` 时生效。
+4. `dom`：`setAbsoluteCenter()` 现在会使目标元素在窗口尺寸变化时保持绝对居中状态。
+
 ## V1.0
 
 1. `wait`：重做元素等待 API，检测方式从轮询改为 `MutationObserver`。
