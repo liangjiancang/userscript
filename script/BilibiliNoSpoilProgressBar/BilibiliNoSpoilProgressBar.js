@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站防剧透进度条
-// @version         1.6.8.20210708
+// @version         1.7.0.20210711
 // @namespace       laster2800
 // @author          Laster2800
 // @description     看比赛、看番总是被进度条剧透？装上这个脚本再也不用担心这些问题了
@@ -13,7 +13,7 @@
 // @include         *://www.bilibili.com/medialist/play/watchlater/*
 // @include         *://www.bilibili.com/bangumi/play/*
 // @exclude         /.*:\/\/.*:\/\/.*/
-// @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=945829
+// @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=949361
 // @grant           GM_addStyle
 // @grant           GM_registerMenuCommand
 // @grant           GM_xmlhttpRequest
@@ -144,6 +144,8 @@
    * @property {HTMLElement} el 菜单元素
    * @property {() => void} [openHandler] 打开菜单的回调函数
    * @property {() => void} [closeHandler] 关闭菜单的回调函数
+   * @property {() => void} [openedHandler] 彻底打开菜单后的回调函数
+   * @property {() => void} [closedHandler] 彻底关闭菜单后的回调函数
    */
   /**
    * @typedef GMObject_error
@@ -781,6 +783,7 @@
         const processSettingItem = () => {
           const _self = this
           gm.menu.setting.openHandler = onOpen
+          gm.menu.setting.openedHandler = () => api.dom.setAbsoluteCenter(el.settingPage)
           el.save.onclick = onSave
           el.cancel.onclick = () => _self.closeMenuItem('setting')
           el.shadow.onclick = function() {
@@ -854,11 +857,7 @@
             // 需要等所有配置读取完成后再进行选项初始化
             el[name].init && el[name].init()
           }
-
           el.settingPage.parentNode.style.display = 'block'
-          setTimeout(() => {
-            api.dom.setAbsoluteCenter(el.settingPage)
-          }, 10)
         }
 
         /**
@@ -1009,6 +1008,7 @@
               await new Promise(resolve => {
                 api.dom.fade(true, menu.el, () => {
                   resolve()
+                  menu.openedHandler && menu.openedHandler.call(menu)
                   callback && callback.call(menu)
                 })
               })
@@ -1056,6 +1056,7 @@
           await new Promise(resolve => {
             api.dom.fade(false, menu.el, () => {
               resolve()
+              menu.closedHandler && menu.closedHandler.call(menu)
               callback && callback.call(menu)
             })
           })
