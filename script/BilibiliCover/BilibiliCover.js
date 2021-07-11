@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站封面获取
-// @version         4.9.12.20210708
+// @version         4.10.0.20210711
 // @namespace       laster2800
 // @author          Laster2800
 // @description     B站视频播放页（普通模式、稍后再看模式）、番剧播放页、直播间添加获取封面的按钮
@@ -16,13 +16,14 @@
 // @exclude         *://live.bilibili.com/
 // @exclude         *://live.bilibili.com/*/*
 // @exclude         /.*:\/\/.*:\/\/.*/
-// @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=945829
+// @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=949361
 // @grant           GM_addStyle
 // @grant           GM_download
 // @grant           GM_notification
 // @grant           GM_xmlhttpRequest
 // @grant           GM_setValue
 // @grant           GM_getValue
+// @grant           GM_deleteValue
 // @grant           GM_registerMenuCommand
 // @grant           GM_unregisterMenuCommand
 // @grant           unsafeWindow
@@ -37,7 +38,7 @@
   const gm = {
     id: 'gm395575',
     configVersion: GM_getValue('configVersion'),
-    configUpdate: 20210627,
+    configUpdate: 20210711,
     config: {
       preview: true,
       download: true,
@@ -122,8 +123,13 @@
         // 必须按从旧到新的顺序写
         // 内部不能使用 gm.configUpdate，必须手写更新后的配置版本号！
 
+        // 4.10.0.20210711
+        if (gm.configVersion < 20210711) {
+          GM_deleteValue('preview')
+        }
+
         // 功能性更新后更新此处配置版本
-        if (gm.configVersion < 0) {
+        if (gm.configVersion < 20210711) {
           GM_notification({ text: '功能性更新完毕，您可能需要重新设置脚本。' })
         }
         gm.configVersion = gm.configUpdate
@@ -240,29 +246,31 @@
             }, 80)
           }
 
-          target.addEventListener('mouseenter', function() {
+          target.addEventListener('mouseenter', api.tool.debounce(function() {
+            const _self = target
             if (gm.config.preview) {
-              this.mouseOver = true
-              if (this.disablePreview) {
+              _self.mouseOver = true
+              if (_self.disablePreview) {
                 return
               }
               setTimeout(() => {
                 preview.src && fadeIn()
               }, antiConflictTime)
             }
-          })
-          target.addEventListener('mouseleave', function() {
+          }, 200))
+          target.addEventListener('mouseleave', api.tool.debounce(function() {
+            const _self = target
             if (gm.config.preview) {
-              this.mouseOver = false
-              if (this.disablePreview) {
-                this.disablePreview = false
+              _self.mouseOver = false
+              if (_self.disablePreview) {
+                _self.disablePreview = false
                 return
               }
               setTimeout(() => {
                 preview.src && !preview.mouseOver && fadeOut()
               }, antiConflictTime)
             }
-          })
+          }, 200))
 
           let startPos // 鼠标进入预览时的初始坐标
           preview.onmouseenter = function() {
