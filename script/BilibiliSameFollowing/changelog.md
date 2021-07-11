@@ -2,6 +2,10 @@
 
 本日志只记录用户友好的更新说明，影响不大的问题修复与修改不作记录，具体修改见 [提交记录](https://gitee.com/liangjiancang/userscript/commits/master/script/BilibiliSameFollowing/BilibiliSameFollowing.js)。
 
+## V1.4
+
+1. 功能实现：在直播间中快速查看。
+
 ## V1.3
 
 1. API：升级至 V1.1，大幅优化元素等待逻辑。详见 [UserscriptAPI 更新日志](https://gitee.com/liangjiancang/userscript/blob/master/lib/UserscriptAPI/changelog.md)。

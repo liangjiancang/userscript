@@ -2,7 +2,7 @@
 
 相关脚本：**[B站稍后再看功能增强](https://greasyfork.org/zh-CN/scripts/395456)**、**[B站封面获取](https://greasyfork.org/zh-CN/scripts/395575)**、**[B站防剧透进度条](https://greasyfork.org/zh-CN/scripts/411092)**
 
-快速查看与特定用户的共同关注（视频播放页、动态页、用户空间），详情查看下方截图。求好评，求收藏💔。点击查看 [更新日志](https://gitee.com/liangjiancang/userscript/blob/master/script/BilibiliSameFollowing/changelog.md)。
+快速查看与特定用户的共同关注（视频播放页、动态页、用户空间、直播间），详情查看下方截图。求好评，求收藏💔。点击查看 [更新日志](https://gitee.com/liangjiancang/userscript/blob/master/script/BilibiliSameFollowing/changelog.md)。
 
 ## 配置说明
 
@@ -36,6 +36,10 @@
 * 用户空间
 
     ![用户空间](https://gitee.com/liangjiancang/userscript/raw/master/script/BilibiliSameFollowing/screenshot/用户空间.png)
+
+* 直播间
+
+    ![直播间](https://gitee.com/liangjiancang/userscript/raw/master/script/BilibiliSameFollowing/screenshot/直播间.png)
 
 *gitee: [BilibiliSameFollowing](https://gitee.com/liangjiancang/userscript/tree/master/script/BilibiliSameFollowing)*
 

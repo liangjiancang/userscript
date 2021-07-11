@@ -1,9 +1,9 @@
 // ==UserScript==
 // @name            B站共同关注快速查看
-// @version         1.3.7.20210711
+// @version         1.4.0.20210712
 // @namespace       laster2800
 // @author          Laster2800
-// @description     快速查看与特定用户的共同关注（视频播放页、动态页、用户空间）
+// @description     快速查看与特定用户的共同关注（视频播放页、动态页、用户空间、直播间）
 // @icon            https://www.bilibili.com/favicon.ico
 // @homepage        https://greasyfork.org/zh-CN/scripts/428453
 // @supportURL      https://greasyfork.org/zh-CN/scripts/428453/feedback
@@ -11,6 +11,9 @@
 // @include         *://www.bilibili.com/*
 // @include         *://t.bilibili.com/*
 // @include         *://space.bilibili.com/*
+// @include         *://live.bilibili.com/*
+// @exclude         *://live.bilibili.com/
+// @exclude         *://live.bilibili.com/*/*
 // @exclude         *://t.bilibili.com/h5/dynamic/specification
 // @exclude         *://www.bilibili.com/page-proxy/game-nav.html
 // @exclude         /.*:\/\/.*:\/\/.*/
@@ -34,12 +37,13 @@
   const gm = {
     id: 'gm428453',
     configVersion: GM_getValue('configVersion'),
-    configUpdate: 20210627,
+    configUpdate: 20210712,
     config: {
       failMessage: true,
       withoutSameMessage: true,
       dispInText: false,
       userSpace: true,
+      live: true,
       lv1Card: true,
       lv2Card: true,
       lv3Card: false,
@@ -49,6 +53,7 @@
       withoutSameMessage: { name: '无共同关注时提示信息' },
       dispInText: { name: '以纯文本形式显示共同关注' },
       userSpace: { name: '在用户空间中快速查看' },
+      live: { name: '在直播间中快速查看' },
       lv1Card: { name: '在常规用户卡片中快速查看' },
       lv2Card: { name: '在扩展用户卡片中快速查看' },
       lv3Card: { name: '在罕见用户卡片中快速查看' },
@@ -58,6 +63,7 @@
       page_videoWatchlaterMode: /\.com\/medialist\/play\/watchlater(?=[/?#]|$)/,
       page_dynamic: /t\.bilibili\.com(?=[/?#]|$)/,
       page_space: /space\.bilibili\.com\/\d+(?=[/?#]|$)/,
+      page_live: /live\.bilibili\.com\/\d+(?=[/?#]|$)/, // 只含具体的直播间页面
     },
     const: {
       notificationTimeout: 5600,
@@ -134,7 +140,7 @@
         // 内部不能使用 gm.configUpdate，必须手写更新后的配置版本号！
 
         // 功能性更新后更新此处配置版本
-        if (gm.configVersion < 0) {
+        if (gm.configVersion < 20210712) {
           GM_notification({ text: '功能性更新完毕，您可能需要重新设置脚本。' })
         }
         gm.configVersion = gm.configUpdate
@@ -244,10 +250,14 @@
      * @param {Object} config 配置
      * @param {string | number} config.uid 用户 ID
      * @param {HTMLElement} config.target 指定信息显示元素的父元素
-     * @param {string} [config.className=''] 显示元素的类名
+     * @param {string} [config.className=''] 显示元素的类名；若 `target` 的子孙节点中有对应元素则直接使用，否则创建之
      */
     async generalLogic(config) {
       try {
+        let sf = config.className ? config.target.querySelector(config.className.replaceAll(/(^|\s+)(?=\w)/g, '.')) : null
+        if (sf) {
+          sf.innerHTML = ''
+        }
         const resp = await api.web.request({
           method: 'GET',
           url: `https://api.bilibili.com/x/relation/same/followings?vmid=${config.uid}`,
@@ -266,8 +276,10 @@
             }
           }
           if (sameFollowings.length > 0 || gm.config.withoutSameMessage) {
-            const sf = config.target.appendChild(document.createElement('div'))
-            sf.className = config.className || ''
+            if (!sf) {
+              sf = config.target.appendChild(document.createElement('div'))
+              sf.className = config.className || ''
+            }
             if (sameFollowings.length > 0) {
               if (gm.config.dispInText) {
                 sf.innerHTML = `<div>共同关注</div><div class="same-following">${sameFollowings.join('，&nbsp;')}</div>`
@@ -284,8 +296,10 @@
           }
         } else {
           if (gm.config.failMessage && json.message) {
-            const sf = config.target.appendChild(document.createElement('div'))
-            sf.className = config.className || ''
+            if (!sf) {
+              sf = config.target.appendChild(document.createElement('div'))
+              sf.className = config.className || ''
+            }
             sf.innerHTML = `<div>共同关注</div><div>[ ${json.message} ]</div>`
           }
           const msg = [json.code, json.message]
@@ -342,6 +356,14 @@
         .${gm.id}.space-same-followings > :first-child {
           font-weight: bold;
           padding-right: 1em;
+        }
+
+        .${gm.id}.live-same-followings > * {
+          display: block;
+        }
+        .${gm.id}.live-same-followings > :first-child {
+          margin-top: 1em;
+          font-weight: bold;
         }
       `)
     }
@@ -417,6 +439,26 @@
           user: '.idc-avatar-container',
           info: '.idc-info',
         })
+      }
+    } else if (api.web.urlMatch(gm.regex.page_live)) {
+      if (gm.config.live) {
+        // 直播间点击弹幕弹出的信息卡片
+        const container = await api.wait.waitQuerySelector('.danmaku-menu')
+        const userLink = await api.wait.waitQuerySelector('.go-space a', container)
+        container.style.maxWidth = '300px'
+        container.style.transform = 'translateX(-120px)'
+
+        const ob = new MutationObserver(async records => {
+          const uid = webpage.method.getUidFromUrl(records[0].target.href)
+          if (uid) {
+            webpage.generalLogic({
+              uid: uid,
+              target: container,
+              className: `${gm.id} live-same-followings`,
+            })
+          }
+        })
+        ob.observe(userLink, { attributeFilter: ['href'] })
       }
     }
     webpage.addStyle()
