@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站封面获取
-// @version         4.10.0.20210711
+// @version         4.10.1.20210712
 // @namespace       laster2800
 // @author          Laster2800
 // @description     B站视频播放页（普通模式、稍后再看模式）、番剧播放页、直播间添加获取封面的按钮
@@ -16,7 +16,7 @@
 // @exclude         *://live.bilibili.com/
 // @exclude         *://live.bilibili.com/*/*
 // @exclude         /.*:\/\/.*:\/\/.*/
-// @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=949361
+// @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=949671
 // @grant           GM_addStyle
 // @grant           GM_download
 // @grant           GM_notification
@@ -149,7 +149,7 @@
         download(url, name) {
           name = name || 'Cover'
           const onerror = function(error) {
-            if (error && error.error == 'not_whitelisted') {
+            if (error?.error == 'not_whitelisted') {
               alert('该封面的文件格式不在下载模式白名单中，从而触发安全限制导致无法直接下载。可修改脚本管理器的「下载模式」或「文件扩展名白名单」设置以放开限制。')
               window.open(url)
             } else {
@@ -175,23 +175,15 @@
          * @returns {Promise<string>} `aid`
          */
         async getAid() {
-          let aid
+          let aid = null
           try {
-            if (unsafeWindow.aid) {
-              aid = unsafeWindow.aid
-            } else {
-              aid = await api.wait.waitForConditionPassed({
-                condition: () => {
-                  const player = unsafeWindow.player
-                  const message = player && player.getVideoMessage && player.getVideoMessage()
-                  return message && message.aid
-                },
-              })
-            }
+            aid = unsafeWindow.aid || await api.wait.waitForConditionPassed({
+              condition: () => unsafeWindow.player?.getVideoMessage?.()?.aid,
+            })
           } catch (e) {
             api.logger.error(e)
           }
-          return String(aid || '')
+          return String(aid ?? '')
         },
 
         /**
@@ -234,7 +226,7 @@
             preview.style.opacity = '0'
             setTimeout(() => {
               preview.style.display = 'none'
-              callback && callback()
+              callback?.()
             }, fadeTime)
           }
           const disablePreviewTemp = () => {
@@ -272,7 +264,7 @@
             }
           }, 200))
 
-          let startPos // 鼠标进入预览时的初始坐标
+          let startPos = null // 鼠标进入预览时的初始坐标
           preview.onmouseenter = function() {
             this.mouseOver = true
           }
@@ -404,11 +396,13 @@
 
       const setCover = coverUrl => {
         if (coverUrl) {
+          cover.title = gm.const.title
           cover.href = coverUrl
           preview.src = coverUrl
           _self.method.addDownloadEvent(cover)
           preview.src = coverUrl
         } else {
+          cover.title = errorMsg
           cover.href = 'javascript:void(0)'
           preview.src = ''
           cover.onclick = function(e) {
@@ -416,7 +410,6 @@
             api.message.create(errorMsg)
           }
         }
-        cover.title = gm.const.title || errorMsg
       }
 
       const getCover = async () => {
@@ -425,7 +418,7 @@
           cover = await api.wait.waitForConditionPassed({
             condition: () => {
               const coverMeta = document.querySelector('head meta[itemprop=image]')
-              return coverMeta && coverMeta.content
+              return coverMeta?.content
             },
             timeout: 2000,
           })
@@ -516,11 +509,13 @@
 
       const setCover = coverUrl => {
         if (coverUrl) {
+          cover.title = gm.const.title
           cover.href = coverUrl
           preview.src = coverUrl
           _self.method.addDownloadEvent(cover)
           preview.src = coverUrl
         } else {
+          cover.title = errorMsg
           cover.href = 'javascript:void(0)'
           preview.src = ''
           cover.onclick = function(e) {
@@ -528,13 +523,12 @@
             api.message.create(errorMsg)
           }
         }
-        cover.title = gm.const.title || errorMsg
       }
 
       const getCover = async () => {
         let cover = ''
         const img = await api.wait.waitQuerySelector('.media-cover img')
-        if (img && img.src) {
+        if (img?.src) {
           cover = img.src.replace(/@[^@]*$/, '') // 不要缩略图
         }
         return cover
@@ -595,8 +589,7 @@
           await api.wait.waitForConditionPassed({
             condition: () => {
               const app = document.querySelector('#app')
-              const vueLoad = app && app.__vue__
-              if (!vueLoad) {
+              if (!app?.__vue__) {
                 return false
               }
               return document.querySelector('#arc_toolbar_report')
@@ -608,8 +601,7 @@
           await api.wait.waitForConditionPassed({
             condition: () => {
               const app = document.querySelector('#app')
-              const vueLoad = app && app.__vue__
-              if (!vueLoad) {
+              if (!app?.__vue__) {
                 return false
               }
               return document.querySelector('#toolbar_module')
@@ -621,8 +613,7 @@
           await api.wait.waitForConditionPassed({
             condition: () => {
               const hiVm = document.querySelector('#head-info-vm')
-              const vueLoad = hiVm && hiVm.__vue__
-              if (!vueLoad) {
+              if (!hiVm?.__vue__) {
                 return false
               }
               return hiVm.querySelector('.room-info-upper-row .upper-right-ctnr')
