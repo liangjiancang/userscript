@@ -22,6 +22,7 @@ module.exports = {
     'GM_registerMenuCommand': true,
     'GM_unregisterMenuCommand': true,
   },
+  parser: '@babel/eslint-parser',
   'parserOptions': {
     'ecmaVersion': 2018,
   },
