@@ -7,7 +7,9 @@
 1. 库：新增 `tool` API 集合。
 2. `tool`：增加 `debounce()` 和 `throttle()` 用于消抖与节流。
 3. `wait`：元素等待 API 引入节流控制，仅当 `repeat` 为 `false` 时生效。
-4. `dom`：`setAbsoluteCenter()` 现在会使目标元素在窗口尺寸变化时保持绝对居中状态。
+4. `wait`：条件等待 API 实现机制由 `setInterval()` 改为 `setTimeout()`，大幅优化异步条件下的条件等待。
+5. `dom`：`setAbsoluteCenter()` 现在会使目标元素在窗口尺寸变化时保持绝对居中状态。
+6. 代码：使用可选链操作符 `?.` 及空值合并运算符 `??` 进行简写。
 
 ## V1.0
 
