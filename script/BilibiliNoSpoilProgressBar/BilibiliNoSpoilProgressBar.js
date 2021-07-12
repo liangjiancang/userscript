@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站防剧透进度条
-// @version         1.7.0.20210711
+// @version         1.7.1.20210713
 // @namespace       laster2800
 // @author          Laster2800
 // @description     看比赛、看番总是被进度条剧透？装上这个脚本再也不用担心这些问题了
@@ -13,7 +13,7 @@
 // @include         *://www.bilibili.com/medialist/play/watchlater/*
 // @include         *://www.bilibili.com/bangumi/play/*
 // @exclude         /.*:\/\/.*:\/\/.*/
-// @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=949361
+// @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=949715
 // @grant           GM_addStyle
 // @grant           GM_registerMenuCommand
 // @grant           GM_xmlhttpRequest
@@ -32,15 +32,9 @@
 
   if (GM_info.scriptHandler != 'Tampermonkey') {
     const script = GM_info.script
-    if (!script.author) {
-      script.author = 'Laster2800'
-    }
-    if (!script.homepage) {
-      script.homepage = 'https://greasyfork.org/zh-CN/scripts/411092'
-    }
-    if (!script.supportURL) {
-      script.supportURL = 'https://greasyfork.org/zh-CN/scripts/411092/feedback'
-    }
+    script.author = script.author ?? 'Laster2800'
+    script.homepage = script.homepage ?? 'https://greasyfork.org/zh-CN/scripts/411092'
+    script.supportURL = script.supportURL ?? 'https://greasyfork.org/zh-CN/scripts/411092/feedback'
   }
 
   /**
@@ -316,7 +310,7 @@
               const rows = content.split('\n')
               for (const row of rows) {
                 const m = row.match(/^\d+/)
-                if (m && m.length > 0) {
+                if (m?.length > 0) {
                   set.add(m[0])
                 }
               }
@@ -636,7 +630,7 @@
                       break
                     }
                   }
-                  if (node && node.firstElementChild) {
+                  if (node?.firstElementChild) {
                     api.dom.addClass(node.firstElementChild, 'gm-updated')
                   }
                 }
@@ -709,7 +703,7 @@
             if (v0 === '') {
               this.value = ''
             } else {
-              let value
+              let value = null
               if (/^\d+\./.test(v0)) {
                 if (!/^\d+\.\d+$/.test(v0)) {
                   value = v0.replace(/(?<=^\d+\.\d*).*/, '')
@@ -855,7 +849,7 @@
           }
           for (const name in gm.configMap) {
             // 需要等所有配置读取完成后再进行选项初始化
-            el[name].init && el[name].init()
+            el[name].init?.()
           }
           el.settingPage.parentNode.style.display = 'block'
         }
@@ -1004,12 +998,12 @@
             const menu = gm.menu[key]
             if (key == name) {
               menu.state = 1
-              menu.openHandler && await menu.openHandler.call(menu)
+              await menu.openHandler?.call(menu)
               await new Promise(resolve => {
                 api.dom.fade(true, menu.el, () => {
                   resolve()
-                  menu.openedHandler && menu.openedHandler.call(menu)
-                  callback && callback.call(menu)
+                  menu.openedHandler?.call(menu)
+                  callback?.call(menu)
                 })
               })
               menu.state = 2
@@ -1052,12 +1046,12 @@
         }
         if (menu.state == 2) {
           menu.state = 3
-          menu.closeHandler && await menu.closeHandler.call(menu)
+          await menu.closeHandler?.call(menu)
           await new Promise(resolve => {
             api.dom.fade(false, menu.el, () => {
               resolve()
-              menu.closedHandler && menu.closedHandler.call(menu)
-              callback && callback.call(menu)
+              menu.closedHandler?.call(menu)
+              callback?.call(menu)
             })
           })
           menu.state = 0
@@ -1142,23 +1136,16 @@
          * @returns {Promise<string>} `aid`
          */
         async getAid() {
-          let aid
+          let aid = null
           try {
-            if (unsafeWindow.aid) {
-              aid = unsafeWindow.aid
-            } else {
-              aid = await api.wait.waitForConditionPassed({
-                condition: async () => {
-                  const message = await this.getVideoMessage()
-                  return message && message.aid
-                },
-              })
-            }
+            aid = unsafeWindow.aid || await api.wait.waitForConditionPassed({
+              condition: async () => (await this.getVideoMessage())?.aid,
+            })
           } catch (e) {
             api.logger.error(gm.error.DOM_PARSE)
             api.logger.error(e)
           }
-          return String(aid || '')
+          return String(aid ?? '')
         },
 
         /**
@@ -1167,19 +1154,16 @@
          * @returns {Promise<string>} `cid`
          */
         async getCid() {
-          let cid
+          let cid = null
           try {
             cid = await api.wait.waitForConditionPassed({
-              condition: async () => {
-                const message = await this.getVideoMessage()
-                return message && message.cid
-              },
+              condition: async () => (await this.getVideoMessage())?.cid,
             })
           } catch (e) {
             api.logger.error(gm.error.DOM_PARSE)
             api.logger.error(e)
           }
-          return String(cid || '')
+          return String(cid ?? '')
         },
 
         /**
@@ -1190,10 +1174,7 @@
         async getVideoMessage() {
           try {
             return await api.wait.waitForConditionPassed({
-              condition: () => {
-                const player = unsafeWindow.player
-                return player && player.getVideoMessage && player.getVideoMessage()
-              },
+              condition: () => unsafeWindow.player?.getVideoMessage?.(),
             })
           } catch (e) {
             api.logger.error(gm.error.DOM_PARSE)
@@ -1498,9 +1479,7 @@
        * 处理视频控制的显隐
        */
       const processControlShow = () => {
-        if (!_self.enabled) {
-          return
-        }
+        if (!_self.enabled) return
 
         const addObserver = target => {
           if (!target._obPlayRate) {
@@ -1516,9 +1495,7 @@
         if (!playerArea._obControlShow) {
           // 切换视频控制显隐时，添加或删除 ob 以控制伪进度条
           playerArea._obControlShow = new MutationObserver(records => {
-            if (records[0].oldValue == playerArea.className) {
-              return
-            }
+            if (records[0].oldValue == playerArea.className) return
             const before = api.dom.containsClass({ className: records[0].oldValue }, clzControlShow)
             const current = api.dom.containsClass(playerArea, clzControlShow)
             if (before != current) {
@@ -1762,7 +1739,7 @@
             const activeP = await api.wait.waitQuerySelector('.player-auxiliary-playlist-item-p-item-active', pList)
             obActiveP = new MutationObserver(async (records, observer) => {
               observer.disconnect()
-              obList && obList.disconnect()
+              obList?.disconnect()
               const currentActive = await api.wait.waitQuerySelector('.player-auxiliary-playlist-item-active')
               if (currentActive === activeVideo) {
                 _self.initNoSpoil()
@@ -1778,7 +1755,7 @@
         // 如果 list 中发生修改，则前面的监听无效，应当重新处理
         obList = new MutationObserver((records, observer) => {
           observer.disconnect()
-          obActiveP && obActiveP.disconnect()
+          obActiveP?.disconnect()
           _self.initSwitchingPartProcess(true)
         })
         obList.observe(list, { childList: true })
@@ -1874,7 +1851,7 @@
                   this.removeAttribute('enabled')
                   if (ulSet.has(uid)) {
                     let ul = gm.data.uploaderList()
-                    ul = ul.replaceAll(new RegExp(String.raw `^${uid}(?=\D|$).*\n?`, 'gm'), '')
+                    ul = ul.replaceAll(new RegExp(String.raw`^${uid}(?=\D|$).*\n?`, 'gm'), '')
                     gm.data.uploaderList(ul)
                   }
                 }
@@ -1911,15 +1888,13 @@
      */
     processFakePlayed() {
       const _self = this
-      if (!_self.enabled) {
-        return
-      }
+      if (!_self.enabled) return
       try {
         const player = unsafeWindow.player
         const playRate = player.getCurrentTime() / player.getDuration()
-        let offset
+        let offset = null
         const m = _self.progress.root.style.transform.match(/(?<=translateX\()[^)]+(?=\))/)
-        if (m && m.length > 0) {
+        if (m?.length > 0) {
           offset = m[0]
         } else {
           offset = 0
