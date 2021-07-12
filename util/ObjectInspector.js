@@ -3,7 +3,7 @@
  * 对象观察器
  * 
  * 根据 `regex` 在 `depth` 层深度内找到匹配 `regex` 的属性
- * @version 1.1.1.20200821
+ * @version 1.1.2.20210712
  */
 class ObjectInspector {
   /**
@@ -18,15 +18,15 @@ class ObjectInspector {
 
    */
   constructor(obj, regex, config) {
-    var defaultConfig = {
+    this.config = {
+      obj: obj,
+      regex: regex,
       depth: 5,
       inspectKey: true,
       inspectValue: true,
       exRegex: null,
+      ...config,
     }
-    this.config = { ...defaultConfig, ...config }
-    this.config.obj = obj
-    this.config.regex = regex
   }
 
   /**
@@ -70,7 +70,7 @@ class ObjectInspector {
    */
   _inspectObjectInner({ obj, regex, inspectKey, inspectValue, exRegex, exLongStrLen }, depth, result, prevKey, objSet) {
     for (var key in obj) {
-      if (exRegex && exRegex.test(key)) {
+      if (exRegex?.test(key)) {
         continue
       }
       if (inspectKey && regex.test(key)) {
