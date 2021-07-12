@@ -22,13 +22,12 @@ module.exports = {
     'GM_registerMenuCommand': true,
     'GM_unregisterMenuCommand': true,
   },
-  parser: '@babel/eslint-parser',
   'parserOptions': {
-    'ecmaVersion': 2018,
+    'ecmaVersion': 2020,
   },
   'rules': {
     'indent': ['warn', 2, {
-      'SwitchCase': 1
+      'SwitchCase': 1,
     }],
     'semi': ['warn', 'never'],
     'quotes': ['warn', 'single'],
