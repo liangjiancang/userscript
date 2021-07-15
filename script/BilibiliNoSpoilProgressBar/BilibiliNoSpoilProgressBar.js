@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站防剧透进度条
-// @version         1.8.1.20210715
+// @version         1.8.2.20210715
 // @namespace       laster2800
 // @author          Laster2800
 // @description     看比赛、看番总是被进度条剧透？装上这个脚本再也不用担心这些问题了
@@ -12,7 +12,7 @@
 // @include         *://www.bilibili.com/medialist/play/watchlater
 // @include         *://www.bilibili.com/medialist/play/watchlater/*
 // @include         *://www.bilibili.com/bangumi/play/*
-// @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=950686
+// @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=950773
 // @grant           GM_addStyle
 // @grant           GM_registerMenuCommand
 // @grant           GM_xmlhttpRequest
@@ -224,6 +224,11 @@
     label: GM_info.script.name,
     fadeTime: gm.const.fadeTime,
   })
+
+  /** @type {Script} */
+  let script = null
+  /** @type {Webpage} */
+  let webpage = null
 
   /**
    * 脚本运行的抽象，脚本独立于网站、为脚本本身服务的部分
@@ -1069,8 +1074,6 @@
    */
   class Webpage {
     constructor() {
-      this.script = new Script()
-
       /**
        * 播放控制
        * @type {HTMLElement}
@@ -1839,7 +1842,7 @@
 
         _self.scriptControl.setting.style.display = 'unset'
         _self.scriptControl.setting.onclick = function() {
-          _self.script.openUserSetting()
+          script.openUserSetting()
         }
       }
     }
@@ -2244,8 +2247,8 @@
     if (GM_info.scriptHandler != 'Tampermonkey') {
       api.dom.initUrlchangeEvent()
     }
-    const script = new Script()
-    const webpage = new Webpage()
+    script = new Script()
+    webpage = new Webpage()
 
     script.init()
     script.addScriptMenu()
