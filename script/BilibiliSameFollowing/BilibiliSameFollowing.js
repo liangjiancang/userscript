@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站共同关注快速查看
-// @version         1.4.6.20210715
+// @version         1.4.7.20210715
 // @namespace       laster2800
 // @author          Laster2800
 // @description     快速查看与特定用户的共同关注（视频播放页、动态页、用户空间、直播间）
@@ -193,8 +193,6 @@
 
     /**
      * 卡片处理逻辑
-     * 
-     * `cardId` 与 `cardClz` 中至少要传入一个，两者采取 `OR` 规则查找元素。
      * @async
      * @param {Object} config 配置
      * @param {string} [config.container=body] 卡片父元素选择器
