@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站封面获取
-// @version         4.11.0.20210715
+// @version         4.11.1.20210715
 // @namespace       laster2800
 // @author          Laster2800
 // @description     B站视频播放页（普通模式、稍后再看模式）、番剧播放页、直播间添加获取封面的按钮
@@ -191,7 +191,7 @@
          */
         addDownloadEvent(target) {
           const _self = this
-          // 此处必须用 mousedown，否则无法与动态加载封面的代码达成正确的联动
+          // 此处必须用 mousedown，否则无法与动态获取封面的代码达成正确的联动
           target.addEventListener('mousedown', function(e) {
             if (gm.config.download && e.button == 0) {
               e.preventDefault()
