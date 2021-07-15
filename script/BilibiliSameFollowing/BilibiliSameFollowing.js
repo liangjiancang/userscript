@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站共同关注快速查看
-// @version         1.4.5.20210715
+// @version         1.4.6.20210715
 // @namespace       laster2800
 // @author          Laster2800
 // @description     快速查看与特定用户的共同关注（视频播放页、动态页、用户空间、直播间）
@@ -13,6 +13,7 @@
 // @include         *://space.bilibili.com/*
 // @include         *://live.bilibili.com/*
 // @exclude         *://live.bilibili.com/
+// @exclude         *://live.bilibili.com/?*
 // @exclude         *://live.bilibili.com/*/*
 // @exclude         *://t.bilibili.com/pages/nav/index_new
 // @exclude         *://t.bilibili.com/h5/dynamic/specification
