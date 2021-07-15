@@ -5,6 +5,7 @@
 ## V1.4
 
 1. 功能实现：在直播间中快速查看。
+2. API：升级至 V1.2，进一步优化条件等待和元素等待。详见 [UserscriptAPI 更新日志](https://gitee.com/liangjiancang/userscript/blob/master/lib/UserscriptAPI/changelog.md)。
 
 ## V1.3
 
