@@ -2,6 +2,11 @@
 
 本日志只记录用户友好的更新说明，影响不大的问题修复与修改不作记录，具体修改见 [提交记录](https://gitee.com/liangjiancang/userscript/commits/master/script/BilibiliCover/BilibiliCover.js)。
 
+## V4.11
+
+1. 脚本：在视频播放页和番剧播放页中，封面不再在页面加载完成时获取，而是在用户获取封面时获取。直播间封面可在 DOM 中直接获取到，就不动态获取了。
+2. API：升级至 V1.2，进一步优化条件等待和元素等待。详见 [UserscriptAPI 更新日志](https://gitee.com/liangjiancang/userscript/blob/master/lib/UserscriptAPI/changelog.md)。
+
 ## V4.10
 
 1. 封面预览：修复封面预览抖动问题。~~这不是理应不该出现的 BUG 吗，为什么能写进更新日志里？~~

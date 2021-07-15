@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站封面获取
-// @version         4.10.3.20210713
+// @version         4.11.0.20210715
 // @namespace       laster2800
 // @author          Laster2800
 // @description     B站视频播放页（普通模式、稍后再看模式）、番剧播放页、直播间添加获取封面的按钮
@@ -15,7 +15,7 @@
 // @include         *://live.bilibili.com/*
 // @exclude         *://live.bilibili.com/
 // @exclude         *://live.bilibili.com/*/*
-// @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=949715
+// @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=950686
 // @grant           GM_addStyle
 // @grant           GM_download
 // @grant           GM_notification
@@ -191,14 +191,21 @@
          */
         addDownloadEvent(target) {
           const _self = this
-          target.onclick = function(e) {
-            if (gm.config.download) {
+          // 此处必须用 mousedown，否则无法与动态加载封面的代码达成正确的联动
+          target.addEventListener('mousedown', function(e) {
+            if (gm.config.download && e.button == 0) {
               e.preventDefault()
               target.dispatchEvent(new Event('mouseleave'))
               target.disablePreview = true
               _self.download(this.href, document.title)
             }
-          }
+          })
+          // 开启下载时，若没有以下处理器，则鼠标左键长按图片按钮，过一段时间后再松开，松开时依然会触发默认点击事件（在新标签页打开封面）
+          target.addEventListener('click', function(e) {
+            if (gm.config.download) {
+              e.preventDefault()
+            }
+          })
         },
 
         /**
@@ -272,16 +279,22 @@
               preview.src && fadeOut()
             }, antiConflictTime)
           }
-          preview.onclick = function() {
+          preview.addEventListener('mousedown', function(e) {
             if (this.src) {
-              if (gm.config.download) {
-                _self.download(this.src, document.title)
-              } else {
-                window.open(this.src)
+              if (e.button == 0 || e.button == 1) {
+                if (e.button == 0) {
+                  if (gm.config.download) {
+                    _self.download(this.src, document.title)
+                  } else {
+                    window.open(this.src)
+                  }
+                } else {
+                  window.open(this.src)
+                }
+                fadeOut(disablePreviewTemp)
               }
-              fadeOut(disablePreviewTemp)
             }
-          }
+          })
           preview.addEventListener('wheel', function() {
             // 滚动时关闭预览，优化用户体验
             fadeOut(disablePreviewTemp)
@@ -339,17 +352,15 @@
         atr.appendChild(cover)
       }
 
-      setTimeout(async () => {
+      const main = async function(e) {
         try {
-          const cover = await getCover()
-          bus.cover = cover
+          const url = await getCover()
+          bus.cover = url
           bus.aid = await _self.method.getAid()
           bus.pathname = location.pathname
-          setCover(cover)
+          setCover(url)
           window.addEventListener('urlchange', async function() {
-            if (location.pathname == bus.pathname) { // 并非切换视频（如切分 P）
-              return
-            }
+            if (location.pathname == bus.pathname) return // 并非切换视频（如切分 P）
             try {
               bus.pathname = location.pathname
               bus.aid = await api.wait.waitForConditionPassed({
@@ -371,7 +382,31 @@
           setCover(false)
           api.logger.error(e)
         }
-      })
+
+        cover.removeEventListener('mousedown', main)
+        if (gm.config.preview) {
+          cover.removeEventListener('mouseover', main)
+        }
+
+        if (e) {
+          e.preventDefault()
+          if (e.type == 'mousedown') {
+            if (e.button == 0) {
+              cover.dispatchEvent(e)
+            } else if (e.button == 1) {
+              if (cover.href != '_blank') {
+                window.open(cover.href)
+              }
+            }
+          } else if (e.type == 'mouseover') {
+            cover.dispatchEvent(new Event('mouseenter'))
+          }
+        }
+      }
+      cover.addEventListener('mousedown', main)
+      if (gm.config.preview) {
+        cover.addEventListener('mouseover', main)
+      }
 
       const updateCover = async () => {
         try {
@@ -411,13 +446,12 @@
 
       const getCover = async () => {
         let cover = ''
-        if (api.web.urlMatch(/\/video\//)) {
+        if (api.web.urlMatch(gm.regex.page_videoNormalMode)) {
           cover = await api.wait.waitForConditionPassed({
             condition: () => {
               const coverMeta = document.querySelector('head meta[itemprop=image]')
               return coverMeta?.content
             },
-            timeout: 2000,
           })
         } else {
           const aid = await _self.method.getAid()
@@ -443,12 +477,12 @@
       tm.appendChild(cover)
       const preview = _self.method.createPreview(cover)
 
-      setTimeout(async () => {
+      const main = async function(e) {
         try {
-          const cover = await getCover()
-          bus.cover = cover
+          const url = await getCover()
+          bus.cover = url
           bus.aid = await _self.method.getAid()
-          setCover(cover)
+          setCover(url)
           window.addEventListener('urlchange', async function() {
             try {
               bus.aid = await api.wait.waitForConditionPassed({
@@ -470,7 +504,31 @@
           setCover(false)
           api.logger.error(e)
         }
-      })
+
+        cover.removeEventListener('mousedown', main)
+        if (gm.config.preview) {
+          cover.removeEventListener('mouseover', main)
+        }
+
+        if (e) {
+          e.preventDefault()
+          if (e.type == 'mousedown') {
+            if (e.button == 0) {
+              cover.dispatchEvent(e)
+            } else if (e.button == 1) {
+              if (cover.href != '_blank') {
+                window.open(cover.href)
+              }
+            }
+          } else if (e.type == 'mouseover') {
+            cover.dispatchEvent(new Event('mouseenter'))
+          }
+        }
+      }
+      cover.addEventListener('mousedown', main)
+      if (gm.config.preview) {
+        cover.addEventListener('mouseover', main)
+      }
 
       GM_addStyle(`
         .${gm.id}_cover_btn {
@@ -496,7 +554,6 @@
                 return cover
               }
             },
-            timeout: 2500,
           })
           setCover(bus.cover)
         } catch (e) {
@@ -582,39 +639,24 @@
 
     try {
       if (api.web.urlMatch([gm.regex.page_videoNormalMode, gm.regex.page_videoWatchlaterMode], 'OR')) {
+        const app = await api.wait.waitQuerySelector('#app')
         webpage.addVideoBtn(
           await api.wait.waitForConditionPassed({
-            condition: () => {
-              const app = document.querySelector('#app')
-              if (!app?.__vue__) {
-                return false
-              }
-              return document.querySelector('#arc_toolbar_report')
-            },
+            condition: async () => app.__vue__ && await api.wait.waitQuerySelector('#arc_toolbar_report'),
           })
         )
       } else if (api.web.urlMatch(gm.regex.page_bangumi)) {
+        const app = await api.wait.waitQuerySelector('#app')
         webpage.addBangumiBtn(
           await api.wait.waitForConditionPassed({
-            condition: () => {
-              const app = document.querySelector('#app')
-              if (!app?.__vue__) {
-                return false
-              }
-              return document.querySelector('#toolbar_module')
-            },
+            condition: async () => app.__vue__ && await api.wait.waitQuerySelector('#toolbar_module'),
           })
         )
       } else if (api.web.urlMatch(gm.regex.page_live)) {
+        const hiVm = await api.wait.waitQuerySelector('#head-info-vm')
         webpage.addLiveBtn(
           await api.wait.waitForConditionPassed({
-            condition: () => {
-              const hiVm = document.querySelector('#head-info-vm')
-              if (!hiVm?.__vue__) {
-                return false
-              }
-              return hiVm.querySelector('.room-info-upper-row .upper-right-ctnr')
-            },
+            condition: async () => hiVm.__vue__ && await api.wait.waitQuerySelector('.room-info-upper-row .upper-right-ctnr', hiVm),
           })
         )
       }
