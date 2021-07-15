@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站防剧透进度条
-// @version         1.8.0.20210715
+// @version         1.8.1.20210715
 // @namespace       laster2800
 // @author          Laster2800
 // @description     看比赛、看番总是被进度条剧透？装上这个脚本再也不用担心这些问题了
@@ -1647,7 +1647,7 @@
         // 不过，这种情况本来就应该重初始化，也就是相当于多处理一次，从结果上来看并不要紧
         api.wait.executeAfterConditionPassed({
           condition: () => !document.querySelector(`.${gm.id}-scriptControl`),
-          callback: _self.initNoSpoil,
+          callback: () => _self.initNoSpoil(),
           interval: 250,
           onTimeout: null,
           timePadding: 1000,
