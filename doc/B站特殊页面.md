@@ -11,6 +11,7 @@
 | `*://t.bilibili.com/pages/nav/index_new`               | 动态入口弹出菜单页面                     |
 | `*://t.bilibili.com/h5/dynamic/specification`          | 动态页自动加载的「哔哩哔哩动态使用规范」 |
 | `*://live.bilibili.com/`                               | 直播主页，没有必要在此执行直播间逻辑     |
+| `*://live.bilibili.com/?*`                             | 直播主页（带查询参数）                   |
 | `*://live.bilibili.com/*/*`                            | 直播间中可能会加载的各种奇葩页面         |
 | `*://message.bilibili.com/pages/nav/index_new_pc_sync` | 消息入口弹出菜单                         |
 
