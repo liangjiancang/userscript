@@ -2,6 +2,16 @@
 
 本日志只记录用户友好的更新说明，影响不大的问题修复与修改不作记录，具体修改见 [提交记录](https://gitee.com/liangjiancang/userscript/commits/master/script/BilibiliWatchlaterPlus/BilibiliWatchlaterPlus.js)。
 
+## V4.14
+
+1. API：从 V1.0 升级至 V1.2，大幅优化条件等待和元素等待逻辑。详见 [UserscriptAPI 更新日志](https://gitee.com/liangjiancang/userscript/blob/master/lib/UserscriptAPI/changelog.md)。
+2. 移除记录：在移除记录对话框中，可直接将视频添加或移除出稍后再看。
+3. UI：大幅优化各种组件的加载、定位及内部数据处理。
+4. UI：使用矢量图绘制软件对部分 Base64 图片进行手工重绘以进行压缩。
+5. 脚本：优化脚本菜单运行流程。
+6. 脚本：清理在某些页面上，本已清除掉，但被B站还原到 URL 上的查询参数。
+7. 代码：使用可选链操作符 `?.` 及空值合并运算符 `??` 进行简写。
+
 ## V4.13
 
 1. 顶栏入口：通过弹出菜单移除的视频会被临时记录下来，在往后打开弹出菜单时显示在列表下方，直至页面刷新为止。

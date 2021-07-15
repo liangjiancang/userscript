@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.13.1.20210711
+// @version         4.14.0.20210715
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -17,8 +17,7 @@
 // @exclude         *://message.bilibili.com/pages/nav/index_new_pc_sync
 // @exclude         *://t.bilibili.com/h5/dynamic/specification
 // @exclude         *://www.bilibili.com/page-proxy/game-nav.html
-// @exclude         /.*:\/\/.*:\/\/.*/
-// @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=945829
+// @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=950773
 // @grant           GM_addStyle
 // @grant           GM_registerMenuCommand
 // @grant           GM_xmlhttpRequest
@@ -38,15 +37,9 @@
 
   if (GM_info.scriptHandler != 'Tampermonkey') {
     const script = GM_info.script
-    if (!script.author) {
-      script.author = 'Laster2800'
-    }
-    if (!script.homepage) {
-      script.homepage = 'https://greasyfork.org/zh-CN/scripts/395456'
-    }
-    if (!script.supportURL) {
-      script.supportURL = 'https://greasyfork.org/zh-CN/scripts/395456/feedback'
-    }
+    script.author = script.author ?? 'Laster2800'
+    script.homepage = script.homepage ?? 'https://greasyfork.org/zh-CN/scripts/395456'
+    script.supportURL = script.supportURL ?? 'https://greasyfork.org/zh-CN/scripts/395456/feedback'
   }
 
   /**
@@ -259,7 +252,7 @@
    * @typedef GMObject_url
    * @property {string} api_queryWatchlaterList 稍后再看列表数据
    * @property {api_videoInfo} api_videoInfo 视频信息
-   * @property {string} api_addToWatchlater 将视频添加至稍后再看，要求 POST 一个含 `aid` 和 `csrf` 的表单
+   * @property {string} api_addToWatchlater 将视频添加至稍后再看，要求 POST 一个含 `aid` / 'bvid' 和 `csrf` 的表单
    * @property {string} api_removeFromWatchlater 将视频从稍后再看移除，移除一个视频要求 POST 一个含 `aid` 和 `csrf` 的表单，移除已观看要求 POST 一个含 `viewed=true` 和 `csrf` 的表单
    * @property {string} api_clearWatchlater 清空稍后再看，要求 POST 一个含 `csrf` 的表单
    * @property {string} page_watchlaterList 列表页面
@@ -296,6 +289,8 @@
    * @property {HTMLElement} el 菜单元素
    * @property {() => void} [openHandler] 打开菜单的回调函数
    * @property {() => void} [closeHandler] 关闭菜单的回调函数
+   * @property {() => void} [openedHandler] 彻底打开菜单后的回调函数
+   * @property {() => void} [closedHandler] 彻底关闭菜单后的回调函数
    */
   /**
    * @typedef GMObject_error
@@ -402,6 +397,11 @@
     label: GM_info.script.name,
     fadeTime: gm.const.fadeTime,
   })
+
+  /** @type {Script} */
+  let script = null
+  /** @type {Webpage} */
+  let webpage = null
 
   /**
    * 脚本运行的抽象，脚本独立于网站、为脚本本身服务的部分
@@ -511,7 +511,7 @@
                 return await api.wait.waitForConditionPassed({
                   condition: () => {
                     if (!_.watchlaterListData_loading) {
-                      return _.watchlaterListData || []
+                      return _.watchlaterListData ?? []
                     }
                   },
                 })
@@ -544,7 +544,7 @@
                 url: gm.url.api_queryWatchlaterList,
               })
               const json = JSON.parse(resp.responseText)
-              const current = json.data.list || []
+              const current = json.data.list ?? []
               if (gm.config.watchlaterListCacheValidPeriod > 0) {
                 const base = item => {
                   return {
@@ -1075,7 +1075,7 @@
                       break
                     }
                   }
-                  if (node && node.firstElementChild) {
+                  if (node?.firstElementChild) {
                     api.dom.addClass(node.firstElementChild, 'gm-updated')
                   }
                 }
@@ -1134,13 +1134,13 @@
                 <tr><td>100000</td><td>69</td><td>170</td><td>22</td></tr>
               </table>
             </div>
-          `, '💬', { width: '36em', flagSize: '2em', disabled: () => el.rhfcInformation.parentNode.hasAttribute('disabled') })
+          `, '💬', { width: '36em', flagSize: '2em', disabled: () => el.rhsInformation.parentNode.hasAttribute('disabled') })
           el.rhtInformation = gm.el.setting.querySelector('#gm-rhtInformation')
           api.message.advanced(el.rhtInformation, `
             <div style="line-height:1.6em">
               在历史数据记录中添加时间戳，用于改善移除记录中的数据排序，使得排序以「视频『最后一次』被观察到处于稍后再看的时间点」为基准，而非以「视频『第一次』被观察到处于稍后再看的时间点」为基准；同时也利于数据展示与查看。注意，此功能在数据存读及处理上都有额外开销。
             </div>
-          `, '💬', { width: '36em', flagSize: '2em' })
+          `, '💬', { width: '36em', flagSize: '2em', disabled: () => el.rhtInformation.parentNode.hasAttribute('disabled') })
           el.fwsInformation = gm.el.setting.querySelector('#gm-fwsInformation')
           api.message.advanced(el.fwsInformation, `
             <div style="text-indent:2em;line-height:1.6em">
@@ -1331,6 +1331,10 @@
         const processSettingItem = () => {
           const _self = this
           gm.menu.setting.openHandler = onOpen
+          gm.menu.setting.openedHandler = () => {
+            api.dom.setAbsoluteCenter(el.settingPage)
+            el.items.scrollTop = 0
+          }
           el.save.onclick = onSave
           el.cancel.onclick = () => _self.closeMenuItem('setting')
           el.shadow.onclick = function() {
@@ -1442,7 +1446,7 @@
           }
           for (const name in gm.configMap) {
             // 需要等所有配置读取完成后再进行选项初始化
-            el[name].init && el[name].init()
+            el[name].init?.()
           }
 
           if (gm.config.removeHistory) {
@@ -1452,10 +1456,6 @@
           }
 
           el.settingPage.parentNode.style.display = 'block'
-          setTimeout(() => {
-            api.dom.setAbsoluteCenter(el.settingPage)
-            el.items.scrollTop = 0
-          }, 10)
         }
 
         /**
@@ -1647,7 +1647,8 @@
           }
 
           gm.menu.history.openHandler = onOpen
-          window.addEventListener('resize', setContentTop)
+          gm.menu.history.openedHandler = () => api.dom.setAbsoluteCenter(el.historyPage)
+          window.addEventListener('resize', api.tool.throttle(setContentTop, 100))
           el.shadow.onclick = () => _self.closeMenuItem('history')
         }
 
@@ -1666,11 +1667,7 @@
           el.content = el.historyPage.appendChild(document.createElement('div'))
           el.content.className = 'gm-content'
           el.timePoint.innerText = gm.config.removeHistoryTimestamp ? '最后一次' : '第一次'
-
           el.historyPage.parentNode.style.display = 'block'
-          setTimeout(() => {
-            api.dom.setAbsoluteCenter(el.historyPage)
-          }, 10)
 
           try {
             const set = new Set()
@@ -1692,7 +1689,7 @@
               // 尽管目前 Chromium 上的 sort() 似乎是稳定排序，但还是手动处理一下吧
               const tsMap = new Map()
               for (let i = 0; i < history.length; i++) {
-                const ts = history[i][2] || 0
+                const ts = history[i][2] ?? 0
                 if (tsMap.has(ts)) {
                   const ar = tsMap.get(ts)
                   ar.push(history[i])
@@ -1719,6 +1716,7 @@
                 result.push(`
                   <div>
                     <a href="${gm.url.page_videoNormalMode}/${rm[0]}" target="_blank">${rm[1]}</a>
+                    <input type="checkbox" bvid="${rm[0]}">
                     ${rm[2] ? `<div class="gm-history-date">${new Date(rm[2]).toLocaleString()}</div>` : ''}
                   </div>
                 `)
@@ -1728,7 +1726,12 @@
                 history.reverse()
               }
               for (const rm of history) {
-                result.push(`<div><a href="${gm.url.page_videoNormalMode}/${rm[0]}" target="_blank">${rm[1]}</a></div>`)
+                result.push(`
+                  <div>
+                    <a href="${gm.url.page_videoNormalMode}/${rm[0]}" target="_blank">${rm[1]}</a>
+                    <input type="checkbox" bvid="${rm[0]}">
+                  </div>
+                `)
               }
             }
             el.removedNum.innerText = result.length
@@ -1736,6 +1739,21 @@
             setContentTop() // 在设置内容前设置好 top，这样看不出修改的痕迹
             if (result.length > 0) {
               el.content.innerHTML = result.join('')
+              const boxes = el.content.querySelectorAll('input[bvid]')
+              for (const box of boxes) {
+                box.addEventListener('click', async function() {
+                  const status = this.checked
+                  const bvid = this.getAttribute('bvid')
+                  const note = status ? '添加到稍后再看' : '从稍后再看移除'
+                  const success = await webpage?.method.switchVideoWatchlaterStatus(bvid, status)
+                  if (success) {
+                    api.message.create(`${note}成功`)
+                  } else {
+                    this.checked = !status
+                    api.message.create(`${note}失败${status ? '，可能视频不可用，或为不支持的稿件类型（如互动视频）' : ''}`)
+                  }
+                })
+              }
             } else {
               el.content.innerText = '没有找到移除记录，请尝试增大历史回溯深度'
               el.content.style.color = 'gray'
@@ -1826,11 +1844,12 @@
             const menu = gm.menu[key]
             if (key == name) {
               menu.state = 1
-              menu.openHandler && await menu.openHandler.call(menu)
+              await menu.openHandler?.call(menu)
               await new Promise(resolve => {
                 api.dom.fade(true, menu.el, () => {
                   resolve()
-                  callback && callback.call(menu)
+                  menu.openedHandler?.call(menu)
+                  callback?.call(menu)
                 })
               })
               menu.state = 2
@@ -1873,11 +1892,12 @@
         }
         if (menu.state == 2) {
           menu.state = 3
-          menu.closeHandler && await menu.closeHandler.call(menu)
+          await menu.closeHandler?.call(menu)
           await new Promise(resolve => {
             api.dom.fade(false, menu.el, () => {
               resolve()
-              callback && callback.call(menu)
+              menu.closedHandler?.call(menu)
+              callback?.call(menu)
             })
           })
           menu.state = 0
@@ -1896,8 +1916,6 @@
    */
   class Webpage {
     constructor() {
-      this.script = new Script()
-
       /** 通用方法 */
       this.method = {
         /** 内部数据 */
@@ -1910,7 +1928,7 @@
          * @see {@link https://developer.mozilla.org/zh-CN/docs/Web/API/Document/cookie#示例2_得到名为test2的cookie Document.cookie - Web API 接口参考 | MDN}
          */
         cookie(key) {
-          return document.cookie.replace(RegExp(String.raw `(?:(?:^|.*;\s*)${key}\s*=\s*([^;]*).*$)|^.*$`), '$1')
+          return document.cookie.replace(RegExp(String.raw`(?:(?:^|.*;\s*)${key}\s*=\s*([^;]*).*$)|^.*$`), '$1')
         },
 
         /**
@@ -1955,24 +1973,16 @@
          * @returns {Promise<string>} `aid`
          */
         async getAid() {
-          let aid
+          let aid = null
           try {
-            if (unsafeWindow.aid) {
-              aid = unsafeWindow.aid
-            } else {
-              aid = await api.wait.waitForConditionPassed({
-                condition: () => {
-                  const player = unsafeWindow.player
-                  const message = player && player.getVideoMessage && player.getVideoMessage()
-                  return message && message.aid
-                },
-              })
-            }
+            aid = unsafeWindow.aid || await api.wait.waitForConditionPassed({
+              condition: () => unsafeWindow.player?.getVideoMessage?.()?.aid,
+            })
           } catch (e) {
             api.logger.error(gm.error.DOM_PARSE)
             api.logger.error(e)
           }
-          return String(aid || '')
+          return String(aid ?? '')
         },
 
         /**
@@ -1986,7 +1996,7 @@
          */
         async getVideoWatchlaterStatusByAid(aid, reload = false, localCache = true, disablePageCache = false) {
           const current = await gm.data.watchlaterListData(reload, localCache, disablePageCache)
-          if (current && current.length > 0) {
+          if (current.length > 0) {
             for (const e of current) {
               if (aid == e.aid) {
                 return true
@@ -1999,15 +2009,27 @@
         /**
          * 将视频加入稍后再看，或从稍后再看移除
          * @async
-         * @param {string} aid 视频 `aid`
+         * @param {string} id 视频 `aid` 或 `bvid`
          * @param {boolean} [status=true] 添加 `true` / 移除 `false`
          * @returns {Promise<boolean>} 操作是否成功
          */
-        async switchVideoWatchlaterStatus(aid, status = true) {
+        async switchVideoWatchlaterStatus(id, status = true) {
+          const _self = this
           try {
+            let typeA = !isNaN(id)
+            if (!typeA && !status) { // 移除 API 只支持 aid，先作转换
+              // 知乎上的算法似乎在某些情况下并不正确，保险起见发请求查询好了
+              const info = await _self.getVideoInfo(id, 'bvid')
+              id = String(info.aid)
+              typeA = true
+            }
             const data = new FormData()
-            data.append('aid', aid)
-            data.append('csrf', this.getCSRF())
+            if (typeA) {
+              data.append('aid', id)
+            } else {
+              data.append('bvid', id)
+            }
+            data.append('csrf', _self.getCSRF())
             const resp = await api.web.request({
               method: 'POST',
               url: status ? gm.url.api_addToWatchlater : gm.url.api_removeFromWatchlater,
@@ -2094,7 +2116,7 @@
               if (!_.watchlaterListData_saving) {
                 _.watchlaterListData_saving = true
                 return gm.data.watchlaterListData(reload).then(current => {
-                  if (current && current.length > 0) {
+                  if (current.length > 0) {
                     if (gm.config.removeHistoryFuzzyCompare > 0) {
                       const ref = GM_getValue('removeHistoryFuzzyCompareReference')
                       let same = true
@@ -2193,7 +2215,7 @@
           const _ = this._
           if (!_.watchlaterDataMap || reload || disablePageCache) {
             const map = new Map()
-            const current = await gm.data.watchlaterListData(reload, cache, disablePageCache) || []
+            const current = await gm.data.watchlaterListData(reload, cache, disablePageCache)
             for (const item of current) {
               map.set(String(item.aid), item)
             }
@@ -2322,10 +2344,10 @@
               clearWatchedInWatchlater()
               break
             case Enums.headerButtonOp.openUserSetting:
-              _self.script.openUserSetting()
+              script.openUserSetting()
               break
             case Enums.headerButtonOp.openRemoveHistory:
-              _self.script.openRemoveHistory()
+              script.openRemoveHistory()
               break
           }
         }
@@ -2346,9 +2368,7 @@
        * @param {HTMLElement} watchlater 稍后再看元素
        */
       const processPopup = watchlater => {
-        if (gm.config.headerMenu == Enums.headerMenu.disable) {
-          return
-        }
+        if (gm.config.headerMenu == Enums.headerMenu.disable) return
         const popup = gm.menu.entryPopup.el
         setTimeout(() => {
           // 此处必须用 over；若用 enter，且网页刚加载完成时光标正好在入口上，无法轻移光标以触发事件
@@ -2362,9 +2382,7 @@
          * 进入稍后再看入口的处理
          */
         const onOverWatchlater = function() {
-          if (this.mouseOver) {
-            return
-          }
+          if (this.mouseOver) return
           this.mouseOver = true
           if (gm.menu.entryPopup.state == 0 || gm.menu.entryPopup.state == 3) {
             if (gm.config.hideDisabledSubitems) {
@@ -2383,7 +2401,7 @@
           this.mouseOver = false
           setTimeout(() => {
             if (!popup.mouseOver) {
-              _self.script.closeMenuItem('entryPopup')
+              script.closeMenuItem('entryPopup')
             }
           }, 180)
         }
@@ -2402,25 +2420,24 @@
           this.mouseOver = false
           setTimeout(() => {
             if (!watchlater.mouseOver) {
-              _self.script.closeMenuItem('entryPopup')
+              script.closeMenuItem('entryPopup')
             }
           }, 80)
         }
       }
 
-      const el = {}
       /**
        * 打开入口弹出菜单
        */
       const openEntryPopup = () => {
-        const callback = () => gm.config.headerMenuSearch && el.search.focus()
         if (gm.el.entryPopup) {
-          _self.script.openMenuItem('entryPopup', callback)
+          script.openMenuItem('entryPopup')
         } else {
+          const el = {}
           setTimeout(() => {
             initPopup()
             processPopup()
-            _self.script.openMenuItem('entryPopup', callback)
+            script.openMenuItem('entryPopup')
           })
 
           /**
@@ -2465,6 +2482,7 @@
            */
           const processPopup = () => {
             gm.menu.entryPopup.openHandler = onOpen
+            gm.menu.entryPopup.openedHandler = () => gm.config.headerMenuSearch && el.search.focus()
             try {
               if (gm.config.headerMenuSearch) {
                 el.search.oninput = function() {
@@ -2482,9 +2500,9 @@
                         let valid = false
                         const card = list.children[i]
                         if (val.length > 0) {
-                          if (card.title && card.title.indexOf(val) > -1) {
+                          if (card.title?.indexOf(val) > -1) {
                             valid = true
-                          } else if (card.uploader && card.uploader.indexOf(val) > -1) {
+                          } else if (card.uploader?.indexOf(val) > -1) {
                             valid = true
                           }
                         } else {
@@ -2527,23 +2545,23 @@
               }
               if (gm.config.headerMenuFnSetting) {
                 el.entryFn.setting.setAttribute('enabled', '')
-                el.entryFn.setting.addEventListener('click', () => _self.script.openUserSetting())
+                el.entryFn.setting.addEventListener('click', () => script.openUserSetting())
               }
               if (gm.config.headerMenuFnHistory) {
                 el.entryFn.history.setAttribute('enabled', '')
-                el.entryFn.history.addEventListener('click', () => _self.script.openRemoveHistory())
+                el.entryFn.history.addEventListener('click', () => script.openRemoveHistory())
               }
               if (gm.config.headerMenuFnRemoveAll) {
                 el.entryFn.removeAll.setAttribute('enabled', '')
                 el.entryFn.removeAll.addEventListener('click', function() {
-                  _self.script.closeMenuItem('entryPopup')
+                  script.closeMenuItem('entryPopup')
                   clearWatchlater()
                 })
               }
               if (gm.config.headerMenuFnRemoveWatched) {
                 el.entryFn.removeWatched.setAttribute('enabled', '')
                 el.entryFn.removeWatched.addEventListener('click', function() {
-                  _self.script.closeMenuItem('entryPopup')
+                  script.closeMenuItem('entryPopup')
                   clearWatchedInWatchlater()
                 })
               }
@@ -2588,7 +2606,7 @@
             } else {
               data = await gm.data.watchlaterListData(false, true, true) // 启用本地缓存但禁用页面缓存
             }
-            if (data && data.length > 0) {
+            if (data.length > 0) {
               const openLinkInCurrent = gm.config.openHeaderMenuLink == Enums.openHeaderMenuLink.openInCurrent
               const redirect = gm.config.redirect
               const autoRemove = gm.config.autoRemove == Enums.autoRemove.always || gm.config.autoRemove == Enums.autoRemove.openFromList
@@ -2600,7 +2618,7 @@
                   const valid = item.state >= 0
                   card.title = item.title
                   card.bvid = item.bvid
-                  if (rmBvid && rmBvid.size > 0) {
+                  if (rmBvid?.size > 0) {
                     if (rmBvid.has(card.bvid)) {
                       rmBvid.delete(card.bvid)
                     }
@@ -2688,9 +2706,7 @@
                     if (autoRemove) {
                       card.href = card.href + `?${gm.id}_remove=true`
                       card.addEventListener('mouseup', function(e) {
-                        if (api.dom.containsClass(e.target, ['gm-card-switcher', 'gm-card-uploader'])) {
-                          return
-                        }
+                        if (api.dom.containsClass(e.target, ['gm-card-switcher', 'gm-card-uploader'])) return
                         el.entryList.needReload = true
                         if (e.button == 0 || e.button == 1) { // 左键或中键
                           api.dom.addClass(card, 'gm-removed')
@@ -2710,7 +2726,7 @@
               }
 
               // 添加已移除视频
-              if (rmBvid && rmBvid.size > 0) {
+              if (rmBvid?.size > 0) {
                 const only1 = rmBvid.size == 1
                 const h = simplePopup ? (only1 ? 2.9 : 6) : (only1 ? 6.5 : 8.5)
                 el.entryList.style.height = `${39 - h}em`
@@ -2923,33 +2939,18 @@
 
     /**
      * 正常模式播放页加入快速切换稍后再看状态的按钮
+     * @async
      */
-    addVideoButton_Normal() {
+    async addVideoButton_Normal() {
       const _self = this
       let bus = {}
 
-      /**
-       * 继续执行的条件
-       */
-      const executeCondition = () => {
-        // 必须在确定 Vue 加载完成后再修改 DOM 结构，否则会导致 Vue 加载出错造成页面错误
-        const app = document.querySelector('#app')
-        const vueLoad = app && app.__vue__
-        if (!vueLoad) {
-          return false
-        }
-        const atr = document.querySelector('#arc_toolbar_report')
-        const original = atr && atr.querySelector('.van-watchlater')
-        if (original && original.__vue__) {
-          return { atr, original }
-        } else {
-          return false
-        }
-      }
-
+      const app = await api.wait.waitQuerySelector('#app')
+      const atr = await api.wait.waitQuerySelector('#arc_toolbar_report', app)
+      const original = await api.wait.waitQuerySelector('.van-watchlater', atr)
       api.wait.waitForConditionPassed({
-        condition: executeCondition,
-      }).then(async ({ atr, original }) => {
+        condition: () => app.__vue__,
+      }).then(async () => {
         const btn = document.createElement('label')
         btn.id = `${gm.id}-normal-video-btn`
         const cb = btn.appendChild(document.createElement('input'))
@@ -2969,9 +2970,7 @@
 
         bus.pathname = location.pathname
         window.addEventListener('urlchange', async function() {
-          if (location.pathname == bus.pathname) { // 并非切换视频（如切分 P）
-            return
-          }
+          if (location.pathname == bus.pathname) return // 并非切换视频（如切分 P）
           try {
             bus.pathname = location.pathname
             bus.aid = await api.wait.waitForConditionPassed({
@@ -3084,9 +3083,10 @@
 
     /**
      * 稍后再看模式播放页加入快速切换稍后再看状态的按钮
+     * @async
      */
-    addVideoButton_Watchlater() {
-      return this.addVideoButton_Normal() // 改进后与普通模式播放页一致
+    async addVideoButton_Watchlater() {
+      return await this.addVideoButton_Normal() // 改进后与普通模式播放页一致
     }
 
     /**
@@ -3177,18 +3177,30 @@
         await _self.processAutoRemove(5000)
       }
 
-      // 移除 URL 上的查询参数
-      let removed = false
-      const url = new URL(location.href)
-      const searchParams = url.searchParams
-      gm.searchParams.forEach((value, key) => {
-        if (key.startsWith(gm.id)) {
-          searchParams.delete(key)
-          removed = true
+      // 清理 URL 上的查询参数
+      const cleanSearchParams = () => {
+        let removed = false
+        const url = new URL(location.href)
+        const searchParams = url.searchParams
+        gm.searchParams.forEach((value, key) => {
+          if (key.startsWith(gm.id)) {
+            searchParams.delete(key)
+            removed = true
+          }
+        })
+        if (removed && location.href != url.href) {
+          history.replaceState({}, null, url.href)
         }
-      })
-      if (removed && location.href != url.href) {
-        history.replaceState({}, null, url.href)
+      }
+      cleanSearchParams()
+      // 某些页面会记录进入页面时的查询参数，然后还原
+      // 需要检测到这一还原现象，然后再次清理
+      if (api.web.urlMatch(gm.regex.page_videoWatchlaterMode)) {
+        window.addEventListener('urlchange', function() {
+          if (location.href.indexOf(gm.id) >= 0) {
+            cleanSearchParams()
+          }
+        })
       }
     }
 
@@ -3257,7 +3269,6 @@
      * @async
      */
     async adjustWatchlaterListUI() {
-      const _self = this
       /** @type {HTMLElement} */
       const r_con = await api.wait.waitQuerySelector('.watch-later-list.bili-wrapper header .r-con')
       // 页面上本来就存在的「全部播放」按钮不要触发重定向
@@ -3281,13 +3292,13 @@
         const removeHistoryButton = r_con.appendChild(document.createElement('div'))
         removeHistoryButton.innerText = '移除记录'
         removeHistoryButton.className = 's-btn'
-        removeHistoryButton.onclick = () => _self.script.openRemoveHistory() // 要避免 MouseEvent 的传递
+        removeHistoryButton.onclick = () => script.openRemoveHistory() // 要避免 MouseEvent 的传递
       }
       // 在列表页面加如「增强设置」
       const plusButton = r_con.appendChild(document.createElement('div'))
       plusButton.innerText = '增强设置'
       plusButton.className = 's-btn'
-      plusButton.onclick = () => _self.script.openUserSetting() // 要避免 MouseEvent 的传递
+      plusButton.onclick = () => script.openUserSetting() // 要避免 MouseEvent 的传递
       // 移除「一键清空」按钮
       if (gm.config.removeButton_removeAll) {
         r_con.children[1].style.display = 'none'
@@ -3337,9 +3348,9 @@
       api.wait.waitQuerySelector('.user-con .mini-favorite').then(fav => {
         const collect = fav.parentNode
         const process = function() {
-          api.wait.waitQuerySelector('[role=tooltip] .tab-item [title=稍后再看]').then(node => {
+          api.wait.waitQuerySelector('[role=tooltip] .tab-item [title=稍后再看]', document, true).then(node => {
             node.parentNode.style.display = 'none'
-            collect.removeEventListener('mouseover', process) // 确保移除后再手动解绑
+            collect.removeEventListener('mouseover', process) // 确保移除后再解绑
           }).catch(() => {}) // 有时候鼠标经过收藏也没弹出来，不知道什么原因，就不报错了
         }
         collect.addEventListener('mouseover', process)
@@ -3353,7 +3364,7 @@
      * 添加弹出菜单的滚动条样式
      */
     addMenuScrollbarStyle() {
-      let menuScrollbarStyle
+      let menuScrollbarStyle = null
       switch (gm.config.menuScrollbarSetting) {
         case Enums.menuScrollbarSetting.beautify:
           // 目前在不借助 JavaScript 的情况下，无法完美实现类似于移动端滚动条浮动在内容上的效果。
@@ -3561,7 +3572,7 @@
         }
         #${gm.id} .gm-entrypopup .gm-entry-list .gm-entry-list-item .gm-card-switcher {
           position: absolute;
-          background-image: url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADgAAAA4CAYAAACohjseAAAACXBIWXMAAAsTAAALEwEAmpwYAAAFKmlUWHRYTUw6Y29tLmFkb2JlLnhtcAAAAAAAPD94cGFja2V0IGJlZ2luPSLvu78iIGlkPSJXNU0wTXBDZWhpSHpyZVN6TlRjemtjOWQiPz4gPHg6eG1wbWV0YSB4bWxuczp4PSJhZG9iZTpuczptZXRhLyIgeDp4bXB0az0iQWRvYmUgWE1QIENvcmUgNS42LWMxNDUgNzkuMTYzNDk5LCAyMDE4LzA4LzEzLTE2OjQwOjIyICAgICAgICAiPiA8cmRmOlJERiB4bWxuczpyZGY9Imh0dHA6Ly93d3cudzMub3JnLzE5OTkvMDIvMjItcmRmLXN5bnRheC1ucyMiPiA8cmRmOkRlc2NyaXB0aW9uIHJkZjphYm91dD0iIiB4bWxuczp4bXA9Imh0dHA6Ly9ucy5hZG9iZS5jb20veGFwLzEuMC8iIHhtbG5zOmRjPSJodHRwOi8vcHVybC5vcmcvZGMvZWxlbWVudHMvMS4xLyIgeG1sbnM6cGhvdG9zaG9wPSJodHRwOi8vbnMuYWRvYmUuY29tL3Bob3Rvc2hvcC8xLjAvIiB4bWxuczp4bXBNTT0iaHR0cDovL25zLmFkb2JlLmNvbS94YXAvMS4wL21tLyIgeG1sbnM6c3RFdnQ9Imh0dHA6Ly9ucy5hZG9iZS5jb20veGFwLzEuMC9zVHlwZS9SZXNvdXJjZUV2ZW50IyIgeG1wOkNyZWF0b3JUb29sPSJBZG9iZSBQaG90b3Nob3AgQ0MgMjAxOSAoV2luZG93cykiIHhtcDpDcmVhdGVEYXRlPSIyMDIxLTAzLTIyVDE5OjE5OjE5KzA4OjAwIiB4bXA6TW9kaWZ5RGF0ZT0iMjAyMS0wMy0yMlQyMDoxODozMSswODowMCIgeG1wOk1ldGFkYXRhRGF0ZT0iMjAyMS0wMy0yMlQyMDoxODozMSswODowMCIgZGM6Zm9ybWF0PSJpbWFnZS9wbmciIHBob3Rvc2hvcDpDb2xvck1vZGU9IjMiIHBob3Rvc2hvcDpJQ0NQcm9maWxlPSJzUkdCIElFQzYxOTY2LTIuMSIgeG1wTU06SW5zdGFuY2VJRD0ieG1wLmlpZDo2MDIzNzBkZi1hZmE3LTU5NDgtODhiYS1mMjAxYWE5MmI5NDUiIHhtcE1NOkRvY3VtZW50SUQ9ImFkb2JlOmRvY2lkOnBob3Rvc2hvcDoyN2ZmZjBhZC05MDUzLTZlNDMtODMwYi00ZTBkZTY2ODYxYjUiIHhtcE1NOk9yaWdpbmFsRG9jdW1lbnRJRD0ieG1wLmRpZDo2MDIzNzBkZi1hZmE3LTU5NDgtODhiYS1mMjAxYWE5MmI5NDUiPiA8eG1wTU06SGlzdG9yeT4gPHJkZjpTZXE+IDxyZGY6bGkgc3RFdnQ6YWN0aW9uPSJjcmVhdGVkIiBzdEV2dDppbnN0YW5jZUlEPSJ4bXAuaWlkOjYwMjM3MGRmLWFmYTctNTk0OC04OGJhLWYyMDFhYTkyYjk0NSIgc3RFdnQ6d2hlbj0iMjAyMS0wMy0yMlQxOToxOToxOSswODowMCIgc3RFdnQ6c29mdHdhcmVBZ2VudD0iQWRvYmUgUGhvdG9zaG9wIENDIDIwMTkgKFdpbmRvd3MpIi8+IDwvcmRmOlNlcT4gPC94bXBNTTpIaXN0b3J5PiA8L3JkZjpEZXNjcmlwdGlvbj4gPC9yZGY6UkRGPiA8L3g6eG1wbWV0YT4gPD94cGFja2V0IGVuZD0iciI/Po+WVbkAAACfSURBVGje7ds7CsMwEAVAXcE6o0/jxnWKnFWRSQQmRUiMweQxC68VjD6NtCrlWVPP3LP03P48y8sylR1uDYC9Zx3IORA3stkituWn7RqLGwEEBAQEBAQE/CHtYAECngRsFxUg4Enn7ptJOTIGICAgICAgICAgICBga7XW+xYrCAgIeMk9DSCgxxdAQEBAQEDABGB8Q2x8S3N8U3r0t4IHd1hYNxgUhTkAAAAASUVORK5CYII=);
+          background-image: url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADgAAAA4CAYAAACohjseAAAACXBIWXMAAAsSAAALEgHS3X78AAAA/ElEQVRoge3bsQ3CMBSE4bOBAmZIzSLUrMECjMACtLBGKgq2yQ4uHzJKgaIghHHAZ+6rQfKvnCIRBWdmiJxzWwAbAEtwCwCuZtbeuwCsAOwBNORhQ52ZHXx/1WqLi5q4yngFjxXM8pngK46Llr6AQ0xKgewUyE6B7BTIbj7F+c1sl/I959w591k0UXbx18Tp3YbUCX4qZcKaKLukiY55nO3YlIazfvWZXHdUTZSdAtkpkJ0C2SmQnQLZKZCdAtkpkN3PHvx+68mcJsou21O1Ummi7BTIToHsFMjuLwJDAeeYSpgBWABY19mHi+/fTu8KOExu8aX0tu6/FQC4AVY1Ql6j10UHAAAAAElFTkSuQmCC);
           background-size: contain;
           width: 34px;
           height: 34px;
@@ -3895,7 +3906,8 @@
           user-select: text;
         }
         #${gm.id} .gm-history .gm-content > * {
-          margin: 1.6em 0;
+          position: relative;
+          margin: 1.6em 2em;
         }
         #${gm.id} .gm-history .gm-content a {
           color: var(--text-color);
@@ -3903,6 +3915,12 @@
         #${gm.id} .gm-history .gm-content a:hover {
           font-weight: bold;
           color: var(--hightlight-color);
+        }
+        #${gm.id} .gm-history .gm-content input[type=checkbox] {
+          position: absolute;
+          right: -2em;
+          height: 1.5em;
+          width: 1em;
         }
         #${gm.id} .gm-history .gm-content .gm-history-date {
           font-size: 0.5em;
@@ -4279,8 +4297,8 @@
     if (GM_info.scriptHandler != 'Tampermonkey') {
       api.dom.initUrlchangeEvent()
     }
-    const script = new Script()
-    const webpage = new Webpage()
+    script = new Script()
+    webpage = new Webpage()
     if (!webpage.method.isLogin()) {
       api.logger.info('终止执行：脚本只能工作在B站登录状态下。')
       return
