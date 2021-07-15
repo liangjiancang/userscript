@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站封面获取
-// @version         4.11.1.20210715
+// @version         4.11.2.20210715
 // @namespace       laster2800
 // @author          Laster2800
 // @description     B站视频播放页（普通模式、稍后再看模式）、番剧播放页、直播间添加获取封面的按钮
@@ -14,6 +14,7 @@
 // @include         *://www.bilibili.com/medialist/play/watchlater/*
 // @include         *://live.bilibili.com/*
 // @exclude         *://live.bilibili.com/
+// @exclude         *://live.bilibili.com/?*
 // @exclude         *://live.bilibili.com/*/*
 // @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=950686
 // @grant           GM_addStyle
@@ -45,6 +46,9 @@
     configMap: {
       preview: { name: '封面预览', needNotReload: true },
       download: { name: '点击下载', needNotReload: true },
+    },
+    url: {
+      noop: 'javascript:void(0)',
     },
     regex: {
       page_videoNormalMode: /\.com\/video(?=[/?#]|$)/,
@@ -339,7 +343,6 @@
       const cover = document.createElement('a')
       const errorMsg = '获取失败，若非网络问题请提供反馈'
       cover.innerText = '获取封面'
-      cover.target = '_blank'
       cover.className = 'appeal-text'
       cover.onclick = e => e.stopPropagation()
       const preview = _self.method.createPreview(cover)
@@ -392,9 +395,13 @@
           e.preventDefault()
           if (e.type == 'mousedown') {
             if (e.button == 0) {
-              cover.dispatchEvent(e)
+              if (gm.config.download || !cover.loaded) {
+                cover.dispatchEvent(e) // 无法触发链接点击跳转
+              } else {
+                window.open(cover.href)
+              }
             } else if (e.button == 1) {
-              if (cover.href != '_blank') {
+              if (cover.loaded) {
                 window.open(cover.href)
               }
             }
@@ -410,14 +417,20 @@
 
       const updateCover = async () => {
         try {
+          let fail = false
           bus.cover = await api.wait.waitForConditionPassed({
             condition: async () => {
               // aid 变化只能说明视频确实变了，但 cover 可能还没变
               const cover = await getCover()
-              if (cover && cover != bus.cover) {
-                return cover
+              if (cover) {
+                if (cover != bus.cover) {
+                  return cover
+                }
+              } else {
+                fail = true
               }
             },
+            stopCondition: () => fail,
           })
           setCover(bus.cover)
         } catch (e) {
@@ -430,36 +443,46 @@
         if (coverUrl) {
           cover.title = gm.const.title
           cover.href = coverUrl
-          preview.src = coverUrl
+          cover.target = '_blank'
+          cover.loaded = true
           _self.method.addDownloadEvent(cover)
           preview.src = coverUrl
         } else {
           cover.title = errorMsg
-          cover.href = 'javascript:void(0)'
+          cover.href = gm.url.noop
+          cover.target = '_self'
+          cover.loaded = false
           preview.src = ''
-          cover.onclick = function(e) {
-            e.preventDefault()
-            api.message.create(errorMsg)
-          }
+          cover.addEventListener('mousedown', function(e) {
+            if (e.button == 0 || e.button == 1) {
+              e.preventDefault()
+              api.message.create(errorMsg)
+            }
+          })
         }
       }
 
       const getCover = async () => {
         let cover = ''
-        if (api.web.urlMatch(gm.regex.page_videoNormalMode)) {
-          cover = await api.wait.waitForConditionPassed({
-            condition: () => {
-              const coverMeta = document.querySelector('head meta[itemprop=image]')
-              return coverMeta?.content
-            },
-          })
-        } else {
-          const aid = await _self.method.getAid()
-          const resp = await api.web.request({
-            method: 'GET',
-            url: `https://api.bilibili.com/x/web-interface/view?aid=${aid}`,
-          })
-          cover = JSON.parse(resp.responseText).data.pic
+        try {
+          if (api.web.urlMatch(gm.regex.page_videoNormalMode)) {
+            const meta = await api.wait.waitForElementLoaded({
+              selector: 'meta[itemprop=image]',
+              base: document.head,
+              timeout: 2000,
+              stopOnTimeout: true,
+            })
+            cover = meta.content ?? ''
+          } else {
+            const aid = await _self.method.getAid()
+            const resp = await api.web.request({
+              method: 'GET',
+              url: `https://api.bilibili.com/x/web-interface/view?aid=${aid}`,
+            })
+            cover = JSON.parse(resp.responseText).data.pic
+          }
+        } catch (e) {
+          api.logger.error(e)
         }
         return cover
       }
@@ -471,7 +494,6 @@
       const cover = document.createElement('a')
       const errorMsg = '获取失败，若非网络问题请提供反馈'
       cover.innerText = '获取封面'
-      cover.target = '_blank'
       cover.className = `${gm.id}_cover_btn`
       cover.onclick = e => e.stopPropagation()
       tm.appendChild(cover)
@@ -514,9 +536,13 @@
           e.preventDefault()
           if (e.type == 'mousedown') {
             if (e.button == 0) {
-              cover.dispatchEvent(e)
+              if (gm.config.download || !cover.loaded) {
+                cover.dispatchEvent(e) // 无法触发链接点击跳转
+              } else {
+                window.open(cover.href)
+              }
             } else if (e.button == 1) {
-              if (cover.href != '_blank') {
+              if (cover.loaded) {
                 window.open(cover.href)
               }
             }
@@ -546,14 +572,20 @@
 
       const updateCover = async () => {
         try {
+          let fail = false
           bus.cover = await api.wait.waitForConditionPassed({
             condition: async () => {
               // aid 变化只能说明视频确实变了，但 cover 可能还没变
               const cover = await getCover()
-              if (cover && cover != bus.cover) {
-                return cover
+              if (cover) {
+                if (cover != bus.cover) {
+                  return cover
+                }
+              } else {
+                fail = true
               }
             },
+            stopCondition: () => fail,
           })
           setCover(bus.cover)
         } catch (e) {
@@ -565,25 +597,36 @@
         if (coverUrl) {
           cover.title = gm.const.title
           cover.href = coverUrl
-          preview.src = coverUrl
+          cover.target = '_blank'
+          cover.loaded = true
           _self.method.addDownloadEvent(cover)
           preview.src = coverUrl
         } else {
           cover.title = errorMsg
-          cover.href = 'javascript:void(0)'
+          cover.href = gm.url.noop
+          cover.target = '_self'
+          cover.loaded = false
           preview.src = ''
-          cover.onclick = function(e) {
-            e.preventDefault()
-            api.message.create(errorMsg)
-          }
+          cover.addEventListener('mousedown', function(e) {
+            if (e.button == 0 || e.button == 1) {
+              e.preventDefault()
+              api.message.create(errorMsg)
+            }
+          })
         }
       }
 
       const getCover = async () => {
         let cover = ''
-        const img = await api.wait.waitQuerySelector('.media-cover img')
-        if (img?.src) {
+        try {
+          const img = await api.wait.waitForElementLoaded({
+            selector: '.media-cover img',
+            timeout: 2000,
+            stopOnTimeout: true,
+          })
           cover = img.src.replace(/@[^@]*$/, '') // 不要缩略图
+        } catch (e) {
+          api.logger.error(e)
         }
         return cover
       }
@@ -596,21 +639,31 @@
       const kfUrl = info.keyframe
       const cover = document.createElement('a')
       cover.innerText = '获取封面'
-      cover.target = '_blank'
       if (coverUrl) {
-        cover.href = coverUrl
         cover.title = gm.const.title
+        cover.href = coverUrl
+        cover.target = '_blank'
+        cover.loaded = true
         _self.method.addDownloadEvent(cover)
         _self.method.createPreview(cover).src = coverUrl
       } else if (kfUrl) {
-        cover.href = kfUrl
         cover.title = `直播间没有设置封面，或者因不明原因无法获取到封面，点击获取关键帧：\n${kfUrl}`
+        cover.href = kfUrl
+        cover.target = '_blank'
+        cover.loaded = true
         _self.method.addDownloadEvent(cover)
         _self.method.createPreview(cover).src = kfUrl
       } else {
         const errorMsg = '获取失败，若非网络问题请提供反馈'
-        cover.onclick = () => api.message.create(errorMsg)
         cover.title = errorMsg
+        cover.href = gm.url.noop
+        cover.target = '_self'
+        cover.loaded = false
+        cover.addEventListener('mousedown', function(e) {
+          if (e.button == 0 || e.button == 1) {
+            api.message.create(errorMsg)
+          }
+        })
       }
       cover.className = `${gm.id}_cover_btn`
       urc.insertBefore(cover, urc.firstChild)
