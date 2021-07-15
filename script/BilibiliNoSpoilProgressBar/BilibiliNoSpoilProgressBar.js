@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站防剧透进度条
-// @version         1.7.2.20210713
+// @version         1.8.0.20210715
 // @namespace       laster2800
 // @author          Laster2800
 // @description     看比赛、看番总是被进度条剧透？装上这个脚本再也不用担心这些问题了
@@ -12,7 +12,7 @@
 // @include         *://www.bilibili.com/medialist/play/watchlater
 // @include         *://www.bilibili.com/medialist/play/watchlater/*
 // @include         *://www.bilibili.com/bangumi/play/*
-// @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=949715
+// @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=950686
 // @grant           GM_addStyle
 // @grant           GM_registerMenuCommand
 // @grant           GM_xmlhttpRequest
@@ -1389,7 +1389,7 @@
         })
         // 隐藏「上次看到 XX:XX 跳转播放」中的时间（可能存在）
         if (_self.enabled) {
-          api.wait.waitQuerySelector('.bilibili-player-video-toast-item-text').then(toast => {
+          api.wait.waitQuerySelector('.bilibili-player-video-toast-item-text', document, true).then(toast => {
             if (toast.innerText.indexOf('上次看到') >= 0 && toast.innerText.indexOf('???') < 0) {
               toast.innerHTML = toast.innerHTML.replace(/(?<=<span>)\d+:\d+(?=<\/span>)/, '???')
             }
@@ -1397,20 +1397,20 @@
         }
 
         // 隐藏高能进度条的「热度」曲线（可能存在）
-        api.wait.waitQuerySelector('#bilibili_pbp', _self.control).then(pbp => {
+        api.wait.waitQuerySelector('#bilibili_pbp', _self.control, document, true).then(pbp => {
           const hide = _self.enabled && gm.config.disablePbp
           pbp.style.visibility = hide ? 'hidden' : ''
         }).catch(() => {})
 
         // 隐藏 pakku 扩展引入的弹幕密度显示（可能存在）
-        api.wait.waitQuerySelector('canvas.pakku-fluctlight', _self.control).then(pakku => {
+        api.wait.waitQuerySelector('canvas.pakku-fluctlight', _self.control, document, true).then(pakku => {
           const hide = _self.enabled && gm.config.disablePbp
           pakku.style.visibility = hide ? 'hidden' : ''
         }).catch(() => {})
 
         // 隐藏分 P 信息（番剧没有必要隐藏）
         if (gm.config.disablePartInformation && !api.web.urlMatch(gm.regex.page_bangumi)) {
-          // 全屏播放时的分 P 选择
+          // 全屏播放时的分 P 选择（即使没有分 P 也存在）
           if (_self.enabled) {
             api.wait.waitQuerySelector('.bilibili-player-video-btn-menu').then(menu => {
               /** @type HTMLElement[] */
@@ -1430,9 +1430,9 @@
             api.logger.error(gm.error.DOM_PARSE)
             api.logger.error(e)
           })
-          // 播放页右侧分 P 选择
+          // 播放页右侧分 P 选择（可能存在）
           if (api.web.urlMatch(gm.regex.page_videoNormalMode)) {
-            api.wait.waitQuerySelector('#multi_page').then(multiPage => {
+            api.wait.waitQuerySelector('#multi_page', document, true).then(multiPage => {
               const hideTypes = [multiPage.querySelectorAll('.clickitem .part'), multiPage.querySelectorAll('.clickitem .duration')]
               for (const hideType of hideTypes) {
                 for (const hideElement of hideType) {
@@ -1634,50 +1634,27 @@
     /**
      * 初始化防剧透功能
      * @async
-     * @param {boolean} [selfCall] 自调用
      */
-    async initNoSpoil(selfCall) {
+    async initNoSpoil() {
       const _self = this
       try {
         await _self.initWebpage()
         await _self.processNoSpoil()
 
         // 加载完页面后，有时候视频会莫名其妙地重新刷新，原因不明
-        // 总之，先等一下看注入的内容还在，如果不再则重新初始化
-        // 若没有发生刷新，则不必处理
+        // 总之，先等一下看注入的内容还在，如果不在则重新初始化
+        // 若打开稍后再看模式播放页后，在以下条件等待超时之前切换到其他视频，这部分代码也会响应导致重新初始化
+        // 不过，这种情况本来就应该重初始化，也就是相当于多处理一次，从结果上来看并不要紧
         api.wait.executeAfterConditionPassed({
-          condition: () => {
-            const scriptControl = document.querySelector(`.${gm.id}-scriptControl`)
-            return !scriptControl
-          },
-          callback: () => {
-            _self.initNoSpoil()
-          },
+          condition: () => !document.querySelector(`.${gm.id}-scriptControl`),
+          callback: _self.initNoSpoil,
           interval: 250,
-          timePadding: 1000,
           onTimeout: null,
+          timePadding: 1000,
         })
       } catch (e) {
-        // 抛出异常，有可能确实是B站改版导致，但更多情况下，是因为网页还未加载完成导致的
-        // 出现这种情况，往往是因为用户一次性打开多个页面，过了非常久之后才切换过去导致的
-        try {
-          if (selfCall) {
-            throw e
-          } else {
-            const control = await api.wait.waitQuerySelector('.bilibili-player-video-control')
-            const ob = new MutationObserver((records, observer) => {
-              observer.disconnect()
-              _self.initNoSpoil(true)
-            })
-            ob.observe(control, {
-              childList: true,
-              subtree: true,
-            })
-          }
-        } catch (e) {
-          api.logger.error(gm.error.DOM_PARSE)
-          api.logger.error(e)
-        }
+        api.logger.error(gm.error.DOM_PARSE)
+        api.logger.error(e)
       }
     }
 
@@ -1724,17 +1701,20 @@
     /**
      * 初始化稍后再看模式播放页切换分 P 的处理
      * @async
-     * @param {boolean} [selfCall] 自调用
      */
-    async initSwitchingPartProcess(selfCall) {
+    async initSwitchingPartProcess() {
       const _self = this
       try {
         let obActiveP, obList
         const list = await api.wait.waitQuerySelector('.player-auxiliary-playlist-list')
-        try {
-          const activeVideo = await api.wait.waitQuerySelector('.player-auxiliary-playlist-item-active', list)
-          const pList = await api.wait.waitQuerySelector('.player-auxiliary-playlist-item-p-list', activeVideo)
-          if (pList) {
+        const activeVideo = await api.wait.waitQuerySelector('.player-auxiliary-playlist-item-active', list)
+        const stopWait = api.wait.executeAfterElementLoaded({
+          selector: '.player-auxiliary-playlist-item-p-list',
+          base: activeVideo,
+          timeout: 2000,
+          onTimeout: null, // 有分 P 的才能找到 pList
+          stopOnTimeout: true,
+          callback: async pList => {
             const activeP = await api.wait.waitQuerySelector('.player-auxiliary-playlist-item-p-item-active', pList)
             obActiveP = new MutationObserver(async (records, observer) => {
               observer.disconnect()
@@ -1746,37 +1726,19 @@
               }
             })
             obActiveP.observe(activeP, { attributeFilter: ['class'] })
-          }
-        } catch (e) {
-          // 只是因为 list 已经变化，导致在原 list 下找不到对应的元素而已，实际并无错误
-        }
-
-        // 如果 list 中发生修改，则前面的监听无效，应当重新处理
+          },
+        })
+        // 将右侧列表往下拉，动态加载后面的视频时会重新生成 list，此时前面的监听无效，应当重新处理
         obList = new MutationObserver((records, observer) => {
+          stopWait()
           observer.disconnect()
           obActiveP?.disconnect()
           _self.initSwitchingPartProcess(true)
         })
         obList.observe(list, { childList: true })
       } catch (e) {
-        try {
-          if (selfCall) {
-            throw e
-          } else {
-            const rightContainer = await api.wait.waitQuerySelector('.right-container')
-            const ob = new MutationObserver((records, observer) => {
-              observer.disconnect()
-              _self.initSwitchingPartProcess(true)
-            })
-            ob.observe(rightContainer, {
-              childList: true,
-              subtree: true,
-            })
-          }
-        } catch (e) {
-          api.logger.error(gm.error.DOM_PARSE)
-          api.logger.error(e)
-        }
+        api.logger.error(gm.error.DOM_PARSE)
+        api.logger.error(e)
       }
     }
 
