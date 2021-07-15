@@ -6,7 +6,7 @@
 
 1. 脚本：在视频播放页和番剧播放页中，核心逻辑不再在页面加载完成时执行，而是在用户获取封面时执行。直播间中核心逻辑简单粗暴，就不搞这些花里胡哨的了。
 2. 脚本：优化获取封面失败时的处理。
-3. API：升级至 V1.2，进一步优化条件等待和元素等待。详见 [UserscriptAPI 更新日志](https://gitee.com/liangjiancang/userscript/blob/master/lib/UserscriptAPI/changelog.md)。
+3. API：升级至 V1.2，进一步优化条件等待和元素等待逻辑。详见 [UserscriptAPI 更新日志](https://gitee.com/liangjiancang/userscript/blob/master/lib/UserscriptAPI/changelog.md)。
 
 ## V4.10
 
