@@ -7,10 +7,11 @@
 1. 库：优化构造参数，方便对各种默认选项进行配置。
 2. `wait`：条件等待 API 增加 `stopOnTimeout` 选项。默认开启，行为保持不变。
 3. `wait`：元素等待 API 增加 `stopOnTimeout` 选项。默认关闭，即等待超时时会打印错误信息，但不会终止元素等待。
-4. `wait`：`waitQuerySelector()` 第三个参数从 `subtree` 改为 `stopOnTimeout`。
-5. `wait`：修复执行终止指令后，在特殊情况下依然等待成功的问题。
-6. `logger`：增加 `warn()` 方法，并调整 `log()` 的参数列表。
-7. 代码：细化文档表述。
+4. `wait`：元素等待 API 增加 `stopCondition` 及 `onStop` 选项，便于外部终止元素等待。
+5. `wait`：`waitQuerySelector()` 第三个参数从 `subtree` 改为 `stopOnTimeout`。
+6. `wait`：修复执行终止指令后，在特殊情况下依然等待成功的问题。
+7. `logger`：增加 `warn()` 方法，并调整 `log()` 的参数列表。
+8. 代码：细化文档表述。
 
 ## V1.1
 
