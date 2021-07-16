@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站封面获取
-// @version         4.11.3.20210715
+// @version         4.11.4.20210716
 // @namespace       laster2800
 // @author          Laster2800
 // @description     B站视频播放页（普通模式、稍后再看模式）、番剧播放页、直播间添加获取封面的按钮
@@ -16,7 +16,7 @@
 // @exclude         *://live.bilibili.com/
 // @exclude         *://live.bilibili.com/?*
 // @exclude         *://live.bilibili.com/*/*
-// @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=950773
+// @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=951114
 // @grant           GM_addStyle
 // @grant           GM_download
 // @grant           GM_notification
@@ -371,14 +371,20 @@
             if (location.pathname == bus.pathname) return // 并非切换视频（如切分 P）
             try {
               bus.pathname = location.pathname
+              let fail = false
               bus.aid = await api.wait.waitForConditionPassed({
                 condition: async () => {
                   // 要等 aid 跟之前存的不一样，才能说明是切换成功后获取到的 aid
                   const aid = await _self.method.getAid()
-                  if (aid && aid != bus.aid) {
-                    return aid
+                  if (aid) {
+                    if (aid != bus.aid) {
+                      return aid
+                    }
+                  } else {
+                    fail = true
                   }
                 },
+                stopCondition: () => fail,
               })
               updateCover()
             } catch (e) {
@@ -512,14 +518,20 @@
           setCover(url)
           window.addEventListener('urlchange', async function() {
             try {
+              let fail = false
               bus.aid = await api.wait.waitForConditionPassed({
                 condition: async () => {
                   // 要等 aid 跟之前存的不一样，才能说明是切换成功后获取到的 aid
                   const aid = await _self.method.getAid()
-                  if (aid && aid != bus.aid) {
-                    return aid
+                  if (aid) {
+                    if (aid != bus.aid) {
+                      return aid
+                    }
+                  } else {
+                    fail = true
                   }
                 },
+                stopCondition: () => fail,
               })
               updateCover()
             } catch (e) {

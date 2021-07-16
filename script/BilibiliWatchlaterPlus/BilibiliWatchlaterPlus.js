@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.14.0.20210715
+// @version         4.14.1.20210716
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -17,7 +17,7 @@
 // @exclude         *://message.bilibili.com/pages/nav/index_new_pc_sync
 // @exclude         *://t.bilibili.com/h5/dynamic/specification
 // @exclude         *://www.bilibili.com/page-proxy/game-nav.html
-// @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=950773
+// @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=951114
 // @grant           GM_addStyle
 // @grant           GM_registerMenuCommand
 // @grant           GM_xmlhttpRequest
@@ -2973,14 +2973,20 @@
           if (location.pathname == bus.pathname) return // 并非切换视频（如切分 P）
           try {
             bus.pathname = location.pathname
+            let fail = false
             bus.aid = await api.wait.waitForConditionPassed({
               condition: async () => {
                 // 要等 aid 跟之前存的不一样，才能说明是切换成功后获取到的 aid
                 const aid = await _self.method.getAid()
-                if (aid && aid != bus.aid) {
-                  return aid
+                if (aid) {
+                  if (aid != bus.aid) {
+                    return aid
+                  }
+                } else {
+                  fail = true
                 }
               },
+              stopCondition: () => fail,
             })
             let reloaded = false
             gm.searchParams = new URL(location.href).searchParams

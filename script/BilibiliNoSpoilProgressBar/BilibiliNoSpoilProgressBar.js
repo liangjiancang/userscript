@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站防剧透进度条
-// @version         1.8.2.20210715
+// @version         1.8.3.20210716
 // @namespace       laster2800
 // @author          Laster2800
 // @description     看比赛、看番总是被进度条剧透？装上这个脚本再也不用担心这些问题了
@@ -12,7 +12,7 @@
 // @include         *://www.bilibili.com/medialist/play/watchlater
 // @include         *://www.bilibili.com/medialist/play/watchlater/*
 // @include         *://www.bilibili.com/bangumi/play/*
-// @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=950773
+// @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=951114
 // @grant           GM_addStyle
 // @grant           GM_registerMenuCommand
 // @grant           GM_xmlhttpRequest
@@ -1138,15 +1138,7 @@
          * @returns {Promise<string>} `aid`
          */
         async getAid() {
-          let aid = null
-          try {
-            aid = unsafeWindow.aid || await api.wait.waitForConditionPassed({
-              condition: async () => (await this.getVideoMessage())?.aid,
-            })
-          } catch (e) {
-            api.logger.error(gm.error.DOM_PARSE)
-            api.logger.error(e)
-          }
+          const aid = unsafeWindow.aid || (await this.getVideoMessage())?.aid
           return String(aid ?? '')
         },
 
@@ -1156,16 +1148,7 @@
          * @returns {Promise<string>} `cid`
          */
         async getCid() {
-          let cid = null
-          try {
-            cid = await api.wait.waitForConditionPassed({
-              condition: async () => (await this.getVideoMessage())?.cid,
-            })
-          } catch (e) {
-            api.logger.error(gm.error.DOM_PARSE)
-            api.logger.error(e)
-          }
-          return String(cid ?? '')
+          return String((await this.getVideoMessage())?.cid ?? '')
         },
 
         /**
@@ -1671,6 +1654,7 @@
         let currentPathname = location.pathname
         let currentCid = await _self.method.getCid()
         window.addEventListener('urlchange', function() {
+          let fail = false
           api.wait.waitForConditionPassed({
             condition: async () => {
               if (location.pathname == currentPathname) {
@@ -1678,12 +1662,17 @@
                 return currentCid
               } else {
                 const cid = await _self.method.getCid()
-                if (cid != currentCid) { // cid 改变才能说明页面真正切换过去
-                  currentPathname = location.pathname
-                  return cid
+                if (cid) {
+                  if (cid != currentCid) { // cid 改变才能说明页面真正切换过去
+                    currentPathname = location.pathname
+                    return cid
+                  }
+                } else {
+                  fail = true
                 }
               }
             },
+            stopCondition: () => fail,
           }).then(cid => {
             currentCid = cid
             _self.initNoSpoil()
