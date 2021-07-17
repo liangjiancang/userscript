@@ -3,7 +3,7 @@
  * 对象观察器
  * 
  * 根据 `regex` 在 `depth` 层深度内找到匹配 `regex` 的属性
- * @version 1.1.3.20210717
+ * @version 1.1.4.20210717
  */
 class ObjectInspector {
   /**
@@ -45,7 +45,7 @@ class ObjectInspector {
     config = { ...this.config, ...config }
     var depth = config.depth
     var result = {}
-    if (depth - 1 > 0) {
+    if (depth > 0) {
       var objSet = new Set()
       var prevKey = ''
       this._inspectObjectInner(config, depth, result, prevKey, objSet)
@@ -69,6 +69,7 @@ class ObjectInspector {
    * @param {Set} objSet 集合，包含之前已经观察过的对象，避免重复遍历
    */
   _inspectObjectInner({ obj, regex, inspectKey, inspectValue, exRegex, exLongStrLen }, depth, result, prevKey, objSet) {
+    if (depth == 0) return
     for (var key in obj) {
       if (exRegex?.test(key)) continue
       if (inspectKey && regex.test(key)) {
@@ -78,20 +79,22 @@ class ObjectInspector {
           var value = obj[key]
           if (value) {
             if (typeof value == 'object' || typeof value == 'function') {
-              if (!objSet.has(value)) {
-                objSet.add(value)
-                if (depth - 1 > 0) {
+              if (depth > 1) {
+                if (!objSet.has(value)) {
+                  objSet.add(value)
                   this._inspectObjectInner({ obj: value, regex, inspectKey, inspectValue, exRegex, exLongStrLen }, depth - 1, result, `${prevKey + key}.`, objSet)
                 }
               }
             } else {
               var sVal = value
               if (typeof value == 'string') {
-                try {
-                  var json = JSON.parse(value)
-                  this._inspectObjectInner({ obj: json, regex, inspectKey, inspectValue, exRegex, exLongStrLen }, depth - 1, result, `${prevKey + key}{JSON-PARSE}:`, objSet)
-                  continue
-                } catch (e) { /* nothing to do */ }
+                if (depth > 1) {
+                  try {
+                    var json = JSON.parse(value)
+                    this._inspectObjectInner({ obj: json, regex, inspectKey, inspectValue, exRegex, exLongStrLen }, depth - 1, result, `${prevKey + key}{JSON-PARSE}:`, objSet)
+                    continue
+                  } catch (e) { /* nothing to do */ }
+                }
                 if (value.length > exLongStrLen) continue
               } else if (typeof value == 'symbol') {
                 sVal = String(value)
@@ -102,7 +105,7 @@ class ObjectInspector {
             }
           }
         } catch (e) {
-          // value that cannot access
+          // value that cannot be accessed
         }
       }
     }
