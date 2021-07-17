@@ -8,8 +8,8 @@
 
 ## 补充说明
 
-1. 脚本基于 Microsoft Edge 浏览器和 Tampermonkey 脚本管理器开发，明确不支持 Greasemonkey。在其他浏览器及脚本管理器上运行可能会出现问题，请提供反馈。
-2. 脚本包含 [B站「稍后再看」重定向](https://greasyfork.org/zh-CN/scripts/383441) 的功能，请勿重复安装。
+* 脚本基于 Microsoft Edge 浏览器和 Tampermonkey 脚本管理器开发，明确不支持 Greasemonkey。在其他浏览器及脚本管理器上运行可能会出现问题，请提供反馈。
+* 脚本包含 [B站「稍后再看」重定向](https://greasyfork.org/zh-CN/scripts/383441) 的功能，请勿重复安装。
 
 ## 截图
 
