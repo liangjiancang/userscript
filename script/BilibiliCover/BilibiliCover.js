@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站封面获取
-// @version         4.11.6.20210717
+// @version         4.11.7.20210717
 // @namespace       laster2800
 // @author          Laster2800
 // @description     B站视频播放页（普通模式、稍后再看模式）、番剧播放页、直播间添加获取封面的按钮
@@ -158,7 +158,7 @@
           name = name || 'Cover'
           const onerror = function(error) {
             if (error?.error == 'not_whitelisted') {
-              alert('该封面的文件格式不在下载模式白名单中，从而触发安全限制导致无法直接下载。可修改脚本管理器的「下载模式」或「文件扩展名白名单」设置以放开限制。')
+              alert(`【${GM_info.script.name}】\n\n该封面的文件格式不在下载模式白名单中，从而触发安全限制导致无法直接下载。可修改脚本管理器的「下载模式」或「文件扩展名白名单」设置以放开限制。`)
               window.open(url)
             } else {
               GM_notification({
