@@ -3,7 +3,7 @@
  * 对象观察器
  * 
  * 根据 `regex` 在 `depth` 层深度内找到匹配 `regex` 的属性
- * @version 1.1.4.20210717
+ * @version 1.1.5.20210717
  */
 class ObjectInspector {
   /**
@@ -79,7 +79,9 @@ class ObjectInspector {
           var value = obj[key]
           if (value) {
             if (typeof value == 'object' || typeof value == 'function') {
-              if (depth > 1) {
+              if (inspectValue && regex.test(value.toString())) {
+                result[prevKey + key] = value
+              } else if (depth > 1) {
                 if (!objSet.has(value)) {
                   objSet.add(value)
                   this._inspectObjectInner({ obj: value, regex, inspectKey, inspectValue, exRegex, exLongStrLen }, depth - 1, result, `${prevKey + key}.`, objSet)
