@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name            S1战斗力屏蔽
 // @namespace       laster2800
-// @version         3.3.5.20210716
+// @version         3.3.6.20210717
 // @author          Laster2800
 // @description     屏蔽 S1 的战斗力系统，眼不见为净
 // @author          Laster2800
@@ -9,7 +9,7 @@
 // @homepage        https://greasyfork.org/zh-CN/scripts/394407
 // @supportURL      https://greasyfork.org/zh-CN/scripts/394407/feedback
 // @license         LGPL-3.0
-// @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=951114
+// @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=951322
 // @match           *.saraba1st.com/*
 // @grant           GM_addStyle
 // @run-at          document-start
@@ -28,7 +28,7 @@ var api = new UserscriptAPI({
 (function() {
   api.wait.waitQuerySelector('body').then(body => {
     body.setAttribute(enabledAttr, '')
-  }).catch(errorHandler)
+  })
 
   // 在导航栏中加入脚本开关
   api.wait.waitQuerySelector('#nv').then(nv => {
@@ -51,7 +51,7 @@ var api = new UserscriptAPI({
       }
       sw.enabled = enabled
     }
-  }).catch(errorHandler)
+  })
 
   // 系统提醒
   // 在正式处理之前，通过样式将该隐藏的隐藏住，避免被用户观察到
@@ -69,11 +69,11 @@ var api = new UserscriptAPI({
   api.wait.waitQuerySelector('#myprompt_menu').then(menu => {
     // 有系统提醒时，每次打开页面时都会弹出一个通知菜单
     // 点击网页提供的关闭按键后，此菜单在有新提醒前不会再次弹出
-    const p1 = api.wait.waitQuerySelector('.ignore_notice').then(ignore_notice => {
+    const p1 = api.wait.waitQuerySelector('.ignore_notice', document, true).then(ignore_notice => {
       api.wait.waitForConditionPassed({
         condition: () => menu.getAttribute('initialized') === 'true',
-        interval: 5,
-      }).then(() => ignore_notice.click()).catch(errorHandler)
+        interval: 25,
+      }).then(() => ignore_notice.click())
     }).catch(() => {}) // 没有通知时，没有捕获到是正常的
 
     // 有系统提醒处于未读状态时，相关位置会有高亮显示，网页标题也会有所不同
@@ -94,12 +94,11 @@ var api = new UserscriptAPI({
         })
       }
       menu_system?.parentNode.parentNode.remove()
-    }).catch(errorHandler)
+    })
 
-    Promise.allSettled([p1, p2]).then(() => { // 无意关心 p1 和 p2 死活，只要它们都处理完就还原为可见状态
-      menu.style.visibility = 'visible'
-    }).catch(errorHandler)
-  }).catch(errorHandler)
+    // 无意关心 p1 和 p2 死活，只要都处理完就还原为可见状态
+    Promise.allSettled([p1, p2]).then(() => menu.style.visibility = 'visible')
+  })
 
   // 右上角「积分」的弹出菜单移除
   GM_addStyle(`
@@ -111,7 +110,7 @@ var api = new UserscriptAPI({
   api.wait.waitQuerySelector('#extcreditmenu').then(extcreditmenu => {
     extcreditmenu.className = ''
     extcreditmenu.onmouseover = null
-  }).catch(errorHandler)
+  })
 
   if (/thread-|mod=viewthread/.test(location.href)) {
     GM_addStyle(`
@@ -173,8 +172,4 @@ function replaceTitle() {
   if (reg.test(document.title)) {
     document.title = document.title.replace(reg, '')
   }
-}
-
-function errorHandler(e) {
-  api.logger.error(e)
 }

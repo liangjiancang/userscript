@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站共同关注快速查看
-// @version         1.4.9.20210716
+// @version         1.4.10.20210717
 // @namespace       laster2800
 // @author          Laster2800
 // @description     快速查看与特定用户的共同关注（视频播放页、动态页、用户空间、直播间）
@@ -19,7 +19,7 @@
 // @exclude         *://t.bilibili.com/h5/dynamic/specification
 // @exclude         *://www.bilibili.com/watchlater/
 // @exclude         *://www.bilibili.com/page-proxy/game-nav.html
-// @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=951114
+// @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=951322
 // @grant           GM_addStyle
 // @grant           GM_notification
 // @grant           GM_xmlhttpRequest
@@ -210,43 +210,35 @@
     async cardLogic(config) {
       config = { lazy: true, ancestor: false, ...config }
       const _self = this
-      try {
-        let container = document.body
-        if (config.container) {
-          container = await api.wait.waitQuerySelector(config.container)
-        }
-        api.wait.executeAfterElementLoaded({
-          selector: config.card,
-          base: container,
-          subtree: config.ancestor,
-          repeat: true,
-          timeout: 0,
-          callback: async card => {
-            try {
-              let userLink = null
-              if (config.lazy) {
-                userLink = await api.wait.waitQuerySelector(config.user, card)
-              } else {
-                // 此时并不是在「正在加载」状态的 user-card 中添加新节点以转向「已完成」状态
-                // 而是将「正在加载」的 user-card 彻底移除，然后直接将「已完成」的 user-card 添加到 DOM 中
-                userLink = card.querySelector(config.user)
-              }
-              if (userLink) {
-                const info = await api.wait.waitQuerySelector(config.info, card)
-                await _self.generalLogic({
-                  uid: _self.method.getUidFromUrl(userLink.href),
-                  target: info,
-                  className: `${gm.id} card-same-followings`,
-                })
-              }
-            } catch (e) {
-              api.logger.error(e)
-            }
-          },
-        })
-      } catch (e) {
-        api.logger.error(e)
+      let container = document.body
+      if (config.container) {
+        container = await api.wait.waitQuerySelector(config.container)
       }
+      api.wait.executeAfterElementLoaded({
+        selector: config.card,
+        base: container,
+        subtree: config.ancestor,
+        repeat: true,
+        timeout: 0,
+        callback: async card => {
+          let userLink = null
+          if (config.lazy) {
+            userLink = await api.wait.waitQuerySelector(config.user, card)
+          } else {
+            // 此时并不是在「正在加载」状态的 user-card 中添加新节点以转向「已完成」状态
+            // 而是将「正在加载」的 user-card 彻底移除，然后直接将「已完成」的 user-card 添加到 DOM 中
+            userLink = card.querySelector(config.user)
+          }
+          if (userLink) {
+            const info = await api.wait.waitQuerySelector(config.info, card)
+            await _self.generalLogic({
+              uid: _self.method.getUidFromUrl(userLink.href),
+              target: info,
+              className: `${gm.id} card-same-followings`,
+            })
+          }
+        },
+      })
     }
 
     /**
@@ -258,64 +250,60 @@
      * @param {string} [config.className=''] 显示元素的类名；若 `target` 的子孙节点中有对应元素则直接使用，否则创建之
      */
     async generalLogic(config) {
-      try {
-        let sf = config.className ? config.target.querySelector(config.className.replaceAll(/(^|\s+)(?=\w)/g, '.')) : null
-        if (sf) {
-          sf.innerHTML = ''
-        }
-        const resp = await api.web.request({
-          method: 'GET',
-          url: `https://api.bilibili.com/x/relation/same/followings?vmid=${config.uid}`,
-        })
-        const json = JSON.parse(resp.responseText)
-        if (json.code == 0) {
-          const data = json.data
-          const sameFollowings = []
-          if (gm.config.dispInText) {
-            for (const item of data.list) {
-              sameFollowings.push(item.uname)
-            }
-          } else {
-            for (const item of data.list) {
-              sameFollowings.push([item.uname, `https://space.bilibili.com/${item.mid}`])
-            }
-          }
-          if (sameFollowings.length > 0 || gm.config.withoutSameMessage) {
-            if (!sf) {
-              sf = config.target.appendChild(document.createElement('div'))
-              sf.className = config.className || ''
-            }
-            if (sameFollowings.length > 0) {
-              if (gm.config.dispInText) {
-                sf.innerHTML = `<div>共同关注</div><div class="same-following">${sameFollowings.join('，&nbsp;')}</div>`
-              } else {
-                let innerHTML = '<div>共同关注</div><div>'
-                for (const item of sameFollowings) {
-                  innerHTML += `<a href="${item[1]}" target="_blank" class="same-following">${item[0]}</a><span>，&nbsp;</span>`
-                }
-                sf.innerHTML = innerHTML.slice(0, -'<span>，&nbsp;</span>'.length) + '</div>'
-              }
-            } else if (gm.config.withoutSameMessage) {
-              sf.innerHTML = '<div>共同关注</div><div class="same-following">[ 无 ]</div>'
-            }
+      let sf = config.className ? config.target.querySelector(config.className.replaceAll(/(^|\s+)(?=\w)/g, '.')) : null
+      if (sf) {
+        sf.innerHTML = ''
+      }
+      const resp = await api.web.request({
+        method: 'GET',
+        url: `https://api.bilibili.com/x/relation/same/followings?vmid=${config.uid}`,
+      })
+      const json = JSON.parse(resp.responseText)
+      if (json.code == 0) {
+        const data = json.data
+        const sameFollowings = []
+        if (gm.config.dispInText) {
+          for (const item of data.list) {
+            sameFollowings.push(item.uname)
           }
         } else {
-          if (gm.config.failMessage && json.message) {
-            if (!sf) {
-              sf = config.target.appendChild(document.createElement('div'))
-              sf.className = config.className || ''
-            }
-            sf.innerHTML = `<div>共同关注</div><div>[ ${json.message} ]</div>`
-          }
-          const msg = [json.code, json.message]
-          if (json.code > 0) {
-            api.logger.info(msg)
-          } else {
-            throw msg
+          for (const item of data.list) {
+            sameFollowings.push([item.uname, `https://space.bilibili.com/${item.mid}`])
           }
         }
-      } catch (e) {
-        api.logger.error(e)
+        if (sameFollowings.length > 0 || gm.config.withoutSameMessage) {
+          if (!sf) {
+            sf = config.target.appendChild(document.createElement('div'))
+            sf.className = config.className || ''
+          }
+          if (sameFollowings.length > 0) {
+            if (gm.config.dispInText) {
+              sf.innerHTML = `<div>共同关注</div><div class="same-following">${sameFollowings.join('，&nbsp;')}</div>`
+            } else {
+              let innerHTML = '<div>共同关注</div><div>'
+              for (const item of sameFollowings) {
+                innerHTML += `<a href="${item[1]}" target="_blank" class="same-following">${item[0]}</a><span>，&nbsp;</span>`
+              }
+              sf.innerHTML = innerHTML.slice(0, -'<span>，&nbsp;</span>'.length) + '</div>'
+            }
+          } else if (gm.config.withoutSameMessage) {
+            sf.innerHTML = '<div>共同关注</div><div class="same-following">[ 无 ]</div>'
+          }
+        }
+      } else {
+        if (gm.config.failMessage && json.message) {
+          if (!sf) {
+            sf = config.target.appendChild(document.createElement('div'))
+            sf.className = config.className || ''
+          }
+          sf.innerHTML = `<div>共同关注</div><div>[ ${json.message} ]</div>`
+        }
+        const msg = [json.code, json.message]
+        if (json.code > 0) {
+          api.logger.info(msg)
+        } else {
+          throw msg
+        }
       }
     }
 

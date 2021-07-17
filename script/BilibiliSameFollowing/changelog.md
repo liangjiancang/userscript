@@ -6,6 +6,7 @@
 
 1. 功能实现：在直播间中快速查看。
 2. API：升级至 V1.2，进一步优化条件等待和元素等待逻辑。详见 [UserscriptAPI 更新日志](https://gitee.com/liangjiancang/userscript/blob/master/lib/UserscriptAPI/changelog.md)。
+3. 代码：优化异常处理。
 
 ## V1.3
 

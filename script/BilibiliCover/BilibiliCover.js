@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站封面获取
-// @version         4.11.4.20210716
+// @version         4.11.5.20210717
 // @namespace       laster2800
 // @author          Laster2800
 // @description     B站视频播放页（普通模式、稍后再看模式）、番剧播放页、直播间添加获取封面的按钮
@@ -16,7 +16,7 @@
 // @exclude         *://live.bilibili.com/
 // @exclude         *://live.bilibili.com/?*
 // @exclude         *://live.bilibili.com/*/*
-// @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=951114
+// @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=951322
 // @grant           GM_addStyle
 // @grant           GM_download
 // @grant           GM_notification
@@ -183,14 +183,9 @@
          * @returns {Promise<string>} `aid`
          */
         async getAid() {
-          let aid = null
-          try {
-            aid = unsafeWindow.aid || await api.wait.waitForConditionPassed({
-              condition: () => unsafeWindow.player?.getVideoMessage?.()?.aid,
-            })
-          } catch (e) {
-            api.logger.error(e)
-          }
+          const aid = unsafeWindow.aid || await api.wait.waitForConditionPassed({
+            condition: () => unsafeWindow.player?.getVideoMessage?.()?.aid,
+          })
           return String(aid ?? '')
         },
 
@@ -371,20 +366,14 @@
             if (location.pathname == bus.pathname) return // 并非切换视频（如切分 P）
             try {
               bus.pathname = location.pathname
-              let fail = false
               bus.aid = await api.wait.waitForConditionPassed({
                 condition: async () => {
                   // 要等 aid 跟之前存的不一样，才能说明是切换成功后获取到的 aid
                   const aid = await _self.method.getAid()
-                  if (aid) {
-                    if (aid != bus.aid) {
-                      return aid
-                    }
-                  } else {
-                    fail = true
+                  if (aid && aid != bus.aid) {
+                    return aid
                   }
                 },
-                stopCondition: () => fail,
               })
               updateCover()
             } catch (e) {
@@ -428,20 +417,14 @@
 
       const updateCover = async () => {
         try {
-          let fail = false
           bus.cover = await api.wait.waitForConditionPassed({
             condition: async () => {
               // aid 变化只能说明视频确实变了，但 cover 可能还没变
               const cover = await getCover()
-              if (cover) {
-                if (cover != bus.cover) {
-                  return cover
-                }
-              } else {
-                fail = true
+              if (cover && cover != bus.cover) {
+                return cover
               }
             },
-            stopCondition: () => fail,
           })
           setCover(bus.cover)
         } catch (e) {
@@ -474,28 +457,24 @@
       }
 
       const getCover = async () => {
-        let cover = ''
-        try {
-          if (api.web.urlMatch(gm.regex.page_videoNormalMode)) {
-            const meta = await api.wait.waitForElementLoaded({
-              selector: 'meta[itemprop=image]',
-              base: document.head,
-              timeout: 2000,
-              stopOnTimeout: true,
-            })
-            cover = meta.content ?? ''
-          } else {
-            const aid = await _self.method.getAid()
-            const resp = await api.web.request({
-              method: 'GET',
-              url: `https://api.bilibili.com/x/web-interface/view?aid=${aid}`,
-            })
-            cover = JSON.parse(resp.responseText).data.pic
-          }
-        } catch (e) {
-          api.logger.error(e)
+        let cover = null
+        if (api.web.urlMatch(gm.regex.page_videoNormalMode)) {
+          const meta = await api.wait.waitForElementLoaded({
+            selector: 'meta[itemprop=image]',
+            base: document.head,
+            timeout: 2000,
+            stopOnTimeout: true,
+          })
+          cover = meta.content
+        } else {
+          const aid = await _self.method.getAid()
+          const resp = await api.web.request({
+            method: 'GET',
+            url: `https://api.bilibili.com/x/web-interface/view?aid=${aid}`,
+          })
+          cover = JSON.parse(resp.responseText).data.pic
         }
-        return cover
+        return cover ?? ''
       }
     }
 
@@ -518,20 +497,14 @@
           setCover(url)
           window.addEventListener('urlchange', async function() {
             try {
-              let fail = false
               bus.aid = await api.wait.waitForConditionPassed({
                 condition: async () => {
                   // 要等 aid 跟之前存的不一样，才能说明是切换成功后获取到的 aid
                   const aid = await _self.method.getAid()
-                  if (aid) {
-                    if (aid != bus.aid) {
-                      return aid
-                    }
-                  } else {
-                    fail = true
+                  if (aid && aid != bus.aid) {
+                    return aid
                   }
                 },
-                stopCondition: () => fail,
               })
               updateCover()
             } catch (e) {
@@ -589,20 +562,14 @@
 
       const updateCover = async () => {
         try {
-          let fail = false
           bus.cover = await api.wait.waitForConditionPassed({
             condition: async () => {
               // aid 变化只能说明视频确实变了，但 cover 可能还没变
               const cover = await getCover()
-              if (cover) {
-                if (cover != bus.cover) {
-                  return cover
-                }
-              } else {
-                fail = true
+              if (cover && cover != bus.cover) {
+                return cover
               }
             },
-            stopCondition: () => fail,
           })
           setCover(bus.cover)
         } catch (e) {
@@ -634,18 +601,12 @@
       }
 
       const getCover = async () => {
-        let cover = ''
-        try {
-          const img = await api.wait.waitForElementLoaded({
-            selector: '.media-cover img',
-            timeout: 2000,
-            stopOnTimeout: true,
-          })
-          cover = img.src.replace(/@[^@]*$/, '') // 不要缩略图
-        } catch (e) {
-          api.logger.error(e)
-        }
-        return cover
+        const img = await api.wait.waitForElementLoaded({
+          selector: '.media-cover img',
+          timeout: 2000,
+          stopOnTimeout: true,
+        })
+        return img.src.replace(/@[^@]*$/, '') ?? '' // 不要缩略图
       }
     }
 
@@ -707,31 +668,27 @@
     script.init()
     script.initScriptMenu()
 
-    try {
-      if (api.web.urlMatch([gm.regex.page_videoNormalMode, gm.regex.page_videoWatchlaterMode], 'OR')) {
-        const app = await api.wait.waitQuerySelector('#app')
-        webpage.addVideoBtn(
-          await api.wait.waitForConditionPassed({
-            condition: async () => app.__vue__ && await api.wait.waitQuerySelector('#arc_toolbar_report'),
-          })
-        )
-      } else if (api.web.urlMatch(gm.regex.page_bangumi)) {
-        const app = await api.wait.waitQuerySelector('#app')
-        webpage.addBangumiBtn(
-          await api.wait.waitForConditionPassed({
-            condition: async () => app.__vue__ && await api.wait.waitQuerySelector('#toolbar_module'),
-          })
-        )
-      } else if (api.web.urlMatch(gm.regex.page_live)) {
-        const hiVm = await api.wait.waitQuerySelector('#head-info-vm')
-        webpage.addLiveBtn(
-          await api.wait.waitForConditionPassed({
-            condition: async () => hiVm.__vue__ && await api.wait.waitQuerySelector('.room-info-upper-row .upper-right-ctnr', hiVm),
-          })
-        )
-      }
-    } catch (e) {
-      api.logger.error(e)
+    if (api.web.urlMatch([gm.regex.page_videoNormalMode, gm.regex.page_videoWatchlaterMode], 'OR')) {
+      const app = await api.wait.waitQuerySelector('#app')
+      webpage.addVideoBtn(
+        await api.wait.waitForConditionPassed({
+          condition: async () => app.__vue__ && await api.wait.waitQuerySelector('#arc_toolbar_report'),
+        })
+      )
+    } else if (api.web.urlMatch(gm.regex.page_bangumi)) {
+      const app = await api.wait.waitQuerySelector('#app')
+      webpage.addBangumiBtn(
+        await api.wait.waitForConditionPassed({
+          condition: async () => app.__vue__ && await api.wait.waitQuerySelector('#toolbar_module'),
+        })
+      )
+    } else if (api.web.urlMatch(gm.regex.page_live)) {
+      const hiVm = await api.wait.waitQuerySelector('#head-info-vm')
+      webpage.addLiveBtn(
+        await api.wait.waitForConditionPassed({
+          condition: async () => hiVm.__vue__ && await api.wait.waitQuerySelector('.room-info-upper-row .upper-right-ctnr', hiVm),
+        })
+      )
     }
   })()
 })()
