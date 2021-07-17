@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站防剧透进度条
-// @version         1.8.3.20210716
+// @version         1.8.4.20210717
 // @namespace       laster2800
 // @author          Laster2800
 // @description     看比赛、看番总是被进度条剧透？装上这个脚本再也不用担心这些问题了
@@ -12,7 +12,7 @@
 // @include         *://www.bilibili.com/medialist/play/watchlater
 // @include         *://www.bilibili.com/medialist/play/watchlater/*
 // @include         *://www.bilibili.com/bangumi/play/*
-// @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=951114
+// @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=951322
 // @grant           GM_addStyle
 // @grant           GM_registerMenuCommand
 // @grant           GM_xmlhttpRequest
@@ -55,7 +55,6 @@
    * @property {GMObject_const} const 常量
    * @property {GMObject_menu} menu 菜单
    * @property {{[s: string]: HTMLElement}} el HTML 元素
-   * @property {GMObject_error} error 错误信息
    */
   /**
    * @typedef GMObject_config
@@ -141,11 +140,6 @@
    * @property {() => void} [closedHandler] 彻底关闭菜单后的回调函数
    */
   /**
-   * @typedef GMObject_error
-   * @property {string} DOM_PARSE 进度条解析错误
-   * @property {string} NETWORK 网络错误
-   */
-  /**
    * 全局对象
    * @type {GMObject}
    */
@@ -212,10 +206,6 @@
       setting: null,
       uploaderList: null,
     },
-    error: {
-      DOM_PARSE: `DOM 解析错误。大部分情况下是由于网络加载速度不足造成的，不影响脚本工作；否则就是B站网页改版，请联系脚本作者进行修改：${GM_info.script.supportURL}`,
-      NETWORK: `网络连接错误，出现这个问题有可能是因为网络加载速度不足或者B站后台 API 被改动。也不排除是脚本内部数据出错造成的，初始化脚本也许能解决问题。无法解决请联系脚本作者：${GM_info.script.supportURL}`,
-    }
   }
 
   /* global UserscriptAPI */
@@ -629,10 +619,7 @@
                   let node = el[name]
                   while (node.nodeName != 'TD') {
                     node = node.parentNode
-                    if (!node) {
-                      api.logger.error(gm.error.DOM_PARSE)
-                      break
-                    }
+                    if (!node) break
                   }
                   if (node?.firstElementChild) {
                     api.dom.addClass(node.firstElementChild, 'gm-updated')
@@ -1024,7 +1011,6 @@
           document.exitFullscreen()
         }
       } catch (e) {
-        api.logger.error(gm.error.UNKNOWN)
         api.logger.error(e)
       }
       return success
@@ -1062,7 +1048,6 @@
           return true
         }
       } catch (e) {
-        api.logger.error(gm.error.UNKNOWN)
         api.logger.error(e)
       }
       return false
@@ -1138,7 +1123,9 @@
          * @returns {Promise<string>} `aid`
          */
         async getAid() {
-          const aid = unsafeWindow.aid || (await this.getVideoMessage())?.aid
+          const aid = unsafeWindow.aid || await api.wait.waitForConditionPassed({
+            condition: async () => (await this.getVideoMessage())?.aid,
+          })
           return String(aid ?? '')
         },
 
@@ -1148,7 +1135,9 @@
          * @returns {Promise<string>} `cid`
          */
         async getCid() {
-          return String((await this.getVideoMessage())?.cid ?? '')
+          return await api.wait.waitForConditionPassed({
+            condition: async () => (await this.getVideoMessage())?.cid,
+          })
         },
 
         /**
@@ -1157,14 +1146,9 @@
          * @returns {Object} `window.player.getVideoMessage()`
          */
         async getVideoMessage() {
-          try {
-            return await api.wait.waitForConditionPassed({
-              condition: () => unsafeWindow.player?.getVideoMessage?.(),
-            })
-          } catch (e) {
-            api.logger.error(gm.error.DOM_PARSE)
-            api.logger.error(e)
-          }
+          return await api.wait.waitForConditionPassed({
+            condition: () => unsafeWindow.player?.getVideoMessage?.(),
+          })
         },
 
         /**
@@ -1175,16 +1159,11 @@
          * @returns {Promise<JSON>} 视频信息
          */
         async getVideoInfo(id, type = 'bvid') {
-          try {
-            const resp = await api.web.request({
-              method: 'GET',
-              url: gm.url.api_videoInfo(id, type),
-            })
-            return JSON.parse(resp.responseText).data
-          } catch (e) {
-            api.logger.error(gm.error.NETWORK)
-            api.logger.error(e)
-          }
+          const resp = await api.web.request({
+            method: 'GET',
+            url: gm.url.api_videoInfo(id, type),
+          })
+          return JSON.parse(resp.responseText).data
         },
       }
     }
@@ -1288,7 +1267,6 @@
             return true
           }
         } catch (e) {
-          api.logger.error(gm.error.NETWORK)
           api.logger.error(e)
         }
       } else if (api.web.urlMatch(gm.regex.page_bangumi)) {
@@ -1337,9 +1315,6 @@
               currentPoint._fake.style.display = 'none'
             }
           }
-        }).catch(e => {
-          api.logger.error(gm.error.DOM_PARSE)
-          api.logger.error(e)
         })
         // 隐藏视频预览上的当前播放时间（鼠标移至进度条上显示）
         api.wait.waitQuerySelector('.bilibili-player-video-progress-detail-time').then(currentPoint => {
@@ -1348,9 +1323,6 @@
           } else {
             currentPoint.style.visibility = 'visible'
           }
-        }).catch(e => {
-          api.logger.error(gm.error.DOM_PARSE)
-          api.logger.error(e)
         })
 
         // 隐藏视频时长
@@ -1369,9 +1341,6 @@
               duration._fake.style.display = 'none'
             }
           }
-        }).catch(e => {
-          api.logger.error(gm.error.DOM_PARSE)
-          api.logger.error(e)
         })
         // 隐藏「上次看到 XX:XX 跳转播放」中的时间（可能存在）
         if (_self.enabled) {
@@ -1404,17 +1373,11 @@
               for (let i = 0; i < items.length; i++) {
                 items[i].innerText = 'P' + (i + 1)
               }
-            }).catch(e => {
-              api.logger.error(gm.error.DOM_PARSE)
-              api.logger.error(e)
             })
           }
           // 全屏播放时显示的分 P 标题
           api.wait.waitQuerySelector('.bilibili-player-video-top-title').then(el => {
             el.style.visibility = _self.enabled ? 'hidden' : 'visible'
-          }).catch(e => {
-            api.logger.error(gm.error.DOM_PARSE)
-            api.logger.error(e)
           })
           // 播放页右侧分 P 选择（可能存在）
           if (api.web.urlMatch(gm.regex.page_videoNormalMode)) {
@@ -1451,9 +1414,6 @@
                   obList.observe(list, { childList: true })
                 }
                 exec()
-              }).catch(e => {
-                api.logger.error(gm.error.DOM_PARSE)
-                api.logger.error(e)
               })
             }
           }
@@ -1512,82 +1472,77 @@
        * @param {boolean} [noPostpone] 不延后执行
        */
       const core = noPostpone => {
-        try {
-          let offset = 'offset'
-          let playRate = 0
-          if (_self.enabled) {
-            const player = unsafeWindow.player
-            playRate = player.getCurrentTime() / player.getDuration()
-            offset = getEndPoint() - 100
-            const reservedLeft = gm.config.reservedLeft
-            const reservedRight = 100 - gm.config.reservedRight
-            if (playRate * 100 < reservedLeft) {
-              offset = 0
-            } else {
-              const offsetRate = playRate * 100 + offset
-              if (offsetRate < reservedLeft) {
-                offset = reservedLeft - playRate * 100
-              } else if (offsetRate > reservedRight) {
-                offset = reservedRight - playRate * 100
-              }
-            }
-          } else if (_self.progress._noSpoil) {
+        let offset = 'offset'
+        let playRate = 0
+        if (_self.enabled) {
+          const player = unsafeWindow.player
+          playRate = player.getCurrentTime() / player.getDuration()
+          offset = getEndPoint() - 100
+          const reservedLeft = gm.config.reservedLeft
+          const reservedRight = 100 - gm.config.reservedRight
+          if (playRate * 100 < reservedLeft) {
             offset = 0
-          }
-
-          if (typeof offset == 'number') {
-            const handler = () => {
-              _self.progress.root.style.transform = `translateX(${offset}%)`
-              _self.scriptControl.transform = `translateX(${-offset}%)`
-              if (_self.enabled) {
-                _self.fakeTrack.style.transform = `translateX(${-offset}%)`
-              }
+          } else {
+            const offsetRate = playRate * 100 + offset
+            if (offsetRate < reservedLeft) {
+              offset = reservedLeft - playRate * 100
+            } else if (offsetRate > reservedRight) {
+              offset = reservedRight - playRate * 100
             }
+          }
+        } else if (_self.progress._noSpoil) {
+          offset = 0
+        }
 
+        if (typeof offset == 'number') {
+          const handler = () => {
+            _self.progress.root.style.transform = `translateX(${offset}%)`
+            _self.scriptControl.transform = `translateX(${-offset}%)`
             if (_self.enabled) {
-              _self.progress.buffer.style.visibility = 'hidden'
-              _self.progress.track.style.visibility = 'hidden'
-              _self.shadowProgress.style.visibility = 'hidden'
-              _self.fakeTrack.style.visibility = 'visible'
+              _self.fakeTrack.style.transform = `translateX(${-offset}%)`
+            }
+          }
 
-              if (noPostpone || !gm.config.postponeOffset) {
-                handler()
-              } else if (!_self.progress._noSpoil) { // 首次打开
-                _self.progress.root.style.transform = 'translateX(0)'
-                _self.scriptControl.transform = 'translateX(0)'
-                _self.fakeTrack.style.transform = 'translateX(0)'
-              }
-              _self.processFakePlayed()
+          if (_self.enabled) {
+            _self.progress.buffer.style.visibility = 'hidden'
+            _self.progress.track.style.visibility = 'hidden'
+            _self.shadowProgress.style.visibility = 'hidden'
+            _self.fakeTrack.style.visibility = 'visible'
 
-              _self.progress._noSpoil = true
-            } else {
-              _self.progress.track.style.visibility = 'visible'
-              _self.progress.buffer.style.visibility = 'visible'
-              _self.shadowProgress.style.visibility = 'visible'
-              _self.fakeTrack.style.visibility = 'hidden'
+            if (noPostpone || !gm.config.postponeOffset) {
               handler()
+            } else if (!_self.progress._noSpoil) { // 首次打开
+              _self.progress.root.style.transform = 'translateX(0)'
+              _self.scriptControl.transform = 'translateX(0)'
+              _self.fakeTrack.style.transform = 'translateX(0)'
+            }
+            _self.processFakePlayed()
 
-              _self.progress._noSpoil = false
-            }
-          }
+            _self.progress._noSpoil = true
+          } else {
+            _self.progress.track.style.visibility = 'visible'
+            _self.progress.buffer.style.visibility = 'visible'
+            _self.shadowProgress.style.visibility = 'visible'
+            _self.fakeTrack.style.visibility = 'hidden'
+            handler()
 
-          if (api.web.urlMatch([gm.regex.page_videoNormalMode, gm.regex.page_videoWatchlaterMode], 'OR')) {
-            if (_self.uploaderEnabled) {
-              _self.scriptControl.uploaderEnabled.setAttribute('enabled', '')
-            } else {
-              _self.scriptControl.uploaderEnabled.removeAttribute('enabled')
-            }
+            _self.progress._noSpoil = false
           }
-          if (api.web.urlMatch(gm.regex.page_bangumi)) {
-            if (gm.config.bangumiEnabled) {
-              _self.scriptControl.bangumiEnabled.setAttribute('enabled', '')
-            } else {
-              _self.scriptControl.bangumiEnabled.removeAttribute('enabled')
-            }
+        }
+
+        if (api.web.urlMatch([gm.regex.page_videoNormalMode, gm.regex.page_videoWatchlaterMode], 'OR')) {
+          if (_self.uploaderEnabled) {
+            _self.scriptControl.uploaderEnabled.setAttribute('enabled', '')
+          } else {
+            _self.scriptControl.uploaderEnabled.removeAttribute('enabled')
           }
-        } catch (e) {
-          api.logger.error(gm.error.DOM_PARSE)
-          api.logger.error(e)
+        }
+        if (api.web.urlMatch(gm.regex.page_bangumi)) {
+          if (gm.config.bangumiEnabled) {
+            _self.scriptControl.bangumiEnabled.setAttribute('enabled', '')
+          } else {
+            _self.scriptControl.bangumiEnabled.removeAttribute('enabled')
+          }
         }
       }
 
@@ -1623,25 +1578,20 @@
      */
     async initNoSpoil() {
       const _self = this
-      try {
-        await _self.initWebpage()
-        await _self.processNoSpoil()
+      await _self.initWebpage()
+      await _self.processNoSpoil()
 
-        // 加载完页面后，有时候视频会莫名其妙地重新刷新，原因不明
-        // 总之，先等一下看注入的内容还在，如果不在则重新初始化
-        // 若打开稍后再看模式播放页后，在以下条件等待超时之前切换到其他视频，这部分代码也会响应导致重新初始化
-        // 不过，这种情况本来就应该重初始化，也就是相当于多处理一次，从结果上来看并不要紧
-        api.wait.executeAfterConditionPassed({
-          condition: () => !document.querySelector(`.${gm.id}-scriptControl`),
-          callback: () => _self.initNoSpoil(),
-          interval: 250,
-          onTimeout: null,
-          timePadding: 1000,
-        })
-      } catch (e) {
-        api.logger.error(gm.error.DOM_PARSE)
-        api.logger.error(e)
-      }
+      // 加载完页面后，有时候视频会莫名其妙地重新刷新，原因不明
+      // 总之，先等一下看注入的内容还在，如果不在则重新初始化
+      // 若打开稍后再看模式播放页后，在以下条件等待超时之前切换到其他视频，这部分代码也会响应导致重新初始化
+      // 不过，这种情况本来就应该重初始化，也就是相当于多处理一次，从结果上来看并不要紧
+      api.wait.executeAfterConditionPassed({
+        condition: () => !document.querySelector(`.${gm.id}-scriptControl`),
+        callback: () => _self.initNoSpoil(),
+        interval: 250,
+        onTimeout: null,
+        timePadding: 1000,
+      })
     }
 
     /**
@@ -1650,44 +1600,29 @@
      */
     async initLocationChangeProcess() {
       const _self = this
-      try {
-        let currentPathname = location.pathname
-        let currentCid = await _self.method.getCid()
-        window.addEventListener('urlchange', function() {
-          let fail = false
-          api.wait.waitForConditionPassed({
-            condition: async () => {
-              if (location.pathname == currentPathname) {
-                // 并非切换视频（如切分 P）
-                return currentCid
-              } else {
-                const cid = await _self.method.getCid()
-                if (cid) {
-                  if (cid != currentCid) { // cid 改变才能说明页面真正切换过去
-                    currentPathname = location.pathname
-                    return cid
-                  }
-                } else {
-                  fail = true
-                }
+      let currentCid = await _self.method.getCid()
+      let currentPathname = location.pathname
+      window.addEventListener('urlchange', function() {
+        api.wait.waitForConditionPassed({
+          condition: async () => {
+            if (location.pathname == currentPathname) { // 并非切换视频（如切分 P）
+              return currentCid
+            } else { // cid 改变才能说明页面真正切换过去
+              currentPathname = location.pathname
+              const cid = await _self.method.getCid()
+              if (cid && cid != currentCid) {
+                return cid
               }
-            },
-            stopCondition: () => fail,
-          }).then(cid => {
-            currentCid = cid
-            _self.initNoSpoil()
-            if (api.web.urlMatch(gm.regex.page_videoWatchlaterMode)) {
-              _self.initSwitchingPartProcess()
             }
-          }).catch(e => {
-            api.logger.error(gm.error.DOM_PARSE)
-            api.logger.error(e)
-          })
+          },
+        }).then(cid => {
+          currentCid = cid
+          _self.initNoSpoil()
+          if (api.web.urlMatch(gm.regex.page_videoWatchlaterMode)) {
+            _self.initSwitchingPartProcess()
+          }
         })
-      } catch (e) {
-        api.logger.error(gm.error.DOM_PARSE)
-        api.logger.error(e)
-      }
+      })
     }
 
     /**
@@ -1696,42 +1631,37 @@
      */
     async initSwitchingPartProcess() {
       const _self = this
-      try {
-        let obActiveP, obList
-        const list = await api.wait.waitQuerySelector('.player-auxiliary-playlist-list')
-        const activeVideo = await api.wait.waitQuerySelector('.player-auxiliary-playlist-item-active', list)
-        const stopWait = api.wait.executeAfterElementLoaded({
-          selector: '.player-auxiliary-playlist-item-p-list',
-          base: activeVideo,
-          timeout: 2000,
-          onTimeout: null, // 有分 P 的才能找到 pList
-          stopOnTimeout: true,
-          callback: async pList => {
-            const activeP = await api.wait.waitQuerySelector('.player-auxiliary-playlist-item-p-item-active', pList)
-            obActiveP = new MutationObserver(async (records, observer) => {
-              observer.disconnect()
-              obList?.disconnect()
-              const currentActive = await api.wait.waitQuerySelector('.player-auxiliary-playlist-item-active')
-              if (currentActive === activeVideo) {
-                _self.initNoSpoil()
-                _self.initSwitchingPartProcess()
-              }
-            })
-            obActiveP.observe(activeP, { attributeFilter: ['class'] })
-          },
-        })
-        // 将右侧列表往下拉，动态加载后面的视频时会重新生成 list，此时前面的监听无效，应当重新处理
-        obList = new MutationObserver((records, observer) => {
-          stopWait()
-          observer.disconnect()
-          obActiveP?.disconnect()
-          _self.initSwitchingPartProcess(true)
-        })
-        obList.observe(list, { childList: true })
-      } catch (e) {
-        api.logger.error(gm.error.DOM_PARSE)
-        api.logger.error(e)
-      }
+      let obActiveP, obList
+      const list = await api.wait.waitQuerySelector('.player-auxiliary-playlist-list')
+      const activeVideo = await api.wait.waitQuerySelector('.player-auxiliary-playlist-item-active', list)
+      const stopWait = api.wait.executeAfterElementLoaded({
+        selector: '.player-auxiliary-playlist-item-p-list',
+        base: activeVideo,
+        timeout: 2000,
+        onTimeout: null, // 有分 P 的才能找到 pList
+        stopOnTimeout: true,
+        callback: async pList => {
+          const activeP = await api.wait.waitQuerySelector('.player-auxiliary-playlist-item-p-item-active', pList)
+          obActiveP = new MutationObserver(async (records, observer) => {
+            observer.disconnect()
+            obList?.disconnect()
+            const currentActive = await api.wait.waitQuerySelector('.player-auxiliary-playlist-item-active')
+            if (currentActive === activeVideo) {
+              _self.initNoSpoil()
+              _self.initSwitchingPartProcess()
+            }
+          })
+          obActiveP.observe(activeP, { attributeFilter: ['class'] })
+        },
+      })
+      // 将右侧列表往下拉，动态加载后面的视频时会重新生成 list，此时前面的监听无效，应当重新处理
+      obList = new MutationObserver((records, observer) => {
+        stopWait()
+        observer.disconnect()
+        obActiveP?.disconnect()
+        _self.initSwitchingPartProcess(true)
+      })
+      obList.observe(list, { childList: true })
     }
 
     /**
@@ -1787,30 +1717,25 @@
           if (!gm.data.uploaderListSet().has('*')) { // * 匹配所有 UP 主不显示该按钮
             _self.scriptControl.uploaderEnabled.style.display = 'unset'
             _self.scriptControl.uploaderEnabled.onclick = async function() {
-              try {
-                const ulSet = gm.data.uploaderListSet() // 必须每次读取
-                const aid = await _self.method.getAid()
-                const videoInfo = await _self.method.getVideoInfo(aid, 'aid')
-                const uid = String(videoInfo.owner.mid)
+              const ulSet = gm.data.uploaderListSet() // 必须每次读取
+              const aid = await _self.method.getAid()
+              const videoInfo = await _self.method.getVideoInfo(aid, 'aid')
+              const uid = String(videoInfo.owner.mid)
 
-                _self.uploaderEnabled = !_self.uploaderEnabled
-                if (_self.uploaderEnabled) {
-                  this.setAttribute('enabled', '')
-                  if (!ulSet.has(uid)) {
-                    const ul = gm.data.uploaderList()
-                    gm.data.uploaderList(`${ul}\n${uid} # ${videoInfo.owner.name}`)
-                  }
-                } else {
-                  this.removeAttribute('enabled')
-                  if (ulSet.has(uid)) {
-                    let ul = gm.data.uploaderList()
-                    ul = ul.replaceAll(new RegExp(String.raw`^${uid}(?=\D|$).*\n?`, 'gm'), '')
-                    gm.data.uploaderList(ul)
-                  }
+              _self.uploaderEnabled = !_self.uploaderEnabled
+              if (_self.uploaderEnabled) {
+                this.setAttribute('enabled', '')
+                if (!ulSet.has(uid)) {
+                  const ul = gm.data.uploaderList()
+                  gm.data.uploaderList(`${ul}\n${uid} # ${videoInfo.owner.name}`)
                 }
-              } catch (e) {
-                api.logger.error(gm.error.NETWORK)
-                api.logger.error(e)
+              } else {
+                this.removeAttribute('enabled')
+                if (ulSet.has(uid)) {
+                  let ul = gm.data.uploaderList()
+                  ul = ul.replaceAll(new RegExp(String.raw`^${uid}(?=\D|$).*\n?`, 'gm'), '')
+                  gm.data.uploaderList(ul)
+                }
               }
             }
           }
@@ -1842,43 +1767,38 @@
     processFakePlayed() {
       const _self = this
       if (!_self.enabled) return
-      try {
-        const player = unsafeWindow.player
-        const playRate = player.getCurrentTime() / player.getDuration()
-        let offset = null
-        const m = _self.progress.root.style.transform.match(/(?<=translateX\()[^)]+(?=\))/)
-        if (m?.length > 0) {
-          offset = m[0]
-        } else {
-          offset = 0
-        }
-        offset = parseFloat(offset)
-        // 若处于播放进度小于左侧预留区的特殊情况，不要进行处理
-        // 注意，一旦离开这种特殊状态，就再也不可能进度该特殊状态了，因为这样反而会暴露信息
-        if (offset !== 0) {
-          let reservedZone = false
-          let offsetPlayRate = offset + playRate * 100
-          const reservedLeft = gm.config.reservedLeft
-          const reservedRight = 100 - gm.config.reservedRight
-          // 当实际播放进度小于左侧保留区时，不作特殊处理，因为这样反而会暴露信息
-          if (offsetPlayRate < reservedLeft) {
-            offset += reservedLeft - offsetPlayRate
-            reservedZone = true
-          } else if (offsetPlayRate > reservedRight) {
-            offset -= offsetPlayRate - reservedRight
-            reservedZone = true
-          }
-          if (reservedZone) {
-            _self.progress.root.style.transform = `translateX(${offset}%)`
-            _self.scriptControl.transform = `translateX(${-offset}%)`
-            _self.fakeTrack.style.transform = `translateX(${-offset}%)`
-          }
-        }
-        _self.fakePlayed.style.transform = `scaleX(${playRate + offset / 100})`
-      } catch (e) {
-        api.logger.error(gm.error.DOM_PARSE)
-        api.logger.error(e)
+      const player = unsafeWindow.player
+      const playRate = player.getCurrentTime() / player.getDuration()
+      let offset = null
+      const m = _self.progress.root.style.transform.match(/(?<=translateX\()[^)]+(?=\))/)
+      if (m?.length > 0) {
+        offset = m[0]
+      } else {
+        offset = 0
       }
+      offset = parseFloat(offset)
+      // 若处于播放进度小于左侧预留区的特殊情况，不要进行处理
+      // 注意，一旦离开这种特殊状态，就再也不可能进度该特殊状态了，因为这样反而会暴露信息
+      if (offset !== 0) {
+        let reservedZone = false
+        let offsetPlayRate = offset + playRate * 100
+        const reservedLeft = gm.config.reservedLeft
+        const reservedRight = 100 - gm.config.reservedRight
+        // 当实际播放进度小于左侧保留区时，不作特殊处理，因为这样反而会暴露信息
+        if (offsetPlayRate < reservedLeft) {
+          offset += reservedLeft - offsetPlayRate
+          reservedZone = true
+        } else if (offsetPlayRate > reservedRight) {
+          offset -= offsetPlayRate - reservedRight
+          reservedZone = true
+        }
+        if (reservedZone) {
+          _self.progress.root.style.transform = `translateX(${offset}%)`
+          _self.scriptControl.transform = `translateX(${-offset}%)`
+          _self.fakeTrack.style.transform = `translateX(${-offset}%)`
+        }
+      }
+      _self.fakePlayed.style.transform = `scaleX(${playRate + offset / 100})`
     }
 
     /**
