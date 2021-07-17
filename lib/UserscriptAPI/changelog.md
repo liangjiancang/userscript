@@ -12,7 +12,7 @@
 6. `wait`：`waitQuerySelector()` 第三个参数从 `subtree` 改为 `stopOnTimeout`。
 7. `wait`：修复执行终止指令后，在特殊情况下依然等待成功的问题。
 8. `logger`：增加 `warn()` 方法，并调整 `log()` 的参数列表。
-9. 代码：细化文档表述。
+9. 代码：优化文档表述。
 
 ## V1.1
 
