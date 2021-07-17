@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            [DEBUG] 显式日志
-// @version         1.0.0.20210717
+// @version         1.0.1.20210717
 // @namespace       laster2800
 // @author          Laster2800
 // @description     用 alert() 提示符合匹配规则的日志或未捕获异常，帮助开发者在日常使用网页时发现潜藏问题
@@ -29,7 +29,7 @@
     for (const log of logs) {
       const _ = console[log]
       console[log] = function() {
-        const m = [arguments, log]
+        const m = [arguments, log.toUpperCase()]
         if (match(m, include) && !match(m, exclude)) {
           explicit(arguments.length == 1 ? arguments[0] : JSON.stringify(arguments), log.toUpperCase())
         }
@@ -53,17 +53,21 @@
     GM_registerMenuCommand('设置过滤器', () => {
       try {
         const sInclude = prompt(`【${GM_info.script.name}】\n\n` + '设置匹配过滤器', include?.source ?? '.*')
-        include = sInclude ? new RegExp(sInclude) : null
-        GM_setValue('include', sInclude ?? '')
-        const sExclude = prompt(`【${GM_info.script.name}】\n\n` + '设置排除过滤器', exclude?.source ?? '')
-        exclude = sExclude ? new RegExp(sExclude) : null
-        GM_setValue('exclude', sExclude ?? '')
+        if (sInclude) {
+          include = new RegExp(sInclude)
+          GM_setValue('include', sInclude)
+        }
+        const sExclude = prompt(`【${GM_info.script.name}】\n\n` + '设置排除过滤器', exclude?.source ?? '^LOG$')
+        if (sExclude) {
+          exclude = new RegExp(sExclude)
+          GM_setValue('exclude', sExclude)
+        }
       } catch (e) {
         explicit(e)
       }
     })
     GM_registerMenuCommand('说明', () => {
-      alert(`【${GM_info.script.name}】\n\n` + '规则\n\n* 正则匹配，不必考虑转义。\n\n* 日志：可用 `LOG` / `WARN` / `ERROR` 作为匹配目标。如用 `^LOG$` 作为排除过滤器排除所有 INFO 级别日志。\n* 日志：无法监听到非直接通过 `console` 对象打印出来的日志，如在油猴黑箱中运行的脚本打印出来的日志。\n\n* 未捕获异常（正常）：可用 `Uncaught Exception (Normal)` 作为匹配目标。如简单地用 `cau` 来过滤出所有未捕获异常，但可能混杂带 `cau` 信息的日志。\n* 未捕获异常（正常）：可用异常抛出处的文件名作为匹配目标。\n\n* 未捕获异常（Promise）：可用 `Uncaught Exception (in Promise)` 作为匹配目标。')
+      alert(`【${GM_info.script.name}】\n\n` + '规则\n\n* 正则匹配，区分大小写，不必考虑转义。\n\n* 日志：可用 `LOG` / `WARN` / `ERROR` 作为匹配目标。如用 `^LOG$` 作为排除过滤器排除所有 INFO 级别日志。\n* 日志：无法监听到非直接通过 `console` 对象打印出来的日志，如在油猴黑箱中运行的脚本打印出来的日志。\n\n* 未捕获异常（正常）：可用 `Uncaught Exception (Normal)` 作为匹配目标。如简单地用 `cau` 来过滤出所有未捕获异常，但可能混杂带 `cau` 信息的日志。\n* 未捕获异常（正常）：可用异常抛出处的文件名作为匹配目标。\n\n* 未捕获异常（Promise）：可用 `Uncaught Exception (in Promise)` 作为匹配目标。')
     })
   } catch (e) {
     explicit(e)
