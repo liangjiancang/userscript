@@ -1,6 +1,10 @@
 # [[DEBUG] 显式日志](https://greasyfork.org/zh-CN/scripts/429521) 更新日志
 
-本日志只记录用户友好的更新说明，影响不大的问题修复与修改不作记录，具体修改见 [提交记录](https://gitee.com/liangjiancang/userscript/commits/master/script/ExplicitLog/ExplicitLog.js)。
+本日志只记录用户友好的更新说明，影响不大的问题修复与修改不作记录，具体修改见 [提交记录](https://gitee.com/liangjiancang/userscript/commits/master/script/ExplicitLog)。
+
+## V1.1
+
+1. 项目：新增「[DEBUG] 显式日志（注入版）」`ExplicitLog_Inject.js`。
 
 ## V1.0
 
