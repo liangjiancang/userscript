@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.14.2.20210717
+// @version         4.14.3.20210717
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -4221,7 +4221,7 @@
         return // 必须 return，否则后面的内容还会执行使得加载速度超级慢
       }
     }
-    
+
     webpage.method.cleanSearchParams()
     // 脚本的其他部分推迟至 DOMContentLoaded 执行
     document.addEventListener('DOMContentLoaded', function() {
