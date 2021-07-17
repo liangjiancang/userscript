@@ -4,6 +4,20 @@
     "version": "2.0.0",
     "tasks": [
         {
+            "label": "Greasy Fork: UserscriptAPI（库）",
+            "type": "shell",
+            "command": "explorer https://greasyfork.org/zh-CN/scripts/409641",
+            "presentation": {
+                "echo": false,
+                "reveal": "never",
+                "focus": false,
+                "panel": "shared",
+                "showReuseMessage": true,
+                "clear": false
+            },
+            "problemMatcher": []
+        },
+        {
             "label": "Greasy Fork: B站稍后再看功能增强",
             "type": "shell",
             "command": "explorer https://greasyfork.org/zh-CN/scripts/395456",
@@ -46,20 +60,6 @@
             "problemMatcher": []
         },
         {
-            "label": "Greasy Fork: S1战斗力屏蔽",
-            "type": "shell",
-            "command": "explorer https://greasyfork.org/zh-CN/scripts/394407",
-            "presentation": {
-                "echo": false,
-                "reveal": "never",
-                "focus": false,
-                "panel": "shared",
-                "showReuseMessage": true,
-                "clear": false
-            },
-            "problemMatcher": []
-        },
-        {
             "label": "Greasy Fork: B站防剧透进度条",
             "type": "shell",
             "command": "explorer https://greasyfork.org/zh-CN/scripts/411092",
@@ -74,9 +74,23 @@
             "problemMatcher": []
         },
         {
-            "label": "Greasy Fork: UserscriptAPI（库）",
+            "label": "Greasy Fork: [DEBUG] 显式日志",
             "type": "shell",
-            "command": "explorer https://greasyfork.org/zh-CN/scripts/409641",
+            "command": "explorer https://greasyfork.org/zh-CN/scripts/429521",
+            "presentation": {
+                "echo": false,
+                "reveal": "never",
+                "focus": false,
+                "panel": "shared",
+                "showReuseMessage": true,
+                "clear": false
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "Greasy Fork: S1战斗力屏蔽",
+            "type": "shell",
+            "command": "explorer https://greasyfork.org/zh-CN/scripts/394407",
             "presentation": {
                 "echo": false,
                 "reveal": "never",
