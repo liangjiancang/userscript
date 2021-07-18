@@ -2,6 +2,12 @@
 
 本日志只记录用户友好的更新说明，影响不大的问题修复与修改不作记录，具体修改见 [提交记录](https://gitee.com/liangjiancang/userscript/commits/master/script/ExplicitLog)。
 
+## V2.0
+
+1. 注入版：只保留核心代码，设置与代码修改为依赖于主脚本。
+2. 功能实现：功能开关。
+3. 脚本：完善 `alert()` 中的信息展示。
+
 ## V1.1
 
 1. 项目：新增「[DEBUG] 显式日志（注入版）」`ExplicitLog_Inject.js`。

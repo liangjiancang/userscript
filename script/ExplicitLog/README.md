@@ -15,7 +15,7 @@
 
   * 可用 `LOG` / `WARN` / `ERROR` 作为匹配目标。
 
-    如用 `^LOG$` 作为排除过滤器排除所有 INFO 级别日志。
+    如用 `^LOG$` 作为排除过滤器排除所有 INFO 级别日志，用 `^(LOG|WARN|ERROR)$` 作为排除过滤器排除所有日志。
 
   * 无法捕获到非直接通过 `console` 对象打印出来的日志。
 
@@ -23,7 +23,7 @@
 
   * **要捕获沙盒中脚本打印出来的日志，须结合 [[DEBUG] 显式日志（注入版）](https://greasyfork.org/zh-CN/scripts/429525) 使用。**
 
-    **注入版只捕获所注入的沙盒的内部日志信息，须配合主脚本使用才能达到全面的捕获。**
+    **注入版基于主脚本的设置及代码工作，只有安装并开启主脚本时，注入版才会开始工作！**
 
 * 未捕获异常（正常）
 
@@ -42,6 +42,9 @@
 ## 补充说明
 
 * 脚本基于 Microsoft Edge 浏览器和 Tampermonkey 脚本管理器开发，明确不支持 Greasemonkey。在其他浏览器及脚本管理器上运行可能会出现问题，请提供反馈。
+* 脚本管理器可对特定脚本的匹配规则进行自定义。若要保持该脚本常开，建议关闭「原始包括」并添加需要的「用户包括」（以 Tampermonkey 为例）。
+
+  ![匹配设置](https://gitee.com/liangjiancang/userscript/raw/master/script/ExplicitLog/screenshot/匹配设置.png)
 
 ## 截图
 
