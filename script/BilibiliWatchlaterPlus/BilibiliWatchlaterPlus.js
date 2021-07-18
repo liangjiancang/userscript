@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.14.3.20210717
+// @version         4.14.4.20210718
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -269,6 +269,7 @@
    * @property {RegExp} page_videoWatchlaterMode 匹配稍后再看模式播放页
    * @property {RegExp} page_dynamic 匹配动态页面
    * @property {RegExp} page_dynamicMenu 匹配顶栏动态入口菜单
+   * @property {RegExp} page_userSpace 匹配用户空间
    */
   /**
    * @typedef GMObject_const
@@ -357,8 +358,9 @@
       page_watchlaterList: /\.com\/watchlater\/.*#.*\/list(?=[/?#]|$)/,
       page_videoNormalMode: /\.com\/video(?=[/?#]|$)/,
       page_videoWatchlaterMode: /\.com\/medialist\/play\/watchlater(?=[/?#]|$)/,
-      page_dynamic: /t\.bilibili\.com(?=[/?#]|$)/,
+      page_dynamic: /t\.bilibili\.com(?=\/|$)/,
       page_dynamicMenu: /\.com\/pages\/nav\/index_new(?=[/?#]|$)/,
+      page_userSpace: /space\.bilibili\.com(?=[/?#]|$)/,
     },
     const: {
       rhsWarning: 10000,
@@ -1651,17 +1653,13 @@
           el.historyPage.parentNode.style.display = 'block'
 
           try {
-            const set = new Set()
-            const watchlaterList = await gm.data.watchlaterListData(true)
-            for (const e of watchlaterList) {
-              set.add(e.bvid)
-            }
+            const map = await webpage.method.getWatchlaterDataMap(item => item.bvid, null, true)
             const data = gm.data.removeHistoryData().toArray(el.searchTimes.current)
             el.saveTimes.innerText = data.length
             let history = []
             const result = []
             for (const record of data) {
-              if (!set.has(record[0])) {
+              if (!map.has(record[0])) {
                 history.push(record)
               }
             }
@@ -2164,24 +2162,37 @@
         },
 
         /**
-         * 获取稍后再看列表数据以 `aid` 为键的映射
+         * 获取稍后再看列表数据以指定值为键的映射
          * @async
+         * @param {(GMObject_data_item0) => *} key 计算键值的方法
+         * @param {string} [cacheId] 缓存 ID，保留空值时不缓存
          * @param {boolean} [reload] 是否重新加载稍后再看列表数据
          * @param {boolean} [cache=true] 是否使用稍后再看列表数据本地缓存
          * @param {boolean} [disablePageCache] 是否禁用稍后再看列表数据页面缓存
-         * @returns {Map<string, GMObject_data_item0>} 稍后再看列表数据以 `aid` 为键的映射
+         * @returns {Map<string, *>} 稍后再看列表数据以指定值为键的映射
          */
-        async getWatchlaterDataMap(reload, cache = true, disablePageCache = false) {
-          const _ = this._
-          if (!_.watchlaterDataMap || reload || disablePageCache) {
+        async getWatchlaterDataMap(key, cacheId, reload, cache = true, disablePageCache = false) {
+          let obj = null
+          if (cacheId) {
+            const _ = this._
+            if (!_.watchlaterDataSet) {
+              _.watchlaterDataSet = {}
+            }
+            obj = _.watchlaterDataSet
+          }
+          if (!obj?.[cacheId] || reload || disablePageCache) {
             const map = new Map()
             const current = await gm.data.watchlaterListData(reload, cache, disablePageCache)
             for (const item of current) {
-              map.set(String(item.aid), item)
+              map.set(key(item), item)
             }
-            _.watchlaterDataMap = map
+            if (cacheId) {
+              obj[cacheId] = map
+            } else {
+              obj = map
+            }
           }
-          return _.watchlaterDataMap
+          return cacheId ? obj[cacheId] : obj
         },
 
         /**
@@ -2770,29 +2781,29 @@
     fillWatchlaterStatus() {
       const _self = this
       setTimeout(() => {
-        if (api.web.urlMatch(gm.regex.page_dynamicMenu)) {
-          // 动态入口菜单，只要不是 never 都处理
+        if (api.web.urlMatch(gm.regex.page_dynamicMenu)) { // 必须在动态页之前匹配
           fillWatchlaterStatus_dynamicMenu()
+        } else if (api.web.urlMatch(gm.regex.page_dynamic)) {
+          if (location.pathname == '/') { // 仅动态主页
+            fillWatchlaterStatus_dynamic()
+          }
+        } else if (api.web.urlMatch(gm.regex.page_userSpace)) {
+          // 用户空间中也有动态，但用户未必切换到动态子窗口，故需长时间等待
+          api.wait.waitForElementLoaded({
+            selector: '.feed-card',
+            timeout: 0,
+          }).then(() => fillWatchlaterStatus_dynamic())
         } else {
+          // 两部分 URL 刚好不会冲突，放到 else 中即可
+          // 用户空间「投稿」理论上需要单独处理，但该处逻辑和数据都在一个闭包里，无法通过简单的方式实现，经考虑选择放弃
           switch (gm.config.fillWatchlaterStatus) {
-            case Enums.fillWatchlaterStatus.dynamic:
-              if (api.web.urlMatch(gm.regex.page_dynamic)) {
-                fillWatchlaterStatus_dynamic()
-              }
-              return
             case Enums.fillWatchlaterStatus.dynamicAndVideo:
-              if (api.web.urlMatch(gm.regex.page_dynamic)) {
-                fillWatchlaterStatus_dynamic()
-              } else if (api.web.urlMatch([gm.regex.page_videoNormalMode, gm.regex.page_videoWatchlaterMode], 'OR')) {
+              if (api.web.urlMatch([gm.regex.page_videoNormalMode, gm.regex.page_videoWatchlaterMode], 'OR')) {
                 fillWatchlaterStatus_main()
               }
               return
             case Enums.fillWatchlaterStatus.anypage:
-              if (api.web.urlMatch(gm.regex.page_dynamic)) {
-                fillWatchlaterStatus_dynamic()
-              } else {
-                fillWatchlaterStatus_main()
-              }
+              fillWatchlaterStatus_main()
               return
             case Enums.fillWatchlaterStatus.never:
             default:
@@ -2821,7 +2832,7 @@
               // 总之，只要有 Vue 对象，一率进行处理就不会有问题！
               if (vue) {
                 const aid = String(vue.aid)
-                const map = await _self.method.getWatchlaterDataMap()
+                const map = await _self.method.getWatchlaterDataMap(item => String(item.aid), 'aid')
                 if (map.has(aid)) {
                   vue.seeLaterStatus = 1
                 }
@@ -2851,7 +2862,7 @@
               // 总之，只要有 Vue 对象，一率进行处理就不会有问题！
               if (vue) {
                 const aid = String(vue.aid)
-                const map = await _self.method.getWatchlaterDataMap()
+                const map = await _self.method.getWatchlaterDataMap(item => String(item.aid), 'aid')
                 if (map.has(aid)) {
                   vue.added = true
                 }
@@ -2877,7 +2888,7 @@
               const vue = video.__vue__
               if (vue) {
                 const aid = String(vue.aid)
-                const map = await _self.method.getWatchlaterDataMap()
+                const map = await _self.method.getWatchlaterDataMap(item => String(item.aid), 'aid')
                 if (map.has(aid)) {
                   vue.added = true
                 }
