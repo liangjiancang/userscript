@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站封面获取
-// @version         4.11.7.20210717
+// @version         4.11.8.20210718
 // @namespace       laster2800
 // @author          Laster2800
 // @description     B站视频播放页（普通模式、稍后再看模式）、番剧播放页、直播间添加获取封面的按钮
@@ -91,7 +91,7 @@
     initScriptMenu() {
       const config = gm.config
       const configMap = gm.configMap
-      let menuId = {}
+      const menuId = {}
       setTimeout(() => {
         for (const id in config) {
           menuId[id] = createMenuItem(id)
@@ -116,7 +116,6 @@
         for (const id in menuId) {
           GM_unregisterMenuCommand(menuId[id])
         }
-        menuId = {}
       }
     }
 
