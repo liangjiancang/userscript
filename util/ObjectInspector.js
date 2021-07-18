@@ -3,7 +3,7 @@
  * 对象观察器
  * 
  * 根据 `regex` 在 `depth` 层深度内找到匹配 `regex` 的属性
- * @version 1.1.5.20210717
+ * @version 1.1.6.20210718
  */
 class ObjectInspector {
   /**
@@ -41,20 +41,20 @@ class ObjectInspector {
    * @param {number} [config.exLongStrLen] 超过此长度的字符串移除，设为假值表示无限制
    * @returns {Object} 封装匹配 `regex` 属性的对象
    */
-  inspectObject(config) {
+  inspect(config) {
     config = { ...this.config, ...config }
-    var depth = config.depth
-    var result = {}
+    const depth = config.depth
+    const result = {}
     if (depth > 0) {
-      var objSet = new Set()
-      var prevKey = ''
-      this._inspectObjectInner(config, depth, result, prevKey, objSet)
+      const objSet = new Set()
+      const prevKey = ''
+      this._inspectInner(config, depth, result, prevKey, objSet)
     }
     return result
   }
 
   /**
-   * `inspectObject` 的内部递归处理过程
+   * `inspect` 的内部递归处理过程
    * @private
    * @param {Object} config 配置，没有提供的项使用默认值
    * @param {Object} config.obj 观察对象
@@ -68,32 +68,32 @@ class ObjectInspector {
    * @param {string} prevKey 描述当前观察对象 `obj` 与根观察对象 `root` 的关系：`obj = _.at(root, [prevKey])`
    * @param {Set} objSet 集合，包含之前已经观察过的对象，避免重复遍历
    */
-  _inspectObjectInner({ obj, regex, inspectKey, inspectValue, exRegex, exLongStrLen }, depth, result, prevKey, objSet) {
-    if (depth == 0) return
-    for (var key in obj) {
+  _inspectInner({ obj, regex, inspectKey, inspectValue, exRegex, exLongStrLen }, depth, result, prevKey, objSet) {
+    if (!obj || depth == 0) return
+    for (const key in obj) {
       if (exRegex?.test(key)) continue
       if (inspectKey && regex.test(key)) {
         result[prevKey + key] = obj[key]
       } else {
         try {
-          var value = obj[key]
-          if (value) {
+          const value = obj[key]
+          if (value !== undefined && value !== null) {
             if (typeof value == 'object' || typeof value == 'function') {
               if (inspectValue && regex.test(value.toString())) {
                 result[prevKey + key] = value
               } else if (depth > 1) {
                 if (!objSet.has(value)) {
                   objSet.add(value)
-                  this._inspectObjectInner({ obj: value, regex, inspectKey, inspectValue, exRegex, exLongStrLen }, depth - 1, result, `${prevKey + key}.`, objSet)
+                  this._inspectInner({ obj: value, regex, inspectKey, inspectValue, exRegex, exLongStrLen }, depth - 1, result, `${prevKey + key}.`, objSet)
                 }
               }
             } else {
-              var sVal = value
+              let sVal = value
               if (typeof value == 'string') {
                 if (depth > 1) {
                   try {
-                    var json = JSON.parse(value)
-                    this._inspectObjectInner({ obj: json, regex, inspectKey, inspectValue, exRegex, exLongStrLen }, depth - 1, result, `${prevKey + key}{JSON-PARSE}:`, objSet)
+                    const json = JSON.parse(value)
+                    this._inspectInner({ obj: json, regex, inspectKey, inspectValue, exRegex, exLongStrLen }, depth - 1, result, `${prevKey + key}{JSON-PARSE}:`, objSet)
                     continue
                   } catch (e) { /* nothing to do */ }
                 }
