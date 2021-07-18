@@ -1,5 +1,7 @@
 # [[DEBUG] 显式日志](https://greasyfork.org/zh-CN/scripts/429521)
 
+其他脚本：**[B站稍后再看功能增强](https://greasyfork.org/zh-CN/scripts/395456)**、**[B站封面获取](https://greasyfork.org/zh-CN/scripts/395575)**、**[B站共同关注快速查看](https://greasyfork.org/zh-CN/scripts/428453)**、**[B站防剧透进度条](https://greasyfork.org/zh-CN/scripts/411092)**、**[S1战斗力屏蔽](https://greasyfork.org/zh-CN/scripts/394407)**
+
 用 alert() 提示符合匹配规则的日志或未捕获异常，帮助开发者在日常使用网页时发现潜藏问题。求好评，求收藏💔。点击查看 [更新日志](https://gitee.com/liangjiancang/userscript/blob/master/script/ExplicitLog/changelog.md)。
 
 ## 使用说明
