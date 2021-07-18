@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            [DEBUG] 显式日志
-// @version         1.1.1.20210718
+// @version         1.1.2.20210718
 // @namespace       laster2800
 // @author          Laster2800
 // @description     用 alert() 提示符合匹配规则的日志或未捕获异常，帮助开发者在日常使用网页时发现潜藏问题
@@ -39,7 +39,7 @@
     }
     // 未捕获异常
     unsafeWindow.addEventListener('error', function(event) { // 正常
-      const m = [event.error, event.filename, 'Uncaught Exception (Normal)']
+      const m = [event.message, event.filename, 'Uncaught Exception (Normal)']
       if (match(m, include) && !match(m, exclude)) {
         explicit(event.error, 'Uncaught Exception (Normal)')
       }
@@ -96,13 +96,14 @@ function match(obj, regex, depth = 5) {
   }
 
   function core(obj, depth, objSet) {
-    for (var key in obj) {
+    if (!obj) return false
+    for (const key in obj) {
       if (regex.test(key)) {
         return true
       } else {
         try {
-          var value = obj[key]
-          if (value) {
+          const value = obj[key]
+          if (value !== undefined && value !== null) {
             if (typeof value == 'object' || typeof value == 'function') {
               if (regex.test(value.toString())) {
                 return true
@@ -114,10 +115,8 @@ function match(obj, regex, depth = 5) {
                   }
                 }
               }
-            } else {
-              if (regex.test(String(value))) {
-                return true
-              }
+            } else if (regex.test(String(value))) {
+              return true
             }
           }
         } catch (e) {

@@ -1,7 +1,7 @@
 /**
  * ExplicitLog_Inject
  * @file [DEBUG] 显式日志（注入版）
- * @version 1.1.1.20210718
+ * @version 1.1.2.20210718
  * @author Laster2800
  */
 
@@ -71,13 +71,14 @@
     }
 
     function core(obj, depth, objSet) {
-      for (var key in obj) {
+      if (!obj) return false
+      for (const key in obj) {
         if (regex.test(key)) {
           return true
         } else {
           try {
-            var value = obj[key]
-            if (value) {
+            const value = obj[key]
+            if (value !== undefined && value !== null) {
               if (typeof value == 'object' || typeof value == 'function') {
                 if (regex.test(value.toString())) {
                   return true
@@ -89,10 +90,8 @@
                     }
                   }
                 }
-              } else {
-                if (regex.test(String(value))) {
-                  return true
-                }
+              } else if (regex.test(String(value))) {
+                return true
               }
             }
           } catch (e) {
