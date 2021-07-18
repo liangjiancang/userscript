@@ -1,6 +1,6 @@
 # [B站稍后再看功能增强](https://greasyfork.org/zh-CN/scripts/395456) 更新日志
 
-本日志只记录用户友好的更新说明，影响不大的问题修复与修改不作记录，具体修改见 [提交记录](https://gitee.com/liangjiancang/userscript/commits/master/script/BilibiliWatchlaterPlus/BilibiliWatchlaterPlus.js)。
+本日志只记录用户友好的更新说明，影响不大的问题修复与修改不作记录，具体修改见 [提交记录](https://gitee.com/liangjiancang/userscript/commits/master/script/BilibiliWatchlaterPlus)。
 
 ## V4.14
 

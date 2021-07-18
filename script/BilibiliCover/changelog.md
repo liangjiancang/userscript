@@ -1,6 +1,6 @@
 # [B站封面获取](https://greasyfork.org/zh-CN/scripts/395575) 更新日志
 
-本日志只记录用户友好的更新说明，影响不大的问题修复与修改不作记录，具体修改见 [提交记录](https://gitee.com/liangjiancang/userscript/commits/master/script/BilibiliCover/BilibiliCover.js)。
+本日志只记录用户友好的更新说明，影响不大的问题修复与修改不作记录，具体修改见 [提交记录](https://gitee.com/liangjiancang/userscript/commits/master/script/BilibiliCover)。
 
 ## V4.11
 
