@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            [DEBUG] 显式日志
-// @version         2.0.0.20210718
+// @version         2.0.1.20210718
 // @namespace       laster2800
 // @author          Laster2800
 // @description     用 alert() 提示符合匹配规则的日志或未捕获异常，帮助开发者在日常使用网页时发现潜藏问题
@@ -97,7 +97,17 @@
         if (gm.config.enabled) {
           const m = [arguments, log.toUpperCase()]
           if (gm.fn.match(m, gm.config.include) && !gm.fn.match(m, gm.config.exclude)) {
-            gm.fn.explicit(arguments.length == 1 ? arguments[0] : JSON.stringify(arguments), log.toUpperCase())
+            let msg = null
+            if (arguments.length == 1) {
+              if (typeof arguments[0] == 'object') {
+                msg = JSON.stringify(arguments[0])
+              } else {
+                msg = arguments[0]
+              }
+            } else {
+              msg = JSON.stringify(arguments)
+            }
+            gm.fn.explicit(msg, log.toUpperCase())
           }
         }
         return _.apply(console, arguments)
