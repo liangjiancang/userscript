@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.14.4.20210718
+// @version         4.14.5.20210718
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -2169,7 +2169,7 @@
          * @param {boolean} [reload] 是否重新加载稍后再看列表数据
          * @param {boolean} [cache=true] 是否使用稍后再看列表数据本地缓存
          * @param {boolean} [disablePageCache] 是否禁用稍后再看列表数据页面缓存
-         * @returns {Map<string, *>} 稍后再看列表数据以指定值为键的映射
+         * @returns {Map<string, GMObject_data_item0>} 稍后再看列表数据以指定值为键的映射
          */
         async getWatchlaterDataMap(key, cacheId, reload, cache = true, disablePageCache = false) {
           let obj = null
