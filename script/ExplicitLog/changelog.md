@@ -2,6 +2,11 @@
 
 本日志只记录用户友好的更新说明，影响不大的问题修复与修改不作记录，具体修改见 [提交记录](https://gitee.com/liangjiancang/userscript/commits/master/script/ExplicitLog)。
 
+## V2.1
+
+1. 注入版：将更多代码移至主脚本，理论上来说注入版今后几乎不需要再作修改。
+2. 脚本：优化 `alert()` 中的信息展示。
+
 ## V2.0
 
 1. 注入版：只保留核心代码，设置与代码修改为依赖于主脚本。

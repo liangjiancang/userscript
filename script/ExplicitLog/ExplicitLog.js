@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            [DEBUG] 显式日志
-// @version         2.0.1.20210718
+// @version         2.1.0.20210718
 // @namespace       laster2800
 // @author          Laster2800
 // @description     用 alert() 提示符合匹配规则的日志或未捕获异常，帮助开发者在日常使用网页时发现潜藏问题
@@ -24,6 +24,37 @@
     config: {},
     fn: {
       /**
+       * 获取封装日志函数
+       * @param {Object} console 控制台对象
+       * @param {Function} log 日志函数
+       * @param {string} type 类型
+       * @param {string} [source] 源
+       * @returns 封装日志函数
+       */
+      wrappedLog(console, log, type, source) {
+        const config = gm.config
+        const fn = gm.fn
+        return function() {
+          log.apply(console, arguments)
+          if (config.enabled) {
+            const m = [arguments, type]
+            if (fn.match(m, config.include) && !fn.match(m, config.exclude)) {
+              let msg = null
+              if (arguments.length == 1) {
+                if (typeof arguments[0] == 'object') {
+                  msg = JSON.stringify(arguments[0], null, 2)
+                } else {
+                  msg = arguments[0]
+                }
+              } else {
+                msg = JSON.stringify(arguments, null, 2)
+              }
+              fn.explicit(msg, type, source)
+            }
+          }
+        }
+      },
+      /**
        * 显式地显示信息
        * @param {*} msg 信息
        * @param {string} [type] 类型
@@ -33,11 +64,11 @@
         alert(`【${GM_info.script.name}】${type ? `\nTYPE: ${type}` : ''}${source ? `\nSOURCE: ${source}` : ''}\n\n${msg}`)
       },
       /**
-        * @param {*} obj 匹配对象
-        * @param {RegExp} regex 匹配正则表达式
-        * @param {number} [depth=5] 匹配查找深度
-        * @returns {boolean} 是否匹配成功
-        */
+       * @param {*} obj 匹配对象
+       * @param {RegExp} regex 匹配正则表达式
+       * @param {number} [depth=5] 匹配查找深度
+       * @returns {boolean} 是否匹配成功
+       */
       match(obj, regex, depth = 5) {
         if (obj && regex && depth > 0) {
           return core(obj, depth, new Set())
@@ -76,7 +107,7 @@
           }
           return false
         }
-      }
+      },
     },
   }
   unsafeWindow.gm429521 = gm
@@ -90,28 +121,8 @@
     gm.config.exclude = gmExclude ? new RegExp(gmExclude) : null
     // 日志
     const console = unsafeWindow.console
-    const logs = ['log', 'warn', 'error']
-    for (const log of logs) {
-      const _ = console[log]
-      console[log] = function() {
-        if (gm.config.enabled) {
-          const m = [arguments, log.toUpperCase()]
-          if (gm.fn.match(m, gm.config.include) && !gm.fn.match(m, gm.config.exclude)) {
-            let msg = null
-            if (arguments.length == 1) {
-              if (typeof arguments[0] == 'object') {
-                msg = JSON.stringify(arguments[0])
-              } else {
-                msg = arguments[0]
-              }
-            } else {
-              msg = JSON.stringify(arguments)
-            }
-            gm.fn.explicit(msg, log.toUpperCase())
-          }
-        }
-        return _.apply(console, arguments)
-      }
+    for (const n of ['log', 'warn', 'error']) {
+      console[n] = gm.fn.wrappedLog(console, console[n], n.toUpperCase())
     }
     // 未捕获异常
     unsafeWindow.addEventListener('error', function(event) { // 正常
