@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            [DEBUG] 显式日志
-// @version         1.1.0.20210718
+// @version         1.1.1.20210718
 // @namespace       laster2800
 // @author          Laster2800
 // @description     用 alert() 提示符合匹配规则的日志或未捕获异常，帮助开发者在日常使用网页时发现潜藏问题
@@ -19,8 +19,9 @@
 (function() {
   'use strict'
   try {
-    const gmInclude = GM_getValue('include')
-    const gmExclude = GM_getValue('exclude')
+    const df = { include: '.*', exclude: '^LOG$' }
+    const gmInclude = GM_getValue('include') ?? df.include
+    const gmExclude = GM_getValue('exclude') ?? df.exclude
     let include = gmInclude ? new RegExp(gmInclude) : null
     let exclude = gmExclude ? new RegExp(gmExclude) : null
     // 日志
@@ -52,21 +53,21 @@
     // 菜单
     GM_registerMenuCommand('设置过滤器', () => {
       try {
-        const sInclude = prompt(`【${GM_info.script.name}】\n\n设置匹配过滤器`, include?.source ?? '.*')
-        if (sInclude) {
-          include = new RegExp(sInclude)
+        const sInclude = prompt(`【${GM_info.script.name}】\n\n设置匹配过滤器`, include?.source ?? df.include)
+        if (typeof sInclude == 'string') {
+          include = sInclude ? new RegExp(sInclude) : null
           GM_setValue('include', sInclude)
         }
-        const sExclude = prompt(`【${GM_info.script.name}】\n\n设置排除过滤器`, exclude?.source ?? '^LOG$')
-        if (sExclude) {
-          exclude = new RegExp(sExclude)
+        const sExclude = prompt(`【${GM_info.script.name}】\n\n设置排除过滤器`, exclude?.source ?? df.exclude)
+        if (typeof sExclude == 'string') {
+          exclude = sExclude ? new RegExp(sExclude) : null
           GM_setValue('exclude', sExclude)
         }
       } catch (e) {
         explicit(e)
       }
     })
-    GM_registerMenuCommand('说明', () => window.open('https://gitee.com/liangjiancang/userscript/tree/master/script/ExplicitLog#使用说明'))
+    GM_registerMenuCommand('使用说明', () => window.open('https://gitee.com/liangjiancang/userscript/tree/master/script/ExplicitLog#使用说明'))
   } catch (e) {
     explicit(e)
   }

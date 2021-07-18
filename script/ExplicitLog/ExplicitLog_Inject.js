@@ -1,15 +1,16 @@
 /**
  * ExplicitLog_Inject
  * @file [DEBUG] 显式日志（注入版）
- * @version 1.1.0.20210718
+ * @version 1.1.1.20210718
  * @author Laster2800
  */
 
 (function() {
   (function() {
     try {
-      const gmInclude = GM_getValue('ExplicitLog_Inject-include')
-      const gmExclude = GM_getValue('ExplicitLog_Inject-exclude')
+      const df = { include: '.*', exclude: '^LOG$' }
+      const gmInclude = GM_getValue('ExplicitLog_Inject-include') ?? df.include
+      const gmExclude = GM_getValue('ExplicitLog_Inject-exclude') ?? df.exclude
       let include = gmInclude ? new RegExp(gmInclude) : null
       let exclude = gmExclude ? new RegExp(gmExclude) : null
       // 日志
@@ -27,21 +28,21 @@
       // 菜单
       GM_registerMenuCommand('[DEBUG] 设置过滤器', () => {
         try {
-          const sInclude = prompt(`【${GM_info.script.name}】\n\n设置匹配过滤器`, include?.source ?? '.*')
-          if (sInclude) {
-            include = new RegExp(sInclude)
+          const sInclude = prompt(`【${GM_info.script.name}】\n\n设置匹配过滤器`, include?.source ?? df.include)
+          if (typeof sInclude == 'string') {
+            include = sInclude ? new RegExp(sInclude) : null
             GM_setValue('ExplicitLog_Inject-include', sInclude)
           }
-          const sExclude = prompt(`【${GM_info.script.name}】\n\n设置排除过滤器`, exclude?.source ?? '^LOG$')
-          if (sExclude) {
-            exclude = new RegExp(sExclude)
+          const sExclude = prompt(`【${GM_info.script.name}】\n\n设置排除过滤器`, exclude?.source ?? df.exclude)
+          if (typeof sExclude == 'string') {
+            exclude = sExclude ? new RegExp(sExclude) : null
             GM_setValue('ExplicitLog_Inject-exclude', sExclude)
           }
         } catch (e) {
           explicit(e)
         }
       })
-      GM_registerMenuCommand('[DEBUG] 说明', () => window.open('https://gitee.com/liangjiancang/userscript/tree/master/script/ExplicitLog#使用说明'))
+      GM_registerMenuCommand('[DEBUG] 使用说明', () => window.open('https://gitee.com/liangjiancang/userscript/tree/master/script/ExplicitLog#使用说明'))
     } catch (e) {
       explicit(e)
     }
