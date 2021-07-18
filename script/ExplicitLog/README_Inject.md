@@ -4,7 +4,9 @@
 
 ## 使用说明
 
-在用户脚本的 Metadata Block 中，使用 `@require` 引入该脚本内容（确保为首个引入的文件）。然后，就可以在脚本菜单中找到相应的设置项，如下图所示。
+在用户脚本的 Metadata Block 中，使用 `@require` 引入该脚本内容（确保为首个引入的文件），并使用 `@grant` 授予脚本对 `GM_setValue` / `GM_getValue` / `GM_registerMenuCommand` 的访问权限。
+
+然后，就可以在脚本菜单中找到相应的设置项，如下图所示。
 
 ![注入设置](https://gitee.com/liangjiancang/userscript/raw/master/script/ExplicitLog/screenshot/注入设置.png)
 
