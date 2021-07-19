@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站防剧透进度条
-// @version         1.8.5.20210717
+// @version         1.8.6.20210719
 // @namespace       laster2800
 // @author          Laster2800
 // @description     看比赛、看番总是被进度条剧透？装上这个脚本再也不用担心这些问题了
@@ -1131,6 +1131,8 @@
 
         /**
          * 获取 `cid`
+         *
+         * 注意：在普通模式播放页中，该方法在较晚的时间点才能获取到结果。需尽可能通过其他手段，确保在能返回结果时调用以避免异常。
          * @async
          * @returns {Promise<string>} `cid`
          */
@@ -1599,29 +1601,36 @@
      */
     async initLocationChangeProcess() {
       const _self = this
-      let currentCid = await _self.method.getCid()
-      let currentPathname = location.pathname
-      window.addEventListener('urlchange', function() {
-        api.wait.waitForConditionPassed({
-          condition: async () => {
-            if (location.pathname == currentPathname) { // 并非切换视频（如切分 P）
-              return currentCid
-            } else { // cid 改变才能说明页面真正切换过去
-              currentPathname = location.pathname
-              const cid = await _self.method.getCid()
-              if (cid && cid != currentCid) {
-                return cid
+      let currentCid = null
+      try {
+        currentCid = await _self.method.getCid()
+      } catch(e) {
+        api.logger.warn(e)
+      } finally {
+        let currentPathname = location.pathname
+        window.addEventListener('urlchange', function() {
+          api.wait.waitForConditionPassed({
+            condition: async () => {
+              if (location.pathname == currentPathname) { // 并非切换视频（如切分 P）
+                return currentCid
+              } else { // cid 改变才能说明页面真正切换过去
+                currentPathname = location.pathname
+                const cid = await _self.method.getCid()
+                if (cid && cid != currentCid) {
+                  return cid
+                }
               }
+            },
+          }).then(cid => {
+            currentCid = cid
+          }).finally(() => {
+            _self.initNoSpoil()
+            if (api.web.urlMatch(gm.regex.page_videoWatchlaterMode)) {
+              _self.initSwitchingPartProcess()
             }
-          },
-        }).then(cid => {
-          currentCid = cid
-          _self.initNoSpoil()
-          if (api.web.urlMatch(gm.regex.page_videoWatchlaterMode)) {
-            _self.initSwitchingPartProcess()
-          }
+          })
         })
-      })
+      }
     }
 
     /**
@@ -2161,11 +2170,12 @@
     script.init()
     script.addScriptMenu()
 
-    webpage.initNoSpoil()
-    webpage.initLocationChangeProcess()
-    if (api.web.urlMatch(gm.regex.page_videoWatchlaterMode)) {
-      webpage.initSwitchingPartProcess()
-    }
+    webpage.initNoSpoil().then(() => {
+      webpage.initLocationChangeProcess()
+      if (api.web.urlMatch(gm.regex.page_videoWatchlaterMode)) {
+        webpage.initSwitchingPartProcess()
+      }
+    })
     webpage.addStyle()
   })()
 })()
