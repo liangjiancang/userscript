@@ -10,7 +10,7 @@
 
 注入版作为外部脚本存在，**无法被脚本管理器自动更新**。必要时需手动访问 [脚本主页](https://greasyfork.org/zh-CN/scripts/429525) 获取最新版 URL 并更新被注入脚本中的 `@require`。
 
-仅建议在本地开发环境中使用，具体做法可参考 [debug-template](https://gitee.com/liangjiancang/userscript/blob/master/util/debug-template.js)。
+仅建议在本地开发环境中使用，具体做法可参考 [debug-template](https://gitee.com/liangjiancang/userscript/blob/master/util/debug-template.user.js)。
 
 ## 补充说明
 

@@ -5,7 +5,7 @@
 // @author          debug-author
 // @description     Debug local script
 // @require         file:///${scriptPath}
-// @[otherAttr]     [Same as target script]
+// @[otherAttrs]    [Same as the target script]
 // ==/UserScript==
 
 /*
