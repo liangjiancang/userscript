@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            [DEBUG] 信息显式化
-// @version         2.3.0.20210720
+// @version         2.3.1.20210720
 // @namespace       laster2800
 // @author          Laster2800
 // @description     用 alert() 提示符合匹配规则的日志或未捕获异常，帮助开发者在日常使用网页时发现潜藏问题
@@ -111,16 +111,16 @@
         }
       },
       /**
-       * 更新注入版
+       * 检查更新
        * @param {string} source 源
-       * @param {boolean} [ahead] 版本超前
+       * @param {boolean} [injectAhead] 注入版版本超前
        */
-      updateInject(source, ahead) {
-        if (ahead) {
-          this.explicit(`「[DEBUG] 信息显式化」版本落后于「${source}」中的注入版。请在稍后弹出的新标签页中获取最新版主脚本。\n若弹出页被浏览器阻止，请手动查看浏览器的「已阻止弹出窗口」，前往注入版主页进行更新。`, 'UPDATE INJECT VERSION', source)
+      updateCheck(source, injectAhead) {
+        if (injectAhead) {
+          this.explicit(`「[DEBUG] 信息显式化」版本落后于「${source}」中的注入版。请在稍后弹出的新标签页中获取最新版主脚本。\n若弹出页被浏览器阻止，请手动查看浏览器的「已阻止弹出窗口」，前往主脚本主页进行更新。`, 'UPDATE', source)
           window.open('https://greasyfork.org/zh-CN/scripts/429521')
         } else {
-          this.explicit(`您需要更新「[DEBUG] 信息显式化（注入版）」。请在稍后弹出的新标签页中获取最新版 URL 并更新「${source}」中的「@require」属性值。\n若弹出页被浏览器阻止，请手动查看浏览器的「已阻止弹出窗口」，前往注入版主页进行更新。`, 'UPDATE INJECT VERSION', source)
+          this.explicit(`您需要更新「[DEBUG] 信息显式化（注入版）」。请在稍后弹出的新标签页中获取最新版 URL 并更新「${source}」中的「@require」属性值。\n若弹出页被浏览器阻止，请手动查看浏览器的「已阻止弹出窗口」，前往注入版主页进行更新。`, 'UPDATE', source)
           window.open('https://greasyfork.org/zh-CN/scripts/429525')
         }
       }

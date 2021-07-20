@@ -1,7 +1,7 @@
 /**
  * ExplicitMessage_Inject
  * @file [DEBUG] 信息显式化（注入版）
- * @version 1.2.0.20210720
+ * @version 1.2.1.20210720
  * @author Laster2800
  */
 
@@ -16,7 +16,7 @@
         if (injectVersion != gm.injectUpdate) {
           if (!updateAlerted) {
             updateAlerted = true
-            gm.fn.updateInject?.(GM_info.script.name, injectVersion > gm.injectUpdate)
+            gm.fn.updateCheck?.(GM_info.script.name, injectVersion > gm.injectUpdate)
           }
           console[n] = log
         } else {
