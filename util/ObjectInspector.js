@@ -3,7 +3,7 @@
  * 对象观察器
  * 
  * 根据 `regex` 在 `depth` 层深度内找到匹配 `regex` 的属性
- * @version 1.2.0.20210720
+ * @version 1.2.1.20210720
  */
 class ObjectInspector {
   /**
@@ -106,9 +106,7 @@ class ObjectInspector {
               result[prevKey + key] = value
             }
           }
-        } catch (e) {
-          // value that cannot be accessed
-        }
+        } catch (e) { /* value that cannot be accessed */ }
       }
     }
   }
