@@ -74,7 +74,7 @@
             "problemMatcher": []
         },
         {
-            "label": "Greasy Fork: [DEBUG] 显式日志",
+            "label": "Greasy Fork: [DEBUG] 信息显式化",
             "type": "shell",
             "command": "explorer https://greasyfork.org/zh-CN/scripts/429521",
             "presentation": {
@@ -88,7 +88,7 @@
             "problemMatcher": []
         },
         {
-            "label": "Greasy Fork: ExplicitLog_Inject（库）",
+            "label": "Greasy Fork: ExplicitMessage_Inject（库）",
             "type": "shell",
             "command": "explorer https://greasyfork.org/zh-CN/scripts/429525",
             "presentation": {
