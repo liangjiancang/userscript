@@ -3,7 +3,7 @@
  * 对象观察器
  * 
  * 根据 `regex` 在 `depth` 层深度内找到匹配 `regex` 的属性
- * @version 1.1.6.20210718
+ * @version 1.2.0.20210720
  */
 class ObjectInspector {
   /**
@@ -77,33 +77,33 @@ class ObjectInspector {
       } else {
         try {
           const value = obj[key]
-          if (value !== undefined && value !== null) {
-            if (typeof value == 'object' || typeof value == 'function') {
-              if (inspectValue && regex.test(value.toString())) {
-                result[prevKey + key] = value
-              } else if (depth > 1) {
-                if (!objSet.has(value)) {
-                  objSet.add(value)
-                  this._inspectInner({ obj: value, regex, inspectKey, inspectValue, exRegex, exLongStrLen }, depth - 1, result, `${prevKey + key}.`, objSet)
-                }
+          if (value && (typeof value == 'object') || typeof value == 'function') {
+            if (inspectValue && regex.test(value.toString())) {
+              result[prevKey + key] = value
+            } else if (depth > 1) {
+              if (!objSet.has(value)) {
+                objSet.add(value)
+                this._inspectInner({ obj: value, regex, inspectKey, inspectValue, exRegex, exLongStrLen }, depth - 1, result, `${prevKey + key}.`, objSet)
               }
-            } else {
-              let sVal = value
-              if (typeof value == 'string') {
-                if (depth > 1) {
-                  try {
-                    const json = JSON.parse(value)
+            }
+          } else {
+            let sVal = value
+            if (typeof value == 'string') {
+              if (depth > 1) {
+                try {
+                  const json = JSON.parse(value)
+                  if (json) { // exclude 'null' and 'undefined'
                     this._inspectInner({ obj: json, regex, inspectKey, inspectValue, exRegex, exLongStrLen }, depth - 1, result, `${prevKey + key}{JSON-PARSE}:`, objSet)
                     continue
-                  } catch (e) { /* nothing to do */ }
-                }
-                if (value.length > exLongStrLen) continue
-              } else if (typeof value == 'symbol') {
-                sVal = String(value)
+                  }
+                } catch (e) { /* nothing to do */ }
               }
-              if (inspectValue && regex.test(sVal)) {
-                result[prevKey + key] = value
-              }
+              if (value.length > exLongStrLen) continue
+            } else if (typeof value == 'symbol') {
+              sVal = String(value)
+            }
+            if (inspectValue && regex.test(sVal)) {
+              result[prevKey + key] = value
             }
           }
         } catch (e) {
