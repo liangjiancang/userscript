@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站封面获取
-// @version         4.11.8.20210718
+// @version         4.11.9.20210720
 // @namespace       laster2800
 // @author          Laster2800
 // @description     B站视频播放页（普通模式、稍后再看模式）、番剧播放页、直播间添加获取封面的按钮
@@ -98,7 +98,7 @@
         }
       })
 
-      const cfgName = id => `[ ${config[id] ? '√' : '×'} ] ${configMap[id].name}`
+      const cfgName = id => `[ ${config[id] ? '✓' : '✗'} ] ${configMap[id].name}`
       const createMenuItem = id => {
         return GM_registerMenuCommand(cfgName(id), () => {
           config[id] = !config[id]
