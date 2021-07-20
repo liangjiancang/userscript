@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            [DEBUG] 信息显式化
-// @version         2.2.0.20210720
+// @version         2.3.0.20210720
 // @namespace       laster2800
 // @author          Laster2800
 // @description     用 alert() 提示符合匹配规则的日志或未捕获异常，帮助开发者在日常使用网页时发现潜藏问题
@@ -21,6 +21,8 @@
   'use strict'
 
   const gm = {
+    id: 'gm429521',
+    injectUpdate: 20210720,
     config: {},
     fn: {
       /**
@@ -36,21 +38,25 @@
         const fn = gm.fn
         return function() {
           log.apply(console, arguments)
-          if (config.enabled) {
-            const m = [arguments, type]
-            if (fn.match(m, config.include) && !fn.match(m, config.exclude)) {
-              let msg = null
-              if (arguments.length == 1) {
-                if (typeof arguments[0] == 'object') {
-                  msg = JSON.stringify(arguments[0], null, 2)
+          try {
+            if (config.enabled) {
+              const m = [arguments, type]
+              if (fn.match(m, config.include) && !fn.match(m, config.exclude)) {
+                let msg = null
+                if (arguments.length == 1) {
+                  if (typeof arguments[0] == 'object') {
+                    msg = JSON.stringify(arguments[0], null, 2)
+                  } else {
+                    msg = arguments[0]
+                  }
                 } else {
-                  msg = arguments[0]
+                  msg = JSON.stringify(arguments, null, 2)
                 }
-              } else {
-                msg = JSON.stringify(arguments, null, 2)
+                fn.explicit(msg, type, source)
               }
-              fn.explicit(msg, type, source)
             }
+          } catch (e) {
+            innerError(e)
           }
         }
       },
@@ -98,43 +104,66 @@
                 } else if (regex.test(String(value))) {
                   return true
                 }
-              } catch (e) {
-                // value that cannot be accessed
-              }
+              } catch (e) { /* value that cannot be accessed */ }
             }
           }
           return false
         }
       },
+      /**
+       * 更新注入版
+       * @param {string} source 源
+       * @param {boolean} [ahead] 版本超前
+       */
+      updateInject(source, ahead) {
+        if (ahead) {
+          this.explicit(`「[DEBUG] 信息显式化」版本落后于「${source}」中的注入版。请在稍后弹出的新标签页中获取最新版主脚本。\n若弹出页被浏览器阻止，请手动查看浏览器的「已阻止弹出窗口」，前往注入版主页进行更新。`, 'UPDATE INJECT VERSION', source)
+          window.open('https://greasyfork.org/zh-CN/scripts/429521')
+        } else {
+          this.explicit(`您需要更新「[DEBUG] 信息显式化（注入版）」。请在稍后弹出的新标签页中获取最新版 URL 并更新「${source}」中的「@require」属性值。\n若弹出页被浏览器阻止，请手动查看浏览器的「已阻止弹出窗口」，前往注入版主页进行更新。`, 'UPDATE INJECT VERSION', source)
+          window.open('https://greasyfork.org/zh-CN/scripts/429525')
+        }
+      }
     },
   }
   unsafeWindow.gm429521 = gm
 
   try {
+    // 配置
     const df = { include: '.*', exclude: '^LOG$' }
     const gmInclude = GM_getValue('include') ?? df.include
     const gmExclude = GM_getValue('exclude') ?? df.exclude
     gm.config.enabled = GM_getValue('enabled') ?? true
     gm.config.include = gmInclude ? new RegExp(gmInclude) : null
     gm.config.exclude = gmExclude ? new RegExp(gmExclude) : null
+
     // 日志
     const console = unsafeWindow.console
     for (const n of ['log', 'warn', 'error']) {
       console[n] = gm.fn.wrappedLog(console, console[n], n.toUpperCase())
     }
+
     // 未捕获异常
     unsafeWindow.addEventListener('error', function(event) { // 正常
-      if (!gm.config.enabled) return
-      const m = [event.message, event.filename, 'Uncaught Exception (Normal)']
-      if (gm.fn.match(m, gm.config.include) && !gm.fn.match(m, gm.config.exclude)) {
-        gm.fn.explicit(event.message, 'Uncaught Exception (Normal)')
+      try {
+        if (!gm.config.enabled) return
+        const m = [event.message, event.filename, 'Uncaught Exception (Normal)']
+        if (gm.fn.match(m, gm.config.include) && !gm.fn.match(m, gm.config.exclude)) {
+          gm.fn.explicit(event.message, 'Uncaught Exception (Normal)')
+        }
+      } catch (e) {
+        innerError(e)
       }
     })
     unsafeWindow.addEventListener('unhandledrejection', function(event) { // from Promise
-      if (!gm.config.enabled) return
-      const m = [event.reason, 'Uncaught Exception (in Promise)']
-      if (gm.fn.match(m, gm.config.include) && !gm.fn.match(m, gm.config.exclude)) {
-        gm.fn.explicit(event.reason, 'Uncaught Exception (in Promise)')
+      try {
+        if (!gm.config.enabled) return
+        const m = [event.reason, 'Uncaught Exception (in Promise)']
+        if (gm.fn.match(m, gm.config.include) && !gm.fn.match(m, gm.config.exclude)) {
+          gm.fn.explicit(event.reason, 'Uncaught Exception (in Promise)')
+        }
+      } catch (e) {
+        innerError(e)
       }
     })
 
@@ -151,7 +180,7 @@
             }
             initScriptMenu()
           } catch (e) {
-            gm.fn.explicit(e)
+            innerError(e)
           }
         })
         menuId.filter = GM_registerMenuCommand('设置过滤器', () => {
@@ -167,14 +196,23 @@
               GM_setValue('exclude', sExclude)
             }
           } catch (e) {
-            gm.fn.explicit(e)
+            innerError(e)
           }
         })
         menuId.help = GM_registerMenuCommand('使用说明', () => window.open('https://gitee.com/liangjiancang/userscript/tree/master/script/ExplicitMessage#使用说明'))
+        menuId.inject = GM_registerMenuCommand('获取注入版', () => window.open('https://greasyfork.org/zh-CN/scripts/429525'))
       }
       initScriptMenu()
     }
   } catch (e) {
-    gm.fn.explicit(e)
+    innerError(e)
+  }
+
+  /**
+   * 内部错误
+   * @param {*} e 错误
+   */
+  function innerError(e) {
+    gm.fn.explicit(e, 'UNKNOWN', GM_info.script.name)
   }
 })()

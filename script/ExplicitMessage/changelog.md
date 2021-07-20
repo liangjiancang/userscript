@@ -2,6 +2,13 @@
 
 本日志只记录用户友好的更新说明，影响不大的问题修复与修改不作记录，具体修改见 [提交记录](https://gitee.com/liangjiancang/userscript/commits/master/script/ExplicitMessage)。
 
+## V2.3
+
+1. 注入版 `V1.2`：增加脚本更新检查机制。注入版本与主版本不匹配时，提示更新并拒绝工作。
+2. 脚本：为注入版提供更新检查机制。
+3. 脚本：优化错误处理流程。
+4. 功能实现：获取注入版。
+
 ## V2.2
 
 1. 项目：ID 由 `ExplicitLog` 更改为 `ExplicitMessage`，名称由 `[DEBUG] 显式日志` 更改为为 `[DEBUG] 信息显式化`。注入版也作相应变更，并提升版本号至 `V1.1`。
