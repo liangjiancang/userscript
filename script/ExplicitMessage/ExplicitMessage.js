@@ -1,7 +1,7 @@
 /**
- * ExplicitLog_Inject
- * @file [DEBUG] 显式日志（注入版）
- * @version 1.0.0.20210718
+ * ExplicitMessage_Inject
+ * @file [DEBUG] 信息显式化（注入版）
+ * @version 1.1.0.20210720
  * @author Laster2800
  */
 

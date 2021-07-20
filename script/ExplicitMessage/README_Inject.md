@@ -1,6 +1,6 @@
-# [[DEBUG] 显式日志（注入版）](https://greasyfork.org/zh-CN/scripts/429525)
+# [[DEBUG] 信息显式化（注入版）](https://greasyfork.org/zh-CN/scripts/429525)
 
-此脚本为 [[DEBUG] 显式日志](https://greasyfork.org/zh-CN/scripts/429521) 的注入版，详情请移步主脚本主页。
+此脚本为 [[DEBUG] 信息显式化](https://greasyfork.org/zh-CN/scripts/429521) 的注入版，详情请移步主脚本主页。
 
 ## 使用说明
 
@@ -16,6 +16,6 @@
 
 * 脚本基于 Microsoft Edge 浏览器和 Tampermonkey 脚本管理器开发，明确不支持 Greasemonkey。在其他浏览器及脚本管理器上运行可能会出现问题，请提供反馈。
 
-*gitee: [ExplicitLog](https://gitee.com/liangjiancang/userscript/tree/master/script/ExplicitLog)*
+*gitee: [ExplicitMessage](https://gitee.com/liangjiancang/userscript/tree/master/script/ExplicitMessage)*
 
 *by Laster2800*

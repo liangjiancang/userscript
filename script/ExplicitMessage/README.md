@@ -1,8 +1,8 @@
-# [[DEBUG] 显式日志](https://greasyfork.org/zh-CN/scripts/429521)
+# [[DEBUG] 信息显式化](https://greasyfork.org/zh-CN/scripts/429521)
 
 其他脚本：**[B站稍后再看功能增强](https://greasyfork.org/zh-CN/scripts/395456)**、**[B站封面获取](https://greasyfork.org/zh-CN/scripts/395575)**、**[B站共同关注快速查看](https://greasyfork.org/zh-CN/scripts/428453)**、**[B站防剧透进度条](https://greasyfork.org/zh-CN/scripts/411092)**、**[S1战斗力屏蔽](https://greasyfork.org/zh-CN/scripts/394407)**
 
-用 `alert()` 提示符合匹配规则的日志或未捕获异常，帮助开发者在日常使用网页时发现潜藏问题。求好评，求收藏💔。点击查看 [更新日志](https://gitee.com/liangjiancang/userscript/blob/master/script/ExplicitLog/changelog.md)。
+用 `alert()` 提示符合匹配规则的日志或未捕获异常，帮助开发者在日常使用网页时发现潜藏问题。求好评，求收藏💔。点击查看 [更新日志](https://gitee.com/liangjiancang/userscript/blob/master/script/ExplicitMessage/changelog.md)。
 
 ## 使用说明
 
@@ -21,7 +21,7 @@
 
     比如，运行在油猴沙箱中的用户脚本，使用沙箱提供的 `console` 对象打印出来的日志是无法被捕获到的。
 
-  * **要捕获沙箱中脚本打印出来的日志，须结合 [[DEBUG] 显式日志（注入版）](https://greasyfork.org/zh-CN/scripts/429525) 使用。**
+  * **要捕获沙箱中脚本打印出来的日志，须结合 [[DEBUG] 信息显式化（注入版）](https://greasyfork.org/zh-CN/scripts/429525) 使用。**
 
     **注入版基于主脚本的设置及代码工作，只有安装并开启主脚本时，注入版才会开始工作！**
 
@@ -44,14 +44,14 @@
 * 脚本基于 Microsoft Edge 浏览器和 Tampermonkey 脚本管理器开发，明确不支持 Greasemonkey。在其他浏览器及脚本管理器上运行可能会出现问题，请提供反馈。
 * 脚本管理器可对特定脚本的匹配规则进行自定义。若要保持该脚本常开，建议关闭「原始包括」并添加需要的「用户包括」（以 Tampermonkey 为例）。
 
-  ![匹配设置](https://gitee.com/liangjiancang/userscript/raw/master/script/ExplicitLog/screenshot/匹配设置.png)
+  ![匹配设置](https://gitee.com/liangjiancang/userscript/raw/master/script/ExplicitMessage/screenshot/匹配设置.png)
 
 ## 截图
 
 * 脚本设置
 
-    ![脚本设置](https://gitee.com/liangjiancang/userscript/raw/master/script/ExplicitLog/screenshot/脚本设置.png)
+    ![脚本设置](https://gitee.com/liangjiancang/userscript/raw/master/script/ExplicitMessage/screenshot/脚本设置.png)
 
-*gitee: [ExplicitLog](https://gitee.com/liangjiancang/userscript/tree/master/script/ExplicitLog)*
+*gitee: [ExplicitMessage](https://gitee.com/liangjiancang/userscript/tree/master/script/ExplicitMessage)*
 
 *by Laster2800*

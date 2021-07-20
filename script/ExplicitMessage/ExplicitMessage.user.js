@@ -1,6 +1,6 @@
 // ==UserScript==
-// @name            [DEBUG] 显式日志
-// @version         2.1.0.20210718
+// @name            [DEBUG] 信息显式化
+// @version         2.2.0.20210720
 // @namespace       laster2800
 // @author          Laster2800
 // @description     用 alert() 提示符合匹配规则的日志或未捕获异常，帮助开发者在日常使用网页时发现潜藏问题
@@ -71,12 +71,12 @@
        */
       match(obj, regex, depth = 5) {
         if (obj && regex && depth > 0) {
-          return core(obj, depth, new Set())
+          return _inner(obj, depth, new Set())
         } else {
           return false
         }
 
-        function core(obj, depth, objSet) {
+        function _inner(obj, depth, objSet) {
           if (!obj) return false
           for (const key in obj) {
             if (regex.test(key)) {
@@ -84,21 +84,19 @@
             } else {
               try {
                 const value = obj[key]
-                if (value !== undefined && value !== null) {
-                  if (typeof value == 'object' || typeof value == 'function') {
-                    if (regex.test(value.toString())) {
-                      return true
-                    } else if (depth > 1) {
-                      if (!objSet.has(value)) {
-                        objSet.add(value)
-                        if (core(value, depth - 1)) {
-                          return true
-                        }
+                if (value && (typeof value == 'object' || typeof value == 'function')) {
+                  if (regex.test(value.toString())) {
+                    return true
+                  } else if (depth > 1) {
+                    if (!objSet.has(value)) {
+                      objSet.add(value)
+                      if (_inner(value, depth - 1)) {
+                        return true
                       }
                     }
-                  } else if (regex.test(String(value))) {
-                    return true
                   }
+                } else if (regex.test(String(value))) {
+                  return true
                 }
               } catch (e) {
                 // value that cannot be accessed
@@ -172,7 +170,7 @@
             gm.fn.explicit(e)
           }
         })
-        menuId.help = GM_registerMenuCommand('使用说明', () => window.open('https://gitee.com/liangjiancang/userscript/tree/master/script/ExplicitLog#使用说明'))
+        menuId.help = GM_registerMenuCommand('使用说明', () => window.open('https://gitee.com/liangjiancang/userscript/tree/master/script/ExplicitMessage#使用说明'))
       }
       initScriptMenu()
     }
