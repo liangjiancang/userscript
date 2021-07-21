@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.14.5.20210718
+// @version         4.14.6.20210721
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -69,6 +69,14 @@
       enable: 'enable',
       enableSimple: 'enableSimple',
       disable: 'disable',
+    },
+    /**
+     * @readonly
+     * @enum {string}
+     */
+    headerCompatible: {
+      none: 'none',
+      bilibiliEvolved: 'bilibiliEvolved',
     },
     /**
      * @readonly
@@ -161,6 +169,7 @@
    * @property {boolean} headerMenuFnRemoveWatched 弹出菜单：移除已看
    * @property {boolean} headerMenuFnShowAll 弹出菜单：显示
    * @property {boolean} headerMenuFnPlayAll 弹出菜单：播放
+   * @property {boolean} headerCompatible 兼容第三方顶栏
    * @property {boolean} removeHistory 稍后再看移除记录
    * @property {removeHistorySavePoint} removeHistorySavePoint 保存稍后再看历史数据的时间点
    * @property {number} removeHistoryFuzzyCompare 模糊比对深度
@@ -299,7 +308,7 @@
   const gm = {
     id: gmId,
     configVersion: GM_getValue('configVersion'),
-    configUpdate: 20210708,
+    configUpdate: 20210721,
     searchParams: new URL(location.href).searchParams,
     config: {},
     configMap: {
@@ -317,6 +326,7 @@
       headerMenuFnRemoveWatched: { default: true, attr: 'checked', configVersion: 20210323 },
       headerMenuFnShowAll: { default: false, attr: 'checked', configVersion: 20210322 },
       headerMenuFnPlayAll: { default: true, attr: 'checked', configVersion: 20210322 },
+      headerCompatible: { default: Enums.headerCompatible.none, attr: 'value', configVersion: 20210721 },
       removeHistory: { default: true, attr: 'checked', manual: true, configVersion: 20210628 },
       removeHistorySavePoint: { default: Enums.removeHistorySavePoint.listAndMenu, attr: 'value', configVersion: 20210628 },
       removeHistoryFuzzyCompare: { default: 1, type: 'int', attr: 'value', min: 0, max: 5, needNotReload: true, configVersion: 20210628 },
@@ -633,7 +643,7 @@
           }
 
           // 功能性更新后更新此处配置版本
-          if (gm.configVersion < 20210703) {
+          if (gm.configVersion < 20210721) {
             _self.openUserSetting(2)
           } else {
             gm.configVersion = gm.configUpdate
@@ -724,7 +734,7 @@
               <div class="gm-items">
                 <table>
                   <tr class="gm-item" title="在顶栏「动态」和「收藏」之间加入稍后再看入口，鼠标移至上方时弹出列表菜单，支持点击功能设置。">
-                    <td rowspan="9"><div>全局功能</div></td>
+                    <td rowspan="10"><div>全局功能</div></td>
                     <td>
                       <label>
                         <span>在顶栏中加入稍后再看入口</span>
@@ -821,6 +831,18 @@
                         <label class="gm-lineitem">
                           <span>播放</span><input id="gm-headerMenuFnPlayAll" type="checkbox">
                         </label>
+                      </div>
+                    </td>
+                  </tr>
+                  <tr class="gm-subitem" title="无须兼容第三方顶栏时务必选择「无」，否则脚本无法正常工作！若列表中没有提供您需要的第三方顶栏，且该第三方顶栏有一定用户基数，可在脚本反馈页发起请求。">
+                    <td>
+                      <div>
+                        <span>兼容第三方顶栏：</span>
+                        <select id="gm-headerCompatible">
+                          <option value="${Enums.headerCompatible.none}">无</option>
+                          <option value="${Enums.headerCompatible.bilibiliEvolved}">Bilibili Evolved</option>
+                        </select>
+                        <span id="gm-hcWarning" class="gm-warning gm-trailing" title>⚠</span>
                       </div>
                     </td>
                   </tr>
@@ -1146,6 +1168,8 @@
             </div>
           `, '💬', { width: '36em', flagSize: '2em' })
 
+          el.hcWarning = gm.el.setting.querySelector('#gm-hcWarning')
+          api.message.advanced(el.hcWarning, '无须兼容第三方顶栏时务必选择「无」，否则脚本无法正常工作！', '⚠')
           el.rhWarning = gm.el.setting.querySelector('#gm-rhWarning')
           api.message.advanced(el.rhWarning, '关闭移除记录，或将稍后再看历史数据保存次数设置为比原来小的值，都会造成对内部过期历史数据的清理！', '⚠')
           el.rhsWarning = gm.el.setting.querySelector('#gm-rhsWarning')
@@ -1182,7 +1206,7 @@
           }
           el.headerMenuFn = el.headerMenuFnSetting.parentNode.parentNode
           el.headerButton.init = function() {
-            subitemChange(this, [el.headerButtonOpL, el.headerButtonOpR, el.headerButtonOpM, el.headerMenu, el.openHeaderMenuLink, el.menuScrollbarSetting, el.headerMenuSearch, el.headerMenuFnSetting, el.headerMenuFnHistory, el.headerMenuFnRemoveAll, el.headerMenuFnRemoveWatched, el.headerMenuFnShowAll, el.headerMenuFnPlayAll])
+            subitemChange(this, [el.headerButtonOpL, el.headerButtonOpR, el.headerButtonOpM, el.headerMenu, el.openHeaderMenuLink, el.menuScrollbarSetting, el.headerMenuSearch, el.headerMenuFnSetting, el.headerMenuFnHistory, el.headerMenuFnRemoveAll, el.headerMenuFnRemoveWatched, el.headerMenuFnShowAll, el.headerMenuFnPlayAll, el.headerCompatible])
             if (this.checked) {
               el.headerMenuFn.removeAttribute('disabled')
             } else {
@@ -1194,6 +1218,9 @@
             if (gm.config.hideDisabledSubitems) {
               api.dom.setAbsoluteCenter(el.settingPage)
             }
+          }
+          el.headerCompatible.init = el.headerCompatible.onchange = function() {
+            setHcWarning()
           }
           el.removeHistory.init = function() {
             subitemChange(this, [el.removeHistorySavePoint, el.removeHistoryFuzzyCompare, el.removeHistorySaves, el.removeHistoryTimestamp, el.removeHistorySearchTimes])
@@ -1460,6 +1487,24 @@
             return true
           }
           return false
+        }
+
+        /**
+         * 设置 headerCompatible 警告项
+         */
+        const setHcWarning = () => {
+          const warn = el.headerCompatible.value != Enums.headerCompatible.none
+          if (el.hcWarning.show) {
+            if (!warn) {
+              api.dom.fade(false, el.hcWarning)
+              el.hcWarning.show = false
+            }
+          } else {
+            if (warn) {
+              api.dom.fade(true, el.hcWarning)
+              el.hcWarning.show = true
+            }
+          }
         }
 
         /**
@@ -2253,18 +2298,36 @@
      */
     addHeaderButton() {
       const _self = this
-      api.wait.waitQuerySelector('.user-con.signin').then(header => {
-        const collect = header.children[4]
-        const watchlater = document.createElement('div')
-        watchlater.className = 'item'
-        const link = watchlater.appendChild(document.createElement('a'))
-        const text = link.appendChild(document.createElement('span'))
-        text.className = 'name'
-        text.innerText = '稍后再看'
-        header.insertBefore(watchlater, collect)
-        processClickEvent(watchlater)
-        processPopup(watchlater)
-      })
+      if (gm.config.headerCompatible == Enums.headerCompatible.bilibiliEvolved) {
+        api.wait.waitQuerySelector('.custom-navbar [data-name=watchlaterList]').then(el => {
+          const watchlater = el.parentNode.appendChild(el.cloneNode(true))
+          processClickEvent(watchlater)
+          processPopup(watchlater)
+          el.style.display = 'none'
+          const ob = new MutationObserver((mutations, observer) => {
+            for (const mutation of mutations) {
+              if (mutation.attributeName) {
+                watchlater.setAttribute(mutation.attributeName, el.getAttribute(mutation.attributeName))
+              }
+            }
+            observer.disconnect()
+            watchlater.style.display = ''
+            el.style.display = 'none'
+            observer.observe(el, { attributes: true })
+          })
+          ob.observe(el, { attributes: true })
+        })
+      } else {
+        api.wait.waitQuerySelector('.user-con.signin').then(header => {
+          const collect = header.children[4]
+          const watchlater = document.createElement('div')
+          watchlater.className = 'item'
+          watchlater.innerHTML = '<a><span class="name">稍后再看</span></a>'
+          header.insertBefore(watchlater, collect)
+          processClickEvent(watchlater)
+          processPopup(watchlater)
+        })
+      }
 
       /**
        * 处理清空稍后再看
@@ -3387,7 +3450,7 @@
           opacity: 0;
           display: none;
           position: absolute;
-          z-index: 10000;
+          z-index: 15000;
           user-select: none;
           border-radius: 4px;
           width: 32em;
@@ -3627,7 +3690,7 @@
           opacity: 0;
           display: none;
           position: fixed;
-          z-index: 10000;
+          z-index: 15000;
           user-select: none;
         }
 
@@ -3756,7 +3819,6 @@
 
         #${gm.id} .gm-setting .gm-warning {
           position: absolute;
-          right: -1.1em;
           color: var(--warn-color);
           font-size: 1.4em;
           line-height: 1em;
@@ -3764,6 +3826,12 @@
           opacity: 0;
           display: none;
           cursor: pointer;
+        }
+        #${gm.id} .gm-setting .gm-warning.gm-trailing {
+          margin-left: 0.5em;
+        }
+        #${gm.id} .gm-setting .gm-warning:not(.gm-trailing) {
+          right: -1.1em;
         }
 
         #${gm.id} .gm-setting.gm-hideDisabledSubitems #gm-setting-page:not([setting-type]) [disabled] {
@@ -3777,7 +3845,7 @@
           opacity: 0;
           display: none;
           position: fixed;
-          z-index: 10000;
+          z-index: 15000;
           user-select: none;
         }
 
@@ -3931,7 +3999,7 @@
           position: fixed;
           top: 0%;
           left: 0%;
-          z-index: 10000;
+          z-index: 15000;
           width: 100%;
           height: 100%;
         }
