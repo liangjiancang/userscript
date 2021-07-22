@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站防剧透进度条
-// @version         1.8.8.20210722
+// @version         1.8.9.20210722
 // @namespace       laster2800
 // @author          Laster2800
 // @description     看比赛、看番总是被进度条剧透？装上这个脚本再也不用担心这些问题了
@@ -12,7 +12,7 @@
 // @include         *://www.bilibili.com/medialist/play/watchlater
 // @include         *://www.bilibili.com/medialist/play/watchlater/*
 // @include         *://www.bilibili.com/bangumi/play/*
-// @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=952979
+// @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=953038
 // @grant           GM_addStyle
 // @grant           GM_registerMenuCommand
 // @grant           GM_xmlhttpRequest
@@ -132,7 +132,7 @@
    */
   /**
    * @typedef GMObject_menu_item
-   * @property {0 | 1 | 2 | 3} state 打开状态（关闭 | 开启中 | 打开 | 关闭中）
+   * @property {0 | 1 | 2 | 3 | -1} state 打开状态（关闭 | 开启中 | 打开 | 关闭中 | 错误）
    * @property {HTMLElement} el 菜单元素
    * @property {() => void} [openHandler] 打开菜单的回调函数
    * @property {() => void} [closeHandler] 关闭菜单的回调函数
@@ -980,14 +980,24 @@
       const _self = this
       let success = false
       try {
-        if (gm.menu[name].state == 3) {
-          await api.wait.waitForConditionPassed({
-            condition: () => {
-              return gm.menu[name].state == 0
-            },
-          })
+        try {
+          if (gm.menu[name].state == 1) {
+            await api.wait.waitForConditionPassed({
+              condition: () => gm.menu[name].state == 2,
+              timeout: 2000,
+            })
+            return true
+          } else if (gm.menu[name].state == 3) {
+            await api.wait.waitForConditionPassed({
+              condition: () => gm.menu[name].state == 0,
+              timeout: 2000,
+            })
+          }
+        } catch (e) {
+          gm.menu[name].state = -1
+          api.logger.error(e)
         }
-        if (gm.menu[name].state == 0) {
+        if (gm.menu[name].state == 0 || gm.menu[name].state == -1) {
           for (const key in gm.menu) {
             /** @type {GMObject_menu_item} */
             const menu = gm.menu[key]
@@ -1015,6 +1025,7 @@
           document.exitFullscreen()
         }
       } catch (e) {
+        gm.menu[name].state = -1
         api.logger.error(e)
       }
       return success
@@ -1028,17 +1039,27 @@
      * @returns {Promise<boolean>} 操作是否成功
      */
     async closeMenuItem(name, callback) {
+      /** @type {GMObject_menu_item} */
+      const menu = gm.menu[name]
       try {
-        /** @type {GMObject_menu_item} */
-        const menu = gm.menu[name]
-        if (menu.state == 1) {
-          await api.wait.waitForConditionPassed({
-            condition: () => {
-              return gm.menu[name].state == 2
-            },
-          })
+        try {
+          if (menu.state == 1) {
+            await api.wait.waitForConditionPassed({
+              condition: () => menu.state == 2,
+              timeout: 2000,
+            })
+          } else if (menu.state == 3) {
+            await api.wait.waitForConditionPassed({
+              condition: () => menu.state == 0,
+              timeout: 2000,
+            })
+            return true
+          }
+        } catch (e) {
+          menu.state = -1
+          api.logger.error(e)
         }
-        if (menu.state == 2) {
+        if (menu.state == 2 || menu.state == -1) {
           menu.state = 3
           await menu.closeHandler?.call(menu)
           await new Promise(resolve => {
@@ -1052,6 +1073,7 @@
           return true
         }
       } catch (e) {
+        menu.state = -1
         api.logger.error(e)
       }
       return false
