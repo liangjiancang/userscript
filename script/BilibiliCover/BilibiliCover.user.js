@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站封面获取
-// @version         4.11.9.20210720
+// @version         4.11.10.20210722
 // @namespace       laster2800
 // @author          Laster2800
 // @description     B站视频播放页（普通模式、稍后再看模式）、番剧播放页、直播间添加获取封面的按钮
@@ -16,7 +16,7 @@
 // @exclude         *://live.bilibili.com/
 // @exclude         *://live.bilibili.com/?*
 // @exclude         *://live.bilibili.com/*/*
-// @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=951336
+// @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=952979
 // @grant           GM_addStyle
 // @grant           GM_download
 // @grant           GM_notification
@@ -248,21 +248,19 @@
           }
 
           target.addEventListener('mouseenter', api.tool.debounce(function() {
-            const _self = target
             if (gm.config.preview) {
-              _self.mouseOver = true
-              if (_self.disablePreview) return
+              this.mouseOver = true
+              if (this.disablePreview) return
               setTimeout(() => {
                 preview.src && fadeIn()
               }, antiConflictTime)
             }
           }, 200))
           target.addEventListener('mouseleave', api.tool.debounce(function() {
-            const _self = target
             if (gm.config.preview) {
-              _self.mouseOver = false
-              if (_self.disablePreview) {
-                _self.disablePreview = false
+              this.mouseOver = false
+              if (this.disablePreview) {
+                this.disablePreview = false
                 return
               }
               setTimeout(() => {
