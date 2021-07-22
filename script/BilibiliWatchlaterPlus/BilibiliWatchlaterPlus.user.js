@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.14.6.20210721
+// @version         4.15.0.20210722
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -17,7 +17,7 @@
 // @exclude         *://message.bilibili.com/pages/nav/index_new_pc_sync
 // @exclude         *://t.bilibili.com/h5/dynamic/specification
 // @exclude         *://www.bilibili.com/page-proxy/game-nav.html
-// @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=951336
+// @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=953038
 // @grant           GM_addStyle
 // @grant           GM_registerMenuCommand
 // @grant           GM_xmlhttpRequest
@@ -294,7 +294,7 @@
    */
   /**
    * @typedef GMObject_menu_item
-   * @property {0 | 1 | 2 | 3} state 打开状态（关闭 | 开启中 | 打开 | 关闭中）
+   * @property {0 | 1 | 2 | 3 | -1} state 打开状态（关闭 | 开启中 | 打开 | 关闭中 | 错误）
    * @property {HTMLElement} el 菜单元素
    * @property {() => void} [openHandler] 打开菜单的回调函数
    * @property {() => void} [closeHandler] 关闭菜单的回调函数
@@ -308,7 +308,7 @@
   const gm = {
     id: gmId,
     configVersion: GM_getValue('configVersion'),
-    configUpdate: 20210721,
+    configUpdate: 20210722,
     searchParams: new URL(location.href).searchParams,
     config: {},
     configMap: {
@@ -329,7 +329,7 @@
       headerCompatible: { default: Enums.headerCompatible.none, attr: 'value', configVersion: 20210721 },
       removeHistory: { default: true, attr: 'checked', manual: true, configVersion: 20210628 },
       removeHistorySavePoint: { default: Enums.removeHistorySavePoint.listAndMenu, attr: 'value', configVersion: 20210628 },
-      removeHistoryFuzzyCompare: { default: 1, type: 'int', attr: 'value', min: 0, max: 5, needNotReload: true, configVersion: 20210628 },
+      removeHistoryFuzzyCompare: { default: 1, type: 'int', attr: 'value', max: 5, needNotReload: true, configVersion: 20210722 },
       removeHistorySaves: { default: 500, type: 'int', attr: 'value', manual: true, needNotReload: true, min: 10, max: 100000, configVersion: 20210628 },
       removeHistoryTimestamp: { default: true, attr: 'checked', needNotReload: true, configVersion: 20210703 },
       removeHistorySearchTimes: { default: 500, type: 'int', attr: 'value', manual: true, needNotReload: true, min: 1, max: 100000, configVersion: 20210703 },
@@ -342,7 +342,7 @@
       removeButton_removeAll: { default: false, attr: 'checked', configVersion: 20200722 },
       removeButton_removeWatched: { default: false, attr: 'checked', configVersion: 20200722 },
       disablePageCache: { default: false, attr: 'checked', configVersion: 20210322 },
-      watchlaterListCacheValidPeriod: { default: 15, type: 'int', attr: 'value', needNotReload: true, max: 600, configVersion: 20210701 },
+      watchlaterListCacheValidPeriod: { default: 15, type: 'int', attr: 'value', needNotReload: true, max: 600, configVersion: 20210722 },
       hideDisabledSubitems: { default: true, attr: 'checked', configVersion: 20210505 },
       reloadAfterSetting: { default: true, attr: 'checked', needNotReload: true, configVersion: 20200715 },
     },
@@ -514,8 +514,9 @@
                   },
                 })
               } catch (e) {
+                _.watchlaterListData_loading = false
                 api.logger.error(e)
-                return []
+                return _.watchlaterListData ?? []
               }
             }
 
@@ -533,7 +534,6 @@
               }
             }
 
-            _.watchlaterListData = undefined // 一旦重新获取，将原来的数据舍弃
             _.watchlaterListData_loading = true
             try {
               const resp = await api.web.request({
@@ -574,7 +574,7 @@
               return current
             } catch (e) {
               api.logger.error(e)
-              return []
+              return _.watchlaterListData ?? []
             } finally {
               _.watchlaterListData_loading = false
             }
@@ -622,7 +622,7 @@
           // 4.11.7.20210701
           if (gm.configVersion < 20210701) {
             const cvp = GM_getValue('watchlaterListCacheValidPeriod')
-            if (!isNaN(cvp) && cvp > 0 && cvp <= 2) {
+            if (cvp > 0 && cvp <= 2) {
               GM_setValue('watchlaterListCacheValidPeriod', 5)
             }
           }
@@ -643,7 +643,7 @@
           }
 
           // 功能性更新后更新此处配置版本
-          if (gm.configVersion < 20210721) {
+          if (gm.configVersion < 20210722) {
             _self.openUserSetting(2)
           } else {
             gm.configVersion = gm.configUpdate
@@ -1240,7 +1240,7 @@
               this.value = ''
             } else {
               let value = parseInt(v0)
-              if (value > gm.configMap.removeHistoryFuzzyCompare.max) { // 这里先不要限制最小值，否则输入很麻烦
+              if (value > gm.configMap.removeHistoryFuzzyCompare.max) {
                 value = gm.configMap.removeHistoryFuzzyCompare.max
               }
               this.value = value
@@ -1249,14 +1249,6 @@
           el.removeHistoryFuzzyCompare.onblur = function() {
             if (this.value === '') {
               this.value = gm.configMap.removeHistoryFuzzyCompare.default
-            } else {
-              let value = parseInt(this.value)
-              if (value > gm.configMap.removeHistoryFuzzyCompare.max) {
-                value = gm.configMap.removeHistoryFuzzyCompare.max
-              } else if (value < gm.configMap.removeHistoryFuzzyCompare.min) {
-                value = gm.configMap.removeHistoryFuzzyCompare.min
-              }
-              this.value = value
             }
           }
 
@@ -1266,7 +1258,7 @@
               this.value = ''
             } else {
               let value = parseInt(v0)
-              if (value > gm.configMap.removeHistorySaves.max) { // 这里先不要限制最小值，否则输入很麻烦
+              if (value > gm.configMap.removeHistorySaves.max) {
                 value = gm.configMap.removeHistorySaves.max
               }
               this.value = value
@@ -1279,9 +1271,7 @@
               this.value = gm.configMap.removeHistorySaves.default
             } else {
               let value = parseInt(this.value)
-              if (value > gm.configMap.removeHistorySaves.max) {
-                value = gm.configMap.removeHistorySaves.max
-              } else if (value < gm.configMap.removeHistorySaves.min) {
+              if (value < gm.configMap.removeHistorySaves.min) {
                 value = gm.configMap.removeHistorySaves.min
               }
               this.value = value
@@ -1296,7 +1286,7 @@
               this.value = ''
             } else {
               let value = parseInt(v0)
-              if (value > gm.configMap.removeHistorySearchTimes.max) { // 这里先不要限制最小值，否则输入很麻烦
+              if (value > gm.configMap.removeHistorySearchTimes.max) {
                 value = gm.configMap.removeHistorySearchTimes.max
               }
               this.value = value
@@ -1307,9 +1297,7 @@
               this.value = gm.configMap.removeHistorySearchTimes.default
             } else {
               let value = parseInt(this.value)
-              if (value > gm.configMap.removeHistorySearchTimes.max) {
-                value = gm.configMap.removeHistorySearchTimes.max
-              } else if (value < gm.configMap.removeHistorySearchTimes.min) {
+              if (value < gm.configMap.removeHistorySearchTimes.min) {
                 value = gm.configMap.removeHistorySearchTimes.min
               }
               this.value = value
@@ -1476,10 +1464,14 @@
          */
         const saveConfig = (name, attr) => {
           let val = el[name][attr]
-          if (gm.configMap[name].type == 'int') {
-            val = parseInt(val) || gm.configMap[name].default
-          } else if (gm.configMap[name].type == 'float') {
-            val = parseFloat(val) || gm.configMap[name].default
+          const type = gm.configMap[name].type
+          if (type == 'int' || type == 'float') {
+            if (typeof val != 'number') {
+              val = type == 'int' ? parseInt(val) : parseFloat(val)
+            }
+            if (isNaN(val)) {
+              val = gm.configMap[name].default
+            }
           }
           if (gm.config[name] != val) {
             gm.config[name] = val
@@ -1853,14 +1845,24 @@
       const _self = this
       let success = false
       try {
-        if (gm.menu[name].state == 3) {
-          await api.wait.waitForConditionPassed({
-            condition: () => {
-              return gm.menu[name].state == 0
-            },
-          })
+        try {
+          if (gm.menu[name].state == 1) {
+            await api.wait.waitForConditionPassed({
+              condition: () => gm.menu[name].state == 2,
+              timeout: 2000,
+            })
+            return true
+          } else if (gm.menu[name].state == 3) {
+            await api.wait.waitForConditionPassed({
+              condition: () => gm.menu[name].state == 0,
+              timeout: 2000,
+            })
+          }
+        } catch (e) {
+          gm.menu[name].state = -1
+          api.logger.error(e)
         }
-        if (gm.menu[name].state == 0) {
+        if (gm.menu[name].state == 0 || gm.menu[name].state == -1) {
           for (const key in gm.menu) {
             /** @type {GMObject_menu_item} */
             const menu = gm.menu[key]
@@ -1888,6 +1890,7 @@
           document.exitFullscreen()
         }
       } catch (e) {
+        gm.menu[name].state = -1
         api.logger.error(e)
       }
       return success
@@ -1901,17 +1904,27 @@
      * @returns {Promise<boolean>} 操作是否成功
      */
     async closeMenuItem(name, callback) {
+      /** @type {GMObject_menu_item} */
+      const menu = gm.menu[name]
       try {
-        /** @type {GMObject_menu_item} */
-        const menu = gm.menu[name]
-        if (menu.state == 1) {
-          await api.wait.waitForConditionPassed({
-            condition: () => {
-              return gm.menu[name].state == 2
-            },
-          })
+        try {
+          if (menu.state == 1) {
+            await api.wait.waitForConditionPassed({
+              condition: () => menu.state == 2,
+              timeout: 2000,
+            })
+          } else if (menu.state == 3) {
+            await api.wait.waitForConditionPassed({
+              condition: () => menu.state == 0,
+              timeout: 2000,
+            })
+            return true
+          }
+        } catch (e) {
+          menu.state = -1
+          api.logger.error(e)
         }
-        if (menu.state == 2) {
+        if (menu.state == 2 || menu.state == -1) {
           menu.state = 3
           await menu.closeHandler?.call(menu)
           await new Promise(resolve => {
@@ -1925,6 +1938,7 @@
           return true
         }
       } catch (e) {
+        menu.state = -1
         api.logger.error(e)
       }
       return false
@@ -2018,9 +2032,9 @@
         /**
          * 将视频加入稍后再看，或从稍后再看移除
          * @async
-         * @param {string} id 视频 `aid` 或 `bvid`
+         * @param {string} id 视频 `aid` 或 `bvid`（执行移除时优先选择 `aid`）
          * @param {boolean} [status=true] 添加 `true` / 移除 `false`
-         * @returns {Promise<boolean>} 操作是否成功
+         * @returns {Promise<boolean>} 操作是否成功（视频不在稍后在看中不被判定为失败）
          */
         async switchVideoWatchlaterStatus(id, status = true) {
           const _self = this
@@ -2428,31 +2442,41 @@
         })
 
         /**
+         * 坐标是否在顶栏内
+         * @param {MouseEvent} e 事件
+         */
+        const withinHeader = e => {
+          const y = e.clientY
+          const top = api.dom.getElementTop(watchlater)
+          const margin = 5
+          return (y > top - margin) && (y < top + margin)
+        }
+
+        /**
          * 进入稍后再看入口的处理
          */
         const onOverWatchlater = function() {
           if (this.mouseOver) return
           this.mouseOver = true
-          if (gm.menu.entryPopup.state == 0 || gm.menu.entryPopup.state == 3) {
-            if (gm.config.hideDisabledSubitems) {
-              popup.style.position = api.dom.isFixed(watchlater.parentNode) ? 'fixed' : ''
-            }
-            popup.style.top = `calc(${watchlater.offsetTop + watchlater.offsetHeight}px + 1em)`
-            popup.style.left = `calc(${watchlater.offsetLeft + watchlater.offsetWidth / 2}px - 16em)`
-            openEntryPopup()
+          if (gm.config.hideDisabledSubitems) {
+            popup.style.position = api.dom.isFixed(watchlater.parentNode) ? 'fixed' : ''
           }
+          popup.style.top = `calc(${api.dom.getElementTop(watchlater) + watchlater.offsetHeight}px + 1em)`
+          popup.style.left = `calc(${api.dom.getElementLeft(watchlater) + watchlater.offsetWidth / 2}px - 16em)`
+          openEntryPopup()
         }
 
         /**
          * 离开稍后再看入口的处理
+         * @param {MouseEvent} e 事件
          */
-        const onLeaveWatchlater = function() {
+        const onLeaveWatchlater = function(e) {
           this.mouseOver = false
           setTimeout(() => {
-            if (!popup.mouseOver) {
+            if ((gm.menu.entryPopup.state == 2 && !popup.mouseOver) || withinHeader(e)) {
               script.closeMenuItem('entryPopup')
             }
-          }, 180)
+          }, 200)
         }
 
         /**
@@ -2531,7 +2555,11 @@
            */
           const processPopup = () => {
             gm.menu.entryPopup.openHandler = onOpen
-            gm.menu.entryPopup.openedHandler = () => gm.config.headerMenuSearch && el.search.focus()
+            gm.menu.entryPopup.openedHandler = () => {
+              gm.config.headerMenuSearch && el.search.focus()
+              el.entryList.scrollTop = 0
+              el.entryRemovedList.scrollTop = 0
+            }
 
             if (gm.config.headerMenuSearch) {
               el.search.oninput = function() {
@@ -2641,8 +2669,9 @@
             el.search.value = ''
             el.searchClear.style.visibility = 'hidden'
             el.popupTotal.innerText = '0'
-            el.entryList.innerText = ''
+            el.entryList.innerHTML = ''
             el.entryList.total = 0
+            el.entryRemovedList.innerHTML = ''
             el.entryRemovedList.total = 0
             let data = []
             if (el.entryList.needReload) {
@@ -2651,11 +2680,11 @@
             } else {
               data = await gm.data.watchlaterListData(false, true, true) // 启用本地缓存但禁用页面缓存
             }
+            const simplePopup = gm.config.headerMenu == Enums.headerMenu.enableSimple
             if (data.length > 0) {
               const openLinkInCurrent = gm.config.openHeaderMenuLink == Enums.openHeaderMenuLink.openInCurrent
               const redirect = gm.config.redirect
               const autoRemove = gm.config.autoRemove == Enums.autoRemove.always || gm.config.autoRemove == Enums.autoRemove.openFromList
-              const simplePopup = gm.config.headerMenu == Enums.headerMenu.enableSimple
               for (const item of data) {
                 /** @type {HTMLAnchorElement} */
                 const card = el.entryList.appendChild(document.createElement('a'))
@@ -2750,7 +2779,10 @@
                   if (autoRemove) {
                     card.href = card.href + `?${gm.id}_remove=true`
                     card.addEventListener('mouseup', function(e) {
-                      if (api.dom.containsClass(e.target, ['gm-card-switcher', 'gm-card-uploader'])) return
+                      if (!simplePopup) {
+                        if (!card.added) return
+                        if (api.dom.containsClass(e.target, ['gm-card-switcher', 'gm-card-uploader'])) return
+                      }
                       el.entryList.needReload = true
                       if (e.button == 0 || e.button == 1) { // 左键或中键
                         api.dom.addClass(card, 'gm-removed')
@@ -2764,32 +2796,41 @@
                   card.href = gm.url.noop
                 }
               }
-
-              // 添加已移除视频
-              if (rmBvid?.size > 0) {
-                const only1 = rmBvid.size == 1
-                const h = simplePopup ? (only1 ? 2.9 : 6) : (only1 ? 6.5 : 8.5)
-                el.entryList.style.height = `${39 - h}em`
-                el.entryRemovedList.style.height = `${h}em`
-                el.entryRemovedList.style.display = 'block'
-                el.entryRemovedList.innerHTML = ''
-                for (const rmCard of rmCards) {
-                  if (rmBvid.has(rmCard.bvid)) {
-                    el.entryRemovedList.appendChild(rmCard)
-                  }
-                }
-                el.entryRemovedList.total = rmBvid.size
-              } else {
-                el.entryList.style.height = ''
-                el.entryRemovedList.style.display = ''
-              }
-
               el.entryList.total = data.length
-              el.popupTotal.innerText = el.entryList.total + el.entryRemovedList.total
             } else {
               el.entryList.innerHTML = '<div class="gm-entry-list-empty">稍后再看列表为空</div>'
             }
-            el.entryList.scrollTop = 0
+
+            // 添加已移除视频
+            if (rmCards.length > 0) {
+              const addedBvid = new Set()
+              for (const rmCard of rmCards) {
+                const bvid = rmCard.bvid
+                if (addedBvid.has(bvid)) continue
+                if (rmBvid.has(bvid)) {
+                  if (rmCard.style.display == 'none') {
+                    rmCard.style.display = ''
+                  }
+                } else {
+                  rmCard.style.display = 'none'
+                }
+                el.entryRemovedList.appendChild(rmCard)
+                addedBvid.add(bvid)
+              }
+            }
+            if (rmBvid?.size > 0) {
+              const only1 = rmBvid.size == 1
+              const h = simplePopup ? (only1 ? 6 : 9) : (only1 ? 6.4 : 11)
+              el.entryList.style.height = `${42 - h}em`
+              el.entryRemovedList.style.height = `${h}em`
+              el.entryRemovedList.style.display = 'block'
+              el.entryRemovedList.total = rmBvid.size
+            } else {
+              el.entryList.style.height = ''
+              el.entryRemovedList.style.display = ''
+            }
+
+            el.popupTotal.innerText = el.entryList.total + el.entryRemovedList.total
             if (gm.config.removeHistory && gm.config.removeHistorySavePoint == Enums.removeHistorySavePoint.listAndMenu) {
               _self.method.updateRemoveHistoryData()
             }
@@ -3200,12 +3241,6 @@
         if ((alwaysAutoRemove || spRemove) && !spDisableRemove) {
           const _self = this
           const aid = await _self.method.getAid()
-          if (alwaysAutoRemove) { // 如果总是自动移除，要检查视频是否已经在稍后再看中，确定在再移除
-            const status = await _self.method.getVideoWatchlaterStatusByAid(aid) // 偏向于认为视频在其中，因此即使缓存很可能有问题也没有必要纠正
-            if (!status) {
-              return true
-            }
-          }
           if (delay > 0) {
             await new Promise(resolve => setTimeout(resolve, delay))
           }
@@ -3507,12 +3542,12 @@
 
         #${gm.id} .gm-entrypopup .gm-entry-list {
           position: relative;
-          height: 39em;
+          height: 42em;
           overflow-y: auto;
           padding: 0.2em 0;
         }
         #${gm.id} .gm-entrypopup .gm-entry-list.gm-entry-removed-list {
-          border-top: 2px solid var(--light-border-color);
+          border-top: 3px solid var(--light-border-color);
           display: none;
         }
         #${gm.id} .gm-entrypopup .gm-entry-list .gm-entry-list-empty {

@@ -2,6 +2,15 @@
 
 本日志只记录用户友好的更新说明，影响不大的问题修复与修改不作记录，具体修改见 [提交记录](https://gitee.com/liangjiancang/userscript/commits/master/script/BilibiliWatchlaterPlus)。
 
+## V4.15
+
+1. 顶栏入口：优化菜单的弹出与关闭逻辑。
+2. 顶栏入口：优化菜单内列表数据的展示。
+3. 脚本：若稍后再看列表数据获取失败，使用上一次的加载结果而非空数据。
+4. 脚本：优化脚本菜单运行流程。
+5. 脚本：优化数值类型配置项的输入限制逻辑。
+6. 脚本：修复数值类型配置项无法保存为 `0` 的问题。
+
 ## V4.14
 
 1. API：从 V1.0 升级至 V1.2，大幅优化条件等待和元素等待逻辑。详见 [UserscriptAPI 更新日志](https://gitee.com/liangjiancang/userscript/blob/master/lib/UserscriptAPI/changelog.md)。
