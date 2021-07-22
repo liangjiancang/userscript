@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站防剧透进度条
-// @version         1.8.7.20210722
+// @version         1.8.8.20210722
 // @namespace       laster2800
 // @author          Laster2800
 // @description     看比赛、看番总是被进度条剧透？装上这个脚本再也不用担心这些问题了
@@ -853,10 +853,14 @@
          */
         const saveConfig = (name, attr) => {
           let val = el[name][attr]
-          if (gm.configMap[name].type == 'int') {
-            val = (val && !isNaN(val)) ? parseInt(val) : gm.configMap[name].default
-          } else if (gm.configMap[name].type == 'float') {
-            val = (val && !isNaN(val)) ? parseFloat(val) : gm.configMap[name].default
+          const type = gm.configMap[name].type
+          if (type == 'int' || type == 'float') {
+            if (typeof val != 'number') {
+              val = type == 'int' ? parseInt(val) : parseFloat(val)
+            }
+            if (isNaN(val)) {
+              val = gm.configMap[name].default
+            }
           }
           if (gm.config[name] != val) {
             gm.config[name] = val
