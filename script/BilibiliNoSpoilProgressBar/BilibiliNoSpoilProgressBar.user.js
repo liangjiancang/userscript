@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站防剧透进度条
-// @version         1.8.9.20210722
+// @version         1.8.10.20210722
 // @namespace       laster2800
 // @author          Laster2800
 // @description     看比赛、看番总是被进度条剧透？装上这个脚本再也不用担心这些问题了
@@ -213,6 +213,7 @@
     id: gm.id,
     label: GM_info.script.name,
     fadeTime: gm.const.fadeTime,
+    wait: { element: { timeout: 20000 } },
   })
 
   /** @type {Script} */
@@ -1630,7 +1631,7 @@
       let currentCid = null
       try {
         currentCid = await _self.method.getCid()
-      } catch(e) {
+      } catch (e) {
         api.logger.warn(e)
       } finally {
         let currentPathname = location.pathname
