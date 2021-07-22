@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站防剧透进度条
-// @version         1.8.6.20210719
+// @version         1.8.7.20210722
 // @namespace       laster2800
 // @author          Laster2800
 // @description     看比赛、看番总是被进度条剧透？装上这个脚本再也不用担心这些问题了
@@ -12,7 +12,7 @@
 // @include         *://www.bilibili.com/medialist/play/watchlater
 // @include         *://www.bilibili.com/medialist/play/watchlater/*
 // @include         *://www.bilibili.com/bangumi/play/*
-// @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=951336
+// @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=952979
 // @grant           GM_addStyle
 // @grant           GM_registerMenuCommand
 // @grant           GM_xmlhttpRequest
@@ -146,7 +146,7 @@
   const gm = {
     id: 'gm411092',
     configVersion: GM_getValue('configVersion'),
-    configUpdate: 20210627,
+    configUpdate: 20210722,
     config: {
       bangumiEnabled: false,
       simpleScriptControl: false,
@@ -171,11 +171,11 @@
       disablePbp: { default: true, attr: 'checked' },
       disablePreview: { default: false, attr: 'checked' },
       disablePartInformation: { default: true, attr: 'checked', configVersion: 20210302 },
-      offsetTransformFactor: { default: 0.65, type: 'float', attr: 'value', needNotReload: true, max: 5.0, configVersion: 20200911.1 },
-      offsetLeft: { default: 40, type: 'int', attr: 'value', needNotReload: true, configVersion: 20200911 },
-      offsetRight: { default: 40, type: 'int', attr: 'value', needNotReload: true, configVersion: 20200911 },
-      reservedLeft: { default: 10, type: 'int', attr: 'value', needNotReload: true },
-      reservedRight: { default: 10, type: 'int', attr: 'value', needNotReload: true },
+      offsetTransformFactor: { default: 0.65, type: 'float', attr: 'value', needNotReload: true, max: 5.0, configVersion: 20210722 },
+      offsetLeft: { default: 40, type: 'int', attr: 'value', needNotReload: true, configVersion: 20210722 },
+      offsetRight: { default: 40, type: 'int', attr: 'value', needNotReload: true, configVersion: 20210722 },
+      reservedLeft: { default: 10, type: 'int', attr: 'value', needNotReload: true, configVersion: 20210722 },
+      reservedRight: { default: 10, type: 'int', attr: 'value', needNotReload: true, configVersion: 20210722 },
       postponeOffset: { default: true, attr: 'checked', needNotReload: true, configVersion: 20200911 },
       reloadAfterSetting: { default: true, attr: 'checked', needNotReload: true },
     },
@@ -339,7 +339,7 @@
           }
 
           // 功能性更新后更新此处配置版本
-          if (gm.configVersion < 20200912) {
+          if (gm.configVersion < 20210722) {
             _self.openUserSetting(2)
           } else {
             gm.configVersion = gm.configUpdate
@@ -854,9 +854,9 @@
         const saveConfig = (name, attr) => {
           let val = el[name][attr]
           if (gm.configMap[name].type == 'int') {
-            val = parseInt(val) || gm.configMap[name].default
+            val = (val && !isNaN(val)) ? parseInt(val) : gm.configMap[name].default
           } else if (gm.configMap[name].type == 'float') {
-            val = parseFloat(val) || gm.configMap[name].default
+            val = (val && !isNaN(val)) ? parseFloat(val) : gm.configMap[name].default
           }
           if (gm.config[name] != val) {
             gm.config[name] = val
