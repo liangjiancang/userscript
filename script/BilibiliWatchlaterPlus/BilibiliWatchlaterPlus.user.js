@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.15.0.20210722
+// @version         4.15.1.20210722
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -2442,7 +2442,7 @@
         })
 
         /**
-         * 坐标是否在顶栏内
+         * 鼠标是否在顶栏内
          * @param {MouseEvent} e 事件
          */
         const withinHeader = e => {
