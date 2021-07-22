@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.15.1.20210722
+// @version         4.15.2.20210722
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -2315,9 +2315,12 @@
       if (gm.config.headerCompatible == Enums.headerCompatible.bilibiliEvolved) {
         api.wait.waitQuerySelector('.custom-navbar [data-name=watchlaterList]').then(el => {
           const watchlater = el.parentNode.appendChild(el.cloneNode(true))
+          el.style.display = 'none'
+          const link = watchlater.querySelector('a.main-content')
+          link.href = gm.url.noop
+          link.target = '_self'
           processClickEvent(watchlater)
           processPopup(watchlater)
-          el.style.display = 'none'
           const ob = new MutationObserver((mutations, observer) => {
             for (const mutation of mutations) {
               if (mutation.attributeName) {
@@ -2331,6 +2334,11 @@
           })
           ob.observe(el, { attributes: true })
         })
+        GM_addStyle(`
+          #${gm.id} .gm-entrypopup[gm-compatible] {
+            box-shadow: rgb(0 0 0 / 20%) 0 4px 8px 0;
+          }
+        `)
       } else {
         api.wait.waitQuerySelector('.user-con.signin').then(header => {
           const collect = header.children[4]
@@ -2520,6 +2528,9 @@
             const openLinkInCurrent = gm.config.openHeaderMenuLink == Enums.openHeaderMenuLink.openInCurrent
             const target = openLinkInCurrent ? '_self' : '_blank'
             gm.el.entryPopup = gm.el.gmRoot.appendChild(gm.menu.entryPopup.el)
+            if (gm.config.headerCompatible != Enums.headerCompatible.none) {
+              gm.el.entryPopup.setAttribute('gm-compatible', gm.config.headerCompatible)
+            }
             gm.el.entryPopup.className = 'gm-entrypopup'
             gm.el.entryPopup.innerHTML = `
               <div class="gm-popup-arrow"></div>
@@ -2881,15 +2892,42 @@
 
     /**
      * 填充稍后再看状态
+     * @async
      */
-    fillWatchlaterStatus() {
+    async fillWatchlaterStatus() {
       const _self = this
+      let map = await _self.method.getWatchlaterDataMap(item => String(item.aid), 'aid')
       setTimeout(() => {
         if (api.web.urlMatch(gm.regex.page_dynamicMenu)) { // 必须在动态页之前匹配
           fillWatchlaterStatus_dynamicMenu()
         } else if (api.web.urlMatch(gm.regex.page_dynamic)) {
           if (location.pathname == '/') { // 仅动态主页
-            fillWatchlaterStatus_dynamic()
+            api.wait.waitQuerySelector('.feed-card').then(feed => {
+              api.wait.executeAfterElementLoaded({
+                selector: '.tab',
+                base: feed,
+                multiple: true,
+                callback: tab => {
+                  tab.addEventListener('click', async function() {
+                    map = await _self.method.getWatchlaterDataMap(item => String(item.aid), 'aid', true)
+                    // map 更新期间，ob 偷跑可能会将错误的数据写入，重新遍历并修正之
+                    const videos = feed.querySelectorAll('.video-container')
+                    for (const video of videos) {
+                      const vue = video.__vue__
+                      if (vue) {
+                        const aid = String(vue.aid)
+                        if (map.has(aid)) {
+                          vue.seeLaterStatus = 1
+                        } else {
+                          vue.seeLaterStatus = 0
+                        }
+                      }
+                    }
+                  })
+                },
+              })
+              fillWatchlaterStatus_dynamic()
+            })
           }
         } else if (api.web.urlMatch(gm.regex.page_userSpace)) {
           // 用户空间中也有动态，但用户未必切换到动态子窗口，故需长时间等待
@@ -2928,18 +2966,14 @@
           repeat: true,
           timeout: 0,
           callback: async video => {
-            if (!video._fillWatchlaterStatus) {
-              // 这个 video 未必是最后加入到页面的视频卡片，有可能是作为 Vue 处理过程中的中转元素
-              video._fillWatchlaterStatus = true
-              const vue = video.__vue__ // 此时理应有 Vue 对象，如果没有就说明它可能是中转元素
-              // 但是，即使 video 真是中转元素，也有可能出现存在 __vue__ 的情况，实在没搞懂是什么原理
-              // 总之，只要有 Vue 对象，一率进行处理就不会有问题！
-              if (vue) {
-                const aid = String(vue.aid)
-                const map = await _self.method.getWatchlaterDataMap(item => String(item.aid), 'aid')
-                if (map.has(aid)) {
-                  vue.seeLaterStatus = 1
-                }
+            // 这个 video 未必是最后加入到页面的视频卡片，有可能是作为 Vue 处理过程中的中转元素
+            const vue = video.__vue__ // 此时理应有 Vue 对象，如果没有就说明它可能是中转元素
+            // 但是，即使 video 真是中转元素，也有可能出现存在 __vue__ 的情况，实在没搞懂是什么原理
+            // 总之，只要有 Vue 对象，一率进行处理就不会有问题！
+            if (vue) {
+              const aid = String(vue.aid)
+              if (map.has(aid)) {
+                vue.seeLaterStatus = 1
               }
             }
           },
@@ -2958,18 +2992,11 @@
           repeat: true,
           timeout: 0,
           callback: async video => {
-            if (!video._fillWatchlaterStatus) {
-              // 这个 video 未必是最后加入到页面的视频卡片，有可能是作为 Vue 处理过程中的中转元素
-              video._fillWatchlaterStatus = true
-              const vue = video.__vue__ // 此时理应有 Vue 对象，如果没有就说明它可能是中转元素
-              // 但是，即使 video 真是中转元素，也有可能出现存在 __vue__ 的情况，实在没搞懂是什么原理
-              // 总之，只要有 Vue 对象，一率进行处理就不会有问题！
-              if (vue) {
-                const aid = String(vue.aid)
-                const map = await _self.method.getWatchlaterDataMap(item => String(item.aid), 'aid')
-                if (map.has(aid)) {
-                  vue.added = true
-                }
+            const vue = video.__vue__
+            if (vue) {
+              const aid = String(vue.aid)
+              if (map.has(aid)) {
+                vue.added = true
               }
             }
           },
@@ -2987,15 +3014,11 @@
           repeat: true,
           timeout: 0,
           callback: async video => {
-            if (!video._fillWatchlaterStatus) {
-              video._fillWatchlaterStatus = true
-              const vue = video.__vue__
-              if (vue) {
-                const aid = String(vue.aid)
-                const map = await _self.method.getWatchlaterDataMap(item => String(item.aid), 'aid')
-                if (map.has(aid)) {
-                  vue.added = true
-                }
+            const vue = video.__vue__
+            if (vue) {
+              const aid = String(vue.aid)
+              if (map.has(aid)) {
+                vue.added = true
               }
             }
           },
