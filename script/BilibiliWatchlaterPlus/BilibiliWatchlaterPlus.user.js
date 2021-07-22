@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.15.2.20210722
+// @version         4.15.3.20210722
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -2536,7 +2536,7 @@
               <div class="gm-popup-arrow"></div>
               <div class="gm-popup-header">
                 <div class="gm-popup-search">
-                  <input type="text" placeholder="在列表中搜索...">
+                  <input type="text" placeholder="搜索... 支持形如 /reg/ 的正则表达式">
                   <div class="gm-popup-search-clear">✖</div>
                 </div>
                 <div class="gm-popup-total" title="列表条目数">0</div>
@@ -2574,30 +2574,46 @@
 
             if (gm.config.headerMenuSearch) {
               el.search.oninput = function() {
-                const val = this.value
+                const regex = /^\/.+\/$/.test(this.value)
+                let val = null
+                if (regex) {
+                  try {
+                    val = new RegExp(this.value.slice(1, -1), 'i')
+                  } catch (e) { /* 正则表达式错误，让搜索结果为 0 */ }
+                } else {
+                  val = this.value.toLowerCase()
+                }
+                const match = str => {
+                  if (regex) {
+                    return val && str && val.test(str)
+                  } else {
+                    return str?.toLowerCase().indexOf(val) > -1
+                  }
+                }
                 const lists = [el.entryList, el.entryRemovedList]
-                if (val.length > 0) {
+                if (this.value.length > 0) {
                   el.searchClear.style.visibility = 'visible'
                 } else {
                   el.searchClear.style.visibility = 'hidden'
                 }
-                let cnt = 0
-                for (const list of lists) {
+                const cnt = [0, 0]
+                for (let i = 0; i < lists.length; i++) {
+                  const list = lists[i]
                   if (list.total > 0) {
-                    for (let i = 0; i < list.childElementCount; i++) {
+                    for (let j = 0; j < list.childElementCount; j++) {
                       let valid = false
-                      const card = list.children[i]
-                      if (val.length > 0) {
-                        if (card.title?.indexOf(val) > -1) {
+                      const card = list.children[j]
+                      if (this.value.length > 0) {
+                        if (match(card.title)) {
                           valid = true
-                        } else if (card.uploader?.indexOf(val) > -1) {
+                        } else if (match(card.uploader)) {
                           valid = true
                         }
                       } else {
                         valid = true
                       }
                       if (valid) {
-                        cnt += 1
+                        cnt[i] += 1
                         if (card.searchHide) {
                           api.dom.removeClass(card, 'gm-search-hide')
                           card.searchHide = false
@@ -2612,8 +2628,7 @@
                     list.scrollTop = 0
                   }
                 }
-                const total = lists.reduce((acc, cur) => acc + cur.total, 0)
-                el.popupTotal.innerText = cnt != total ? `${cnt}/${total}` : total
+                el.popupTotal.innerText = `${cnt[0]}${cnt[1] > 0 ? `/${cnt[0] + cnt[1]}` : ''}`
               }
               el.searchClear.onclick = function() {
                 el.search.value = ''
@@ -2841,7 +2856,7 @@
               el.entryRemovedList.style.display = ''
             }
 
-            el.popupTotal.innerText = el.entryList.total + el.entryRemovedList.total
+            el.popupTotal.innerText = `${el.entryList.total}${el.entryRemovedList.total > 0 ? `/${el.entryList.total + el.entryRemovedList.total}` : ''}` 
             if (gm.config.removeHistory && gm.config.removeHistorySavePoint == Enums.removeHistorySavePoint.listAndMenu) {
               _self.method.updateRemoveHistoryData()
             }
@@ -3472,6 +3487,7 @@
           --text-bold-color: #3a3a3a;
           --light-text-color: white;
           --hint-text-color: gray;
+          --light-hint-text-color: #909090;
           --hint-text-emphasis-color: #666666;
           --hint-text-hightlight-color: #555555;
           --background-color: white;
@@ -3547,6 +3563,10 @@
           width: 18em;
           padding-right: 6px;
           color: var(--text-color);
+        }
+        #${gm.id} .gm-entrypopup .gm-popup-search input[type=text]::placeholder {
+          font-size: 0.9em;
+          color: var(--light-hint-text-color);
         }
         #${gm.id} .gm-entrypopup .gm-popup-search-clear {
           display: inline-block;
