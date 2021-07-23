@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站防剧透进度条
-// @version         1.8.10.20210722
+// @version         1.8.11.20210723
 // @namespace       laster2800
 // @author          Laster2800
 // @description     看比赛、看番总是被进度条剧透？装上这个脚本再也不用担心这些问题了
@@ -280,8 +280,9 @@
         uploaderList: updateData => {
           const _ = gm.data._
           if (typeof updateData == 'string') {
-            // 除空行及行尾空白符，注意多行模式「\n」不在「^」「$」之间
-            updateData = updateData.replaceAll(/^\s*$\n/gm, '').replaceAll(/\s+$/gm, '').replace(/\n\s*$/, '')
+            // 注意多行模式「\n」位置为「line$\n^line」，且「\n」是空白符，被视为在下一行「行首」
+            updateData = updateData.replace(/\s+$/gm, '') // 除空行及行尾空白符（有效的换行符被「^」隔断而得以保留），除下面的特殊情况
+              .replace(/^\n/, '') // 移除为作为「\s*$」且有后续的首行的换行符，此时该换行符被视为在第二行「行首」
             GM_setValue('uploaderList', updateData)
             _.uploaderListSet = null
             return updateData
@@ -1768,7 +1769,7 @@
                 this.removeAttribute('enabled')
                 if (ulSet.has(uid)) {
                   let ul = gm.data.uploaderList()
-                  ul = ul.replaceAll(new RegExp(String.raw`^${uid}(?=\D|$).*\n?`, 'gm'), '')
+                  ul = ul.replace(new RegExp(String.raw`^${uid}(?=\D|$).*\n?`, 'gm'), '')
                   gm.data.uploaderList(ul)
                 }
               }
