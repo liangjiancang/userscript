@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.15.3.20210722
+// @version         4.15.4.20210723
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -552,7 +552,7 @@
                   }
                 }
                 GM_setValue('watchlaterListCacheTime', new Date().getTime())
-                if (gm.config.headerMenu == Enums.headerMenu.enable) {
+                if (gm.config.headerButton && gm.config.headerMenu == Enums.headerMenu.enable) {
                   GM_setValue('watchlaterListCache', current.map(item => {
                     return {
                       ...base(item),
@@ -1355,6 +1355,13 @@
          * 设置保存时执行
          */
         const onSave = () => {
+          // 预处理
+          if (gm.config.headerButton != el.headerButton.checked) {
+            // 会引起 headerMenu 生效或失效
+            GM_deleteValue('watchlaterListCacheTime')
+            GM_deleteValue('watchlaterListCache')
+          }
+
           // 通用处理
           for (const name in gm.configMap) {
             const cfg = gm.configMap[name]
@@ -2335,7 +2342,7 @@
           ob.observe(el, { attributes: true })
         })
         GM_addStyle(`
-          #${gm.id} .gm-entrypopup[gm-compatible] {
+          #${gm.id} .gm-entrypopup[gm-compatible] .gm-entrypopup-page {
             box-shadow: rgb(0 0 0 / 20%) 0 4px 8px 0;
           }
         `)
@@ -2469,7 +2476,7 @@
           if (gm.config.hideDisabledSubitems) {
             popup.style.position = api.dom.isFixed(watchlater.parentNode) ? 'fixed' : ''
           }
-          popup.style.top = `calc(${api.dom.getElementTop(watchlater) + watchlater.offsetHeight}px + 1em)`
+          popup.style.top = `${api.dom.getElementTop(watchlater) + watchlater.offsetHeight}px`
           popup.style.left = `calc(${api.dom.getElementLeft(watchlater) + watchlater.offsetWidth / 2}px - 16em)`
           openEntryPopup()
         }
@@ -2533,23 +2540,25 @@
             }
             gm.el.entryPopup.className = 'gm-entrypopup'
             gm.el.entryPopup.innerHTML = `
-              <div class="gm-popup-arrow"></div>
-              <div class="gm-popup-header">
-                <div class="gm-popup-search">
-                  <input type="text" placeholder="搜索... 支持形如 /reg/ 的正则表达式">
-                  <div class="gm-popup-search-clear">✖</div>
+              <div class="gm-entrypopup-page">
+                <div class="gm-popup-arrow"></div>
+                <div class="gm-popup-header">
+                  <div class="gm-popup-search">
+                    <input type="text" placeholder="在列表中搜索... 支持通配符 ( ? * )">
+                    <div class="gm-popup-search-clear">✖</div>
+                  </div>
+                  <div class="gm-popup-total" title="列表条目数">0</div>
                 </div>
-                <div class="gm-popup-total" title="列表条目数">0</div>
-              </div>
-              <div class="gm-entry-list"></div>
-              <div class="gm-entry-list gm-entry-removed-list"></div>
-              <div class="gm-entry-bottom">
-                <a class="gm-entry-button" fn="setting" href="${gm.url.noop}">设置</a>
-                <a class="gm-entry-button" fn="history" href="${gm.url.noop}">历史</a>
-                <a class="gm-entry-button" fn="removeAll" href="${gm.url.noop}">清空</a>
-                <a class="gm-entry-button" fn="removeWatched" href="${gm.url.noop}">移除已看</a>
-                <a class="gm-entry-button" fn="showAll" href="${gm.url.page_watchlaterList}" target="${target}">显示</a>
-                <a class="gm-entry-button" fn="playAll" href="${gm.url.page_watchlaterPlayAll}" target="${target}">播放</a>
+                <div class="gm-entry-list"></div>
+                <div class="gm-entry-list gm-entry-removed-list"></div>
+                <div class="gm-entry-bottom">
+                  <a class="gm-entry-button" fn="setting" href="${gm.url.noop}">设置</a>
+                  <a class="gm-entry-button" fn="history" href="${gm.url.noop}">历史</a>
+                  <a class="gm-entry-button" fn="removeAll" href="${gm.url.noop}">清空</a>
+                  <a class="gm-entry-button" fn="removeWatched" href="${gm.url.noop}">移除已看</a>
+                  <a class="gm-entry-button" fn="showAll" href="${gm.url.page_watchlaterList}" target="${target}">显示</a>
+                  <a class="gm-entry-button" fn="playAll" href="${gm.url.page_watchlaterPlayAll}" target="${target}">播放</a>
+                </div>
               </div>
             `
             el.entryList = gm.el.entryPopup.querySelector('.gm-entry-list')
@@ -2574,27 +2583,24 @@
 
             if (gm.config.headerMenuSearch) {
               el.search.oninput = function() {
-                const regex = /^\/.+\/$/.test(this.value)
-                let val = null
-                if (regex) {
-                  try {
-                    val = new RegExp(this.value.slice(1, -1), 'i')
-                  } catch (e) { /* 正则表达式错误，让搜索结果为 0 */ }
-                } else {
-                  val = this.value.toLowerCase()
+                if (/^\s+/.test(this.value)) {
+                  this.value = this.value.replace(/^\s+/, '')
                 }
-                const match = str => {
-                  if (regex) {
-                    return val && str && val.test(str)
-                  } else {
-                    return str?.toLowerCase().indexOf(val) > -1
-                  }
-                }
+                let val = this.value.trim()
+                const match = str => str && val?.test(str)
                 const lists = [el.entryList, el.entryRemovedList]
-                if (this.value.length > 0) {
+                if (val.length > 0) {
                   el.searchClear.style.visibility = 'visible'
+                  try {
+                    val = val.replace(/[.+^${}()|[\]\\]/g, '\\$&') // escape reg
+                      .replaceAll('?', '.').replaceAll('*', '.+') // 通配符
+                    val = new RegExp(val, 'i')
+                  } catch (e) {
+                    val = null
+                  }
                 } else {
                   el.searchClear.style.visibility = 'hidden'
+                  val = null
                 }
                 const cnt = [0, 0]
                 for (let i = 0; i < lists.length; i++) {
@@ -2603,7 +2609,7 @@
                     for (let j = 0; j < list.childElementCount; j++) {
                       let valid = false
                       const card = list.children[j]
-                      if (this.value.length > 0) {
+                      if (val) {
                         if (match(card.title)) {
                           valid = true
                         } else if (match(card.uploader)) {
@@ -2856,7 +2862,7 @@
               el.entryRemovedList.style.display = ''
             }
 
-            el.popupTotal.innerText = `${el.entryList.total}${el.entryRemovedList.total > 0 ? `/${el.entryList.total + el.entryRemovedList.total}` : ''}` 
+            el.popupTotal.innerText = `${el.entryList.total}${el.entryRemovedList.total > 0 ? `/${el.entryList.total + el.entryRemovedList.total}` : ''}`
             if (gm.config.removeHistory && gm.config.removeHistorySavePoint == Enums.removeHistorySavePoint.listAndMenu) {
               _self.method.updateRemoveHistoryData()
             }
@@ -3526,8 +3532,11 @@
           position: absolute;
           z-index: 15000;
           user-select: none;
-          border-radius: 4px;
           width: 32em;
+          padding-top: 1em;
+        }
+        #${gm.id} .gm-entrypopup .gm-entrypopup-page {
+          border-radius: 4px;
           border: none;
           box-shadow: var(--box-shadow-color) 0px 3px 6px;
           background-color: var(--background-color);
@@ -3535,7 +3544,7 @@
         #${gm.id} .gm-entrypopup .gm-popup-arrow {
           position: absolute;
           z-index: -1;
-          top: -14px;
+          top: -2px;
           left: calc(16em - 7px);
           width: 0;
           height: 0;
