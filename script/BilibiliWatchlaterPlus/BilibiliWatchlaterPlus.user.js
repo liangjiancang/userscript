@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.15.4.20210723
+// @version         4.16.0.20210723
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -163,6 +163,7 @@
    * @property {openHeaderMenuLink} openHeaderMenuLink 顶栏弹出菜单链接点击行为
    * @property {menuScrollbarSetting} menuScrollbarSetting 弹出菜单的滚动条设置
    * @property {boolean} headerMenuSearch 弹出菜单搜索框
+   * @property {boolean} headerMenuAutoRemoveControl 在弹出菜单底部显示自动移除控制
    * @property {boolean} headerMenuFnSetting 弹出菜单：设置
    * @property {boolean} headerMenuFnHistory 弹出菜单：历史
    * @property {boolean} headerMenuFnRemoveAll 弹出菜单：清空
@@ -308,7 +309,7 @@
   const gm = {
     id: gmId,
     configVersion: GM_getValue('configVersion'),
-    configUpdate: 20210722,
+    configUpdate: 20210723,
     searchParams: new URL(location.href).searchParams,
     config: {},
     configMap: {
@@ -320,10 +321,11 @@
       openHeaderMenuLink: { default: Enums.openHeaderMenuLink.openInCurrent, attr: 'value', configVersion: 20200717 },
       menuScrollbarSetting: { default: Enums.menuScrollbarSetting.beautify, attr: 'value', configVersion: 20200722 },
       headerMenuSearch: { default: true, attr: 'checked', configVersion: 20210323.1 },
+      headerMenuAutoRemoveControl: { default: true, attr: 'checked', configVersion: 20210723 },
       headerMenuFnSetting: { default: true, attr: 'checked', configVersion: 20210322 },
       headerMenuFnHistory: { default: true, attr: 'checked', configVersion: 20210322 },
       headerMenuFnRemoveAll: { default: false, attr: 'checked', configVersion: 20210322 },
-      headerMenuFnRemoveWatched: { default: true, attr: 'checked', configVersion: 20210323 },
+      headerMenuFnRemoveWatched: { default: false, attr: 'checked', configVersion: 20210723 },
       headerMenuFnShowAll: { default: false, attr: 'checked', configVersion: 20210322 },
       headerMenuFnPlayAll: { default: true, attr: 'checked', configVersion: 20210322 },
       headerCompatible: { default: Enums.headerCompatible.none, attr: 'value', configVersion: 20210721 },
@@ -643,7 +645,7 @@
           }
 
           // 功能性更新后更新此处配置版本
-          if (gm.configVersion < 20210722) {
+          if (gm.configVersion < 20210723) {
             _self.openUserSetting(2)
           } else {
             gm.configVersion = gm.configUpdate
@@ -734,7 +736,7 @@
               <div class="gm-items">
                 <table>
                   <tr class="gm-item" title="在顶栏「动态」和「收藏」之间加入稍后再看入口，鼠标移至上方时弹出列表菜单，支持点击功能设置。">
-                    <td rowspan="10"><div>全局功能</div></td>
+                    <td rowspan="11"><div>全局功能</div></td>
                     <td>
                       <label>
                         <span>在顶栏中加入稍后再看入口</span>
@@ -806,6 +808,14 @@
                       <label>
                         <span>在弹出菜单顶部显示搜索框</span>
                         <input id="gm-headerMenuSearch" type="checkbox">
+                      </label>
+                    </td>
+                  </tr>
+                  <tr class="gm-subitem" title="在弹出菜单底部显示自动移除控制。">
+                    <td>
+                      <label>
+                        <span>在弹出菜单底部显示自动移除控制</span>
+                        <input id="gm-headerMenuAutoRemoveControl" type="checkbox">
                       </label>
                     </td>
                   </tr>
@@ -952,7 +962,7 @@
                         <select id="gm-autoRemove">
                           <option value="${Enums.autoRemove.always}">若视频在稍后再看中，则移除出稍后再看</option>
                           <option value="${Enums.autoRemove.openFromList}">若是从列表页面或弹出菜单列表点击进入，则移除出稍后再看</option>
-                          <option value="${Enums.autoRemove.never}">不执行自动移除功能，但在列表页面中可临时开启功能</option>
+                          <option value="${Enums.autoRemove.never}">不执行自动移除功能，但可临时开启功能</option>
                           <option value="${Enums.autoRemove.absoluteNever}">彻底禁用自动移除功能</option>
                         </select>
                       </div>
@@ -1206,7 +1216,7 @@
           }
           el.headerMenuFn = el.headerMenuFnSetting.parentNode.parentNode
           el.headerButton.init = function() {
-            subitemChange(this, [el.headerButtonOpL, el.headerButtonOpR, el.headerButtonOpM, el.headerMenu, el.openHeaderMenuLink, el.menuScrollbarSetting, el.headerMenuSearch, el.headerMenuFnSetting, el.headerMenuFnHistory, el.headerMenuFnRemoveAll, el.headerMenuFnRemoveWatched, el.headerMenuFnShowAll, el.headerMenuFnPlayAll, el.headerCompatible])
+            subitemChange(this, [el.headerButtonOpL, el.headerButtonOpR, el.headerButtonOpM, el.headerMenu, el.openHeaderMenuLink, el.menuScrollbarSetting, el.headerMenuSearch, el.headerMenuAutoRemoveControl, el.headerMenuFnSetting, el.headerMenuFnHistory, el.headerMenuFnRemoveAll, el.headerMenuFnRemoveWatched, el.headerMenuFnShowAll, el.headerMenuFnPlayAll, el.headerCompatible])
             if (this.checked) {
               el.headerMenuFn.removeAttribute('disabled')
             } else {
@@ -2549,20 +2559,23 @@
                   </div>
                   <div class="gm-popup-total" title="列表条目数">0</div>
                 </div>
+                <div class="gm-entry-list-empty">稍后再看列表为空</div>
                 <div class="gm-entry-list"></div>
                 <div class="gm-entry-list gm-entry-removed-list"></div>
                 <div class="gm-entry-bottom">
-                  <a class="gm-entry-button" fn="setting" href="${gm.url.noop}">设置</a>
-                  <a class="gm-entry-button" fn="history" href="${gm.url.noop}">历史</a>
-                  <a class="gm-entry-button" fn="removeAll" href="${gm.url.noop}">清空</a>
-                  <a class="gm-entry-button" fn="removeWatched" href="${gm.url.noop}">移除已看</a>
+                  <a class="gm-entry-button" fn="setting" href="${gm.url.noop}" target="_self">设置</a>
+                  <a class="gm-entry-button" fn="history" href="${gm.url.noop}" target="_self">历史</a>
+                  <a class="gm-entry-button" fn="removeAll" href="${gm.url.noop}" target="_self">清空</a>
+                  <a class="gm-entry-button" fn="removeWatched" href="${gm.url.noop}" target="_self">移除已看</a>
                   <a class="gm-entry-button" fn="showAll" href="${gm.url.page_watchlaterList}" target="${target}">显示</a>
                   <a class="gm-entry-button" fn="playAll" href="${gm.url.page_watchlaterPlayAll}" target="${target}">播放</a>
+                  <a class="gm-entry-button" fn="autoRemoveControl" href="${gm.url.noop}" target="_self">自动移除</a>
                 </div>
               </div>
             `
             el.entryList = gm.el.entryPopup.querySelector('.gm-entry-list')
             el.entryRemovedList = gm.el.entryPopup.querySelector('.gm-entry-removed-list')
+            el.entryListEmpty = gm.el.entryPopup.querySelector('.gm-entry-list-empty')
             el.entryHeader = gm.el.entryPopup.querySelector('.gm-popup-header')
             el.search = gm.el.entryPopup.querySelector('.gm-popup-search input')
             el.searchClear = gm.el.entryPopup.querySelector('.gm-popup-search-clear')
@@ -2577,6 +2590,9 @@
             gm.menu.entryPopup.openHandler = onOpen
             gm.menu.entryPopup.openedHandler = () => {
               gm.config.headerMenuSearch && el.search.focus()
+              if (el.search.value.length > 0) {
+                el.search.oninput()
+              }
               el.entryList.scrollTop = 0
               el.entryRemovedList.scrollTop = 0
             }
@@ -2635,6 +2651,11 @@
                   }
                 }
                 el.popupTotal.innerText = `${cnt[0]}${cnt[1] > 0 ? `/${cnt[0] + cnt[1]}` : ''}`
+                if (cnt[0]) {
+                  el.entryListEmpty.style.display = 'none'
+                } else {
+                  el.entryListEmpty.style.display = 'unset'
+                }
               }
               el.searchClear.onclick = function() {
                 el.search.value = ''
@@ -2652,6 +2673,34 @@
                 el.entryFn[fn] = button
               }
             }
+            // 自动移除控制
+            const cfgAutoRemove = gm.config.autoRemove
+            const autoRemove = cfgAutoRemove == Enums.autoRemove.always || cfgAutoRemove == Enums.autoRemove.openFromList
+            el.entryFn.autoRemoveControl.autoRemove = autoRemove
+            if (gm.config.headerMenuAutoRemoveControl) {
+              if (cfgAutoRemove == Enums.autoRemove.absoluteNever) {
+                el.entryFn.autoRemoveControl.setAttribute('disabled', '')
+                el.entryFn.autoRemoveControl.addEventListener('click', function() {
+                  api.message.create('当前彻底自动移除功能，无法执行操作')
+                })
+              } else {
+                if (autoRemove) {
+                  api.dom.addClass(el.entryFn.autoRemoveControl, 'gm-popup-auto-remove')
+                }
+                el.entryFn.autoRemoveControl.addEventListener('click', function() {
+                  if (this.autoRemove) {
+                    api.dom.removeClass(this, 'gm-popup-auto-remove')
+                    api.message.create('已临时关闭自动移除功能')
+                  } else {
+                    api.dom.addClass(this, 'gm-popup-auto-remove')
+                    api.message.create('已临时开启自动移除功能')
+                  }
+                  this.autoRemove = !this.autoRemove
+                })
+              }
+              el.entryFn.autoRemoveControl.setAttribute('enabled', '')
+            }
+            // 常规项
             if (gm.config.headerMenuFnSetting) {
               el.entryFn.setting.setAttribute('enabled', '')
               el.entryFn.setting.addEventListener('click', () => script.openUserSetting())
@@ -2698,7 +2747,6 @@
                 rmBvid.add(rmCard.bvid)
               }
             }
-            el.search.value = ''
             el.searchClear.style.visibility = 'hidden'
             el.popupTotal.innerText = '0'
             el.entryList.innerHTML = ''
@@ -2716,7 +2764,7 @@
             if (data.length > 0) {
               const openLinkInCurrent = gm.config.openHeaderMenuLink == Enums.openHeaderMenuLink.openInCurrent
               const redirect = gm.config.redirect
-              const autoRemove = gm.config.autoRemove == Enums.autoRemove.always || gm.config.autoRemove == Enums.autoRemove.openFromList
+              const autoRemoveControl = el.entryFn.autoRemoveControl
               for (const item of data) {
                 /** @type {HTMLAnchorElement} */
                 const card = el.entryList.appendChild(document.createElement('a'))
@@ -2758,7 +2806,7 @@
                     <div class="gm-card-right" title>
                       <div class="gm-card-title">${valid ? card.title : `<b>[已失效]</b> ${card.title}`}</div>
                       <div class="gm-card-uploader">${card.uploader}</div>
-                      <div class="gm-card-progress" title="已观看">${progress}</div>
+                      <div class="gm-card-progress" title="播放进度">${progress}</div>
                     </div>
                   `
                   if (played) {
@@ -2808,17 +2856,41 @@
                   } else {
                     card.href = `${gm.url.page_videoWatchlaterMode}/${item.bvid}`
                   }
-                  if (autoRemove) {
-                    card.href = card.href + `?${gm.id}_remove=true`
-                    card.addEventListener('mouseup', function(e) {
-                      if (!simplePopup) {
-                        if (!card.added) return
-                        if (api.dom.containsClass(e.target, ['gm-card-switcher', 'gm-card-uploader'])) return
-                      }
-                      el.entryList.needReload = true
+                  if (gm.config.autoRemove != Enums.autoRemove.absoluteNever) {
+                    card._originalHref = card.href
+                    card.addEventListener('mousedown', function(e) {
                       if (e.button == 0 || e.button == 1) { // 左键或中键
-                        api.dom.addClass(card, 'gm-removed')
-                        card.added = false
+                        if (!simplePopup && api.dom.containsClass(e.target, ['gm-card-switcher', 'gm-card-uploader'])) return
+                        if (autoRemoveControl.autoRemove) {
+                          if (gm.config.autoRemove != Enums.autoRemove.always) {
+                            const url = new URL(this.href)
+                            url.searchParams.set(`${gm.id}_remove`, 'true')
+                            this.href = url.href
+                          } else {
+                            this.href = this._originalHref
+                          }
+                        } else {
+                          if (gm.config.autoRemove == Enums.autoRemove.always) {
+                            const url = new URL(this.href)
+                            url.searchParams.set(`${gm.id}_disable_remove`, 'true')
+                            this.href = url.href
+                          } else {
+                            this.href = this._originalHref
+                          }
+                        }
+                      }
+                    })
+                    card.addEventListener('mouseup', function(e) {
+                      if (e.button == 0 || e.button == 1) { // 左键或中键
+                        if (!simplePopup) {
+                          if (!card.added) return
+                          if (api.dom.containsClass(e.target, ['gm-card-switcher', 'gm-card-uploader'])) return
+                        }
+                        if (autoRemoveControl.autoRemove) {
+                          el.entryList.needReload = true
+                          api.dom.addClass(card, 'gm-removed')
+                          card.added = false
+                        }
                       }
                     })
                   }
@@ -2830,7 +2902,7 @@
               }
               el.entryList.total = data.length
             } else {
-              el.entryList.innerHTML = '<div class="gm-entry-list-empty">稍后再看列表为空</div>'
+              el.entryListEmpty.style.display = 'unset'
             }
 
             // 添加已移除视频
@@ -3197,17 +3269,27 @@
       if (gm.config.autoRemove != Enums.autoRemove.absoluteNever) {
         autoRemoveButton = await api.wait.waitQuerySelector('#gm-auto-remove')
       }
-      const watchLaterList = await api.wait.waitQuerySelector('.watch-later-list')
+      const listBox = await api.wait.waitQuerySelector('.watch-later-list .list-box')
+      const elTotal = await api.wait.waitQuerySelector('header .t em')
       api.wait.executeAfterElementLoaded({
-        selector: '.list-box a:not([class=user])',
-        base: watchLaterList,
+        selector: 'a:not([class=user])',
+        base: listBox,
         multiple: true,
         repeat: true,
         timeout: 0,
-        callback: link => {
-          processLink(link, autoRemoveButton)
-        },
+        callback: link => processLink(link, autoRemoveButton),
       })
+      const ob = new MutationObserver(() => setTimeout(updateTotal, 100))
+      ob.observe(listBox.firstElementChild, { childList: true })
+
+      /**
+       * 更新列表上方的视频总数统计
+       */
+      const updateTotal = () => {
+        const all = listBox.firstElementChild.children.length
+        const total = all - listBox.querySelectorAll('.gm-watchlater-item-deleted').length
+        elTotal.innerText = `（${total}/${all}/100）`
+      }
 
       /**
        * 根据 `autoRemove` 处理链接
@@ -3218,7 +3300,7 @@
         link.target = gm.config.openListVideo == Enums.openListVideo.openInCurrent ? '_self' : '_blank'
         if (arb) {
           let base = link
-          while (base.className.split(' ').indexOf('av-item') < 0) {
+          while (!api.dom.containsClass(base, 'av-item')) {
             base = base.parentNode
             if (!base) {
               return
@@ -3227,17 +3309,24 @@
           if (link.href && gm.regex.page_videoWatchlaterMode.test(link.href)) { // 视频被和谐或其他特殊情况
             link.addEventListener('mousedown', function(e) {
               if (e.button == 0 || e.button == 1) { // 左键或中键
+                if (!this._originalHref) {
+                  this._originalHref = this.href
+                }
                 if (arb.autoRemove) {
                   if (gm.config.autoRemove != Enums.autoRemove.always) {
-                    const url = new URL(link.href)
+                    const url = new URL(this.href)
                     url.searchParams.set(`${gm.id}_remove`, 'true')
-                    link.href = url.href
+                    this.href = url.href
+                  } else {
+                    this.href = this._originalHref
                   }
                 } else {
                   if (gm.config.autoRemove == Enums.autoRemove.always) {
-                    const url = new URL(link.href)
+                    const url = new URL(this.href)
                     url.searchParams.set(`${gm.id}_disable_remove`, 'true')
-                    link.href = url.href
+                    this.href = url.href
+                  } else {
+                    this.href = this._originalHref
                   }
                 }
               }
@@ -3246,8 +3335,9 @@
             link.addEventListener('mouseup', function(e) {
               if (e.button == 0 || e.button == 1) { // 左键或中键
                 if (arb.autoRemove) {
-                  base.style.display = 'none'
+                  api.dom.addClass(base, 'gm-watchlater-item-deleted')
                 }
+                updateTotal()
               }
             })
           }
@@ -3398,8 +3488,10 @@
         autoRemoveButton.onclick = function() {
           if (this.autoRemove) {
             api.dom.removeClass(this, 'gm-s-btn-enabled')
+            api.message.create('已临时关闭自动移除功能')
           } else {
-            api.dom.addClass(autoRemoveButton, 'gm-s-btn-enabled')
+            api.dom.addClass(this, 'gm-s-btn-enabled')
+            api.message.create('已临时开启自动移除功能')
           }
           this.autoRemove = !this.autoRemove
         }
@@ -3536,6 +3628,7 @@
           padding-top: 1em;
         }
         #${gm.id} .gm-entrypopup .gm-entrypopup-page {
+          position: relative;
           border-radius: 4px;
           border: none;
           box-shadow: var(--box-shadow-color) 0px 3px 6px;
@@ -3544,7 +3637,7 @@
         #${gm.id} .gm-entrypopup .gm-popup-arrow {
           position: absolute;
           z-index: -1;
-          top: -2px;
+          top: -14px;
           left: calc(16em - 7px);
           width: 0;
           height: 0;
@@ -3602,9 +3695,10 @@
           border-top: 3px solid var(--light-border-color);
           display: none;
         }
-        #${gm.id} .gm-entrypopup .gm-entry-list .gm-entry-list-empty {
+        #${gm.id} .gm-entrypopup .gm-entry-list-empty {
           position: absolute;
-          top: calc(50% - 2em);
+          display: none;
+          top: 20%;
           left: calc(50% - 7em);
           line-height: 4em;
           width: 14em;
@@ -3761,6 +3855,19 @@
         }
         #${gm.id} .gm-entrypopup .gm-entry-bottom .gm-entry-button:not([enabled]) {
           display: none;
+        }
+        #${gm.id} .gm-entrypopup .gm-entry-bottom .gm-entry-button[disabled],
+        #${gm.id} .gm-entrypopup .gm-entry-bottom .gm-entry-button[disabled]:hover {
+          color: var(--disabled-color);
+          cursor: not-allowed;
+        }
+
+        #${gm.id} .gm-entrypopup .gm-entry-bottom .gm-entry-button[fn=autoRemoveControl]:not([disabled]),
+        #${gm.id} .gm-entrypopup .gm-entry-bottom .gm-entry-button[fn=autoRemoveControl]:not([disabled]):hover {
+          color: var(--text-color);
+        }
+        #${gm.id} .gm-entrypopup .gm-entry-bottom .gm-entry-button.gm-popup-auto-remove[fn=autoRemoveControl] {
+          color: var(--hightlight-color);
         }
 
         #${gm.id} .gm-entrypopup .gm-entry-list .gm-entry-list-item:hover,
@@ -4157,6 +4264,15 @@
         #${gm.id} .gm-setting .gm-items::-webkit-scrollbar-corner,
         #${gm.id} .gm-history .gm-content::-webkit-scrollbar-corner {
           background-color: var(--scrollbar-background-color);
+        }
+
+        .gm-watchlater-item-deleted {
+          filter: grayscale(1);
+          border-radius: 5px;
+        }
+        .gm-watchlater-item-deleted .t,
+        .gm-watchlater-item-deleted .t:hover {
+          text-decoration: line-through;
         }
       `)
     }
