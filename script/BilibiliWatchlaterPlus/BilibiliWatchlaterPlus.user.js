@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.16.0.20210723
+// @version         4.16.1.20210723
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -2626,7 +2626,7 @@
                       let valid = false
                       const card = list.children[j]
                       if (val) {
-                        if (match(card.title)) {
+                        if (match(card.vTitle)) {
                           valid = true
                         } else if (match(card.uploader)) {
                           valid = true
@@ -2769,7 +2769,7 @@
                 /** @type {HTMLAnchorElement} */
                 const card = el.entryList.appendChild(document.createElement('a'))
                 const valid = item.state >= 0
-                card.title = item.title
+                card.vTitle = item.title
                 card.bvid = item.bvid
                 if (rmBvid?.size > 0) {
                   if (rmBvid.has(card.bvid)) {
@@ -2778,9 +2778,9 @@
                 }
                 if (simplePopup) {
                   if (valid) {
-                    card.innerText = card.title
+                    card.innerText = card.vTitle
                   } else {
-                    card.innerHTML = `<b>[已失效]</b> ${card.title}`
+                    card.innerHTML = `<b>[已失效]</b> ${card.vTitle}`
                   }
                   card.className = 'gm-entry-list-simple-item'
                 } else {
@@ -2798,15 +2798,15 @@
                   }
                   card.className = 'gm-entry-list-item'
                   card.innerHTML = `
-                    <div class="gm-card-left" title>
+                    <div class="gm-card-left">
                       <img class="gm-card-cover" src="${item.pic}@156w_88h_1c_100q.webp">
                       <div class="gm-card-switcher"></div>
                       <div class="gm-card-duration">${duration}</div>
                     </div>
-                    <div class="gm-card-right" title>
-                      <div class="gm-card-title">${valid ? card.title : `<b>[已失效]</b> ${card.title}`}</div>
+                    <div class="gm-card-right">
+                      <div class="gm-card-title">${valid ? card.vTitle : `<b>[已失效]</b> ${card.vTitle}`}</div>
                       <div class="gm-card-uploader">${card.uploader}</div>
-                      <div class="gm-card-progress" title="播放进度">${progress}</div>
+                      <div class="gm-card-progress">${progress}</div>
                     </div>
                   `
                   if (played) {
@@ -3709,7 +3709,6 @@
 
         #${gm.id} .gm-entrypopup .gm-entry-list .gm-entry-list-item {
           display: flex;
-          flex-shrink: 0;
           height: 4.4em;
           padding: 0.5em 1em;
           color: var(--text-color);
@@ -3726,7 +3725,7 @@
         }
         #${gm.id} .gm-entrypopup .gm-entry-list .gm-entry-list-item .gm-card-left {
           position: relative;
-          flex-shrink: 0;
+          flex: 0;
           cursor: default;
         }
         #${gm.id} .gm-entrypopup .gm-entry-list .gm-entry-list-item .gm-card-cover {
@@ -3767,8 +3766,8 @@
           position: relative;
           display: flex;
           flex-direction: column;
-          flex-shrink: 0;
           justify-content: space-between;
+          flex: 1;
           margin-left: 0.8em;
         }
         #${gm.id} .gm-entrypopup .gm-entry-list .gm-entry-list-item .gm-card-title {
@@ -3779,7 +3778,6 @@
           text-overflow: ellipsis;
           word-break: break-all;
           text-align: justify;
-          width: 16.8em;
           height: 2.8em;
         }
         #${gm.id} .gm-entrypopup .gm-entry-list .gm-entry-list-item.gm-removed .gm-card-title {
@@ -4505,16 +4503,16 @@
     }
 
     webpage.method.cleanSearchParams()
-    // 脚本的其他部分推迟至 DOMContentLoaded 执行
+    // 脚本的其他部分推迟至 DOMContentLoaded 事件执行
     document.addEventListener('DOMContentLoaded', function() {
       script.init()
       script.addScriptMenu()
 
+      // 全局修改
       if (gm.config.fillWatchlaterStatus != Enums.fillWatchlaterStatus.never) {
         webpage.fillWatchlaterStatus()
       }
-      // 非特殊页面
-      if (!api.web.urlMatch(gm.regex.page_dynamicMenu)) {
+      if (!api.web.urlMatch(gm.regex.page_dynamicMenu)) { // 排除特殊页面
         if (gm.config.headerButton) {
           webpage.addHeaderButton()
         }
