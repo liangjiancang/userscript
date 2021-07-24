@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.16.1.20210723
+// @version         4.16.2.20210724
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -162,8 +162,9 @@
    * @property {headerMenu} headerMenu 顶栏入口弹出菜单设置
    * @property {openHeaderMenuLink} openHeaderMenuLink 顶栏弹出菜单链接点击行为
    * @property {menuScrollbarSetting} menuScrollbarSetting 弹出菜单的滚动条设置
+   * @property {boolean} headerMenuKeepRemoved 弹出菜单保留被移除视频
    * @property {boolean} headerMenuSearch 弹出菜单搜索框
-   * @property {boolean} headerMenuAutoRemoveControl 在弹出菜单底部显示自动移除控制
+   * @property {boolean} headerMenuAutoRemoveControl 弹出菜单自动移除控制
    * @property {boolean} headerMenuFnSetting 弹出菜单：设置
    * @property {boolean} headerMenuFnHistory 弹出菜单：历史
    * @property {boolean} headerMenuFnRemoveAll 弹出菜单：清空
@@ -309,7 +310,7 @@
   const gm = {
     id: gmId,
     configVersion: GM_getValue('configVersion'),
-    configUpdate: 20210723,
+    configUpdate: 20210724,
     searchParams: new URL(location.href).searchParams,
     config: {},
     configMap: {
@@ -320,6 +321,7 @@
       headerMenu: { default: Enums.headerMenu.enable, attr: 'value', manual: true, configVersion: 20210706 },
       openHeaderMenuLink: { default: Enums.openHeaderMenuLink.openInCurrent, attr: 'value', configVersion: 20200717 },
       menuScrollbarSetting: { default: Enums.menuScrollbarSetting.beautify, attr: 'value', configVersion: 20200722 },
+      headerMenuKeepRemoved: { default: true, attr: 'checked', needNotReload: true, configVersion: 20210724 },
       headerMenuSearch: { default: true, attr: 'checked', configVersion: 20210323.1 },
       headerMenuAutoRemoveControl: { default: true, attr: 'checked', configVersion: 20210723 },
       headerMenuFnSetting: { default: true, attr: 'checked', configVersion: 20210322 },
@@ -645,7 +647,7 @@
           }
 
           // 功能性更新后更新此处配置版本
-          if (gm.configVersion < 20210723) {
+          if (gm.configVersion < 20210724) {
             _self.openUserSetting(2)
           } else {
             gm.configVersion = gm.configUpdate
@@ -736,7 +738,7 @@
               <div class="gm-items">
                 <table>
                   <tr class="gm-item" title="在顶栏「动态」和「收藏」之间加入稍后再看入口，鼠标移至上方时弹出列表菜单，支持点击功能设置。">
-                    <td rowspan="11"><div>全局功能</div></td>
+                    <td rowspan="12"><div>全局功能</div></td>
                     <td>
                       <label>
                         <span>在顶栏中加入稍后再看入口</span>
@@ -801,6 +803,14 @@
                           <option value="${Enums.menuScrollbarSetting.original}">维持官方的滚动条样式</option>
                         </select>
                       </div>
+                    </td>
+                  </tr>
+                  <tr class="gm-subitem" title="在弹出菜单中显示自页面打开以来，从弹出菜单移除的视频。">
+                    <td>
+                      <label>
+                        <span>在弹出菜单中显示被移除的视频</span>
+                        <input id="gm-headerMenuKeepRemoved" type="checkbox">
+                      </label>
                     </td>
                   </tr>
                   <tr class="gm-subitem" title="在弹出菜单顶部显示搜索框。">
@@ -1216,7 +1226,7 @@
           }
           el.headerMenuFn = el.headerMenuFnSetting.parentNode.parentNode
           el.headerButton.init = function() {
-            subitemChange(this, [el.headerButtonOpL, el.headerButtonOpR, el.headerButtonOpM, el.headerMenu, el.openHeaderMenuLink, el.menuScrollbarSetting, el.headerMenuSearch, el.headerMenuAutoRemoveControl, el.headerMenuFnSetting, el.headerMenuFnHistory, el.headerMenuFnRemoveAll, el.headerMenuFnRemoveWatched, el.headerMenuFnShowAll, el.headerMenuFnPlayAll, el.headerCompatible])
+            subitemChange(this, [el.headerButtonOpL, el.headerButtonOpR, el.headerButtonOpM, el.headerMenu, el.openHeaderMenuLink, el.menuScrollbarSetting, el.headerMenuKeepRemoved, el.headerMenuSearch, el.headerMenuAutoRemoveControl, el.headerMenuFnSetting, el.headerMenuFnHistory, el.headerMenuFnRemoveAll, el.headerMenuFnRemoveWatched, el.headerMenuFnShowAll, el.headerMenuFnPlayAll, el.headerCompatible])
             if (this.checked) {
               el.headerMenuFn.removeAttribute('disabled')
             } else {
@@ -2591,20 +2601,22 @@
             gm.menu.entryPopup.openedHandler = () => {
               gm.config.headerMenuSearch && el.search.focus()
               if (el.search.value.length > 0) {
-                el.search.oninput()
+                el.search.dispatchEvent(new Event('input'))
               }
               el.entryList.scrollTop = 0
               el.entryRemovedList.scrollTop = 0
             }
 
             if (gm.config.headerMenuSearch) {
-              el.search.oninput = function() {
+              el.search.addEventListener('input', function() {
                 if (/^\s+/.test(this.value)) {
                   this.value = this.value.replace(/^\s+/, '')
                 }
+              })
+              el.search.addEventListener('input', api.tool.throttle(function() {
                 let val = this.value.trim()
                 const match = str => str && val?.test(str)
-                const lists = [el.entryList, el.entryRemovedList]
+                const lists = gm.config.headerMenuKeepRemoved ? [el.entryList, el.entryRemovedList] : [el.entryList]
                 if (val.length > 0) {
                   el.searchClear.style.visibility = 'visible'
                   try {
@@ -2656,10 +2668,10 @@
                 } else {
                   el.entryListEmpty.style.display = 'unset'
                 }
-              }
+              }, 250))
               el.searchClear.onclick = function() {
                 el.search.value = ''
-                el.search.oninput()
+                el.search.dispatchEvent(new Event('input'))
               }
             } else {
               el.entryHeader.style.display = 'none'
@@ -2739,9 +2751,10 @@
            * @async
            */
           const onOpen = async () => {
-            const rmCards = gm.el.entryPopup.querySelectorAll('.gm-removed')
+            // 上半区被移除卡片先于下半区被查询到，恰巧使得后移除视频最后生成在被移除列表前方，无须额外排序
+            const rmCards = gm.config.headerMenuKeepRemoved ? gm.el.entryPopup.querySelectorAll('.gm-removed') : null
             let rmBvid = null
-            if (rmCards.length > 0) {
+            if (rmCards?.length > 0) {
               rmBvid = new Set()
               for (const rmCard of rmCards) {
                 rmBvid.add(rmCard.bvid)
@@ -2906,7 +2919,7 @@
             }
 
             // 添加已移除视频
-            if (rmCards.length > 0) {
+            if (rmCards?.length > 0) {
               const addedBvid = new Set()
               for (const rmCard of rmCards) {
                 const bvid = rmCard.bvid
@@ -3864,7 +3877,7 @@
         #${gm.id} .gm-entrypopup .gm-entry-bottom .gm-entry-button[fn=autoRemoveControl]:not([disabled]):hover {
           color: var(--text-color);
         }
-        #${gm.id} .gm-entrypopup .gm-entry-bottom .gm-entry-button.gm-popup-auto-remove[fn=autoRemoveControl] {
+        #${gm.id} .gm-entrypopup .gm-entry-bottom .gm-entry-button.gm-popup-auto-remove[fn=autoRemoveControl]:not([disabled]) {
           color: var(--hightlight-color);
         }
 
