@@ -10,7 +10,7 @@
 4. 脚本：优化脚本菜单运行流程。
 5. 脚本：修复数值类型配置项无法保存为 `0` 的问题。
 6. 脚本：主要逻辑推迟至 `load` 事件执行。
-7. API：升级至 V1.2，进一步优化条件等待和元素等待逻辑。详见 [UserscriptAPI 更新日志](https://gitee.com/liangjiancang/userscript/blob/master/lib/UserscriptAPI/changelog.md)。
+7. API：升级至 V1.3，进一步优化条件等待和元素等待逻辑。详见 [UserscriptAPI 更新日志](https://gitee.com/liangjiancang/userscript/blob/master/lib/UserscriptAPI/changelog.md)。
 8. 代码：优化异常处理。
 
 ## V1.7

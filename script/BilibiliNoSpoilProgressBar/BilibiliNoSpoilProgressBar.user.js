@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站防剧透进度条
-// @version         1.8.12.20210723
+// @version         1.8.13.20210725
 // @namespace       laster2800
 // @author          Laster2800
 // @description     看比赛、看番总是被进度条剧透？装上这个脚本再也不用担心这些问题了
@@ -12,7 +12,7 @@
 // @include         *://www.bilibili.com/medialist/play/watchlater
 // @include         *://www.bilibili.com/medialist/play/watchlater/*
 // @include         *://www.bilibili.com/bangumi/play/*
-// @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=953038
+// @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=953957
 // @grant           GM_addStyle
 // @grant           GM_registerMenuCommand
 // @grant           GM_xmlhttpRequest
@@ -262,9 +262,21 @@
      * 初始化
      */
     init() {
-      this.initGMObject()
-      this.updateVersion()
-      this.readConfig()
+      try {
+        this.initGMObject()
+        this.updateVersion()
+        this.readConfig()
+      } catch (e) {
+        api.logger.error(e)
+        const result = api.message.confirm('初始化错误！是否彻底清空内部数据以重置脚本？')
+        if (result) {
+          const gmKeys = GM_listValues()
+          for (const gmKey of gmKeys) {
+            GM_deleteValue(gmKey)
+          }
+          location.reload()
+        }
+      }
     }
 
     /**
@@ -372,7 +384,7 @@
         }
         _self.openUserSetting(1)
         setTimeout(() => {
-          const result = confirm(`【${GM_info.script.name}】\n\n脚本有一定使用门槛，如果不理解防剧透机制效果将会剧减，这种情况下用户甚至完全不明白脚本在「干什么」，建议在阅读说明后使用。是否立即打开防剧透机制说明？`)
+          const result = api.message.confirm('脚本有一定使用门槛，如果不理解防剧透机制效果将会剧减，这种情况下用户甚至完全不明白脚本在「干什么」，建议在阅读说明后使用。是否立即打开防剧透机制说明？')
           if (result) {
             window.open(`${gm.url.gm_readme}#防剧透机制说明`)
           }
@@ -954,7 +966,7 @@
      * 初始化脚本
      */
     resetScript() {
-      const result = confirm(`【${GM_info.script.name}】\n\n是否要初始化脚本？\n\n注意：本操作不会重置「防剧透 UP 主名单」。`)
+      const result = api.message.confirm('是否要初始化脚本？\n\n注意：本操作不会重置「防剧透 UP 主名单」。')
       if (result) {
         const keyNoReset = { uploaderList: true }
         const gmKeys = GM_listValues()

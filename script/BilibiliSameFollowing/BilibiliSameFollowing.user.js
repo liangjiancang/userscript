@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站共同关注快速查看
-// @version         1.4.18.20210723
+// @version         1.4.19.20210725
 // @namespace       laster2800
 // @author          Laster2800
 // @description     快速查看与特定用户的共同关注（视频播放页、动态页、用户空间、直播间）
@@ -19,7 +19,7 @@
 // @exclude         *://t.bilibili.com/h5/dynamic/specification
 // @exclude         *://www.bilibili.com/watchlater/
 // @exclude         *://www.bilibili.com/page-proxy/game-nav.html
-// @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=953038
+// @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=953957
 // @grant           GM_addStyle
 // @grant           GM_notification
 // @grant           GM_xmlhttpRequest
@@ -88,10 +88,22 @@
      * 初始化脚本
      */
     init() {
-      this.updateVersion()
-      for (const name in gm.config) {
-        const eb = GM_getValue(name)
-        gm.config[name] = typeof eb == 'boolean' ? eb : gm.config[name]
+      try {
+        this.updateVersion()
+        for (const name in gm.config) {
+          const eb = GM_getValue(name)
+          gm.config[name] = typeof eb == 'boolean' ? eb : gm.config[name]
+        }
+      } catch (e) {
+        api.logger.error(e)
+        const result = api.message.confirm('初始化错误！是否彻底清空内部数据以重置脚本？')
+        if (result) {
+          const gmKeys = GM_listValues()
+          for (const gmKey of gmKeys) {
+            GM_deleteValue(gmKey)
+          }
+          location.reload()
+        }
       }
     }
 
@@ -158,7 +170,7 @@
      * 初始化脚本
      */
     resetScript() {
-      const result = confirm(`【${GM_info.script.name}】\n\n是否要初始化脚本？`)
+      const result = api.message.confirm('是否要初始化脚本？')
       if (result) {
         const gmKeys = GM_listValues()
         for (const gmKey of gmKeys) {
