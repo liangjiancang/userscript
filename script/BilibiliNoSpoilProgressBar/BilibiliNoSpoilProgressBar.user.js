@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站防剧透进度条
-// @version         1.9.0.20210725
+// @version         1.9.1.20210725
 // @namespace       laster2800
 // @author          Laster2800
 // @description     看比赛、看番总是被进度条剧透？装上这个脚本再也不用担心这些问题了
@@ -1208,7 +1208,7 @@
         getCurrentTime() {
           let result = 0
           const el = webpage.control.querySelector('.bilibili-player-video-time-now, .squirtle-video-time-now')
-          const factors = [24, 60, 60, 1]
+          const factors = [24 * 3600, 3600, 60, 1]
           const parts = el.innerText.split(':')
           while (parts.length > 0) {
             result += parts.pop() * factors.pop()
@@ -1223,7 +1223,7 @@
         getDuration() {
           let result = 0
           const el = webpage.control.querySelector('.bilibili-player-video-time-total, .squirtle-video-time-total')
-          const factors = [24, 60, 60, 1]
+          const factors = [24 * 3600, 3600, 60, 1]
           const parts = el.innerText.split(':')
           while (parts.length > 0) {
             result += parts.pop() * factors.pop()
