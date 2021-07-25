@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.16.4.20210725
+// @version         4.16.5.20210725
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -2854,7 +2854,7 @@
                     </div>
                     <div class="gm-card-right">
                       <div class="gm-card-title">${valid ? card.vTitle : `<b>[已失效]</b> ${card.vTitle}`}</div>
-                      <div class="gm-card-uploader">${card.uploader}</div>
+                      <a class="gm-card-uploader" target="_blank" href="${gm.url.page_userSpace(item.owner.mid)}">${card.uploader}</a>
                       <div class="gm-card-progress">${progress}</div>
                     </div>
                   `
@@ -2890,12 +2890,6 @@
                         api.message.create(`${note}失败`)
                       }
                     })
-                  })
-
-                  const uploader = card.querySelector('.gm-card-uploader')
-                  uploader.addEventListener('click', function(e) {
-                    e.preventDefault()
-                    window.open(gm.url.page_userSpace(item.owner.mid), '_blank')
                   })
                 }
                 if (valid) {
