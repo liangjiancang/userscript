@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站防剧透进度条
-// @version         1.8.13.20210725
+// @version         1.9.0.20210725
 // @namespace       laster2800
 // @author          Laster2800
 // @description     看比赛、看番总是被进度条剧透？装上这个脚本再也不用担心这些问题了
@@ -20,7 +20,6 @@
 // @grant           GM_getValue
 // @grant           GM_deleteValue
 // @grant           GM_listValues
-// @grant           unsafeWindow
 // @grant           window.onurlchange
 // @connect         api.bilibili.com
 // @incompatible    firefox 完全不兼容 Greasemonkey，不完全兼容 Violentmonkey
@@ -1099,17 +1098,23 @@
    */
   class Webpage {
     constructor() {
+      const webpage = this
       /**
        * 播放控制
        * @type {HTMLElement}
        */
-      this.control = {}
+      this.control = null
+      /**
+       * 播放控制面板
+       * @type {HTMLElement}
+       */
+      this.controlPanel = null
       /**
        * 进度条
        * @typedef ProgressBar
        * @property {HTMLElement} root 进度条根元素
        * @property {HTMLElement} bar 进度条主体
-       * @property {HTMLElement} slider 进度条滑槽块
+       * @property {HTMLElement} slider 进度条滑块槽
        * @property {HTMLElement} thumb 进度条滑块
        * @property {HTMLElement} track 进度条滑槽
        * @property {HTMLElement} buffer 进度条缓冲显示
@@ -1158,39 +1163,27 @@
        */
       this.method = {
         /**
-         * 获取 `aid`
-         * @async
-         * @returns {Promise<string>} `aid`
+         * 从 URL 获取视频 ID
+         * @param {string} [url=location.pathname] 提取视频 ID 的源字符串
+         * @returns {{id: string, type: 'aid' | 'bvid'}} `{id, type}`
          */
-        async getAid() {
-          const aid = unsafeWindow.aid || await api.wait.waitForConditionPassed({
-            condition: async () => (await this.getVideoMessage())?.aid,
-          })
-          return String(aid ?? '')
-        },
-
-        /**
-         * 获取 `cid`
-         *
-         * 注意：在普通模式播放页中，该方法在较晚的时间点才能获取到结果。需尽可能通过其他手段，确保在能返回结果时调用以避免异常。
-         * @async
-         * @returns {Promise<string>} `cid`
-         */
-        async getCid() {
-          return await api.wait.waitForConditionPassed({
-            condition: async () => (await this.getVideoMessage())?.cid,
-          })
-        },
-
-        /**
-         * 获取页面上的视频信息
-         * @async
-         * @returns {Object} `window.player.getVideoMessage()`
-         */
-        async getVideoMessage() {
-          return await api.wait.waitForConditionPassed({
-            condition: () => unsafeWindow.player?.getVideoMessage?.(),
-          })
+        getVid(url = location.pathname) {
+          let result = null
+          // URL 先「?」后「#」，先判断「?」运算量期望稍低一点
+          const parts = url.split('?')[0].split('#')[0].split('/')
+          while (parts.length > 0) {
+            const part = parts.pop()
+            if (part) {
+              if (/^bv[0-9a-z]+$/i.test(part)) {
+                result = { id: 'BV' + part.slice(2), type: 'bvid' }
+                break
+              } else if (/^(av)?\d+$/i.test(part)) { // 兼容在 URL 还原 AV 号的脚本
+                result = { id: part.match(/\d+/)[0], type: 'aid' }
+                break
+              }
+            }
+          }
+          return result
         },
 
         /**
@@ -1207,6 +1200,36 @@
           })
           return JSON.parse(resp.responseText).data
         },
+
+        /**
+         * 获取当前播放时间
+         * @returns 当前播放时间
+         */
+        getCurrentTime() {
+          let result = 0
+          const el = webpage.control.querySelector('.bilibili-player-video-time-now, .squirtle-video-time-now')
+          const factors = [24, 60, 60, 1]
+          const parts = el.innerText.split(':')
+          while (parts.length > 0) {
+            result += parts.pop() * factors.pop()
+          }
+          return result
+        },
+
+        /**
+         * 获取视频时长
+         * @returns 视频时长
+         */
+        getDuration() {
+          let result = 0
+          const el = webpage.control.querySelector('.bilibili-player-video-time-total, .squirtle-video-time-total')
+          const factors = [24, 60, 60, 1]
+          const parts = el.innerText.split(':')
+          while (parts.length > 0) {
+            result += parts.pop() * factors.pop()
+          }
+          return result
+        },
       }
     }
 
@@ -1219,72 +1242,100 @@
       _self.uploaderEnabled = false
       _self.enabled = await _self.detectEnabled()
 
-      const selector = {
-        control: '.bilibili-player-video-control',
-        progress: {
-          root: '.bilibili-player-video-progress',
-          bar: '.bilibili-player-video-progress-slider',
-          slider: '.bui-track',
-          thumb: '.bui-thumb',
-          track: '.bui-bar-wrap, .bui-schedule-wrap',
-          buffer: '.bui-bar-buffer, .bui-schedule-buffer',
-          played: '.bui-bar-normal, .bui-schedule-current',
-          preview: '.bilibili-player-video-progress-detail',
-        },
-        shadowProgress: '.bilibili-player-video-progress-shadow',
-      }
-
-      const initCore = async () => {
-        _self.control = await api.wait.waitQuerySelector(selector.control)
-        _self.progress.root = await api.wait.waitQuerySelector(selector.progress.root, _self.control)
-        _self.progress.bar = await api.wait.waitQuerySelector(selector.progress.bar, _self.progress.root)
-        _self.progress.slider = await api.wait.waitQuerySelector(selector.progress.slider, _self.progress.bar)
-        // slider 在某些情况下被重新生成，监听到就重新处理
-        // 一定要在这个地方检测，放其他地方可能会错过时机！
-        api.wait.waitForElementLoaded({
-          selector: selector.progress.slider,
-          base: _self.progress.bar,
-          exclude: [_self.progress.slider],
-          subtree: false,
-          timeout: 0,
-        }).then(() => {
-          initCore()
-        })
-        _self.progress.thumb = await api.wait.waitQuerySelector(selector.progress.thumb, _self.progress.slider)
-        _self.progress.track = await api.wait.waitQuerySelector(selector.progress.track, _self.progress.slider)
-        _self.progress.buffer = await api.wait.waitQuerySelector(selector.progress.buffer, _self.progress.track)
-        _self.progress.played = await api.wait.waitQuerySelector(selector.progress.played, _self.progress.track)
-        _self.progress.preview = await api.wait.waitQuerySelector(selector.progress.preview, _self.progress.root)
-        _self.shadowProgress = await api.wait.waitQuerySelector(selector.shadowProgress, this.control)
-
-        _self.fakeTrack = _self.progress.track.insertAdjacentElement('afterend', _self.progress.track.cloneNode(true)) // 必须在 thumb 前，否则 z 轴层次错误
-        _self.fakeTrack.style.visibility = 'hidden'
-        _self.fakeTrack.querySelector(selector.progress.buffer).style.visibility = 'hidden'
-        _self.fakePlayed = _self.fakeTrack.querySelector(selector.progress.played)
-
-        // 有些播放页面，自动跳转到上次播放进度时，thumb 被会被替换成新的
-        // 似乎最多只会变一次，暂时就只处理一次
-        api.wait.executeAfterElementLoaded({
-          selector: selector.progress.thumb,
-          base: _self.progress.bar,
-          exclude: [_self.progress.thumb],
-          onTimeout: null,
-          callback: thumb => {
-            _self.progress.thumb = thumb
+      if (api.web.urlMatch(gm.regex.page_bangumi)) {
+        const selector = {
+          control: '.squirtle-controller',
+          controlPanel: '.squirtle-controller-wrap',
+          progress: {
+            root: '.squirtle-progress-wrap',
+            slider: '.squirtle-progress-dot-container',
+            thumb: '.squirtle-progress-dot',
+            track: '.squirtle-progress-totalline',
+            buffer: '.squirtle-progress-buffer',
+            played: '.squirtle-progress-timeline',
+            preview: '.squirtle-progress-detail',
           },
-        })
+        }
+
+        const initCore = async () => {
+          _self.control = await api.wait.waitQuerySelector(selector.control)
+          _self.controlPanel = await api.wait.waitQuerySelector(selector.controlPanel, _self.control)
+          _self.progress.root = await api.wait.waitQuerySelector(selector.progress.root, _self.control)
+          _self.progress.slider = await api.wait.waitQuerySelector(selector.progress.slider, _self.control)
+          _self.progress.thumb = await api.wait.waitQuerySelector(selector.progress.thumb, _self.control)
+          _self.progress.track = await api.wait.waitQuerySelector(selector.progress.track, _self.control)
+          _self.progress.buffer = await api.wait.waitQuerySelector(selector.progress.buffer, _self.control)
+          _self.progress.played = await api.wait.waitQuerySelector(selector.progress.played, _self.control)
+          _self.progress.preview = await api.wait.waitQuerySelector(selector.progress.preview, _self.control)
+
+          _self.fakePlayed = _self.progress.played.insertAdjacentElement('afterend', _self.progress.played.cloneNode(true))
+          _self.fakePlayed.style.visibility = 'hidden'
+        }
+
+        await initCore()
+        _self.initScriptControl()
+      } else {
+        const selector = {
+          control: '.bilibili-player-video-control',
+          controlPanel: '.bilibili-player-video-control-bottom',
+          progress: {
+            root: '.bilibili-player-video-progress',
+            bar: '.bilibili-player-video-progress-slider',
+            slider: '.bui-track',
+            thumb: '.bui-thumb',
+            track: '.bui-bar-wrap, .bui-schedule-wrap',
+            buffer: '.bui-bar-buffer, .bui-schedule-buffer',
+            played: '.bui-bar-normal, .bui-schedule-current',
+            preview: '.bilibili-player-video-progress-detail',
+          },
+          shadowProgress: '.bilibili-player-video-progress-shadow',
+        }
+
+        const initCore = async () => {
+          _self.control = await api.wait.waitQuerySelector(selector.control)
+          _self.controlPanel = await api.wait.waitQuerySelector(selector.controlPanel, _self.control)
+          _self.progress.root = await api.wait.waitQuerySelector(selector.progress.root, _self.control)
+          _self.progress.bar = await api.wait.waitQuerySelector(selector.progress.bar, _self.progress.root)
+          _self.progress.slider = await api.wait.waitQuerySelector(selector.progress.slider, _self.progress.bar)
+          // slider 在某些情况下被重新生成，监听到就重新处理
+          // 一定要在这个地方检测，放其他地方可能会错过时机！
+          api.wait.waitForElementLoaded({
+            selector: selector.progress.slider,
+            base: _self.progress.bar,
+            exclude: [_self.progress.slider],
+            subtree: false,
+            timeout: 0,
+          }).then(() => {
+            initCore()
+          })
+          _self.progress.thumb = await api.wait.waitQuerySelector(selector.progress.thumb, _self.progress.slider)
+          _self.progress.track = await api.wait.waitQuerySelector(selector.progress.track, _self.progress.slider)
+          _self.progress.buffer = await api.wait.waitQuerySelector(selector.progress.buffer, _self.progress.track)
+          _self.progress.played = await api.wait.waitQuerySelector(selector.progress.played, _self.progress.track)
+          _self.progress.preview = await api.wait.waitQuerySelector(selector.progress.preview, _self.progress.root)
+          _self.shadowProgress = await api.wait.waitQuerySelector(selector.shadowProgress, _self.control)
+
+          _self.fakeTrack = _self.progress.track.insertAdjacentElement('afterend', _self.progress.track.cloneNode(true)) // 必须在 thumb 前，否则 z 轴层次错误
+          _self.fakeTrack.style.visibility = 'hidden'
+          _self.fakeTrack.querySelector(selector.progress.buffer).style.visibility = 'hidden'
+          _self.fakePlayed = _self.fakeTrack.querySelector(selector.progress.played)
+
+          // 有些播放页面，自动跳转到上次播放进度时，thumb 被会被替换成新的
+          // 似乎最多只会变一次，暂时就只处理一次
+          api.wait.executeAfterElementLoaded({
+            selector: selector.progress.thumb,
+            base: _self.progress.bar,
+            exclude: [_self.progress.thumb],
+            onTimeout: null,
+            callback: thumb => {
+              _self.progress.thumb = thumb
+            },
+          })
+        }
+
+        await initCore()
+        _self.initScriptControl()
       }
-
-      await initCore()
-      _self.initScriptControl()
-
-      // 卡住，等条件通过才结束函数执行
-      await api.wait.waitForConditionPassed({
-        condition: () => {
-          const player = unsafeWindow.player
-          return player.getCurrentTime && player.getDuration
-        },
-      })
     }
 
     /**
@@ -1300,8 +1351,8 @@
           if (ulSet.has('*')) {
             return true
           }
-          const aid = await _self.method.getAid()
-          const videoInfo = await _self.method.getVideoInfo(aid, 'aid')
+          const vid = await _self.method.getVid()
+          const videoInfo = await _self.method.getVideoInfo(vid.id, vid.type)
           const uid = String(videoInfo.owner.mid)
           if (ulSet.has(uid)) {
             _self.uploaderEnabled = true
@@ -1341,7 +1392,7 @@
         }
 
         // 隐藏当前播放时间
-        api.wait.waitQuerySelector('.bilibili-player-video-time-now:not(.fake)').then(currentPoint => {
+        api.wait.waitQuerySelector('.bilibili-player-video-time-now:not(.fake), .squirtle-video-time-now:not(.fake)').then(currentPoint => {
           if (_self.enabled && gm.config.disableCurrentPoint) {
             if (!currentPoint._fake) {
               currentPoint._fake = currentPoint.insertAdjacentElement('afterend', currentPoint.cloneNode(true))
@@ -1358,7 +1409,7 @@
           }
         })
         // 隐藏视频预览上的当前播放时间（鼠标移至进度条上显示）
-        api.wait.waitQuerySelector('.bilibili-player-video-progress-detail-time').then(currentPoint => {
+        api.wait.waitQuerySelector('.bilibili-player-video-progress-detail-time, .squirtle-progress-time').then(currentPoint => {
           if (_self.enabled && gm.config.disableCurrentPoint) {
             currentPoint.style.visibility = 'hidden'
           } else {
@@ -1367,7 +1418,7 @@
         })
 
         // 隐藏视频时长
-        api.wait.waitQuerySelector('.bilibili-player-video-time-total:not(.fake)').then(duration => {
+        api.wait.waitQuerySelector('.bilibili-player-video-time-total:not(.fake), .squirtle-video-time-total:not(.fake)').then(duration => {
           if (_self.enabled && gm.config.disableDuration) {
             if (!duration._fake) {
               duration._fake = duration.insertAdjacentElement('afterend', duration.cloneNode(true))
@@ -1383,14 +1434,14 @@
             }
           }
         })
-        // 隐藏「上次看到 XX:XX 跳转播放」中的时间（可能存在）
-        if (_self.enabled) {
-          api.wait.waitQuerySelector('.bilibili-player-video-toast-item-text', document, true).then(toast => {
-            if (toast.innerText.indexOf('上次看到') >= 0 && toast.innerText.indexOf('???') < 0) {
-              toast.innerHTML = toast.innerHTML.replace(/(?<=<span>)\d+:\d+(?=<\/span>)/, '???')
-            }
-          }).catch(() => {})
-        }
+        // 隐藏进度条自动跳转提示（可能存在）
+        api.wait.waitQuerySelector('.bilibili-player-video-toast-wrp, .bpx-player-toast-wrap', document, true).then(tip => {
+          if (_self.enabled) {
+            tip.style.display = 'none'
+          } else {
+            tip.style.display = 'unset'
+          }
+        }).catch(() => {})
 
         // 隐藏高能进度条的「热度」曲线（可能存在）
         api.wait.waitQuerySelector('#bilibili_pbp', _self.control, document, true).then(pbp => {
@@ -1475,36 +1526,65 @@
             target._obPlayRate.observe(_self.progress.thumb, { attributeFilter: ['style'] })
           }
         }
-
-        const clzControlShow = 'video-control-show'
-        const playerArea = document.querySelector('.bilibili-player-area')
-        if (!playerArea._obControlShow) {
-          // 切换视频控制显隐时，添加或删除 ob 以控制伪进度条
-          playerArea._obControlShow = new MutationObserver(records => {
-            if (records[0].oldValue == playerArea.className) return
-            const before = api.dom.containsClass({ className: records[0].oldValue }, clzControlShow)
-            const current = api.dom.containsClass(playerArea, clzControlShow)
-            if (before != current) {
-              if (current) {
+        if (api.web.urlMatch(gm.regex.page_bangumi)) {
+          const panel = _self.controlPanel
+          if (!_self.controlPanel._obControlShow) {
+            // 切换视频控制显隐时，添加或删除 ob 以控制伪进度条
+            panel._obControlShow = new MutationObserver(() => {
+              if (panel.style.display != 'none') {
                 if (_self.enabled) {
+                  _self.fakePlayed.style.visibility = 'visible'
                   core(true)
-                  addObserver(playerArea)
+                  addObserver(panel)
                 }
-              } else if (playerArea._obPlayRate) {
-                playerArea._obPlayRate.disconnect()
-                playerArea._obPlayRate = null
+              } else {
+                if (_self.enabled) {
+                  _self.fakePlayed.style.visibility = 'hidden'
+                }
+                if (panel._obPlayRate) {
+                  panel._obPlayRate.disconnect()
+                  panel._obPlayRate = null
+                }
               }
-            }
-          })
-          playerArea._obControlShow.observe(playerArea, {
-            attributeFilter: ['class'],
-            attributeOldValue: true,
-          })
-        }
+            })
+            panel._obControlShow.observe(panel, { attributeFilter: ['style'] })
+          }
 
-        // 执行到此处时，若视频控制已处于显示状态，则直接添加 ob
-        if (api.dom.containsClass(playerArea, clzControlShow)) {
-          addObserver(playerArea)
+          // 执行到此处时，若视频控制已处于显示状态，则直接添加 ob
+          if (panel.style.display != 'none') {
+            addObserver(panel)
+          }
+        } else {
+          const clzControlShow = 'video-control-show'
+          const playerArea = document.querySelector('.bilibili-player-area')
+          if (!playerArea._obControlShow) {
+            // 切换视频控制显隐时，添加或删除 ob 以控制伪进度条
+            playerArea._obControlShow = new MutationObserver(records => {
+              if (records[0].oldValue == playerArea.className) return // 不能去，有个东西一直在原地修改 class……
+              const before = api.dom.containsClass({ className: records[0].oldValue }, clzControlShow)
+              const current = api.dom.containsClass(playerArea, clzControlShow)
+              if (before != current) {
+                if (current) {
+                  if (_self.enabled) {
+                    core(true)
+                    addObserver(playerArea)
+                  }
+                } else if (playerArea._obPlayRate) {
+                  playerArea._obPlayRate.disconnect()
+                  playerArea._obPlayRate = null
+                }
+              }
+            })
+            playerArea._obControlShow.observe(playerArea, {
+              attributeFilter: ['class'],
+              attributeOldValue: true,
+            })
+          }
+
+          // 执行到此处时，若视频控制已处于显示状态，则直接添加 ob
+          if (api.dom.containsClass(playerArea, clzControlShow)) {
+            addObserver(playerArea)
+          }
         }
       }
 
@@ -1516,8 +1596,7 @@
         let offset = 'offset'
         let playRate = 0
         if (_self.enabled) {
-          const player = unsafeWindow.player
-          playRate = player.getCurrentTime() / player.getDuration()
+          playRate = _self.method.getCurrentTime() / _self.method.getDuration()
           offset = getEndPoint() - 100
           const reservedLeft = gm.config.reservedLeft
           const reservedRight = 100 - gm.config.reservedRight
@@ -1536,38 +1615,75 @@
         }
 
         if (typeof offset == 'number') {
-          const handler = () => {
-            _self.progress.root.style.transform = `translateX(${offset}%)`
-            _self.scriptControl.transform = `translateX(${-offset}%)`
+          if (api.web.urlMatch(gm.regex.page_bangumi)) {
+            const handler = () => {
+              _self.progress.root.style.transform = `translateX(${offset}%)`
+              if (_self.enabled) {
+                _self.progress.slider.style.background = 'unset'
+                _self.progress.track.style.transform = `translateX(${-offset}%)`
+                _self.fakePlayed.style.transform = `translateX(${-offset}%)`
+              } else {
+                _self.progress.slider.style.background = ''
+                _self.progress.track.style.transform = ''
+              }
+            }
+
             if (_self.enabled) {
-              _self.fakeTrack.style.transform = `translateX(${-offset}%)`
-            }
-          }
+              _self.progress.buffer.style.visibility = 'hidden'
+              _self.progress.played.style.visibility = 'hidden'
+              _self.fakePlayed.style.visibility = 'visible'
 
-          if (_self.enabled) {
-            _self.progress.buffer.style.visibility = 'hidden'
-            _self.progress.track.style.visibility = 'hidden'
-            _self.shadowProgress.style.visibility = 'hidden'
-            _self.fakeTrack.style.visibility = 'visible'
+              if (noPostpone || !gm.config.postponeOffset) {
+                handler()
+              } else if (!_self.progress._noSpoil) { // 首次打开
+                _self.progress.root.style.transform = 'translateX(0)'
+                _self.progress.slider.style.background = 'unset'
+                _self.progress.track.style.transform = 'translateX(0)'
+                _self.fakePlayed.style.transform = 'translateX(0)'
+              }
+              _self.processFakePlayed()
 
-            if (noPostpone || !gm.config.postponeOffset) {
+              _self.progress._noSpoil = true
+            } else {
+              _self.progress.buffer.style.visibility = 'visible'
+              _self.progress.played.style.visibility = 'visible'
+              _self.fakePlayed.style.visibility = 'hidden'
               handler()
-            } else if (!_self.progress._noSpoil) { // 首次打开
-              _self.progress.root.style.transform = 'translateX(0)'
-              _self.scriptControl.transform = 'translateX(0)'
-              _self.fakeTrack.style.transform = 'translateX(0)'
+
+              _self.progress._noSpoil = false
             }
-            _self.processFakePlayed()
-
-            _self.progress._noSpoil = true
           } else {
-            _self.progress.track.style.visibility = 'visible'
-            _self.progress.buffer.style.visibility = 'visible'
-            _self.shadowProgress.style.visibility = 'visible'
-            _self.fakeTrack.style.visibility = 'hidden'
-            handler()
+            const handler = () => {
+              _self.progress.root.style.transform = `translateX(${offset}%)`
+              if (_self.enabled) {
+                _self.fakeTrack.style.transform = `translateX(${-offset}%)`
+              }
+            }
 
-            _self.progress._noSpoil = false
+            if (_self.enabled) {
+              _self.progress.track.style.visibility = 'hidden'
+              _self.progress.buffer.style.visibility = 'hidden'
+              _self.shadowProgress.style.visibility = 'hidden'
+              _self.fakeTrack.style.visibility = 'visible'
+
+              if (noPostpone || !gm.config.postponeOffset) {
+                handler()
+              } else if (!_self.progress._noSpoil) { // 首次打开
+                _self.progress.root.style.transform = 'translateX(0)'
+                _self.fakeTrack.style.transform = 'translateX(0)'
+              }
+              _self.processFakePlayed()
+
+              _self.progress._noSpoil = true
+            } else {
+              _self.progress.track.style.visibility = 'visible'
+              _self.progress.buffer.style.visibility = 'visible'
+              _self.shadowProgress.style.visibility = 'visible'
+              _self.fakeTrack.style.visibility = 'hidden'
+              handler()
+
+              _self.progress._noSpoil = false
+            }
           }
         }
 
@@ -1641,36 +1757,18 @@
      */
     async initLocationChangeProcess() {
       const _self = this
-      let currentCid = null
-      try {
-        currentCid = await _self.method.getCid()
-      } catch (e) {
-        api.logger.warn(e)
-      } finally {
-        let currentPathname = location.pathname
-        window.addEventListener('urlchange', function() {
-          api.wait.waitForConditionPassed({
-            condition: async () => {
-              if (location.pathname == currentPathname) { // 并非切换视频（如切分 P）
-                return currentCid
-              } else { // cid 改变才能说明页面真正切换过去
-                currentPathname = location.pathname
-                const cid = await _self.method.getCid()
-                if (cid && cid != currentCid) {
-                  return cid
-                }
-              }
-            },
-          }).then(cid => {
-            currentCid = cid
-          }).finally(() => {
+      let currentPathname = location.pathname
+      window.addEventListener('urlchange', function() {
+        if (location.pathname != currentPathname) {
+          currentPathname = location.pathname
+          setTimeout(() => {
             _self.initNoSpoil()
             if (api.web.urlMatch(gm.regex.page_videoWatchlaterMode)) {
               _self.initSwitchingPartProcess()
             }
-          })
-        })
-      }
+          }, 200)
+        }
+      })
     }
 
     /**
@@ -1717,8 +1815,11 @@
      */
     initScriptControl() {
       const _self = this
-      if (!_self.control._scriptControl) {
-        _self.scriptControl = _self.progress.root.parentNode.appendChild(document.createElement('div'))
+      if (!_self.controlPanel.querySelector(`.${gm.id}-scriptControl`)) {
+        _self.scriptControl = _self.controlPanel.appendChild(document.createElement('div'))
+        if (api.web.urlMatch(gm.regex.page_bangumi)) {
+          _self.scriptControl.style.left = '1em'
+        }
         _self.control._scriptControl = _self.scriptControl
         _self.scriptControl.className = `${gm.id}-scriptControl`
         _self.scriptControl.innerHTML = `
@@ -1727,85 +1828,89 @@
           <span id="${gm.id}-bangumiEnabled" style="display:none">番剧自动启用防剧透</span>
           <span id="${gm.id}-setting" style="display:none">设置</span>
         `
-      }
 
-      _self.scriptControl.enabled = _self.scriptControl.querySelector(`#${gm.id}-enabled`)
-      _self.scriptControl.uploaderEnabled = _self.scriptControl.querySelector(`#${gm.id}-uploaderEnabled`)
-      _self.scriptControl.bangumiEnabled = _self.scriptControl.querySelector(`#${gm.id}-bangumiEnabled`)
-      _self.scriptControl.setting = _self.scriptControl.querySelector(`#${gm.id}-setting`)
+        _self.scriptControl.enabled = _self.scriptControl.querySelector(`#${gm.id}-enabled`)
+        _self.scriptControl.uploaderEnabled = _self.scriptControl.querySelector(`#${gm.id}-uploaderEnabled`)
+        _self.scriptControl.bangumiEnabled = _self.scriptControl.querySelector(`#${gm.id}-bangumiEnabled`)
+        _self.scriptControl.setting = _self.scriptControl.querySelector(`#${gm.id}-setting`)
 
-      // 临时将 z-index 调至底层，不要影响信息的显示
-      // 不通过样式直接将 z-index 设为最底层，是因为会被 pbp 遮盖导致点击不了
-      // 问题的关键在于，B站已经给进度条和 pbp 内所有元素都设定好 z-index，只能用这种奇技淫巧来解决
-      _self.progress.bar.addEventListener('mouseenter', function() {
-        _self.scriptControl.style.zIndex = '-1'
-      })
-      _self.progress.bar.addEventListener('mouseleave', function() {
-        _self.scriptControl.style.zIndex = ''
-      })
-
-      _self.scriptControl.enabled.handler = function() {
-        if (_self.enabled) {
-          this.setAttribute('enabled', '')
-        } else {
-          this.removeAttribute('enabled')
+        _self.scriptControl.enabled.handler = function() {
+          if (_self.enabled) {
+            this.setAttribute('enabled', '')
+          } else {
+            this.removeAttribute('enabled')
+          }
+          _self.processNoSpoil()
         }
-        _self.processNoSpoil()
-      }
-      _self.scriptControl.enabled.onclick = function() {
-        _self.enabled = !_self.enabled
-        this.handler()
-      }
-      if (this.enabled) {
-        _self.scriptControl.enabled.handler()
-      }
+        _self.scriptControl.enabled.onclick = function() {
+          _self.enabled = !_self.enabled
+          this.handler()
+        }
 
-      if (!gm.config.simpleScriptControl) {
-        if (api.web.urlMatch([gm.regex.page_videoNormalMode, gm.regex.page_videoWatchlaterMode], 'OR')) {
-          if (!gm.data.uploaderListSet().has('*')) { // * 匹配所有 UP 主不显示该按钮
-            _self.scriptControl.uploaderEnabled.style.display = 'unset'
-            _self.scriptControl.uploaderEnabled.onclick = async function() {
-              const ulSet = gm.data.uploaderListSet() // 必须每次读取
-              const aid = await _self.method.getAid()
-              const videoInfo = await _self.method.getVideoInfo(aid, 'aid')
-              const uid = String(videoInfo.owner.mid)
+        if (!gm.config.simpleScriptControl) {
+          if (api.web.urlMatch([gm.regex.page_videoNormalMode, gm.regex.page_videoWatchlaterMode], 'OR')) {
+            if (!gm.data.uploaderListSet().has('*')) { // * 匹配所有 UP 主不显示该按钮
+              _self.scriptControl.uploaderEnabled.style.display = 'unset'
+              _self.scriptControl.uploaderEnabled.onclick = async function() {
+                const ulSet = gm.data.uploaderListSet() // 必须每次读取
+                const vid = await _self.method.getVid()
+                const videoInfo = await _self.method.getVideoInfo(vid.id, vid.type)
+                const uid = String(videoInfo.owner.mid)
 
-              _self.uploaderEnabled = !_self.uploaderEnabled
-              if (_self.uploaderEnabled) {
-                this.setAttribute('enabled', '')
-                if (!ulSet.has(uid)) {
-                  const ul = gm.data.uploaderList()
-                  gm.data.uploaderList(`${ul}\n${uid} # ${videoInfo.owner.name}`)
-                }
-              } else {
-                this.removeAttribute('enabled')
-                if (ulSet.has(uid)) {
-                  let ul = gm.data.uploaderList()
-                  ul = ul.replace(new RegExp(String.raw`^${uid}(?=\D|$).*\n?`, 'gm'), '')
-                  gm.data.uploaderList(ul)
+                _self.uploaderEnabled = !_self.uploaderEnabled
+                if (_self.uploaderEnabled) {
+                  this.setAttribute('enabled', '')
+                  if (!ulSet.has(uid)) {
+                    const ul = gm.data.uploaderList()
+                    gm.data.uploaderList(`${ul}\n${uid} # ${videoInfo.owner.name}`)
+                  }
+                } else {
+                  this.removeAttribute('enabled')
+                  if (ulSet.has(uid)) {
+                    let ul = gm.data.uploaderList()
+                    ul = ul.replace(new RegExp(String.raw`^${uid}(?=\D|$).*\n?`, 'gm'), '')
+                    gm.data.uploaderList(ul)
+                  }
                 }
               }
             }
           }
-        }
 
-        if (api.web.urlMatch(gm.regex.page_bangumi)) {
-          _self.scriptControl.bangumiEnabled.style.display = 'unset'
-          _self.scriptControl.bangumiEnabled.onclick = function() {
-            gm.config.bangumiEnabled = !gm.config.bangumiEnabled
-            if (gm.config.bangumiEnabled) {
-              this.setAttribute('enabled', '')
-            } else {
-              this.removeAttribute('enabled')
+          if (api.web.urlMatch(gm.regex.page_bangumi)) {
+            _self.scriptControl.bangumiEnabled.style.display = 'unset'
+            _self.scriptControl.bangumiEnabled.onclick = function() {
+              gm.config.bangumiEnabled = !gm.config.bangumiEnabled
+              if (gm.config.bangumiEnabled) {
+                this.setAttribute('enabled', '')
+              } else {
+                this.removeAttribute('enabled')
+              }
+              GM_setValue('bangumiEnabled', gm.config.bangumiEnabled)
             }
-            GM_setValue('bangumiEnabled', gm.config.bangumiEnabled)
+          }
+
+          _self.scriptControl.setting.style.display = 'unset'
+          _self.scriptControl.setting.onclick = function() {
+            script.openUserSetting()
           }
         }
+      }
 
-        _self.scriptControl.setting.style.display = 'unset'
-        _self.scriptControl.setting.onclick = function() {
-          script.openUserSetting()
-        }
+      if (_self.progress.bar && !_self.progress.bar._scriptControlListeners) {
+        // 临时将 z-index 调至底层，不要影响信息的显示
+        // 不通过样式直接将 z-index 设为最底层，是因为会被 pbp 遮盖导致点击不了
+        // 问题的关键在于，B站已经给进度条和 pbp 内所有元素都设定好 z-index，只能用这种奇技淫巧来解决
+        _self.progress.bar.addEventListener('mouseenter', function() {
+          _self.scriptControl.style.zIndex = '-1'
+        })
+        _self.progress.bar.addEventListener('mouseleave', function() {
+          _self.scriptControl.style.zIndex = ''
+        })
+        _self.progress.bar._scriptControlListeners = true
+      }
+
+      if (this.enabled) {
+        _self.scriptControl.enabled.handler()
       }
     }
 
@@ -1815,8 +1920,7 @@
     processFakePlayed() {
       const _self = this
       if (!_self.enabled) return
-      const player = unsafeWindow.player
-      const playRate = player.getCurrentTime() / player.getDuration()
+      const playRate = _self.method.getCurrentTime() / _self.method.getDuration()
       let offset = null
       const m = _self.progress.root.style.transform.match(/(?<=translateX\()[^)]+(?=\))/)
       if (m?.length > 0) {
@@ -1842,11 +1946,21 @@
         }
         if (reservedZone) {
           _self.progress.root.style.transform = `translateX(${offset}%)`
-          _self.scriptControl.transform = `translateX(${-offset}%)`
-          _self.fakeTrack.style.transform = `translateX(${-offset}%)`
+          if (api.web.urlMatch(gm.regex.page_bangumi)) {
+            _self.progress.track.style.transform = `translateX(${-offset}%)`
+            _self.fakePlayed.style.transform = `translateX(${-offset}%)`
+          } else {
+            _self.fakeTrack.style.transform = `translateX(${-offset}%)`
+          }
         }
       }
-      _self.fakePlayed.style.transform = `scaleX(${playRate + offset / 100})`
+      if (api.web.urlMatch(gm.regex.page_bangumi)) {
+        const scaleX = playRate + offset / 100
+        const translateX = -offset / scaleX
+        _self.fakePlayed.style.transform = `scaleX(${scaleX}) translateX(${translateX}%)`
+      } else {
+        _self.fakePlayed.style.transform = `scaleX(${playRate + offset / 100})`
+      }
     }
 
     /**
@@ -1879,7 +1993,7 @@
         .${gm.id}-scriptControl {
           position: absolute;
           left: 0;
-          bottom: 0;
+          bottom: 2.8em;
           color: var(--light-text-color);
           margin-bottom: 1em;
           font-size: 13px;
@@ -2195,6 +2309,11 @@
         #${gm.id} .gm-setting .gm-items::-webkit-scrollbar-corner,
         #${gm.id} .gm-uploaderList .gm-list-editor textarea::-webkit-scrollbar-corner {
           background-color: var(--scrollbar-background-color);
+        }
+
+        /* 隐藏番剧中的进度条自动跳转提示（该提示出现太快，常规方式处理不及，这里先用样式覆盖一下） */
+        .bpx-player-toast-wrap {
+          display: none;
         }
       `)
     }

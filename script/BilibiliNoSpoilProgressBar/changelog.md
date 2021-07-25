@@ -2,6 +2,12 @@
 
 本日志只记录用户友好的更新说明，影响不大的问题修复与修改不作记录，具体修改见 [提交记录](https://gitee.com/liangjiancang/userscript/commits/master/script/BilibiliNoSpoilProgressBar)。
 
+## V1.9
+
+1. 脚本：适配B站 2021 年 7 月下旬对番剧播放页的修改，重新支持番剧播放页。
+2. 脚本：移除对 `unsafeWindow` 的依赖，不再需要对网页的完整访问权限。
+3. 脚本：大幅简化页面切换处理流程。
+
 ## V1.8
 
 1. 脚本：借助新版 API 对一些特殊情况（如网速不佳、打开大量视频到后台）下的处理进行大幅优化。
