@@ -2,6 +2,10 @@
 
 本日志只记录用户友好的更新说明，影响不大的问题修复与修改不作记录，具体修改见 [提交记录](https://gitee.com/liangjiancang/userscript/commits/master/lib/UserscriptAPI)。
 
+## V1.3
+
+1. `message`：增加 `alert()`、`confirm()`、`prompt()` 方法。
+
 ## V1.2
 
 1. 库：优化构造参数，方便对各种默认选项进行配置。
