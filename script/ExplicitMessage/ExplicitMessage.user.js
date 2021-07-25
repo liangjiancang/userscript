@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            [DEBUG] 信息显式化
-// @version         2.3.1.20210720
+// @version         2.3.2.20210725
 // @namespace       laster2800
 // @author          Laster2800
 // @description     用 alert() 提示符合匹配规则的日志或未捕获异常，帮助开发者在日常使用网页时发现潜藏问题
@@ -67,7 +67,7 @@
        * @param {string} [source] 源
        */
       explicit(msg, type, source) {
-        alert(`【${GM_info.script.name}】${type ? `\nTYPE: ${type}` : ''}${source ? `\nSOURCE: ${source}` : ''}\n\n${msg}`)
+        alert(`${GM_info.script.name}${type ? `\nTYPE: ${type}` : ''}${source ? `\nSOURCE: ${source}` : ''}\n\n${msg}`)
       },
       /**
        * @param {*} obj 匹配对象
@@ -173,7 +173,7 @@
         const menuId = {}
         menuId.enabled = GM_registerMenuCommand(`当前${gm.config.enabled ? '开启' : '关闭'}`, () => {
           try {
-            gm.config.enabled = confirm(`【${GM_info.script.name}】\n\n「确定」以开启功能，「取消」以关闭功能。`)
+            gm.config.enabled = confirm(`${GM_info.script.name}\n\n「确定」以开启功能，「取消」以关闭功能。`)
             GM_setValue('enabled', gm.config.enabled)
             for (const id in menuId) {
               GM_unregisterMenuCommand(menuId[id])
@@ -185,12 +185,12 @@
         })
         menuId.filter = GM_registerMenuCommand('设置过滤器', () => {
           try {
-            const sInclude = prompt(`【${GM_info.script.name}】\n\n设置匹配过滤器：`, gm.config.include?.source ?? df.include)
+            const sInclude = prompt(`${GM_info.script.name}\n\n设置匹配过滤器：`, gm.config.include?.source ?? df.include)
             if (typeof sInclude == 'string') {
               gm.config.include = sInclude ? new RegExp(sInclude) : null
               GM_setValue('include', sInclude)
             }
-            const sExclude = prompt(`【${GM_info.script.name}】\n\n设置排除过滤器：`, gm.config.exclude?.source ?? df.exclude)
+            const sExclude = prompt(`${GM_info.script.name}\n\n设置排除过滤器：`, gm.config.exclude?.source ?? df.exclude)
             if (typeof sExclude == 'string') {
               gm.config.exclude = sExclude ? new RegExp(sExclude) : null
               GM_setValue('exclude', sExclude)
