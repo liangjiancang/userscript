@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.16.3.20210725
+// @version         4.16.4.20210725
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -2062,7 +2062,7 @@
               if (/^bv[0-9a-z]+$/i.test(part)) {
                 result = { id: 'BV' + part.slice(2), type: 'bvid' }
                 break
-              } else if (/^(av)?\d+$/i.test(part)) { // 兼容在 URL 还原 AV 号的脚本
+              } else if (/^(av)?\d+$/i.test(part)) { // 兼容 URL 中 BV 号被第三方修改为 AV 号的情况
                 result = { id: part.match(/\d+/)[0], type: 'aid' }
                 break
               }
