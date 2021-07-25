@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.16.2.20210724
+// @version         4.16.3.20210725
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -17,7 +17,7 @@
 // @exclude         *://message.bilibili.com/pages/nav/index_new_pc_sync
 // @exclude         *://t.bilibili.com/h5/dynamic/specification
 // @exclude         *://www.bilibili.com/page-proxy/game-nav.html
-// @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=953038
+// @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=953957
 // @grant           GM_addStyle
 // @grant           GM_registerMenuCommand
 // @grant           GM_xmlhttpRequest
@@ -459,9 +459,21 @@
      * 初始化
      */
     init() {
-      this.initGMObject()
-      this.updateVersion()
-      this.readConfig()
+      try {
+        this.initGMObject()
+        this.updateVersion()
+        this.readConfig()
+      } catch (e) {
+        api.logger.error(e)
+        const result = api.message.confirm('初始化错误！是否彻底清空内部数据以重置脚本？')
+        if (result) {
+          const gmKeys = GM_listValues()
+          for (const gmKey of gmKeys) {
+            GM_deleteValue(gmKey)
+          }
+          location.reload()
+        }
+      }
     }
 
     /**
@@ -1826,7 +1838,7 @@
      * 初始化脚本
      */
     resetScript() {
-      const result = confirm(`【${GM_info.script.name}】\n\n是否要初始化脚本？\n\n注意：本操作不会清理内部保存的稍后再看历史数据，要清理稍后再看历史数据请在用户设置中操作。`)
+      const result = api.message.confirm('是否要初始化脚本？\n\n注意：本操作不会清理内部保存的稍后再看历史数据，要清理稍后再看历史数据请在用户设置中操作。')
       if (result) {
         const keyNoReset = { removeHistoryData: true, removeHistorySaves: true }
         const gmKeys = GM_listValues()
@@ -1845,7 +1857,7 @@
      * 清空 removeHistoryData
      */
     cleanRemoveHistoryData() {
-      const result = confirm(`【${GM_info.script.name}】\n\n是否要清空稍后再看历史数据？`)
+      const result = api.message.confirm('是否要清空稍后再看历史数据？')
       if (result) {
         this.closeMenuItem('setting')
         GM_deleteValue('removeHistoryData')
@@ -2033,6 +2045,30 @@
             condition: () => unsafeWindow.player?.getVideoMessage?.()?.aid,
           })
           return String(aid ?? '')
+        },
+
+        /**
+         * 从 URL 获取视频 ID
+         * @param {string} [url=location.pathname] 提取视频 ID 的源字符串
+         * @returns {{id: string, type: 'aid' | 'bvid'}} `{id, type}`
+         */
+        getVid(url = location.pathname) {
+          let result = null
+          // URL 先「?」后「#」，先判断「?」运算量期望稍低一点
+          const parts = url.split('?')[0].split('#')[0].split('/')
+          while (parts.length > 0) {
+            const part = parts.pop()
+            if (part) {
+              if (/^bv[0-9a-z]+$/i.test(part)) {
+                result = { id: 'BV' + part.slice(2), type: 'bvid' }
+                break
+              } else if (/^(av)?\d+$/i.test(part)) { // 兼容在 URL 还原 AV 号的脚本
+                result = { id: part.match(/\d+/)[0], type: 'aid' }
+                break
+              }
+            }
+          }
+          return result
         },
 
         /**
@@ -2385,7 +2421,7 @@
        */
       const clearWatchlater = async () => {
         let success = false
-        const result = confirm(`【${GM_info.script.name}】\n\n是否清空稍后再看？`)
+        const result = api.message.confirm('是否清空稍后再看？')
         if (result) {
           success = await this.method.clearWatchlater()
           api.message.create(`清空稍后再看${success ? '成功' : '失败'}`)
@@ -2403,7 +2439,7 @@
        */
       const clearWatchedInWatchlater = async () => {
         let success = false
-        const result = confirm(`【${GM_info.script.name}】\n\n是否移除稍后再看已观看视频？`)
+        const result = api.message.confirm('是否移除稍后再看已观看视频？')
         if (result) {
           success = await this.method.clearWatchedInWatchlater()
           api.message.create(`移除稍后再看已观看视频${success ? '成功' : '失败'}`)
@@ -3236,25 +3272,29 @@
      */
     async redirect() {
       window.stop() // 停止原页面的加载
-      // 这里不能用读取页面 Vue 或者 window.aid 的方式来直接获取目标 URL，那样太慢了，直接从 URL 反推才是最快的。
+      // 这里必须从 URL 反推，其他方式都比这个慢
       try {
-        let bvid = null
-        if (api.web.urlMatch(/watchlater\/(B|b)(V|v)[0-9a-zA-Z]+(?=[/?#]|$)/)) {
-          bvid = location.href.match(/(?<=\/watchlater\/)(B|b)(V|v)[0-9a-zA-Z]+/)[0]
-        }
-        if (!bvid) { // 如果为空就是以 watchlater/ 直接结尾，等同于稍后再看中的第一个视频
+        let id = null
+        let vid = this.method.getVid()
+        if (vid) {
+          if (vid.type == 'aid') {
+            id = 'av' + vid.id
+          } else {
+            id = vid.id
+          }
+        } else { // 如果为空就是以 watchlater/ 直接结尾，等同于稍后再看中的第一个视频
           const resp = await api.web.request({
             method: 'GET',
             url: gm.url.api_queryWatchlaterList,
           })
           const json = JSON.parse(resp.responseText)
-          bvid = json.data.list[0].bvid
+          id = json.data.list[0].bvid
         }
-        location.replace(`${gm.url.page_videoNormalMode}/${bvid}${location.search}${location.hash}`)
+        location.replace(`${gm.url.page_videoNormalMode}/${id}${location.search}${location.hash}`)
       } catch (e) {
         api.logger.error(e)
-        alert(`【${GM_info.script.name}】\n\n重定向错误，可能是网络问题，如果重新加载页面依然出错请联系脚本作者：${GM_info.script.supportURL}`)
-        const result = confirm(`【${GM_info.script.name}】\n\n是否临时关闭模式切换功能？`)
+        api.message.alert(`重定向错误，如果重新加载页面依然出错请联系脚本作者：${GM_info.script.supportURL}`)
+        const result = api.message.confirm('是否临时关闭模式切换功能？')
         if (result) {
           const url = new URL(location.href)
           url.searchParams.set(`${gmId}_disable_redirect`, 'true')
