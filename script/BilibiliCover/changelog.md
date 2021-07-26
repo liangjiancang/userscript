@@ -7,9 +7,8 @@
 1. 功能实现：「番剧：获取系列总封面」。启用后，获取整个系列的封面而非分集封面。
 2. 功能实现：「直播间：获取关键帧」。启用后，获取直播间关键帧而非封面。
 3. 脚本：优化稍后再看模式播放页中对封面的懒加载流程，大幅简化处理逻辑。其他页面封面均可从页面中获取，弃用懒加载并大幅优化各页面处理逻辑。
-4. 脚本：主要逻辑重新提前至脚本运行时期执行。
-5. 脚本：优化错误处理流程。
-6. API：升级至 V1.3。详见 [UserscriptAPI 更新日志](https://gitee.com/liangjiancang/userscript/blob/master/lib/UserscriptAPI/changelog.md)。
+4. 脚本：优化错误处理流程。
+5. API：升级至 V1.3。详见 [UserscriptAPI 更新日志](https://gitee.com/liangjiancang/userscript/blob/master/lib/UserscriptAPI/changelog.md)。
 
 ## V4.11
 

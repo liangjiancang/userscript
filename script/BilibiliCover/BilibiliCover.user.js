@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站封面获取
-// @version         4.12.1.20210726
+// @version         4.12.2.20210726
 // @namespace       laster2800
 // @author          Laster2800
 // @description     B站视频播放页（普通模式、稍后再看模式）、番剧播放页、直播间添加获取封面的按钮
@@ -16,7 +16,7 @@
 // @exclude         *://live.bilibili.com/
 // @exclude         *://live.bilibili.com/?*
 // @exclude         *://live.bilibili.com/*/*
-// @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=953957
+// @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=954445
 // @grant           GM_addStyle
 // @grant           GM_download
 // @grant           GM_notification
@@ -621,7 +621,7 @@
     }
   }
 
-  (async function() {
+  window.addEventListener('load', async function() {
     script = new Script()
     webpage = new Webpage()
   
@@ -630,26 +630,29 @@
   
     if (api.web.urlMatch([gm.regex.page_videoNormalMode, gm.regex.page_videoWatchlaterMode], 'OR')) {
       const app = await api.wait.waitQuerySelector('#app')
+      const atr = await api.wait.waitQuerySelector('#arc_toolbar_report')
       webpage.addVideoBtn(
         await api.wait.waitForConditionPassed({
-          condition: async () => app.__vue__ && await api.wait.waitQuerySelector('#arc_toolbar_report'),
+          condition: () => app.__vue__ && atr,
         })
       )
     } else if (api.web.urlMatch(gm.regex.page_bangumi)) {
       const app = await api.wait.waitQuerySelector('#app')
+      const tm = await api.wait.waitQuerySelector('#toolbar_module')
       webpage.addBangumiBtn(
         await api.wait.waitForConditionPassed({
-          condition: async () => app.__vue__ && await api.wait.waitQuerySelector('#toolbar_module'),
+          condition: () => app.__vue__ && tm,
         })
       )
     } else if (api.web.urlMatch(gm.regex.page_live)) {
       const hiVm = await api.wait.waitQuerySelector('#head-info-vm')
+      const urc = await api.wait.waitQuerySelector('.room-info-upper-row .upper-right-ctnr', hiVm)
       webpage.addLiveBtn(
         await api.wait.waitForConditionPassed({
-          condition: async () => hiVm.__vue__ && await api.wait.waitQuerySelector('.room-info-upper-row .upper-right-ctnr', hiVm),
+          condition: () => hiVm.__vue__ && urc,
         })
       )
     }
     webpage.addStyle()
-  })()
+  })
 })()
