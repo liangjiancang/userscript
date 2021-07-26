@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站封面获取
-// @version         4.12.0.20210726
+// @version         4.12.1.20210726
 // @namespace       laster2800
 // @author          Laster2800
 // @description     B站视频播放页（普通模式、稍后再看模式）、番剧播放页、直播间添加获取封面的按钮
@@ -32,7 +32,7 @@
 // @incompatible    firefox 完全不兼容 Greasemonkey，不完全兼容 Violentmonkey
 // ==/UserScript==
 
-(async function() {
+(function() {
   'use strict'
 
   const gm = {
@@ -621,33 +621,35 @@
     }
   }
 
-  script = new Script()
-  webpage = new Webpage()
-
-  script.init()
-  script.initScriptMenu()
-
-  if (api.web.urlMatch([gm.regex.page_videoNormalMode, gm.regex.page_videoWatchlaterMode], 'OR')) {
-    const app = await api.wait.waitQuerySelector('#app')
-    webpage.addVideoBtn(
-      await api.wait.waitForConditionPassed({
-        condition: async () => app.__vue__ && await api.wait.waitQuerySelector('#arc_toolbar_report'),
-      })
-    )
-  } else if (api.web.urlMatch(gm.regex.page_bangumi)) {
-    const app = await api.wait.waitQuerySelector('#app')
-    webpage.addBangumiBtn(
-      await api.wait.waitForConditionPassed({
-        condition: async () => app.__vue__ && await api.wait.waitQuerySelector('#toolbar_module'),
-      })
-    )
-  } else if (api.web.urlMatch(gm.regex.page_live)) {
-    const hiVm = await api.wait.waitQuerySelector('#head-info-vm')
-    webpage.addLiveBtn(
-      await api.wait.waitForConditionPassed({
-        condition: async () => hiVm.__vue__ && await api.wait.waitQuerySelector('.room-info-upper-row .upper-right-ctnr', hiVm),
-      })
-    )
-  }
-  webpage.addStyle()
+  (async function() {
+    script = new Script()
+    webpage = new Webpage()
+  
+    script.init()
+    script.initScriptMenu()
+  
+    if (api.web.urlMatch([gm.regex.page_videoNormalMode, gm.regex.page_videoWatchlaterMode], 'OR')) {
+      const app = await api.wait.waitQuerySelector('#app')
+      webpage.addVideoBtn(
+        await api.wait.waitForConditionPassed({
+          condition: async () => app.__vue__ && await api.wait.waitQuerySelector('#arc_toolbar_report'),
+        })
+      )
+    } else if (api.web.urlMatch(gm.regex.page_bangumi)) {
+      const app = await api.wait.waitQuerySelector('#app')
+      webpage.addBangumiBtn(
+        await api.wait.waitForConditionPassed({
+          condition: async () => app.__vue__ && await api.wait.waitQuerySelector('#toolbar_module'),
+        })
+      )
+    } else if (api.web.urlMatch(gm.regex.page_live)) {
+      const hiVm = await api.wait.waitQuerySelector('#head-info-vm')
+      webpage.addLiveBtn(
+        await api.wait.waitForConditionPassed({
+          condition: async () => hiVm.__vue__ && await api.wait.waitQuerySelector('.room-info-upper-row .upper-right-ctnr', hiVm),
+        })
+      )
+    }
+    webpage.addStyle()
+  })()
 })()
