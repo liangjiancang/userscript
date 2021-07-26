@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站封面获取
-// @version         4.11.12.20210723
+// @version         4.12.0.20210726
 // @namespace       laster2800
 // @author          Laster2800
 // @description     B站视频播放页（普通模式、稍后再看模式）、番剧播放页、直播间添加获取封面的按钮
@@ -16,7 +16,7 @@
 // @exclude         *://live.bilibili.com/
 // @exclude         *://live.bilibili.com/?*
 // @exclude         *://live.bilibili.com/*/*
-// @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=953038
+// @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=953957
 // @grant           GM_addStyle
 // @grant           GM_download
 // @grant           GM_notification
@@ -24,28 +24,32 @@
 // @grant           GM_setValue
 // @grant           GM_getValue
 // @grant           GM_deleteValue
+// @grant           GM_listValues
 // @grant           GM_registerMenuCommand
 // @grant           GM_unregisterMenuCommand
 // @grant           unsafeWindow
-// @grant           window.onurlchange
 // @connect         api.bilibili.com
 // @incompatible    firefox 完全不兼容 Greasemonkey，不完全兼容 Violentmonkey
 // ==/UserScript==
 
-(function() {
+(async function() {
   'use strict'
 
   const gm = {
     id: 'gm395575',
     configVersion: GM_getValue('configVersion'),
-    configUpdate: 20210711,
+    configUpdate: 20210726,
     config: {
       preview: true,
       download: true,
+      bangumiSeries: false,
+      liveKeyFrame: false,
     },
     configMap: {
       preview: { name: '封面预览' },
       download: { name: '点击下载', needNotReload: true },
+      bangumiSeries: { name: '番剧：获取系列总封面' },
+      liveKeyFrame: { name: '直播间：获取关键帧' },
     },
     url: {
       noop: 'javascript:void(0)',
@@ -58,6 +62,8 @@
     },
     const: {
       title: '点击保存封面或在新标签页中打开图片（可在脚本菜单中设置）。\n此外，可在脚本菜单中开启或关闭封面预览功能。\n右键点击可基于图片链接作进一步的处理，如通过「另存为」直接保存图片。',
+      errorMsg: '获取失败，若非网络问题请提供反馈',
+      fadeTime: 200,
       notificationTimeout: 5600,
     },
   }
@@ -78,10 +84,22 @@
      * 初始化脚本
      */
     init() {
-      this.updateVersion()
-      for (const name in gm.config) {
-        const eb = GM_getValue(name)
-        gm.config[name] = typeof eb == 'boolean' ? eb : gm.config[name]
+      try {
+        this.updateVersion()
+        for (const name in gm.config) {
+          const eb = GM_getValue(name)
+          gm.config[name] = typeof eb == 'boolean' ? eb : gm.config[name]
+        }
+      } catch (e) {
+        api.logger.error(e)
+        const result = api.message.confirm('初始化错误！是否彻底清空内部数据以重置脚本？')
+        if (result) {
+          const gmKeys = GM_listValues()
+          for (const gmKey of gmKeys) {
+            GM_deleteValue(gmKey)
+          }
+          location.reload()
+        }
       }
     }
 
@@ -136,7 +154,7 @@
         }
 
         // 功能性更新后更新此处配置版本
-        if (gm.configVersion < 20210711) {
+        if (gm.configVersion < 20210726) {
           GM_notification({ text: '功能性更新完毕，您可能需要重新设置脚本。' })
         }
         gm.configVersion = gm.configUpdate
@@ -157,7 +175,7 @@
           name = name || 'Cover'
           const onerror = function(error) {
             if (error?.error == 'not_whitelisted') {
-              alert(`【${GM_info.script.name}】\n\n该封面的文件格式不在下载模式白名单中，从而触发安全限制导致无法直接下载。可修改脚本管理器的「下载模式」或「文件扩展名白名单」设置以放开限制。`)
+              api.message.alert('该封面的文件格式不在下载模式白名单中，从而触发安全限制导致无法直接下载。可修改脚本管理器的「下载模式」或「文件扩展名白名单」设置以放开限制。')
               window.open(url)
             } else {
               GM_notification({
@@ -177,15 +195,27 @@
         },
 
         /**
-         * 获取 `aid`
-         * @async
-         * @returns {Promise<string>} `aid`
+         * 从 URL 获取视频 ID
+         * @param {string} [url=location.pathname] 提取视频 ID 的源字符串
+         * @returns {{id: string, type: 'aid' | 'bvid'}} `{id, type}`
          */
-        async getAid() {
-          const aid = unsafeWindow.aid || await api.wait.waitForConditionPassed({
-            condition: () => unsafeWindow.player?.getVideoMessage?.()?.aid,
-          })
-          return String(aid ?? '')
+        getVid(url = location.pathname) {
+          let result = null
+          // URL 先「?」后「#」，先判断「?」运算量期望稍低一点
+          const parts = url.split('?')[0].split('#')[0].split('/')
+          while (parts.length > 0) {
+            const part = parts.pop()
+            if (part) {
+              if (/^bv[0-9a-z]+$/i.test(part)) {
+                result = { id: 'BV' + part.slice(2), type: 'bvid' }
+                break
+              } else if (/^(av)?\d+$/i.test(part)) { // 兼容在 URL 还原 AV 号的脚本
+                result = { id: part.match(/\d+/)[0], type: 'aid' }
+                break
+              }
+            }
+          }
+          return result
         },
 
         /**
@@ -193,22 +223,66 @@
          * @param {HTMLElement} target 图片按钮元素
          */
         addDownloadEvent(target) {
-          const _self = this
-          // 此处必须用 mousedown，否则无法与动态获取封面的代码达成正确的联动
-          target.addEventListener('mousedown', function(e) {
-            if (gm.config.download && e.button == 0) {
-              e.preventDefault()
-              target.dispatchEvent(new Event('mouseleave'))
-              target.disablePreview = true
-              _self.download(this.href, document.title)
-            }
-          })
-          // 开启下载时，若没有以下处理器，则鼠标左键长按图片按钮，过一段时间后再松开，松开时依然会触发默认点击事件（在新标签页打开封面）
-          target.addEventListener('click', function(e) {
-            if (gm.config.download) {
-              e.preventDefault()
-            }
-          })
+          if (!target._downloadEvent) {
+            const _self = this
+            // 此处必须用 mousedown，否则无法与动态获取封面的代码达成正确的联动
+            target.addEventListener('mousedown', function(e) {
+              if (target.loaded && gm.config.download && e.button == 0) {
+                e.preventDefault()
+                target.dispatchEvent(new Event('mouseleave'))
+                target.disablePreview = true
+                _self.download(this.href, document.title)
+              }
+            })
+            // 开启下载时，若没有以下处理器，则鼠标左键长按图片按钮，过一段时间后再松开，松开时依然会触发默认点击事件（在新标签页打开封面）
+            target.addEventListener('click', function(e) {
+              if (target.loaded && gm.config.download) {
+                e.preventDefault()
+              }
+            })
+            target._downloadEvent = true
+          }
+        },
+
+        /**
+         * 提示错误信息
+         * @param {HTMLElement} target 图片按钮元素
+         */
+        addErrorEvent(target) {
+          if (!target._errorEvent) {
+            target.addEventListener('mousedown', function(e) {
+              if (target.loaded) return
+              if (e.button == 0 || e.button == 1) {
+                e.preventDefault()
+                api.message.create(gm.const.errorMsg)
+              }
+            })
+            target._errorEvent = true
+          }
+        },
+
+        /**
+         * 设置封面
+         * @param {HTMLElement} target 封面按钮元素
+         * @param {HTMLElement} preview 预览元素
+         * @param {string} url 封面 URL
+         */
+        setCover(target, preview, url) {
+          if (url) {
+            target.title = gm.const.title
+            target.href = url
+            target.target = '_blank'
+            target.loaded = true
+            this.addDownloadEvent(target)
+            preview.src = url
+          } else {
+            target.title = gm.const.errorMsg
+            target.href = gm.url.noop
+            target.target = '_self'
+            target.loaded = false
+            preview.src = ''
+            this.addErrorEvent(target)
+          }
         },
 
         /**
@@ -221,7 +295,6 @@
           const preview = document.body.appendChild(document.createElement('img'))
           preview.className = `${gm.id}_preview`
 
-          const fadeTime = 200
           const browserSyncTime = 10
           const antiConflictTime = 20
 
@@ -236,7 +309,7 @@
             setTimeout(() => {
               preview.style.display = 'none'
               callback?.()
-            }, fadeTime)
+            }, gm.const.fadeTime)
           }
           const disablePreviewTemp = () => {
             target.disablePreview = true
@@ -314,21 +387,6 @@
               }
             }
           })
-          GM_addStyle(`
-            .${gm.id}_preview {
-              position: fixed;
-              top: 50%;
-              left: 50%;
-              transform: translate(-50%, -50%);
-              z-index: 142857;
-              max-width: 60vw; /* 自适应宽度和高度 */
-              max-height: 100vh;
-              display: none;
-              transition: opacity ${fadeTime}ms ease-in-out;
-              opacity: 0;
-              cursor: pointer;
-            }
-          `)
           return preview
         },
       }
@@ -336,12 +394,9 @@
 
     addVideoBtn(atr) {
       const _self = this
-      const bus = {}
       const cover = document.createElement('a')
-      const errorMsg = '获取失败，若非网络问题请提供反馈'
       cover.innerText = '获取封面'
       cover.className = 'appeal-text'
-      cover.onclick = e => e.stopPropagation()
       const preview = _self.method.createPreview(cover)
 
       // 确保与其他脚本配合时相关 UI 排列顺序不会乱
@@ -352,199 +407,184 @@
         atr.appendChild(cover)
       }
 
-      const main = async function(e) {
-        try {
-          const url = await getCover()
-          bus.cover = url
-          bus.aid = await _self.method.getAid()
-          bus.pathname = location.pathname
-          setCover(url)
-          window.addEventListener('urlchange', async function() {
-            if (location.pathname == bus.pathname) return // 并非切换视频（如切分 P）
-            try {
-              bus.pathname = location.pathname
-              bus.aid = await api.wait.waitForConditionPassed({
-                condition: async () => {
-                  // 要等 aid 跟之前存的不一样，才能说明是切换成功后获取到的 aid
-                  const aid = await _self.method.getAid()
-                  if (aid && aid != bus.aid) {
-                    return aid
-                  }
-                },
-              })
-              updateCover()
-            } catch (e) {
-              setCover(false)
-              api.logger.error(e)
-            }
-          })
-        } catch (e) {
-          setCover(false)
-          api.logger.error(e)
-        }
+      if (api.web.urlMatch(gm.regex.page_videoNormalMode)) {
+        api.wait.executeAfterElementLoaded({
+          selector: 'meta[itemprop=image]',
+          base: document.head,
+          subtree: false,
+          repeat: true,
+          timeout: 0,
+          onError: function(e) {
+            _self.method.setCover(cover, preview, false)
+            api.logger.error(e)
+          },
+          callback: function(meta) {
+            _self.method.setCover(cover, preview, meta.content)
+          },
+        })
+      } else {
+        const main = async function(event) {
+          try {
+            const vid = _self.method.getVid()
+            if (cover._cover_id == vid.id) return
+            // 在异步等待前拦截，避免逻辑倒置
+            event.preventDefault()
+            event.stopPropagation()
+            const url = await getCover(vid)
+            _self.method.setCover(cover, preview, url)
+          } catch (e) {
+            event.preventDefault()
+            event.stopPropagation()
+            _self.method.setCover(cover, preview, false)
+            api.logger.error(e)
+          }
 
-        cover.removeEventListener('mousedown', main)
-        if (gm.config.preview) {
-          cover.removeEventListener('mouseover', main)
-        }
-
-        if (e) {
-          e.preventDefault()
-          if (e.type == 'mousedown') {
-            if (e.button == 0) {
+          // 需全面接管一切用户交互引起的行为，默认链接点击行为除外
+          removeEventListeners()
+          if (event.type == 'mousedown') {
+            if (event.button == 0) {
               if (gm.config.download || !cover.loaded) {
-                cover.dispatchEvent(e) // 无法触发链接点击跳转
+                const evt = new Event('mousedown') // 新建一个事件而不是复用 event，以避免意外情况
+                evt.button = 0
+                cover.dispatchEvent(evt) // 无法触发链接点击跳转
               } else {
                 window.open(cover.href)
               }
-            } else if (e.button == 1) {
+            } else if (event.button == 1) {
               if (cover.loaded) {
                 window.open(cover.href)
               }
             }
-          } else if (e.type == 'mouseover') {
+          } else if (event.type == 'mouseenter') {
             cover.dispatchEvent(new Event('mouseenter'))
           }
+          addEventListeners()
         }
-      }
-      cover.addEventListener('mousedown', main)
-      if (gm.config.preview) {
-        cover.addEventListener('mouseover', main)
-      }
 
-      const updateCover = async () => {
-        try {
-          bus.cover = await api.wait.waitForConditionPassed({
-            condition: async () => {
-              // aid 变化只能说明视频确实变了，但 cover 可能还没变
-              const cover = await getCover()
-              if (cover && cover != bus.cover) {
-                return cover
-              }
-            },
-          })
-          setCover(bus.cover)
-        } catch (e) {
-          setCover(false)
-          api.logger.error(e)
+        // lazy loading；捕获期执行，确保优先于其他处理器
+        const addEventListeners = () => {
+          cover.addEventListener('mousedown', main, true)
+          if (gm.config.preview) {
+            cover.addEventListener('mouseenter', main, true)
+          }
         }
-      }
+        const removeEventListeners = () => {
+          cover.removeEventListener('mousedown', main, true)
+          if (gm.config.preview) {
+            cover.removeEventListener('mouseenter', main, true)
+          }
+        }
+        addEventListeners()
 
-      const setCover = coverUrl => {
-        if (coverUrl) {
-          cover.title = gm.const.title
-          cover.href = coverUrl
-          cover.target = '_blank'
-          cover.loaded = true
-          _self.method.addDownloadEvent(cover)
-          preview.src = coverUrl
-        } else {
-          cover.title = errorMsg
-          cover.href = gm.url.noop
-          cover.target = '_self'
-          cover.loaded = false
-          preview.src = ''
-          cover.addEventListener('mousedown', function(e) {
-            if (e.button == 0 || e.button == 1) {
-              e.preventDefault()
-              api.message.create(errorMsg)
-            }
-          })
+        const getCover = async (vid = _self.method.getVid()) => {
+          if (cover._cover_id != vid.id) {
+            const resp = await api.web.request({
+              method: 'GET',
+              url: `https://api.bilibili.com/x/web-interface/view?${vid.type}=${vid.id}`,
+            })
+            cover._cover_url = JSON.parse(resp.responseText).data.pic ?? ''
+            cover._cover_id = vid.id
+          }
+          return cover._cover_url
         }
-      }
-
-      const getCover = async () => {
-        let cover = null
-        if (api.web.urlMatch(gm.regex.page_videoNormalMode)) {
-          const meta = await api.wait.waitForElementLoaded({
-            selector: 'meta[itemprop=image]',
-            base: document.head,
-            timeout: 2000,
-            stopOnTimeout: true,
-          })
-          cover = meta.content
-        } else {
-          const aid = await _self.method.getAid()
-          const resp = await api.web.request({
-            method: 'GET',
-            url: `https://api.bilibili.com/x/web-interface/view?aid=${aid}`,
-          })
-          cover = JSON.parse(resp.responseText).data.pic
-        }
-        return cover ?? ''
       }
     }
 
     addBangumiBtn(tm) {
       const _self = this
-      const bus = {}
       const cover = document.createElement('a')
-      const errorMsg = '获取失败，若非网络问题请提供反馈'
       cover.innerText = '获取封面'
-      cover.className = `${gm.id}_cover_btn`
-      cover.onclick = e => e.stopPropagation()
+      cover.className = `${gm.id}_bangumi_cover_btn`
       tm.appendChild(cover)
       const preview = _self.method.createPreview(cover)
-
-      const main = async function(e) {
-        try {
-          const url = await getCover()
-          bus.cover = url
-          bus.aid = await _self.method.getAid()
-          setCover(url)
-          window.addEventListener('urlchange', async function() {
-            try {
-              bus.aid = await api.wait.waitForConditionPassed({
-                condition: async () => {
-                  // 要等 aid 跟之前存的不一样，才能说明是切换成功后获取到的 aid
-                  const aid = await _self.method.getAid()
-                  if (aid && aid != bus.aid) {
-                    return aid
-                  }
-                },
-              })
-              updateCover()
-            } catch (e) {
-              setCover(false)
-              api.logger.error(e)
-            }
-          })
-        } catch (e) {
-          setCover(false)
+      if (gm.config.bangumiSeries) {
+        const setCover = img => _self.method.setCover(cover, preview, img.src.replace(/@[^@]*$/, ''))
+        api.wait.waitQuerySelector('.media-cover img').then(img => {
+          setCover(img)
+          const ob = new MutationObserver(() => setCover(img))
+          ob.observe(img, { attributeFilter: ['src'] })
+        }).catch(e => {
+          _self.method.setCover(cover, preview, false)
           api.logger.error(e)
-        }
+        })
+      } else {
+        const main = async function(event) {
+          try {
+            const params = getParams()
+            if (cover._cover_id == params.paster.aid) return
+            const url = getCover(params)
+            _self.method.setCover(cover, preview, url)
+          } catch (e) {
+            _self.method.setCover(cover, preview, false)
+            api.logger.error(e)
+          } finally {
+            event.preventDefault()
+            event.stopPropagation()
+          }
 
-        cover.removeEventListener('mousedown', main)
-        if (gm.config.preview) {
-          cover.removeEventListener('mouseover', main)
-        }
-
-        if (e) {
-          e.preventDefault()
-          if (e.type == 'mousedown') {
-            if (e.button == 0) {
+          // 需全面接管一切用户交互引起的行为，默认链接点击行为除外
+          removeEventListeners()
+          if (event.type == 'mousedown') {
+            if (event.button == 0) {
               if (gm.config.download || !cover.loaded) {
-                cover.dispatchEvent(e) // 无法触发链接点击跳转
+                const evt = new Event('mousedown') // 新建一个事件而不是复用 event，以避免意外情况
+                evt.button = 0
+                cover.dispatchEvent(evt) // 无法触发链接点击跳转
               } else {
                 window.open(cover.href)
               }
-            } else if (e.button == 1) {
+            } else if (event.button == 1) {
               if (cover.loaded) {
                 window.open(cover.href)
               }
             }
-          } else if (e.type == 'mouseover') {
+          } else if (event.type == 'mouseenter') {
             cover.dispatchEvent(new Event('mouseenter'))
           }
+          addEventListeners()
+        }
+
+        // lazy loading；use capture，确保优先于其他监听器执行
+        const addEventListeners = () => {
+          cover.addEventListener('mousedown', main, true)
+          if (gm.config.preview) {
+            cover.addEventListener('mouseenter', main, true)
+          }
+        }
+        const removeEventListeners = () => {
+          cover.removeEventListener('mousedown', main, true)
+          if (gm.config.preview) {
+            cover.removeEventListener('mouseenter', main, true)
+          }
+        }
+        addEventListeners()
+
+        const getParams = () => unsafeWindow.getPlayerExtraParams?.()
+        const getCover = (params = getParams()) => {
+          if (cover._cover_id != params.paster?.aid) {
+            cover._cover_url = params.epCover
+            cover._cover_id = params.id
+          }
+          return cover._cover_url
         }
       }
-      cover.addEventListener('mousedown', main)
-      if (gm.config.preview) {
-        cover.addEventListener('mouseover', main)
-      }
+    }
 
+    addLiveBtn(urc) {
+      const _self = this
+      const cover = document.createElement('a')
+      cover.innerText = '获取封面'
+      cover.className = `${gm.id}_live_cover_btn`
+      urc.insertBefore(cover, urc.firstChild)
+      const preview = _self.method.createPreview(cover)
+      const info = unsafeWindow.__NEPTUNE_IS_MY_WAIFU__?.roomInfoRes?.data?.room_info
+      const url = gm.config.liveKeyFrame ? info?.keyframe : info?.cover
+      _self.method.setCover(cover, preview, url)
+    }
+
+    addStyle() {
       GM_addStyle(`
-        .${gm.id}_cover_btn {
+        .${gm.id}_bangumi_cover_btn {
           float: right;
           cursor: pointer;
           font-size: 12px;
@@ -552,140 +592,62 @@
           line-height: 36px;
           color: #505050;
         }
-        .${gm.id}_cover_btn:hover {
-          color: #00a1d6;
+        .${gm.id}_bangumi_cover_btn:hover {
+          color: #0075ff;
         }
-      `)
 
-      const updateCover = async () => {
-        try {
-          bus.cover = await api.wait.waitForConditionPassed({
-            condition: async () => {
-              // aid 变化只能说明视频确实变了，但 cover 可能还没变
-              const cover = await getCover()
-              if (cover && cover != bus.cover) {
-                return cover
-              }
-            },
-          })
-          setCover(bus.cover)
-        } catch (e) {
-          // 在番剧中，切换 URL 后封面不变是正常的，说明切换后还是同一部番
-        }
-      }
-
-      const setCover = coverUrl => {
-        if (coverUrl) {
-          cover.title = gm.const.title
-          cover.href = coverUrl
-          cover.target = '_blank'
-          cover.loaded = true
-          _self.method.addDownloadEvent(cover)
-          preview.src = coverUrl
-        } else {
-          cover.title = errorMsg
-          cover.href = gm.url.noop
-          cover.target = '_self'
-          cover.loaded = false
-          preview.src = ''
-          cover.addEventListener('mousedown', function(e) {
-            if (e.button == 0 || e.button == 1) {
-              e.preventDefault()
-              api.message.create(errorMsg)
-            }
-          })
-        }
-      }
-
-      const getCover = async () => {
-        const img = await api.wait.waitForElementLoaded({
-          selector: '.media-cover img',
-          timeout: 2000,
-          stopOnTimeout: true,
-        })
-        return img.src.replace(/@[^@]*$/, '') ?? '' // 不要缩略图
-      }
-    }
-
-    addLiveBtn(urc) {
-      const _self = this
-      const info = unsafeWindow.__NEPTUNE_IS_MY_WAIFU__.roomInfoRes.data.room_info
-      const coverUrl = info.cover
-      const kfUrl = info.keyframe
-      const cover = document.createElement('a')
-      cover.innerText = '获取封面'
-      if (coverUrl) {
-        cover.title = gm.const.title
-        cover.href = coverUrl
-        cover.target = '_blank'
-        cover.loaded = true
-        _self.method.addDownloadEvent(cover)
-        _self.method.createPreview(cover).src = coverUrl
-      } else if (kfUrl) {
-        cover.title = `直播间没有设置封面，或者因不明原因无法获取到封面，点击获取关键帧：\n${kfUrl}`
-        cover.href = kfUrl
-        cover.target = '_blank'
-        cover.loaded = true
-        _self.method.addDownloadEvent(cover)
-        _self.method.createPreview(cover).src = kfUrl
-      } else {
-        const errorMsg = '获取失败，若非网络问题请提供反馈'
-        cover.title = errorMsg
-        cover.href = gm.url.noop
-        cover.target = '_self'
-        cover.loaded = false
-        cover.addEventListener('mousedown', function(e) {
-          if (e.button == 0 || e.button == 1) {
-            api.message.create(errorMsg)
-          }
-        })
-      }
-      cover.className = `${gm.id}_cover_btn`
-      urc.insertBefore(cover, urc.firstChild)
-
-      GM_addStyle(`
-        .${gm.id}_cover_btn {
+        .${gm.id}_live_cover_btn {
           cursor: pointer;
-          color: rgb(153, 153, 153);
+          color: #999999;
         }
-        .${gm.id}_cover_btn:hover {
-          color: #23ade5;
+        .${gm.id}_live_cover_btn:hover {
+          color: #23ADE5;
+        }
+
+        .${gm.id}_preview {
+          position: fixed;
+          top: 50%;
+          left: 50%;
+          transform: translate(-50%, -50%);
+          z-index: 142857;
+          max-width: 60vw; /* 自适应宽度和高度 */
+          max-height: 100vh;
+          display: none;
+          transition: opacity ${gm.const.fadeTime}ms ease-in-out;
+          opacity: 0;
+          cursor: pointer;
         }
       `)
     }
   }
 
-  window.addEventListener('load', async function() {
-    if (GM_info.scriptHandler != 'Tampermonkey') {
-      api.dom.initUrlchangeEvent()
-    }
-    script = new Script()
-    webpage = new Webpage()
+  script = new Script()
+  webpage = new Webpage()
 
-    script.init()
-    script.initScriptMenu()
+  script.init()
+  script.initScriptMenu()
 
-    if (api.web.urlMatch([gm.regex.page_videoNormalMode, gm.regex.page_videoWatchlaterMode], 'OR')) {
-      const app = await api.wait.waitQuerySelector('#app')
-      webpage.addVideoBtn(
-        await api.wait.waitForConditionPassed({
-          condition: async () => app.__vue__ && await api.wait.waitQuerySelector('#arc_toolbar_report'),
-        })
-      )
-    } else if (api.web.urlMatch(gm.regex.page_bangumi)) {
-      const app = await api.wait.waitQuerySelector('#app')
-      webpage.addBangumiBtn(
-        await api.wait.waitForConditionPassed({
-          condition: async () => app.__vue__ && await api.wait.waitQuerySelector('#toolbar_module'),
-        })
-      )
-    } else if (api.web.urlMatch(gm.regex.page_live)) {
-      const hiVm = await api.wait.waitQuerySelector('#head-info-vm')
-      webpage.addLiveBtn(
-        await api.wait.waitForConditionPassed({
-          condition: async () => hiVm.__vue__ && await api.wait.waitQuerySelector('.room-info-upper-row .upper-right-ctnr', hiVm),
-        })
-      )
-    }
-  })
+  if (api.web.urlMatch([gm.regex.page_videoNormalMode, gm.regex.page_videoWatchlaterMode], 'OR')) {
+    const app = await api.wait.waitQuerySelector('#app')
+    webpage.addVideoBtn(
+      await api.wait.waitForConditionPassed({
+        condition: async () => app.__vue__ && await api.wait.waitQuerySelector('#arc_toolbar_report'),
+      })
+    )
+  } else if (api.web.urlMatch(gm.regex.page_bangumi)) {
+    const app = await api.wait.waitQuerySelector('#app')
+    webpage.addBangumiBtn(
+      await api.wait.waitForConditionPassed({
+        condition: async () => app.__vue__ && await api.wait.waitQuerySelector('#toolbar_module'),
+      })
+    )
+  } else if (api.web.urlMatch(gm.regex.page_live)) {
+    const hiVm = await api.wait.waitQuerySelector('#head-info-vm')
+    webpage.addLiveBtn(
+      await api.wait.waitForConditionPassed({
+        condition: async () => hiVm.__vue__ && await api.wait.waitQuerySelector('.room-info-upper-row .upper-right-ctnr', hiVm),
+      })
+    )
+  }
+  webpage.addStyle()
 })()
