@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.16.6.20210726
+// @version         4.16.7.20210727
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -1216,8 +1216,8 @@
           el.mraInformation = gm.el.setting.querySelector('#gm-mraInformation')
           api.message.advanced(el.mraInformation, `
             <div style="line-height:1.6em">
-              <p style="margin-bottom:0.5em"><b>DOMContentLoaded</b>：与页面同步加载，可避免观察到脚本对页面所作的动态修改，在视觉上更和谐。</p>
-              <p><b>load</b>：在页面初步加载完成时加载，这样脚本在网页加载速度极慢时仍能保证正常工作。但以上情况并不常见，以下为常见原因：1. 短时间内（在后台）打开十几乃至数十个网页；2. 网络问题。</p>
+              <p style="margin-bottom:0.5em"><b>DOMContentLoaded</b>：与页面内容同步加载，避免脚本在页面加载度较高时才对页面作修改。上述情况会给人页面加载时间过长的错觉，并且伴随页面变化突兀的不适感。</p>
+              <p><b>load</b>：在页面初步加载完成时运行。从理论上来说这个时间点更为合适，且能保证脚本在网页加载速度极慢时仍可正常工作。但要注意的是，以上所说「网页加载速度极慢」的情况并不常见，以下为常见原因：1. 短时间内（在后台）打开十几乃至数十个网页；2. 网络问题。</p>
             </div>
           `, '💬', { width: '36em', flagSize: '2em' })
           el.dpcInformation = gm.el.setting.querySelector('#gm-dpcInformation')
