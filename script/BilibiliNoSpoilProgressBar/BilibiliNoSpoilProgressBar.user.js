@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站防剧透进度条
-// @version         1.9.2.20210725
+// @version         1.9.3.20210726
 // @namespace       laster2800
 // @author          Laster2800
 // @description     看比赛、看番总是被进度条剧透？装上这个脚本再也不用担心这些问题了
@@ -1268,8 +1268,10 @@
           _self.progress.played = await api.wait.waitQuerySelector(selector.progress.played, _self.control)
           _self.progress.preview = await api.wait.waitQuerySelector(selector.progress.preview, _self.control)
 
-          _self.fakePlayed = _self.progress.played.insertAdjacentElement('afterend', _self.progress.played.cloneNode(true))
-          _self.fakePlayed.style.visibility = 'hidden'
+          if (!_self.control.contains(_self.fakePlayed)) {
+            _self.fakePlayed = _self.progress.played.insertAdjacentElement('afterend', _self.progress.played.cloneNode(true))
+            _self.fakePlayed.style.visibility = 'hidden'
+          }
         }
 
         await initCore()
@@ -1315,10 +1317,12 @@
           _self.progress.preview = await api.wait.waitQuerySelector(selector.progress.preview, _self.progress.root)
           _self.shadowProgress = await api.wait.waitQuerySelector(selector.shadowProgress, _self.control)
 
-          _self.fakeTrack = _self.progress.track.insertAdjacentElement('afterend', _self.progress.track.cloneNode(true)) // 必须在 thumb 前，否则 z 轴层次错误
-          _self.fakeTrack.style.visibility = 'hidden'
-          _self.fakeTrack.querySelector(selector.progress.buffer).style.visibility = 'hidden'
-          _self.fakePlayed = _self.fakeTrack.querySelector(selector.progress.played)
+          if (!_self.control.contains(_self.fakeTrack)) {
+            _self.fakeTrack = _self.progress.track.insertAdjacentElement('afterend', _self.progress.track.cloneNode(true)) // 必须在 thumb 前，否则 z 轴层次错误
+            _self.fakeTrack.style.visibility = 'hidden'
+            _self.fakeTrack.querySelector(selector.progress.buffer).style.visibility = 'hidden'
+            _self.fakePlayed = _self.fakeTrack.querySelector(selector.progress.played)
+          }
 
           // 有些播放页面，自动跳转到上次播放进度时，thumb 被会被替换成新的
           // 似乎最多只会变一次，暂时就只处理一次
@@ -1617,6 +1621,7 @@
         if (typeof offset == 'number') {
           if (api.web.urlMatch(gm.regex.page_bangumi)) {
             const handler = () => {
+              _self.progress.root._offset = offset
               _self.progress.root.style.transform = `translateX(${offset}%)`
               if (_self.enabled) {
                 _self.progress.slider.style.background = 'unset'
@@ -1636,6 +1641,7 @@
               if (noPostpone || !gm.config.postponeOffset) {
                 handler()
               } else if (!_self.progress._noSpoil) { // 首次打开
+                _self.progress.root._offset = 0
                 _self.progress.root.style.transform = 'translateX(0)'
                 _self.progress.slider.style.background = 'unset'
                 _self.progress.track.style.transform = 'translateX(0)'
@@ -1654,6 +1660,7 @@
             }
           } else {
             const handler = () => {
+              _self.progress.root._offset = offset
               _self.progress.root.style.transform = `translateX(${offset}%)`
               if (_self.enabled) {
                 _self.fakeTrack.style.transform = `translateX(${-offset}%)`
@@ -1669,6 +1676,7 @@
               if (noPostpone || !gm.config.postponeOffset) {
                 handler()
               } else if (!_self.progress._noSpoil) { // 首次打开
+                _self.progress.root._offset = 0
                 _self.progress.root.style.transform = 'translateX(0)'
                 _self.fakeTrack.style.transform = 'translateX(0)'
               }
@@ -1743,7 +1751,7 @@
       // 若打开稍后再看模式播放页后，在以下条件等待超时之前切换到其他视频，这部分代码也会响应导致重新初始化
       // 不过，这种情况本来就应该重初始化，也就是相当于多处理一次，从结果上来看并不要紧
       api.wait.executeAfterConditionPassed({
-        condition: () => !document.querySelector(`.${gm.id}-scriptControl`),
+        condition: () => !document.body.contains(_self.scriptControl),
         callback: () => _self.initNoSpoil(),
         interval: 250,
         onTimeout: null,
@@ -1815,7 +1823,7 @@
      */
     initScriptControl() {
       const _self = this
-      if (!_self.controlPanel.querySelector(`.${gm.id}-scriptControl`)) {
+      if (!_self.controlPanel.contains(_self.scriptControl)) {
         _self.scriptControl = _self.controlPanel.appendChild(document.createElement('div'))
         if (api.web.urlMatch(gm.regex.page_bangumi)) {
           _self.scriptControl.style.left = '1em'
@@ -1921,14 +1929,7 @@
       const _self = this
       if (!_self.enabled) return
       const playRate = _self.method.getCurrentTime() / _self.method.getDuration()
-      let offset = null
-      const m = _self.progress.root.style.transform.match(/(?<=translateX\()[^)]+(?=\))/)
-      if (m?.length > 0) {
-        offset = m[0]
-      } else {
-        offset = 0
-      }
-      offset = parseFloat(offset)
+      let offset = _self.progress.root._offset ?? 0
       // 若处于播放进度小于左侧预留区的特殊情况，不要进行处理
       // 注意，一旦离开这种特殊状态，就再也不可能进度该特殊状态了，因为这样反而会暴露信息
       if (offset !== 0) {
@@ -1945,6 +1946,7 @@
           reservedZone = true
         }
         if (reservedZone) {
+          _self.progress.root._offset = offset
           _self.progress.root.style.transform = `translateX(${offset}%)`
           if (api.web.urlMatch(gm.regex.page_bangumi)) {
             _self.progress.track.style.transform = `translateX(${-offset}%)`
@@ -1970,7 +1972,7 @@
       GM_addStyle(`
         :root {
           --control-item-selected-color: #00c7ff;
-          --control-item-shadow-color: #00000050;
+          --control-item-shadow-color: #00000080;
           --text-color: black;
           --text-bold-color: #3a3a3a;
           --light-text-color: white;
@@ -1998,15 +2000,20 @@
           margin-bottom: 0.5em;
           font-size: 13px;
           z-index: 10000;
+          display: flex;
         }
 
         .${gm.id}-scriptControl > * {
           cursor: pointer;
-          border: 1px solid;
-          border-radius: 0.4em;
-          padding: 0.1em 0.3em;
-          margin: 0 0.1em;
+          border-radius: 4px;
+          padding: 0.3em;
+          margin: 0 0.12em;
           background-color: var(--control-item-shadow-color);
+          line-height: 1em;
+          opacity: 0.8;
+        }
+        .${gm.id}-scriptControl > *:hover {
+          opacity: 1;
         }
         .${gm.id}-scriptControl > *[enabled] {
           color: var(--control-item-selected-color);
