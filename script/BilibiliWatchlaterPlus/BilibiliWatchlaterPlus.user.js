@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.16.5.20210725
+// @version         4.16.6.20210726
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -17,7 +17,7 @@
 // @exclude         *://message.bilibili.com/pages/nav/index_new_pc_sync
 // @exclude         *://t.bilibili.com/h5/dynamic/specification
 // @exclude         *://www.bilibili.com/page-proxy/game-nav.html
-// @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=953957
+// @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=954445
 // @grant           GM_addStyle
 // @grant           GM_registerMenuCommand
 // @grant           GM_xmlhttpRequest
@@ -132,6 +132,14 @@
       openInCurrent: 'openInCurrent',
       openInNew: 'openInNew',
     },
+    /**
+     * @readonly
+     * @enum {string}
+     */
+    mainRunAt: {
+      DOMContentLoaded: 'DOMContentLoaded',
+      load: 'load',
+    }
   }
   // 将名称不完全对应的补上，这样校验才能生效
   Enums.headerButtonOpL = Enums.headerButtonOpR = Enums.headerButtonOpM = Enums.headerButtonOp
@@ -145,6 +153,7 @@
    * @property {number} configUpdate 当前版本对应的配置版本号，只要涉及到配置的修改都要更新；若同一天修改多次，可以追加小数来区分
    * @property {URLSearchParams} searchParams URL 查询参数
    * @property {GMObject_config} config 用户配置
+   * @property {string[]} configDocumentStart document-start 时期配置
    * @property {GMObject_configMap} configMap 用户配置属性
    * @property {GMObject_data} data 脚本数据
    * @property {GMObject_url} url URL
@@ -186,6 +195,7 @@
    * @property {openListVideo} openListVideo 列表页面视频点击行为
    * @property {boolean} removeButton_removeAll 移除「一键清空」按钮
    * @property {boolean} removeButton_removeWatched 移除「移除已观看视频」按钮
+   * @property {mainRunAt} mainRunAt 主要逻辑运行时期
    * @property {boolean} disablePageCache 禁用页面缓存
    * @property {number} watchlaterListCacheValidPeriod 稍后再看列表数据本地缓存有效期（单位：秒）
    * @property {boolean} hideDisabledSubitems 设置页隐藏被禁用项的子项
@@ -310,7 +320,7 @@
   const gm = {
     id: gmId,
     configVersion: GM_getValue('configVersion'),
-    configUpdate: 20210724,
+    configUpdate: 20210726,
     searchParams: new URL(location.href).searchParams,
     config: {},
     configMap: {
@@ -345,11 +355,13 @@
       openListVideo: { default: Enums.openListVideo.openInCurrent, attr: 'value', configVersion: 20200717 },
       removeButton_removeAll: { default: false, attr: 'checked', configVersion: 20200722 },
       removeButton_removeWatched: { default: false, attr: 'checked', configVersion: 20200722 },
+      mainRunAt: { default: Enums.mainRunAt.DOMContentLoaded, attr: 'value', needNotReload: true, configVersion: 20210726 },
       disablePageCache: { default: false, attr: 'checked', configVersion: 20210322 },
       watchlaterListCacheValidPeriod: { default: 15, type: 'int', attr: 'value', needNotReload: true, max: 600, configVersion: 20210722 },
       hideDisabledSubitems: { default: true, attr: 'checked', configVersion: 20210505 },
       reloadAfterSetting: { default: true, attr: 'checked', needNotReload: true, configVersion: 20200715 },
     },
+    configDocumentStart: ['redirect', 'mainRunAt'],
     data: {
       removeHistoryData: null,
       watchlaterListData: null,
@@ -448,10 +460,14 @@
     initAtDocumentStart() {
       // document-start 级用户配置读取
       if (gm.configVersion > 0) {
-        gm.config.redirect = this.method.gmValidate('redirect', gm.configMap.redirect.default)
+        for (const name of gm.configDocumentStart) {
+          gm.config[name] = this.method.gmValidate(name, gm.configMap[name].default)
+        }
       } else {
-        gm.config.redirect = gm.configMap.redirect.default
-        GM_setValue('redirect', gm.configMap.redirect.default)
+        for (const name of gm.configDocumentStart) {
+          gm.config[name] = gm.configMap[name].default
+          GM_setValue(name, gm.config[name])
+        }
       }
     }
 
@@ -480,9 +496,8 @@
      * 初始化全局对象
      */
     initGMObject() {
-      const cfgDocumentStart = { redirect: true } // document-start 时期就处理过的配置
       for (const name in gm.configMap) {
-        if (!cfgDocumentStart[name]) {
+        if (gm.configDocumentStart.indexOf(name) < 0) {
           gm.config[name] = gm.configMap[name].default
         }
       }
@@ -659,7 +674,7 @@
           }
 
           // 功能性更新后更新此处配置版本
-          if (gm.configVersion < 20210724) {
+          if (gm.configVersion < 20210726) {
             _self.openUserSetting(2)
           } else {
             gm.configVersion = gm.configUpdate
@@ -674,11 +689,10 @@
      */
     readConfig() {
       const _self = this
-      const cfgDocumentStart = { redirect: true } // document-start 时期就处理过的配置
       if (gm.configVersion > 0) {
         // 对配置进行校验
         for (const name in gm.config) {
-          if (!cfgDocumentStart[name]) {
+          if (gm.configDocumentStart.indexOf(name) < 0) {
             gm.config[name] = _self.method.gmValidate(name, gm.config[name])
           }
         }
@@ -686,7 +700,7 @@
         // 用户强制初始化，或者第一次安装脚本
         gm.configVersion = 0
         for (const name in gm.config) {
-          if (!cfgDocumentStart[name]) {
+          if (gm.configDocumentStart.indexOf(name) < 0) {
             GM_setValue(name, gm.config[name])
           }
         }
@@ -1034,6 +1048,20 @@
                     </td>
                   </tr>
 
+                  <tr class="gm-item" title="选择脚本主要逻辑的运行时期。">
+                    <td><div>脚本设置</div></td>
+                    <td>
+                      <div>
+                        <span>脚本运行时期：</span>
+                        <select id="gm-mainRunAt">
+                          <option value="${Enums.mainRunAt.DOMContentLoaded}">DOMContentLoaded</option>
+                          <option value="${Enums.mainRunAt.load}">load</option>
+                        </select>
+                        <span id="gm-mraInformation" class="gm-information" title>💬</span>
+                      </div>
+                    </td>
+                  </tr>
+
                   <tr class="gm-item" title="禁用页面缓存">
                     <td><div>脚本设置</div></td>
                     <td>
@@ -1183,6 +1211,13 @@
             <div style="text-indent:2em;line-height:1.6em">
               <p>在动态页、视频播放页以及其他页面，视频卡片的右下角方存在一个将视频加入或移除出稍后再看的快捷按钮。然而，在刷新页面后，B站不会为之加载稍后再看的状态——即使视频已经在稍后再看中，也不会显示出来。启用该功能后，会自动填充这些缺失的状态信息。</p>
               <p>第三项「所有页面」，会用一套固定的逻辑对脚本能匹配到的所有非特殊页面尝试进行信息填充。脚本本身没有匹配所有B站页面，如果有需要，请在脚本管理器（如 Tampermonkey）中为脚本设置额外的页面匹配规则。由于B站各页面的设计不是很规范，某些页面中视频卡片的设计可能跟其他地方不一致，所以不保证必定能填充成功。</p>
+            </div>
+          `, '💬', { width: '36em', flagSize: '2em' })
+          el.mraInformation = gm.el.setting.querySelector('#gm-mraInformation')
+          api.message.advanced(el.mraInformation, `
+            <div style="line-height:1.6em">
+              <p style="margin-bottom:0.5em"><b>DOMContentLoaded</b>：与页面同步加载，可避免观察到脚本对页面所作的动态修改，在视觉上更和谐。</p>
+              <p><b>load</b>：在页面初步加载完成时加载，这样脚本在网页加载速度极慢时仍能保证正常工作。但以上情况并不常见，以下为常见原因：1. 短时间内（在后台）打开十几乃至数十个网页；2. 网络问题。</p>
             </div>
           `, '💬', { width: '36em', flagSize: '2em' })
           el.dpcInformation = gm.el.setting.querySelector('#gm-dpcInformation')
@@ -4550,8 +4585,13 @@
     }
 
     webpage.method.cleanSearchParams()
-    // 脚本的其他部分推迟至 DOMContentLoaded 事件执行
-    document.addEventListener('DOMContentLoaded', function() {
+    if (gm.config.mainRunAt == Enums.mainRunAt.DOMContentLoaded) {
+      document.addEventListener('DOMContentLoaded', main)
+    } else {
+      window.addEventListener('load', main)
+    }
+
+    function main() {
       script.init()
       script.addScriptMenu()
 
@@ -4592,6 +4632,6 @@
       }
       webpage.processSearchParams()
       webpage.addStyle()
-    })
+    }
   })()
 })()
