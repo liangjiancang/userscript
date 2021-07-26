@@ -4,7 +4,8 @@
 
 ## V1.3
 
-1. `message`：增加 `alert()`、`confirm()`、`prompt()` 方法。
+1. 库：修复在网速极慢的情况下，在 `document-start` 时期运行出错的问题。
+2. `message`：增加 `alert()`、`confirm()`、`prompt()` 方法。
 
 ## V1.2
 
