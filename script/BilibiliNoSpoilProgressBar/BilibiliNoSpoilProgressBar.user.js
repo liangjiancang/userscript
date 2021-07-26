@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站防剧透进度条
-// @version         1.9.3.20210726
+// @version         1.9.4.20210726
 // @namespace       laster2800
 // @author          Laster2800
 // @description     看比赛、看番总是被进度条剧透？装上这个脚本再也不用担心这些问题了
@@ -1827,6 +1827,7 @@
         _self.scriptControl = _self.controlPanel.appendChild(document.createElement('div'))
         if (api.web.urlMatch(gm.regex.page_bangumi)) {
           _self.scriptControl.style.left = '1em'
+          _self.scriptControl.style.marginBottom = '0.5em'
         }
         _self.control._scriptControl = _self.scriptControl
         _self.scriptControl.className = `${gm.id}-scriptControl`
@@ -1997,7 +1998,7 @@
           left: 0;
           bottom: 100%;
           color: var(--light-text-color);
-          margin-bottom: 0.5em;
+          margin-bottom: 1em;
           font-size: 13px;
           z-index: 10000;
           display: flex;
@@ -2010,7 +2011,8 @@
           margin: 0 0.12em;
           background-color: var(--control-item-shadow-color);
           line-height: 1em;
-          opacity: 0.8;
+          opacity: 0.7;
+          transition: opacity ease-in-out ${gm.const.fadeTime}ms;
         }
         .${gm.id}-scriptControl > *:hover {
           opacity: 1;
