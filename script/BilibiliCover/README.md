@@ -18,13 +18,13 @@
 
     ![脚本设置](https://gitee.com/liangjiancang/userscript/raw/master/script/BilibiliCover/screenshot/脚本设置.png)
 
-* 视频（普通模式和稍后再看模式）
+* 视频播放页
 
-    ![视频（普通模式和稍后再看模式）](https://gitee.com/liangjiancang/userscript/raw/master/script/BilibiliCover/screenshot/视频（普通模式和稍后再看模式）.png)
+    ![视频播放页](https://gitee.com/liangjiancang/userscript/raw/master/script/BilibiliCover/screenshot/视频播放页.png)
 
-* 番剧
+* 番剧播放页
 
-    ![番剧](https://gitee.com/liangjiancang/userscript/raw/master/script/BilibiliCover/screenshot/番剧.png)
+    ![番剧播放页](https://gitee.com/liangjiancang/userscript/raw/master/script/BilibiliCover/screenshot/番剧播放页.png)
 
 * 直播间
 
