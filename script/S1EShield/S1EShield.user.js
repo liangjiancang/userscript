@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name            S1战斗力屏蔽
 // @namespace       laster2800
-// @version         3.3.15.20210727
+// @version         3.3.16.20210727
 // @author          Laster2800
 // @description     屏蔽 S1 的战斗力系统，眼不见为净
 // @author          Laster2800
@@ -21,7 +21,7 @@ const enabledAttr = `${gmId}-enabled`
 const enabledSelector = `body[${enabledAttr}]`
 
 /* global UserscriptAPI */
-var api = new UserscriptAPI({
+const api = new UserscriptAPI({
   id: gmId,
   label: GM_info.script.name,
 });
@@ -33,7 +33,7 @@ var api = new UserscriptAPI({
 
   // 在导航栏中加入脚本开关
   api.wait.waitQuerySelector('#nv').then(nv => {
-    var sw = document.createElement('label')
+    const sw = document.createElement('label')
     sw.innerHTML = `
       <span>战斗力系统</span>
       <input type="checkbox" style="vertical-align:middle">
@@ -80,8 +80,8 @@ var api = new UserscriptAPI({
     // 有系统提醒处于未读状态时，相关位置会有高亮显示，网页标题也会有所不同
     // 将这些差异化显示，在用户没有反应出来之前去除
     const p2 = api.wait.waitQuerySelector('#myprompt').then(menu_button => {
-      var menu_mypost = menu.querySelector('.notice_mypost') // 右上角菜单「我的帖子」
-      var menu_system = menu.querySelector('.notice_system') // 右上角菜单「系统提醒」
+      const menu_mypost = menu.querySelector('.notice_mypost') // 右上角菜单「我的帖子」
+      const menu_system = menu.querySelector('.notice_system') // 右上角菜单「系统提醒」
       if (menu_mypost || menu_system) {
         menu_button.innerText = '提醒'
         menu_button.className = 'a showmenu'
@@ -174,7 +174,7 @@ var api = new UserscriptAPI({
 
 function replaceTitle() {
   // eslint-disable-next-line no-irregular-whitespace
-  var reg = /^【新提醒】|【　　　】/
+  const reg = /^【新提醒】|【　　　】/
   if (reg.test(document.title)) {
     document.title = document.title.replace(reg, '')
   }
