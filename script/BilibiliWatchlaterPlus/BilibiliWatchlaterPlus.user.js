@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.16.7.20210727
+// @version         4.16.8.20210727
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -14,10 +14,10 @@
 // @include         *://search.bilibili.com/*
 // @include         *://space.bilibili.com/*
 // @include         *://account.bilibili.com/*
-// @exclude         *://message.bilibili.com/pages/nav/index_new_pc_sync
-// @exclude         *://t.bilibili.com/h5/dynamic/specification
-// @exclude         *://www.bilibili.com/page-proxy/game-nav.html
-// @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=954445
+// @exclude         *://message.bilibili.com/*/*
+// @exclude         *://t.bilibili.com/h5/*
+// @exclude         *://www.bilibili.com/page-proxy/*
+// @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=954686
 // @grant           GM_addStyle
 // @grant           GM_registerMenuCommand
 // @grant           GM_xmlhttpRequest
@@ -4593,45 +4593,48 @@
 
     function main() {
       script.init()
-      script.addScriptMenu()
+      if (self == top) {
+        script.addScriptMenu()
+        webpage.addStyle()
 
-      // 全局修改
-      if (gm.config.fillWatchlaterStatus != Enums.fillWatchlaterStatus.never) {
-        webpage.fillWatchlaterStatus()
-      }
-      if (!api.web.urlMatch(gm.regex.page_dynamicMenu)) { // 排除特殊页面
         if (gm.config.headerButton) {
           webpage.addHeaderButton()
         }
         if (gm.config.removeHistory) {
           webpage.processWatchlaterListDataSaving()
         }
+        if (gm.config.fillWatchlaterStatus != Enums.fillWatchlaterStatus.never) {
+          webpage.fillWatchlaterStatus()
+        }
         if (gm.config.hideWatchlaterInCollect) {
           webpage.hideWatchlaterInCollect()
         }
-      }
 
-      if (api.web.urlMatch(gm.regex.page_watchlaterList)) {
-        // 列表页面
-        webpage.adjustWatchlaterListUI()
-        webpage.processWatchlaterList()
-      } else if (api.web.urlMatch(gm.regex.page_videoNormalMode)) {
-        // 播放页面（正常模式）
-        if (gm.config.videoButton) {
-          webpage.addVideoButton_Normal()
+        if (api.web.urlMatch(gm.regex.page_watchlaterList)) {
+          // 列表页面
+          webpage.adjustWatchlaterListUI()
+          webpage.processWatchlaterList()
+        } else if (api.web.urlMatch(gm.regex.page_videoNormalMode)) {
+          // 播放页面（正常模式）
+          if (gm.config.videoButton) {
+            webpage.addVideoButton_Normal()
+          }
+        } else if (api.web.urlMatch(gm.regex.page_videoWatchlaterMode)) {
+          // 播放页面（稍后再看模式）
+          if (gm.config.videoButton) {
+            webpage.addVideoButton_Watchlater()
+          }
         }
-      } else if (api.web.urlMatch(gm.regex.page_videoWatchlaterMode)) {
-        // 播放页面（稍后再看模式）
-        if (gm.config.videoButton) {
-          webpage.addVideoButton_Watchlater()
+        webpage.processSearchParams()
+      } else {
+        if (api.web.urlMatch(gm.regex.page_dynamicMenu)) {
+          // 动态入口弹出菜单页面的处理
+          webpage.addMenuScrollbarStyle()
+          if (gm.config.fillWatchlaterStatus != Enums.fillWatchlaterStatus.never) {
+            webpage.fillWatchlaterStatus()
+          }
         }
-      } else if (api.web.urlMatch(gm.regex.page_dynamicMenu)) {
-        // 动态入口弹出菜单页面的处理
-        webpage.addMenuScrollbarStyle()
-        return
       }
-      webpage.processSearchParams()
-      webpage.addStyle()
     }
   })()
 })()

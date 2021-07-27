@@ -12,10 +12,12 @@
 6. 弹出菜单：增加选项「在弹出菜单中显示被移除的视频」。开启后搜索条件会被保留，下次打开时自动应用，直至页面刷新为止。
 7. 重定向：兼容 URL 中 BV 号被第三方修改为 AV 号的情况。
 8. 脚本：列表页面上方的视频数统计，现在会在相关操作结束后更新。
-9. 脚本：优化错误处理流程。
-10. 脚本：优化初始化流程。
-11. UI：元素内容及布局优化。
-12. API：升级至 V1.3。详见 [UserscriptAPI 更新日志](https://gitee.com/liangjiancang/userscript/blob/master/lib/UserscriptAPI/changelog.md)。
+9. 脚本：优化主流程。
+10. 脚本：优化错误处理流程。
+11. 脚本：优化初始化流程。
+12. 脚本：优化 URL 匹配。
+13. UI：元素内容及布局优化。
+14. API：升级至 V1.3。详见 [UserscriptAPI 更新日志](https://gitee.com/liangjiancang/userscript/blob/master/lib/UserscriptAPI/changelog.md)。
 
 ## V4.15
 
