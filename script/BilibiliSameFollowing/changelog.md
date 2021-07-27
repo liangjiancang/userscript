@@ -7,8 +7,9 @@
 1. 功能实现：在直播间中快速查看。
 2. 脚本：主要逻辑推迟至 `load` 事件执行。
 3. 脚本：优化错误处理流程。
-4. API：升级至 V1.3，进一步优化条件等待和元素等待逻辑。详见 [UserscriptAPI 更新日志](https://gitee.com/liangjiancang/userscript/blob/master/lib/UserscriptAPI/changelog.md)。
-5. 代码：优化异常处理。
+4. 脚本：优化 URL 匹配。
+5. API：升级至 V1.3，进一步优化条件等待和元素等待逻辑。详见 [UserscriptAPI 更新日志](https://gitee.com/liangjiancang/userscript/blob/master/lib/UserscriptAPI/changelog.md)。
+6. 代码：优化异常处理。
 
 ## V1.3
 
