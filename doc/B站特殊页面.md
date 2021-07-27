@@ -2,18 +2,19 @@
 
 ## 排除规则
 
-常用排除规则如下。
+常用排除规则如下。注意，如果能脚本只需在顶层执行，添加 `@noframes` 即可避免大部分问题，未必需要以下规则。
 
-| 排除规则                                               | 说明                                     |
-| ------------------------------------------------------ | ---------------------------------------- |
-| `*://www.bilibili.com/watchlater/`                     | 稍后再看列表页面（及旧稍后再看播放页面） |
-| `*://www.bilibili.com/page-proxy/game-nav.html`        | 游戏中心入口弹出菜单                     |
-| `*://t.bilibili.com/pages/nav/index_new`               | 动态入口弹出菜单页面                     |
-| `*://t.bilibili.com/h5/dynamic/specification`          | 动态页自动加载的「哔哩哔哩动态使用规范」 |
-| `*://live.bilibili.com/`                               | 直播主页，没有必要在此执行直播间逻辑     |
-| `*://live.bilibili.com/?*`                             | 直播主页（带查询参数）                   |
-| `*://live.bilibili.com/*/*`                            | 直播间中可能会加载的各种奇葩页面         |
-| `*://message.bilibili.com/pages/nav/index_new_pc_sync` | 消息入口弹出菜单                         |
+| 排除规则                                 | 说明                                     |
+| ---------------------------------------- | ---------------------------------------- |
+| `*://www.bilibili.com/watchlater/`       | 稍后再看列表页面（及旧稍后再看播放页面） |
+| `*://www.bilibili.com/page-proxy/*`      | 主站 frame                               |
+| `*://t.bilibili.com/pages/nav/index_new` | 动态入口弹出菜单页面                     |
+| `*://t.bilibili.com/h5/*`                | 动态 frame（除动态入口弹出菜单）         |
+| `*://t.bilibili.com/*/*`                 | 动态 frame                               |
+| `*://live.bilibili.com/`                 | 直播主页，没有必要在此执行直播间逻辑     |
+| `*://live.bilibili.com/?*`               | 直播主页（带查询参数）                   |
+| `*://live.bilibili.com/*/*`              | 直播间 frame                             |
+| `*://message.bilibili.com/*/*`           | 消息 frame                               |
 
 ## 特殊页面
 
