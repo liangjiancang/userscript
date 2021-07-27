@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站封面获取
-// @version         4.12.3.20210727
+// @version         4.12.4.20210727
 // @namespace       laster2800
 // @author          Laster2800
 // @description     B站视频播放页（普通模式、稍后再看模式）、番剧播放页、直播间添加获取封面的按钮
@@ -296,7 +296,6 @@
 
           target.addEventListener('mouseenter', api.tool.debounce(function() {
             if (gm.config.preview) {
-              this.mouseOver = true
               preview.src && api.dom.fade(true, preview)
             }
           }, 200))
