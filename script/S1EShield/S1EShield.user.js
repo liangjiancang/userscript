@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name            S1战斗力屏蔽
 // @namespace       laster2800
-// @version         3.3.14.20210726
+// @version         3.3.15.20210727
 // @author          Laster2800
 // @description     屏蔽 S1 的战斗力系统，眼不见为净
 // @author          Laster2800
@@ -85,10 +85,8 @@ var api = new UserscriptAPI({
       if (menu_mypost || menu_system) {
         menu_button.innerText = '提醒'
         menu_button.className = 'a showmenu'
-        // 若在后台打开新标签页后很长时间都不切换过去，则切换过去时才会执行到这里，此时 title 可能已发生变化需立即处理
-        replaceTitle()
-        // 常规情况下，此时 title 仍未被改变，添加一个 ob 来跟踪变化
         api.wait.waitQuerySelector('title', document.head).then(title => {
+          // 常规情况下，此时 title 仍未被改变，添加一个 ob 来跟踪变化
           const obCfg = { childList: true }
           const ob = new MutationObserver((mutations, observer) => {
             observer.disconnect()
@@ -96,6 +94,9 @@ var api = new UserscriptAPI({
             observer.observe(title, obCfg)
           })
           ob.observe(title, obCfg)
+
+          // 若在后台打开新标签页后很长时间都不切换过去，则切换过去时才会执行到这里，此时 title 可能已发生变化需立即处理
+          replaceTitle()
         })
       }
       menu_system?.parentNode.parentNode.remove()
