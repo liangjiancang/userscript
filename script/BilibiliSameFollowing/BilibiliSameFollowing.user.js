@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站共同关注快速查看
-// @version         1.4.20.20210726
+// @version         1.4.21.20210727
 // @namespace       laster2800
 // @author          Laster2800
 // @description     快速查看与特定用户的共同关注（视频播放页、动态页、用户空间、直播间）
@@ -8,18 +8,15 @@
 // @homepage        https://greasyfork.org/zh-CN/scripts/428453
 // @supportURL      https://greasyfork.org/zh-CN/scripts/428453/feedback
 // @license         LGPL-3.0
+// @noframes
 // @include         *://www.bilibili.com/*
 // @include         *://t.bilibili.com/*
 // @include         *://space.bilibili.com/*
 // @include         *://live.bilibili.com/*
 // @exclude         *://live.bilibili.com/
 // @exclude         *://live.bilibili.com/?*
-// @exclude         *://live.bilibili.com/*/*
-// @exclude         *://t.bilibili.com/pages/nav/index_new
-// @exclude         *://t.bilibili.com/h5/dynamic/specification
 // @exclude         *://www.bilibili.com/watchlater/
-// @exclude         *://www.bilibili.com/page-proxy/game-nav.html
-// @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=954445
+// @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=954686
 // @grant           GM_addStyle
 // @grant           GM_notification
 // @grant           GM_xmlhttpRequest
@@ -211,7 +208,7 @@
      * 卡片处理逻辑
      * @async
      * @param {Object} config 配置
-     * @param {string} [config.container=body] 卡片父元素选择器
+     * @param {string} [config.container='body'] 卡片父元素选择器
      * @param {string} config.card 卡片元素选择器
      * @param {string} config.user 用户元素选择器
      * @param {string} config.info 信息元素选择器

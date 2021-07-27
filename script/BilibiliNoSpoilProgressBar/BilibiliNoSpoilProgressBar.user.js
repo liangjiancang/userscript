@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站防剧透进度条
-// @version         1.9.5.20210726
+// @version         1.9.6.20210727
 // @namespace       laster2800
 // @author          Laster2800
 // @description     看比赛、看番总是被进度条剧透？装上这个脚本再也不用担心这些问题了
@@ -8,11 +8,12 @@
 // @homepage        https://greasyfork.org/zh-CN/scripts/411092
 // @supportURL      https://greasyfork.org/zh-CN/scripts/411092/feedback
 // @license         LGPL-3.0
+// @noframes
 // @include         *://www.bilibili.com/video/*
 // @include         *://www.bilibili.com/medialist/play/watchlater
 // @include         *://www.bilibili.com/medialist/play/watchlater/*
 // @include         *://www.bilibili.com/bangumi/play/*
-// @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=954445
+// @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=954686
 // @grant           GM_addStyle
 // @grant           GM_registerMenuCommand
 // @grant           GM_xmlhttpRequest
@@ -1903,6 +1904,8 @@
             script.openUserSetting()
           }
         }
+
+        api.dom.fade(true, _self.scriptControl, null, 'flex')
       }
 
       if (_self.progress.bar && !_self.progress.bar._scriptControlListeners) {
@@ -2002,6 +2005,8 @@
           font-size: 13px;
           z-index: 10000;
           display: flex;
+          opacity: 0;
+          transition: opacity ${gm.const.fadeTime}ms ease-in-out;
         }
 
         .${gm.id}-scriptControl > * {
