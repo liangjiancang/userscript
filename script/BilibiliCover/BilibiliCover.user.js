@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站封面获取
-// @version         4.12.2.20210726
+// @version         4.12.3.20210727
 // @namespace       laster2800
 // @author          Laster2800
 // @description     B站视频播放页（普通模式、稍后再看模式）、番剧播放页、直播间添加获取封面的按钮
@@ -8,6 +8,7 @@
 // @homepage        https://greasyfork.org/zh-CN/scripts/395575
 // @supportURL      https://greasyfork.org/zh-CN/scripts/395575/feedback
 // @license         LGPL-3.0
+// @noframes
 // @include         *://www.bilibili.com/video/*
 // @include         *://www.bilibili.com/bangumi/play/*
 // @include         *://www.bilibili.com/medialist/play/watchlater
@@ -15,8 +16,7 @@
 // @include         *://live.bilibili.com/*
 // @exclude         *://live.bilibili.com/
 // @exclude         *://live.bilibili.com/?*
-// @exclude         *://live.bilibili.com/*/*
-// @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=954445
+// @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=954686
 // @grant           GM_addStyle
 // @grant           GM_download
 // @grant           GM_notification
@@ -230,7 +230,6 @@
               if (target.loaded && gm.config.download && e.button == 0) {
                 e.preventDefault()
                 target.dispatchEvent(new Event('mouseleave'))
-                target.disablePreview = true
                 _self.download(this.href, document.title)
               }
             })
@@ -295,50 +294,15 @@
           const preview = document.body.appendChild(document.createElement('img'))
           preview.className = `${gm.id}_preview`
 
-          const browserSyncTime = 10
-          const antiConflictTime = 20
-
-          const fadeIn = () => {
-            preview.style.display = 'unset'
-            setTimeout(() => {
-              preview.style.opacity = '1'
-            }, browserSyncTime)
-          }
-          const fadeOut = callback => {
-            preview.style.opacity = '0'
-            setTimeout(() => {
-              preview.style.display = 'none'
-              callback?.()
-            }, gm.const.fadeTime)
-          }
-          const disablePreviewTemp = () => {
-            target.disablePreview = true
-            setTimeout(() => {
-              if (!target.mouseOver) {
-                target.disablePreview = false
-              }
-            }, 80)
-          }
-
           target.addEventListener('mouseenter', api.tool.debounce(function() {
             if (gm.config.preview) {
               this.mouseOver = true
-              if (this.disablePreview) return
-              setTimeout(() => {
-                preview.src && fadeIn()
-              }, antiConflictTime)
+              preview.src && api.dom.fade(true, preview)
             }
           }, 200))
           target.addEventListener('mouseleave', api.tool.debounce(function() {
             if (gm.config.preview) {
-              this.mouseOver = false
-              if (this.disablePreview) {
-                this.disablePreview = false
-                return
-              }
-              setTimeout(() => {
-                preview.src && !preview.mouseOver && fadeOut()
-              }, antiConflictTime)
+              preview.src && !preview.mouseOver && api.dom.fade(false, preview)
             }
           }, 200))
 
@@ -349,9 +313,7 @@
           preview.onmouseleave = function() {
             this.mouseOver = false
             startPos = undefined
-            setTimeout(() => {
-              preview.src && fadeOut()
-            }, antiConflictTime)
+            preview.src && api.dom.fade(false, preview)
           }
           preview.addEventListener('mousedown', function(e) {
             if (this.src) {
@@ -365,20 +327,19 @@
                 } else {
                   window.open(this.src)
                 }
-                fadeOut(disablePreviewTemp)
               }
             }
           })
           preview.addEventListener('wheel', function() {
             // 滚动时关闭预览，优化用户体验
-            fadeOut(disablePreviewTemp)
+            api.dom.fade(false, preview)
           })
           preview.addEventListener('mousemove', function(e) {
             // 鼠标移动一段距离关闭预览，优化用户体验
             if (startPos) {
               const dSquare = (startPos.x - e.clientX) ** 2 + (startPos.y - e.clientY) ** 2
               if (dSquare > 20 ** 2) { // 20px
-                fadeOut(disablePreviewTemp)
+                api.dom.fade(false, preview)
               }
             } else {
               startPos = {
@@ -613,8 +574,8 @@
           max-width: 60vw; /* 自适应宽度和高度 */
           max-height: 100vh;
           display: none;
-          transition: opacity ${gm.const.fadeTime}ms ease-in-out;
           opacity: 0;
+          transition: opacity ${gm.const.fadeTime}ms ease-in-out;
           cursor: pointer;
         }
       `)
@@ -627,6 +588,7 @@
   
     script.init()
     script.initScriptMenu()
+    webpage.addStyle()
   
     if (api.web.urlMatch([gm.regex.page_videoNormalMode, gm.regex.page_videoWatchlaterMode], 'OR')) {
       const app = await api.wait.waitQuerySelector('#app')
@@ -653,6 +615,5 @@
         })
       )
     }
-    webpage.addStyle()
   })
 })()
