@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站共同关注快速查看
-// @version         1.4.21.20210727
+// @version         1.4.22.20210727
 // @namespace       laster2800
 // @author          Laster2800
 // @description     快速查看与特定用户的共同关注（视频播放页、动态页、用户空间、直播间）
@@ -376,6 +376,7 @@
 
     script.init()
     script.initScriptMenu()
+    webpage.addStyle()
 
     if (gm.config.lv1Card) {
       // 遍布全站的常规用户卡片，如视频评论区、动态评论区、用户空间评论区……
@@ -462,6 +463,5 @@
         ob.observe(userLink, { attributeFilter: ['href'] })
       }
     }
-    webpage.addStyle()
   })
 })()
