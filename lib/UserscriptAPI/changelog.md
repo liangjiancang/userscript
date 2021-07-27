@@ -6,6 +6,7 @@
 
 1. 库：修复在网速极慢的情况下，在 `document-start` 时期运行出错的问题。
 2. `message`：增加 `alert()`、`confirm()`、`prompt()` 方法。
+3. `dom`: `fade()` 增加 `display` 参数，用于控制元素在可视状态下的 `display` 样式。
 
 ## V1.2
 
