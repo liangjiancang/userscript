@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站封面获取
-// @version         4.12.4.20210727
+// @version         4.12.5.20210727
 // @namespace       laster2800
 // @author          Laster2800
 // @description     B站视频播放页（普通模式、稍后再看模式）、番剧播放页、直播间添加获取封面的按钮
@@ -206,11 +206,12 @@
           while (parts.length > 0) {
             const part = parts.pop()
             if (part) {
-              if (/^bv[0-9a-z]+$/i.test(part)) {
-                result = { id: 'BV' + part.slice(2), type: 'bvid' }
+              let m = null
+              if ((m = /^bv([0-9a-z]+)$/i.exec(part))) {
+                result = { id: 'BV' + m[1], type: 'bvid' }
                 break
-              } else if (/^(av)?\d+$/i.test(part)) { // 兼容在 URL 还原 AV 号的脚本
-                result = { id: part.match(/\d+/)[0], type: 'aid' }
+              } else if ((m = /^(av)?(\d+)$/i.exec(part))) { // 兼容 URL 中 BV 号被第三方修改为 AV 号的情况
+                result = { id: m[2], type: 'aid' }
                 break
               }
             }
@@ -584,11 +585,11 @@
   window.addEventListener('load', async function() {
     script = new Script()
     webpage = new Webpage()
-  
+
     script.init()
     script.initScriptMenu()
     webpage.addStyle()
-  
+
     if (api.web.urlMatch([gm.regex.page_videoNormalMode, gm.regex.page_videoWatchlaterMode], 'OR')) {
       const app = await api.wait.waitQuerySelector('#app')
       const atr = await api.wait.waitQuerySelector('#arc_toolbar_report')

@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站防剧透进度条
-// @version         1.9.7.20210727
+// @version         1.9.8.20210727
 // @namespace       laster2800
 // @author          Laster2800
 // @description     看比赛、看番总是被进度条剧透？装上这个脚本再也不用担心这些问题了
@@ -317,8 +317,8 @@
             } else {
               const rows = content.split('\n')
               for (const row of rows) {
-                const m = row.match(/^\d+/)
-                if (m?.length > 0) {
+                const m = /^\d+/.exec(row)
+                if (m) {
                   set.add(m[0])
                 }
               }
@@ -1175,11 +1175,12 @@
           while (parts.length > 0) {
             const part = parts.pop()
             if (part) {
-              if (/^bv[0-9a-z]+$/i.test(part)) {
-                result = { id: 'BV' + part.slice(2), type: 'bvid' }
+              let m = null
+              if ((m = /^bv([0-9a-z]+)$/i.exec(part))) {
+                result = { id: 'BV' + m[1], type: 'bvid' }
                 break
-              } else if (/^(av)?\d+$/i.test(part)) { // 兼容在 URL 还原 AV 号的脚本
-                result = { id: part.match(/\d+/)[0], type: 'aid' }
+              } else if ((m = /^(av)?(\d+)$/i.exec(part))) { // 兼容 URL 中 BV 号被第三方修改为 AV 号的情况
+                result = { id: m[2], type: 'aid' }
                 break
               }
             }
@@ -1499,8 +1500,9 @@
                   /** @type HTMLElement[] */
                   const items = list.querySelectorAll('.player-auxiliary-playlist-item-p-item')
                   for (const item of items) {
-                    if (/^P\d+\D/.test(item.innerText)) {
-                      item.innerText = item.innerText.replace(/(?<=^P\d+)\D.*/, '')
+                    const m = /^(P\d+)\D/i.exec(item.innerText)
+                    if (m) {
+                      item.innerText = m[1]
                     }
                   }
                   // 如果 list 中发生修改，则重新处理

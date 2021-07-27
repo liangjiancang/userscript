@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.16.8.20210727
+// @version         4.16.9.20210727
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -2094,11 +2094,12 @@
           while (parts.length > 0) {
             const part = parts.pop()
             if (part) {
-              if (/^bv[0-9a-z]+$/i.test(part)) {
-                result = { id: 'BV' + part.slice(2), type: 'bvid' }
+              let m = null
+              if ((m = /^bv([0-9a-z]+)$/i.exec(part))) {
+                result = { id: 'BV' + m[1], type: 'bvid' }
                 break
-              } else if (/^(av)?\d+$/i.test(part)) { // 兼容 URL 中 BV 号被第三方修改为 AV 号的情况
-                result = { id: part.match(/\d+/)[0], type: 'aid' }
+              } else if ((m = /^(av)?(\d+)$/i.exec(part))) { // 兼容 URL 中 BV 号被第三方修改为 AV 号的情况
+                result = { id: m[2], type: 'aid' }
                 break
               }
             }
@@ -2680,8 +2681,9 @@
 
             if (gm.config.headerMenuSearch) {
               el.search.addEventListener('input', function() {
-                if (/^\s+/.test(this.value)) {
-                  this.value = this.value.replace(/^\s+/, '')
+                const m = /^\s+(.*)/.exec(this.value)
+                if (m) {
+                  this.value = m[1]
                 }
               })
               el.search.addEventListener('input', api.tool.throttle(function() {
@@ -2691,7 +2693,7 @@
                 if (val.length > 0) {
                   el.searchClear.style.visibility = 'visible'
                   try {
-                    val = val.replace(/[.+^${}()|[\]\\]/g, '\\$&') // escape reg
+                    val = val.replace(/[.+^${}()|[\]\\]/g, '\\$&') // escape regex
                       .replaceAll('?', '.').replaceAll('*', '.+') // 通配符
                     val = new RegExp(val, 'i')
                   } catch (e) {
