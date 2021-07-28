@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.16.9.20210727
+// @version         4.16.10.20210728
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -17,7 +17,7 @@
 // @exclude         *://message.bilibili.com/*/*
 // @exclude         *://t.bilibili.com/h5/*
 // @exclude         *://www.bilibili.com/page-proxy/*
-// @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=954686
+// @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=955077
 // @grant           GM_addStyle
 // @grant           GM_registerMenuCommand
 // @grant           GM_xmlhttpRequest
@@ -2565,9 +2565,7 @@
         const onOverWatchlater = function() {
           if (this.mouseOver) return
           this.mouseOver = true
-          if (gm.config.hideDisabledSubitems) {
-            popup.style.position = api.dom.isFixed(watchlater.parentNode) ? 'fixed' : ''
-          }
+          popup.style.position = api.dom.isFixed(watchlater.parentNode) ? 'fixed' : ''
           popup.style.top = `${api.dom.getElementTop(watchlater) + watchlater.offsetHeight}px`
           popup.style.left = `calc(${api.dom.getElementLeft(watchlater) + watchlater.offsetWidth / 2}px - 16em)`
           openEntryPopup()
@@ -3226,7 +3224,7 @@
         atr.appendChild(btn)
 
         const aid = await _self.method.getAid()
-        bus = { ...bus, btn, cb, aid }
+        bus = { btn, cb, aid }
         initButtonStatus()
         original.parentNode.style.display = 'none'
 
