@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站封面获取
-// @version         4.12.6.20210728
+// @version         4.12.7.20210729
 // @namespace       laster2800
 // @author          Laster2800
 // @description     B站视频播放页（普通模式、稍后再看模式）、番剧播放页、直播间添加获取封面的按钮
@@ -295,14 +295,19 @@
           const preview = document.body.appendChild(document.createElement('img'))
           preview.className = `${gm.id}_preview`
 
+          const fade = inOut => { // 禁止在渐隐过程中交互
+            preview.style.pointerEvents = inOut ? '' : 'none'
+            api.dom.fade(inOut, preview)
+          }
+
           target.addEventListener('mouseenter', api.tool.debounce(function() {
             if (gm.config.preview) {
-              preview.src && api.dom.fade(true, preview)
+              preview.src && fade(true)
             }
           }, 200))
           target.addEventListener('mouseleave', api.tool.debounce(function() {
             if (gm.config.preview) {
-              preview.src && !preview.mouseOver && api.dom.fade(false, preview)
+              !preview.mouseOver && fade(false)
             }
           }, 200))
 
@@ -313,7 +318,7 @@
           preview.onmouseleave = function() {
             this.mouseOver = false
             startPos = undefined
-            preview.src && api.dom.fade(false, preview)
+            fade(false)
           }
           preview.addEventListener('mousedown', function(e) {
             if (this.src) {
@@ -332,14 +337,14 @@
           })
           preview.addEventListener('wheel', function() {
             // 滚动时关闭预览，优化用户体验
-            api.dom.fade(false, preview)
+            fade(false)
           })
           preview.addEventListener('mousemove', function(e) {
             // 鼠标移动一段距离关闭预览，优化用户体验
             if (startPos) {
               const dSquare = (startPos.x - e.clientX) ** 2 + (startPos.y - e.clientY) ** 2
               if (dSquare > 20 ** 2) { // 20px
-                api.dom.fade(false, preview)
+                fade(false)
               }
             } else {
               startPos = {
