@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站防剧透进度条
-// @version         1.9.9.20210728
+// @version         1.9.10.20210729
 // @namespace       laster2800
 // @author          Laster2800
 // @description     看比赛、看番总是被进度条剧透？装上这个脚本再也不用担心这些问题了
@@ -423,7 +423,7 @@
         })
 
         /**
-         * 设置页面初始化
+         * 设置页初始化
          */
         const initSetting = () => {
           gm.el.setting = gm.el.gmRoot.appendChild(document.createElement('div'))
@@ -444,7 +444,7 @@
                     <td>
                       <div>
                         <span>防剧透机制说明</span>
-                        <a class="gm-hint-option" title="查看脚本防剧透机制的实现原理。" href="${gm.url.gm_readme}#防剧透机制说明" target="_blank" style="color:var(--hint-text-color)">查看</a>
+                        <a class="gm-hint-option" title="查看脚本防剧透机制的实现原理。" href="${gm.url.gm_readme}#防剧透机制说明" target="_blank"">查看</a>
                       </div>
                     </td>
                   </tr>
@@ -452,8 +452,10 @@
                   <tr class="gm-item" title="加入防剧透名单 UP 主的视频，会在打开视自动开启防剧透进度条。">
                     <td><div>自动化</div></td>
                     <td>
-                      <span>防剧透 UP 主名单</span>
-                      <span id="gm-uploaderList" class="gm-hint-option">编辑</span>
+                      <div>
+                        <span>防剧透 UP 主名单</span>
+                        <span id="gm-uploaderList" class="gm-hint-option">编辑</span>
+                      </div>
                     </td>
                   </tr>
 
@@ -777,7 +779,7 @@
         }
 
         /**
-         * 处理与设置页面相关的数据和元素
+         * 处理与设置页相关的数据和元素
          */
         const processSettingItem = () => {
           const _self = this
@@ -2100,29 +2102,23 @@
           color: var(--hightlight-color);
         }
 
-        #${gm.id} .gm-setting label {
+        #${gm.id} .gm-setting td > * {
           display: flex;
-          align-items: center;
+          align-items: flex-end;
         }
         #${gm.id} .gm-setting input[type=checkbox] {
           margin-left: auto;
         }
         #${gm.id} .gm-setting input[type=text] {
-          float: right;
           border-width: 0 0 1px 0;
           width: 2.4em;
           text-align: right;
           padding: 0 0.2em;
-          margin: 0 -0.2em;
-        }
-        #${gm.id} .gm-setting select {
-          border-width: 0 0 1px 0;
-          cursor: pointer;
-          margin: 0 -0.2em;
+          margin-left: auto;
         }
 
         #${gm.id} .gm-setting .gm-information {
-          margin: 0 0.2em;
+          margin: 0 0.4em;
           cursor: pointer;
         }
         #${gm.id} .gm-setting [disabled] .gm-information {
@@ -2209,6 +2205,9 @@
           text-decoration: underline;
           padding: 0 0.2em;
           cursor: pointer;
+        }
+        #${gm.id} .gm-hint-option:visited {
+          color: var(--hint-text-color);
         }
         #${gm.id} .gm-hint-option:hover {
           color: var(--important-color);

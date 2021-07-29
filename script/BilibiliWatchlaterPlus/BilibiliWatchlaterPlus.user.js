@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.16.10.20210728
+// @version         4.16.11.20210729
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -743,7 +743,7 @@
         })
 
         /**
-         * 设置页面初始化
+         * 设置页初始化
          */
         const initSetting = () => {
           gm.el.setting = gm.el.gmRoot.appendChild(document.createElement('div'))
@@ -1078,8 +1078,8 @@
                     <td>
                       <div>
                         <span>稍后再看列表数据本地缓存有效期（单位：秒）</span>
-                        <input id="gm-watchlaterListCacheValidPeriod" type="text">
                         <span id="gm-wlcvpInformation" class="gm-information" title>💬</span>
+                        <input id="gm-watchlaterListCacheValidPeriod" type="text">
                       </div>
                     </td>
                   </tr>
@@ -1391,7 +1391,7 @@
         }
 
         /**
-         * 处理与设置页面相关的数据和元素
+         * 处理与设置页相关的数据和元素
          */
         const processSettingItem = () => {
           const _self = this
@@ -4062,29 +4062,27 @@
           cursor: not-allowed;
         }
 
-        #${gm.id} .gm-setting label {
+        #${gm.id} .gm-setting td > * {
           display: flex;
-          align-items: center;
+          align-items: flex-end;
         }
         #${gm.id} .gm-setting input[type=checkbox] {
           margin-left: auto;
         }
         #${gm.id} .gm-setting input[type=text] {
-          float: right;
           border-width: 0 0 1px 0;
           width: 3.4em;
           text-align: right;
           padding: 0 0.2em;
-          margin: 0 -0.2em;
+          margin-left: auto;
         }
         #${gm.id} .gm-setting select {
           border-width: 0 0 1px 0;
           cursor: pointer;
-          margin: 0 -0.2em;
         }
 
         #${gm.id} .gm-setting .gm-information {
-          margin: 0 0.2em;
+          margin: 0 0.4em;
           cursor: pointer;
         }
         #${gm.id} .gm-setting [disabled] .gm-information {
