@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站共同关注快速查看
-// @version         1.4.23.20210728
+// @version         1.4.24.20210802
 // @namespace       laster2800
 // @author          Laster2800
 // @description     快速查看与特定用户的共同关注（视频播放页、动态页、用户空间、直播间）
@@ -185,21 +185,11 @@
       this.method = {
         /**
          * 从 URL 中获取 UID
-         * @param {string} url URL
+         * @param {string} [url=location.pathname] URL
          * @returns {string} UID
          */
-        getUidFromUrl(url) {
-          let uid = ''
-          // URL 先「?」后「#」，先判断「?」运算量期望稍低一点
-          const parts = url.split('?')[0].split('#')[0].split('/')
-          while (parts.length > 0) {
-            const part = parts.pop()
-            if (part && !isNaN(part)) {
-              uid = part
-              break
-            }
-          }
-          return uid
+        getUid(url = location.pathname) {
+          return /\/(\d+)([/?#]|$)/.exec(url)?.[1]
         },
       }
     }
@@ -240,7 +230,7 @@
           if (userLink) {
             const info = await api.wait.waitQuerySelector(config.info, card)
             await _self.generalLogic({
-              uid: _self.method.getUidFromUrl(userLink.href),
+              uid: _self.method.getUid(userLink.href),
               target: info,
               className: `${gm.id} card-same-followings`,
             })
@@ -422,7 +412,7 @@
       if (gm.config.userSpace) {
         // 用户空间顶部显示
         webpage.generalLogic({
-          uid: webpage.method.getUidFromUrl(location.pathname),
+          uid: webpage.method.getUid(),
           target: await api.wait.waitQuerySelector('.h .wrapper'),
           className: `${gm.id} space-same-followings`,
         })
@@ -451,7 +441,7 @@
         container.style.transform = 'translateX(-120px)'
 
         const ob = new MutationObserver(async records => {
-          const uid = webpage.method.getUidFromUrl(records[0].target.href)
+          const uid = webpage.method.getUid(records[0].target.href)
           if (uid) {
             webpage.generalLogic({
               uid: uid,
