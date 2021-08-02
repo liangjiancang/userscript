@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站防剧透进度条
-// @version         1.9.10.20210729
+// @version         1.9.11.20210802
 // @namespace       laster2800
 // @author          Laster2800
 // @description     看比赛、看番总是被进度条剧透？装上这个脚本再也不用担心这些问题了
@@ -1171,23 +1171,12 @@
          * @returns {{id: string, type: 'aid' | 'bvid'}} `{id, type}`
          */
         getVid(url = location.pathname) {
-          let result = null
-          // URL 先「?」后「#」，先判断「?」运算量期望稍低一点
-          const parts = url.split('?')[0].split('#')[0].split('/')
-          while (parts.length > 0) {
-            const part = parts.pop()
-            if (part) {
-              let m = null
-              if ((m = /^bv([0-9a-z]+)$/i.exec(part))) {
-                result = { id: 'BV' + m[1], type: 'bvid' }
-                break
-              } else if ((m = /^(av)?(\d+)$/i.exec(part))) { // 兼容 URL 中 BV 号被第三方修改为 AV 号的情况
-                result = { id: m[2], type: 'aid' }
-                break
-              }
-            }
+          let m = null
+          if ((m = /\/bv([0-9a-z]+)([/?#]|$)/i.exec(url))) {
+            return { id: 'BV' + m[1], type: 'bvid' }
+          } else if ((m = /\/(av)?(\d+)([/?#]|$)/i.exec(url))) { // 兼容 URL 中 BV 号被第三方修改为 AV 号的情况
+            return { id: m[2], type: 'aid' }
           }
-          return result
         },
 
         /**

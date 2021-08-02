@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站封面获取
-// @version         4.12.7.20210729
+// @version         4.12.8.20210802
 // @namespace       laster2800
 // @author          Laster2800
 // @description     B站视频播放页（普通模式、稍后再看模式）、番剧播放页、直播间添加获取封面的按钮
@@ -200,23 +200,12 @@
          * @returns {{id: string, type: 'aid' | 'bvid'}} `{id, type}`
          */
         getVid(url = location.pathname) {
-          let result = null
-          // URL 先「?」后「#」，先判断「?」运算量期望稍低一点
-          const parts = url.split('?')[0].split('#')[0].split('/')
-          while (parts.length > 0) {
-            const part = parts.pop()
-            if (part) {
-              let m = null
-              if ((m = /^bv([0-9a-z]+)$/i.exec(part))) {
-                result = { id: 'BV' + m[1], type: 'bvid' }
-                break
-              } else if ((m = /^(av)?(\d+)$/i.exec(part))) { // 兼容 URL 中 BV 号被第三方修改为 AV 号的情况
-                result = { id: m[2], type: 'aid' }
-                break
-              }
-            }
+          let m = null
+          if ((m = /\/bv([0-9a-z]+)([/?#]|$)/i.exec(url))) {
+            return { id: 'BV' + m[1], type: 'bvid' }
+          } else if ((m = /\/(av)?(\d+)([/?#]|$)/i.exec(url))) { // 兼容 URL 中 BV 号被第三方修改为 AV 号的情况
+            return { id: m[2], type: 'aid' }
           }
-          return result
         },
 
         /**
