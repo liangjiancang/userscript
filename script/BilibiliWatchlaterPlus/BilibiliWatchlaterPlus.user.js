@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.16.13.20210803
+// @version         4.16.14.20210803
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -3405,7 +3405,7 @@
             link.addEventListener('mouseup', function(e) {
               if (e.button == 0 || e.button == 1) { // 左键或中键
                 if (arb.autoRemove) {
-                  // 添加移除样式并移动至列表最后
+                  // 添加移除样式并移动至列表末尾
                   api.dom.addClass(base, 'gm-watchlater-item-deleted')
                   setTimeout(() => base.parentNode.appendChild(base), 100)
                 }
@@ -3421,7 +3421,7 @@
        * @param {HTMLElement} del 移除按钮元素
        */
       const processDelBtn = (base, del) => {
-        // 捕获拦截，将克隆节点添加移除样式并移动至列表最后
+        // 捕获拦截，将其克隆节点添加移除样式后添加至列表末尾
         del.addEventListener('click', function() {
           const cloned = base.cloneNode(true)
           api.dom.addClass(cloned, 'gm-watchlater-item-deleted')
