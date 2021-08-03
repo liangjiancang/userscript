@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.16.12.20210802
+// @version         4.16.13.20210803
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -3342,15 +3342,21 @@
       }
       const listBox = await api.wait.waitQuerySelector('.watch-later-list .list-box')
       const elTotal = await api.wait.waitQuerySelector('header .t em')
+      // 尽管事实上列表页面中的视频是一次加载完成，但这里保守地认为它们是动态加载的
       api.wait.executeAfterElementLoaded({
-        selector: 'a:not([class=user])',
+        selector: '.av-item:not(.gm-watchlater-item-deleted)',
         base: listBox,
         multiple: true,
         repeat: true,
         timeout: 0,
-        callback: link => processLink(link, autoRemoveButton),
+        callback: item => {
+          if (item.children.length > 0) { // 页面变换过程中会有一些莫名其妙的空元素被加进来又立即被移除
+            item.querySelectorAll('a:not([class=user])').forEach(link => processLink(item, link, autoRemoveButton))
+            processDelBtn(item, item.querySelector('.btn-del'))
+          }
+        },
       })
-      const ob = new MutationObserver(() => setTimeout(updateTotal, 100))
+      const ob = new MutationObserver(api.tool.debounce(() => updateTotal(), 500))
       ob.observe(listBox.firstElementChild, { childList: true })
 
       /**
@@ -3364,19 +3370,13 @@
 
       /**
        * 根据 `autoRemove` 处理链接
+       * @param {HTMLElement} base 基元素
        * @param {HTMLAnchorElement} link 链接元素
        * @param {HTMLElement} [arb] 自动移除按钮，为 `null` 时表示彻底禁用自动移除功能
        */
-      const processLink = (link, arb) => {
+      const processLink = (base, link, arb) => {
         link.target = gm.config.openListVideo == Enums.openListVideo.openInCurrent ? '_self' : '_blank'
         if (arb) {
-          let base = link
-          while (!api.dom.containsClass(base, 'av-item')) {
-            base = base.parentNode
-            if (!base) {
-              return
-            }
-          }
           if (link.href && gm.regex.page_videoWatchlaterMode.test(link.href)) { // 视频被和谐或其他特殊情况
             link.addEventListener('mousedown', function(e) {
               if (e.button == 0 || e.button == 1) { // 左键或中键
@@ -3402,17 +3402,31 @@
                 }
               }
             })
-            // 不能 mousedown，隐藏之后无法触发事件
             link.addEventListener('mouseup', function(e) {
               if (e.button == 0 || e.button == 1) { // 左键或中键
                 if (arb.autoRemove) {
+                  // 添加移除样式并移动至列表最后
                   api.dom.addClass(base, 'gm-watchlater-item-deleted')
+                  setTimeout(() => base.parentNode.appendChild(base), 100)
                 }
-                updateTotal()
               }
             })
           }
         }
+      }
+
+      /**
+       * 处理原生的移除按钮
+       * @param {HTMLElement} base 基元素
+       * @param {HTMLElement} del 移除按钮元素
+       */
+      const processDelBtn = (base, del) => {
+        // 捕获拦截，将克隆节点添加移除样式并移动至列表最后
+        del.addEventListener('click', function() {
+          const cloned = base.cloneNode(true)
+          api.dom.addClass(cloned, 'gm-watchlater-item-deleted')
+          base.parentNode.appendChild(cloned)
+        }, true)
       }
     }
 
@@ -4336,6 +4350,10 @@
         .gm-watchlater-item-deleted {
           filter: grayscale(1);
           border-radius: 5px;
+        }
+        .gm-watchlater-item-deleted .key,
+        .gm-watchlater-item-deleted .btn-del {
+          visibility: hidden;
         }
         .gm-watchlater-item-deleted .t,
         .gm-watchlater-item-deleted .t:hover {
