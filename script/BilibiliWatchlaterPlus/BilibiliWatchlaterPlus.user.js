@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.16.16.20210804
+// @version         4.16.17.20210804
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -3413,6 +3413,10 @@
                 }
               }
             })
+          } else {
+            link.href = gm.url.noop
+            link.target = '_self'
+            link.style.cursor = 'not-allowed'
           }
         }
       }
