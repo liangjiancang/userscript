@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.16.15.20210804
+// @version         4.16.16.20210804
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -381,12 +381,14 @@
       noop: 'javascript:void(0)',
     },
     regex: {
-      page_watchlaterList: /\.com\/watchlater\/.*#.*\/list(?=[/?#]|$)/,
-      page_videoNormalMode: /\.com\/video(?=[/?#]|$)/,
-      page_videoWatchlaterMode: /\.com\/medialist\/play\/watchlater(?=[/?#]|$)/,
-      page_dynamic: /t\.bilibili\.com(?=\/|$)/,
-      page_dynamicMenu: /\.com\/pages\/nav\/index_new(?=[/?#]|$)/,
-      page_userSpace: /space\.bilibili\.com(?=[/?#]|$)/,
+      // 只要第一个「#」后是「/list([/?#]|$)」即被视为列表页面
+      // B站并不会将「#/list」之后的「[/?#]」视为锚点的一部分，这不符合 URL 规范，但只能将错就错了
+      page_watchlaterList: /\.com\/watchlater\/[^#]*#\/list([/?#]|$)/,
+      page_videoNormalMode: /\.com\/video([/?#]|$)/,
+      page_videoWatchlaterMode: /\.com\/medialist\/play\/watchlater([/?#]|$)/,
+      page_dynamic: /\/t\.bilibili\.com(\/|$)/,
+      page_dynamicMenu: /\.com\/pages\/nav\/index_new([/?#]|$)/,
+      page_userSpace: /space\.bilibili\.com([/?#]|$)/,
     },
     const: {
       rhsWarning: 10000,

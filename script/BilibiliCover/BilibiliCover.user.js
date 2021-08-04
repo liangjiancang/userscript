@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站封面获取
-// @version         4.12.8.20210802
+// @version         4.12.9.20210804
 // @namespace       laster2800
 // @author          Laster2800
 // @description     B站视频播放页（普通模式、稍后再看模式）、番剧播放页、直播间添加获取封面的按钮
@@ -55,10 +55,10 @@
       noop: 'javascript:void(0)',
     },
     regex: {
-      page_videoNormalMode: /\.com\/video(?=[/?#]|$)/,
-      page_videoWatchlaterMode: /\.com\/medialist\/play\/watchlater(?=[/?#]|$)/,
-      page_bangumi: /\/bangumi\/play(?=[/?#]|$)/,
-      page_live: /live\.bilibili\.com\/\d+(?=[/?#]|$)/, // 只含具体的直播间页面
+      page_videoNormalMode: /\.com\/video([/?#]|$)/,
+      page_videoWatchlaterMode: /\.com\/medialist\/play\/watchlater([/?#]|$)/,
+      page_bangumi: /\/bangumi\/play([/?#]|$)/,
+      page_live: /live\.bilibili\.com\/\d+([/?#]|$)/, // 只含具体的直播间页面
     },
     const: {
       title: '点击保存封面或在新标签页中打开图片（可在脚本菜单中设置）。\n此外，可在脚本菜单中开启或关闭封面预览功能。\n右键点击可基于图片链接作进一步的处理，如通过「另存为」直接保存图片。',

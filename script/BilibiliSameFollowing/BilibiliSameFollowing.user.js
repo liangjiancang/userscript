@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站共同关注快速查看
-// @version         1.4.24.20210802
+// @version         1.4.25.20210804
 // @namespace       laster2800
 // @author          Laster2800
 // @description     快速查看与特定用户的共同关注（视频播放页、动态页、用户空间、直播间）
@@ -58,11 +58,11 @@
       lv3Card: { name: '在罕见用户卡片中快速查看' },
     },
     regex: {
-      page_videoNormalMode: /\.com\/video(?=[/?#]|$)/,
-      page_videoWatchlaterMode: /\.com\/medialist\/play\/watchlater(?=[/?#]|$)/,
-      page_dynamic: /t\.bilibili\.com(?=\/|$)/,
-      page_space: /space\.bilibili\.com\/\d+(?=[/?#]|$)/,
-      page_live: /live\.bilibili\.com\/\d+(?=[/?#]|$)/, // 只含具体的直播间页面
+      page_videoNormalMode: /\.com\/video([/?#]|$)/,
+      page_videoWatchlaterMode: /\.com\/medialist\/play\/watchlater([/?#]|$)/,
+      page_dynamic: /\/t\.bilibili\.com(\/|$)/,
+      page_space: /space\.bilibili\.com\/\d+([/?#]|$)/,
+      page_live: /live\.bilibili\.com\/\d+([/?#]|$)/, // 只含具体的直播间页面
     },
     const: {
       notificationTimeout: 5600,
