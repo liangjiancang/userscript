@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.16.14.20210803
+// @version         4.16.15.20210804
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -3603,58 +3603,60 @@
      * 添加弹出菜单的滚动条样式
      */
     addMenuScrollbarStyle() {
-      let menuScrollbarStyle = null
+      const popup = `#${gm.id} .gm-entrypopup .gm-entry-list`
+      const tooltip = '[role=tooltip]'
+      const dynamic = '#app > .out-container > .container'
       switch (gm.config.menuScrollbarSetting) {
         case Enums.menuScrollbarSetting.beautify:
           // 目前在不借助 JavaScript 的情况下，无法完美实现类似于移动端滚动条浮动在内容上的效果。
-          menuScrollbarStyle = `
+          GM_addStyle(`
             :root {
               --scrollbar-background-color: transparent;
               --scrollbar-thumb-color: #0000002b;
             }
 
-            #${gm.id} .gm-entrypopup .gm-entry-list::-webkit-scrollbar,
-            [role=tooltip] ::-webkit-scrollbar,
-            #app>.out-container>.container::-webkit-scrollbar {
+            ${popup}::-webkit-scrollbar,
+            ${tooltip} ::-webkit-scrollbar,
+            ${dynamic}::-webkit-scrollbar {
               width: 6px;
               height: 6px;
               background-color: var(--scrollbar-background-color);
             }
 
-            #${gm.id} .gm-entrypopup .gm-entry-list::-webkit-scrollbar-thumb,
-            [role=tooltip] ::-webkit-scrollbar-thumb,
-            #app>.out-container>.container::-webkit-scrollbar-thumb {
+            ${popup}::-webkit-scrollbar-thumb,
+            ${tooltip} ::-webkit-scrollbar-thumb,
+            ${dynamic}::-webkit-scrollbar-thumb {
               border-radius: 3px;
               background-color: var(--scrollbar-background-color);
             }
 
-            #${gm.id} .gm-entrypopup .gm-entry-list:hover::-webkit-scrollbar-thumb,
-            [role=tooltip] :hover::-webkit-scrollbar-thumb,
-            #app>.out-container>.container:hover::-webkit-scrollbar-thumb {
+            ${popup}:hover::-webkit-scrollbar-thumb,
+            ${tooltip} :hover::-webkit-scrollbar-thumb,
+            ${dynamic}:hover::-webkit-scrollbar-thumb {
               border-radius: 3px;
               background-color: var(--scrollbar-thumb-color);
             }
 
-            #${gm.id} .gm-entrypopup .gm-entry-list::-webkit-scrollbar-corner,
-            [role=tooltip] ::-webkit-scrollbar-corner,
-            #app>.out-container>.container::-webkit-scrollbar-corner {
+            ${popup}::-webkit-scrollbar-corner,
+            ${tooltip} ::-webkit-scrollbar-corner,
+            ${dynamic}::-webkit-scrollbar-corner {
               background-color: var(--scrollbar-background-color);
             }
-          `
-          break
+          `)
+          return
         case Enums.menuScrollbarSetting.hidden:
-          menuScrollbarStyle = `
-            [role=tooltip] ::-webkit-scrollbar,
-            #app > .out-container > .container::-webkit-scrollbar {
+          GM_addStyle(`
+            ${popup}::-webkit-scrollbar,
+            ${tooltip} ::-webkit-scrollbar,
+            ${dynamic}::-webkit-scrollbar {
               display: none;
             }
-          `
-          break
+          `)
+          return
         case Enums.menuScrollbarSetting.original:
         default:
-          menuScrollbarStyle = ''
+          return
       }
-      GM_addStyle(menuScrollbarStyle)
     }
 
     /**
@@ -4103,6 +4105,7 @@
           cursor: pointer;
         }
         #${gm.id} .gm-setting .gm-warning.gm-trailing {
+          position: static;
           margin-left: 0.5em;
         }
         #${gm.id} .gm-setting .gm-warning:not(.gm-trailing) {
