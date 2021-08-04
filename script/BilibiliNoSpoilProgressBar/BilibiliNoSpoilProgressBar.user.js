@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站防剧透进度条
-// @version         1.9.12.20210804
+// @version         1.9.13.20210804
 // @namespace       laster2800
 // @author          Laster2800
 // @description     看比赛、看番总是被进度条剧透？装上这个脚本再也不用担心这些问题了
@@ -146,7 +146,7 @@
   const gm = {
     id: 'gm411092',
     configVersion: GM_getValue('configVersion'),
-    configUpdate: 20210722,
+    configUpdate: 20210804,
     config: {
       bangumiEnabled: false,
       simpleScriptControl: false,
@@ -350,6 +350,11 @@
           // 1.5.5.20210627
           if (gm.configVersion < 20210627) {
             GM_deleteValue('openSettingAfterConfigUpdate')
+          }
+
+          // 1.9.13.20210804
+          if (gm.configVersion < 20210804) {
+            api.message.alert('明确不支持分段进度条——主要是因为按目前的实现方式要支持分段进度条非常困难。\n另一方面，既然 UP 主在某视频启用了分段进度条，本身就说明该视频向观众提供章节并不影响体验，换句话说这种视频理应是没有剧透问题的；否则，UP 主才是「剧透」的元凶。\n以后可能会采用更合理的实现方式将脚本重写一遍，到时候也许会重新考虑支持分段进度条。')
           }
 
           // 功能性更新后更新此处配置版本
@@ -1839,7 +1844,13 @@
 
         _self.scriptControl.enabled.handler = function() {
           if (_self.enabled) {
-            this.setAttribute('enabled', '')
+            if (api.dom.containsClass(_self.control, 'bilibili-player-view-point')) { // 开启了分段进度条
+              _self.enabled = false
+              api.message.create('不支持分段进度条', { position: { top: '70%', left: '35%' } })
+              return
+            } else {
+              this.setAttribute('enabled', '')
+            }
           } else {
             this.removeAttribute('enabled')
           }
