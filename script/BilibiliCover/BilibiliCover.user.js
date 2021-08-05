@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站封面获取
-// @version         4.12.9.20210804
+// @version         4.12.10.20210805
 // @namespace       laster2800
 // @author          Laster2800
 // @description     B站视频播放页（普通模式、稍后再看模式）、番剧播放页、直播间添加获取封面的按钮
@@ -16,7 +16,7 @@
 // @include         *://live.bilibili.com/*
 // @exclude         *://live.bilibili.com/
 // @exclude         *://live.bilibili.com/?*
-// @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=955077
+// @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=957519
 // @grant           GM_addStyle
 // @grant           GM_download
 // @grant           GM_notification
@@ -107,17 +107,16 @@
      * 初始化脚本菜单
      */
     initScriptMenu() {
+      const _self = this
+      const cfgName = id => `[ ${config[id] ? '✓' : '✗'} ] ${configMap[id].name}`
       const config = gm.config
       const configMap = gm.configMap
       const menuId = {}
-      setTimeout(() => {
-        for (const id in config) {
-          menuId[id] = createMenuItem(id)
-        }
-      })
+      for (const id in config) {
+        menuId[id] = createMenuItem(id)
+      }
 
-      const cfgName = id => `[ ${config[id] ? '✓' : '✗'} ] ${configMap[id].name}`
-      const createMenuItem = id => {
+      function createMenuItem(id) {
         return GM_registerMenuCommand(cfgName(id), () => {
           config[id] = !config[id]
           GM_setValue(id, config[id])
@@ -127,10 +126,11 @@
             onclick: configMap[id].needNotReload ? null : () => location.reload(),
           })
           clearMenu()
-          this.initScriptMenu()
+          _self.initScriptMenu()
         })
       }
-      const clearMenu = () => {
+
+      function clearMenu() {
         for (const id in menuId) {
           GM_unregisterMenuCommand(menuId[id])
         }
