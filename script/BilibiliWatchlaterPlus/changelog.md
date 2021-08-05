@@ -19,8 +19,9 @@
 13. 脚本：优化初始化流程。
 14. 脚本：优化 URL 匹配。
 15. 脚本：进一步优化列表页面中已失效视频的交互。
-16. UI：元素内容及布局优化。
-17. API：升级至 V1.3。详见 [UserscriptAPI 更新日志](https://gitee.com/liangjiancang/userscript/blob/master/lib/UserscriptAPI/changelog.md)。
+16. 代码：优先使用函数声明而非函数表达式来定义内部函数。
+17. UI：元素内容及布局优化。
+18. API：升级至 V1.3。详见 [UserscriptAPI 更新日志](https://gitee.com/liangjiancang/userscript/blob/master/lib/UserscriptAPI/changelog.md)。
 
 ## V4.15
 

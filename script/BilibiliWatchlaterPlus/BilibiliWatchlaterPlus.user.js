@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.16.17.20210804
+// @version         4.16.18.20210805
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -17,7 +17,7 @@
 // @exclude         *://message.bilibili.com/*/*
 // @exclude         *://t.bilibili.com/h5/*
 // @exclude         *://www.bilibili.com/page-proxy/*
-// @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=955077
+// @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=957519
 // @grant           GM_addStyle
 // @grant           GM_registerMenuCommand
 // @grant           GM_xmlhttpRequest
@@ -1756,9 +1756,7 @@
           if (el.content) {
             const oldContent = el.content
             oldContent.style.opacity = '0'
-            setTimeout(() => {
-              oldContent.remove()
-            }, gm.const.textFadeTime)
+            setTimeout(() => oldContent.remove(), gm.const.textFadeTime)
           }
           el.content = el.historyPage.appendChild(document.createElement('div'))
           el.content.className = 'gm-content'
@@ -2446,11 +2444,11 @@
        * @async
        * @returns {boolean} 是否清空成功
        */
-      const clearWatchlater = async () => {
+      async function clearWatchlater() {
         let success = false
         const result = api.message.confirm('是否清空稍后再看？')
         if (result) {
-          success = await this.method.clearWatchlater()
+          success = await _self.method.clearWatchlater()
           api.message.create(`清空稍后再看${success ? '成功' : '失败'}`)
           if (success && api.web.urlMatch(gm.regex.page_watchlaterList)) {
             location.reload()
@@ -2464,12 +2462,12 @@
        * @async
        * @returns {boolean} 是否移除成功
        */
-      const clearWatchedInWatchlater = async () => {
+      async function clearWatchedInWatchlater() {
         let success = false
-        const result = api.message.confirm('是否移除稍后再看已观看视频？')
+        const result = api.message.confirm('是否移除已观看视频？')
         if (result) {
-          success = await this.method.clearWatchedInWatchlater()
-          api.message.create(`移除稍后再看已观看视频${success ? '成功' : '失败'}`)
+          success = await _self.method.clearWatchedInWatchlater()
+          api.message.create(`移除已观看视频${success ? '成功' : '失败'}`)
           if (success && api.web.urlMatch(gm.regex.page_watchlaterList)) {
             location.reload()
           }
@@ -2481,7 +2479,7 @@
        * 处理鼠标点击事件
        * @param {HTMLElement} watchlater 稍后再看入口元素
        */
-      const processClickEvent = watchlater => {
+      function processClickEvent(watchlater) {
         const config = [gm.config.headerButtonOpL, gm.config.headerButtonOpM, gm.config.headerButtonOpR]
         /**
          * 处理鼠标点击事件
@@ -2528,22 +2526,20 @@
        * 处理弹出菜单
        * @param {HTMLElement} watchlater 稍后再看元素
        */
-      const processPopup = watchlater => {
+      function processPopup(watchlater) {
         if (gm.config.headerMenu == Enums.headerMenu.disable) return
         const popup = gm.menu.entryPopup.el
-        setTimeout(() => {
-          // 此处必须用 over；若用 enter，且网页刚加载完成时光标正好在入口上，无法轻移光标以触发事件
-          watchlater.addEventListener('mouseover', onOverWatchlater)
-          watchlater.addEventListener('mouseleave', onLeaveWatchlater)
-          popup.addEventListener('mouseenter', onEnterPopup)
-          popup.addEventListener('mouseleave', onLeavePopup)
-        })
+        // 此处必须用 over；若用 enter，且网页刚加载完成时光标正好在入口上，无法轻移光标以触发事件
+        watchlater.addEventListener('mouseover', onOverWatchlater)
+        watchlater.addEventListener('mouseleave', onLeaveWatchlater)
+        popup.addEventListener('mouseenter', onEnterPopup)
+        popup.addEventListener('mouseleave', onLeavePopup)
 
         /**
          * 鼠标是否在顶栏内
          * @param {MouseEvent} e 事件
          */
-        const withinHeader = e => {
+        function withinHeader(e) {
           const y = e.clientY
           const top = api.dom.getElementTop(watchlater)
           const margin = 5
@@ -2553,7 +2549,7 @@
         /**
          * 进入稍后再看入口的处理
          */
-        const onOverWatchlater = function() {
+        function onOverWatchlater() {
           if (this.mouseOver) return
           this.mouseOver = true
           popup.style.position = api.dom.isFixed(watchlater.parentNode) ? 'fixed' : ''
@@ -2566,7 +2562,7 @@
          * 离开稍后再看入口的处理
          * @param {MouseEvent} e 事件
          */
-        const onLeaveWatchlater = function(e) {
+        function onLeaveWatchlater(e) {
           this.mouseOver = false
           setTimeout(() => {
             if ((gm.menu.entryPopup.state == 2 && !popup.mouseOver) || withinHeader(e)) {
@@ -2578,14 +2574,14 @@
         /**
          * 进入弹出菜单的处理
          */
-        const onEnterPopup = function() {
+        function onEnterPopup() {
           this.mouseOver = true
         }
 
         /**
          * 离开弹出菜单的处理
          */
-        const onLeavePopup = function() {
+        function onLeavePopup() {
           this.mouseOver = false
           setTimeout(() => {
             if (!watchlater.mouseOver) {
@@ -2598,7 +2594,7 @@
       /**
        * 打开入口弹出菜单
        */
-      const openEntryPopup = () => {
+      function openEntryPopup() {
         if (gm.el.entryPopup) {
           script.openMenuItem('entryPopup')
         } else {
@@ -2915,7 +2911,7 @@
                         }
                         api.message.create(`${note}失败`)
                       }
-                    })
+                    }, 10)
                   })
                 }
                 if (valid) {
@@ -3016,7 +3012,7 @@
        * @param {headerButtonOp} op
        * @returns {{href: string, target: '_self' | '_blank'}}
        */
-      const getHeaderButtonOpConfig = op => {
+      function getHeaderButtonOpConfig(op) {
         /** @type {{href: string, target: '_self' | '_blank'}} */
         const result = {}
         switch (op) {
@@ -3059,68 +3055,66 @@
     async fillWatchlaterStatus() {
       const _self = this
       let map = await _self.method.getWatchlaterDataMap(item => String(item.aid), 'aid')
-      setTimeout(() => {
-        if (api.web.urlMatch(gm.regex.page_dynamicMenu)) { // 必须在动态页之前匹配
-          fillWatchlaterStatus_dynamicMenu()
-        } else if (api.web.urlMatch(gm.regex.page_dynamic)) {
-          if (location.pathname == '/') { // 仅动态主页
-            api.wait.waitQuerySelector('.feed-card').then(feed => {
-              api.wait.executeAfterElementLoaded({
-                selector: '.tab',
-                base: feed,
-                multiple: true,
-                callback: tab => {
-                  tab.addEventListener('click', async function() {
-                    map = await _self.method.getWatchlaterDataMap(item => String(item.aid), 'aid', true)
-                    // map 更新期间，ob 偷跑可能会将错误的数据写入，重新遍历并修正之
-                    const videos = feed.querySelectorAll('.video-container')
-                    for (const video of videos) {
-                      const vue = video.__vue__
-                      if (vue) {
-                        const aid = String(vue.aid)
-                        if (map.has(aid)) {
-                          vue.seeLaterStatus = 1
-                        } else {
-                          vue.seeLaterStatus = 0
-                        }
+      if (api.web.urlMatch(gm.regex.page_dynamicMenu)) { // 必须在动态页之前匹配
+        fillWatchlaterStatus_dynamicMenu()
+      } else if (api.web.urlMatch(gm.regex.page_dynamic)) {
+        if (location.pathname == '/') { // 仅动态主页
+          api.wait.waitQuerySelector('.feed-card').then(feed => {
+            api.wait.executeAfterElementLoaded({
+              selector: '.tab',
+              base: feed,
+              multiple: true,
+              callback: tab => {
+                tab.addEventListener('click', async function() {
+                  map = await _self.method.getWatchlaterDataMap(item => String(item.aid), 'aid', true)
+                  // map 更新期间，ob 偷跑可能会将错误的数据写入，重新遍历并修正之
+                  const videos = feed.querySelectorAll('.video-container')
+                  for (const video of videos) {
+                    const vue = video.__vue__
+                    if (vue) {
+                      const aid = String(vue.aid)
+                      if (map.has(aid)) {
+                        vue.seeLaterStatus = 1
+                      } else {
+                        vue.seeLaterStatus = 0
                       }
                     }
-                  })
-                },
-              })
-              fillWatchlaterStatus_dynamic()
+                  }
+                })
+              },
             })
-          }
-        } else if (api.web.urlMatch(gm.regex.page_userSpace)) {
-          // 用户空间中也有动态，但用户未必切换到动态子窗口，故需长时间等待
-          api.wait.waitForElementLoaded({
-            selector: '.feed-card',
-            timeout: 0,
-          }).then(() => fillWatchlaterStatus_dynamic())
-        } else {
-          // 两部分 URL 刚好不会冲突，放到 else 中即可
-          // 用户空间「投稿」理论上需要单独处理，但该处逻辑和数据都在一个闭包里，无法通过简单的方式实现，经考虑选择放弃
-          switch (gm.config.fillWatchlaterStatus) {
-            case Enums.fillWatchlaterStatus.dynamicAndVideo:
-              if (api.web.urlMatch([gm.regex.page_videoNormalMode, gm.regex.page_videoWatchlaterMode], 'OR')) {
-                fillWatchlaterStatus_main()
-              }
-              return
-            case Enums.fillWatchlaterStatus.anypage:
-              fillWatchlaterStatus_main()
-              return
-            case Enums.fillWatchlaterStatus.never:
-            default:
-              return
-          }
+            fillWatchlaterStatus_dynamic()
+          })
         }
-      })
+      } else if (api.web.urlMatch(gm.regex.page_userSpace)) {
+        // 用户空间中也有动态，但用户未必切换到动态子窗口，故需长时间等待
+        api.wait.waitForElementLoaded({
+          selector: '.feed-card',
+          timeout: 0,
+        }).then(() => fillWatchlaterStatus_dynamic())
+      } else {
+        // 两部分 URL 刚好不会冲突，放到 else 中即可
+        // 用户空间「投稿」理论上需要单独处理，但该处逻辑和数据都在一个闭包里，无法通过简单的方式实现，经考虑选择放弃
+        switch (gm.config.fillWatchlaterStatus) {
+          case Enums.fillWatchlaterStatus.dynamicAndVideo:
+            if (api.web.urlMatch([gm.regex.page_videoNormalMode, gm.regex.page_videoWatchlaterMode], 'OR')) {
+              fillWatchlaterStatus_main()
+            }
+            return
+          case Enums.fillWatchlaterStatus.anypage:
+            fillWatchlaterStatus_main()
+            return
+          case Enums.fillWatchlaterStatus.never:
+          default:
+            return
+        }
+      }
 
       /**
        * 填充动态页稍后再看状态
        * @async
        */
-      const fillWatchlaterStatus_dynamic = async () => {
+      async function fillWatchlaterStatus_dynamic() {
         api.wait.executeAfterElementLoaded({
           selector: '.video-container',
           base: await api.wait.waitQuerySelector('.feed-card'),
@@ -3146,7 +3140,7 @@
        * 填充动态入口菜单稍后再看状态
        * @async
        */
-      const fillWatchlaterStatus_dynamicMenu = async () => {
+      async function fillWatchlaterStatus_dynamicMenu() {
         api.wait.executeAfterElementLoaded({
           selector: '.list-item',
           base: await api.wait.waitQuerySelector('.video-list'),
@@ -3168,7 +3162,7 @@
       /**
        * 填充稍后再看状态（通用逻辑）
        */
-      const fillWatchlaterStatus_main = () => {
+      function fillWatchlaterStatus_main() {
         api.wait.executeAfterElementLoaded({
           selector: '.watch-later-video, .watch-later-trigger, .watch-later, .w-later',
           base: document.body,
@@ -3203,7 +3197,7 @@
         condition: () => app.__vue__,
       }).then(async () => {
         const btn = document.createElement('label')
-        btn.id = `${gm.id}-normal-video-btn`
+        btn.id = `${gm.id}-video-btn`
         const cb = btn.appendChild(document.createElement('input'))
         cb.type = 'checkbox'
         const text = btn.appendChild(document.createElement('span'))
@@ -3249,7 +3243,7 @@
        * 初始化按钮的稍后再看状态
        * @async
        */
-      const initButtonStatus = async () => {
+      async function initButtonStatus() {
         const setStatus = async () => {
           const status = await _self.method.getVideoWatchlaterStatusByAid(bus.aid)
           bus.btn.added = status
@@ -3270,7 +3264,7 @@
        * 处理视频状态的切换
        * @async
        */
-      const processSwitch = async () => {
+      async function processSwitch() {
         const btn = bus.btn
         const cb = bus.cb
         const note = btn.added ? '从稍后再看移除' : '添加到稍后再看'
@@ -3364,7 +3358,7 @@
       /**
        * 更新列表上方的视频总数统计
        */
-      const updateTotal = () => {
+      function updateTotal() {
         const all = listBox.firstElementChild.children.length
         const total = all - listBox.querySelectorAll('.gm-watchlater-item-deleted').length
         elTotal.innerText = `（${total}/${all}/100）`
@@ -3376,7 +3370,7 @@
        * @param {HTMLAnchorElement} link 链接元素
        * @param {HTMLElement} [arb] 自动移除按钮，为 `null` 时表示彻底禁用自动移除功能
        */
-      const processLink = (base, link, arb) => {
+      function processLink(base, link, arb) {
         link.target = gm.config.openListVideo == Enums.openListVideo.openInCurrent ? '_self' : '_blank'
         if (arb) {
           if (link.href && gm.regex.page_videoWatchlaterMode.test(link.href)) { // 视频被和谐或其他特殊情况
@@ -3426,7 +3420,7 @@
        * @param {HTMLElement} base 基元素
        * @param {HTMLElement} del 移除按钮元素
        */
-      const processDelBtn = (base, del) => {
+      function processDelBtn(base, del) {
         // 捕获拦截，将其克隆节点添加移除样式后添加至列表末尾
         del.addEventListener('click', function() {
           const cloned = base.cloneNode(true)
@@ -4320,18 +4314,13 @@
           color: var(--disabled-color);
         }
 
-        #${gm.id}-normal-video-btn {
+        #${gm.id}-video-btn {
+          display: flex;
+          align-items: center;
           cursor: pointer;
         }
-        #${gm.id}-watchlater-video-btn {
-          margin-right: 1em;
-          cursor: pointer;
-          font-size: 12px;
-        }
-        #${gm.id}-normal-video-btn input[type=checkbox],
-        #${gm.id}-watchlater-video-btn input[type=checkbox] {
-          vertical-align: middle;
-          margin: 0 2px 2px 0;
+        #${gm.id}-video-btn input[type=checkbox] {
+          margin-right: 2px;
           cursor: pointer;
           appearance: auto;
         }
