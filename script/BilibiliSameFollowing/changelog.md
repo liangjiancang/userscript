@@ -10,6 +10,7 @@
 4. 脚本：优化 URL 匹配。
 5. API：升级至 V1.3，进一步优化条件等待和元素等待逻辑。详见 [UserscriptAPI 更新日志](https://gitee.com/liangjiancang/userscript/blob/master/lib/UserscriptAPI/changelog.md)。
 6. 代码：优化异常处理。
+7. 代码：优先使用函数声明而非函数表达式来定义内部函数。
 
 ## V1.3
 

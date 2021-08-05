@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站共同关注快速查看
-// @version         1.4.25.20210804
+// @version         1.4.26.20210805
 // @namespace       laster2800
 // @author          Laster2800
 // @description     快速查看与特定用户的共同关注（视频播放页、动态页、用户空间、直播间）
@@ -16,7 +16,7 @@
 // @exclude         *://live.bilibili.com/
 // @exclude         *://live.bilibili.com/?*
 // @exclude         *://www.bilibili.com/watchlater/
-// @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=955077
+// @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=957519
 // @grant           GM_addStyle
 // @grant           GM_notification
 // @grant           GM_xmlhttpRequest
@@ -48,9 +48,9 @@
       lv3Card: false,
     },
     configMap: {
-      failMessage: { name: '查询失败时提示信息' },
-      withoutSameMessage: { name: '无共同关注时提示信息' },
-      dispInText: { name: '以纯文本形式显示共同关注' },
+      failMessage: { name: '查询失败时提示信息', needNotReload: true },
+      withoutSameMessage: { name: '无共同关注时提示信息', needNotReload: true },
+      dispInText: { name: '以纯文本形式显示共同关注', needNotReload: true },
       userSpace: { name: '在用户空间中快速查看' },
       live: { name: '在直播间中快速查看' },
       lv1Card: { name: '在常规用户卡片中快速查看' },
@@ -108,22 +108,21 @@
      * 初始化脚本菜单
      */
     initScriptMenu() {
+      const _self = this
+      const cfgName = id => `[ ${config[id] ? '✓' : '✗'} ] ${configMap[id].name}`
       const config = gm.config
       const configMap = gm.configMap
       const menuId = {}
-      setTimeout(() => {
-        for (const id in config) {
-          menuId[id] = createMenuItem(id)
-        }
-        // 其他菜单
-        menuId.reset = GM_registerMenuCommand('初始化脚本', () => this.resetScript())
-        menuId.help = GM_registerMenuCommand('配置说明', () => {
-          window.open('https://gitee.com/liangjiancang/userscript/blob/master/script/BilibiliSameFollowing/README.md#配置说明')
-        })
+      for (const id in config) {
+        menuId[id] = createMenuItem(id)
+      }
+      // 其他菜单
+      menuId.reset = GM_registerMenuCommand('初始化脚本', () => this.resetScript())
+      menuId.help = GM_registerMenuCommand('配置说明', () => {
+        window.open('https://gitee.com/liangjiancang/userscript/blob/master/script/BilibiliSameFollowing/README.md#配置说明')
       })
 
-      const cfgName = id => `[ ${config[id] ? '✓' : '✗'} ] ${configMap[id].name}`
-      const createMenuItem = id => {
+      function createMenuItem(id) {
         return GM_registerMenuCommand(cfgName(id), () => {
           config[id] = !config[id]
           GM_setValue(id, config[id])
@@ -133,10 +132,11 @@
             onclick: configMap[id].needNotReload ? null : () => location.reload(),
           })
           clearMenu()
-          this.initScriptMenu()
+          _self.initScriptMenu()
         })
       }
-      const clearMenu = () => {
+
+      function clearMenu() {
         for (const id in menuId) {
           GM_unregisterMenuCommand(menuId[id])
         }
