@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站防剧透进度条
-// @version         1.9.13.20210804
+// @version         2.0.0.20210806
 // @namespace       laster2800
 // @author          Laster2800
 // @description     看比赛、看番总是被进度条剧透？装上这个脚本再也不用担心这些问题了
@@ -13,7 +13,7 @@
 // @include         *://www.bilibili.com/medialist/play/watchlater
 // @include         *://www.bilibili.com/medialist/play/watchlater/*
 // @include         *://www.bilibili.com/bangumi/play/*
-// @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=955077
+// @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=957714
 // @grant           GM_addStyle
 // @grant           GM_registerMenuCommand
 // @grant           GM_xmlhttpRequest
@@ -62,9 +62,9 @@
    * @property {boolean} simpleScriptControl 是否简化进度条上方的脚本控制
    * @property {boolean} disableCurrentPoint 隐藏当前播放时间
    * @property {boolean} disableDuration 隐藏视频时长
-   * @property {boolean} disablePbp 隐藏「热度」曲线
    * @property {boolean} disablePreview 隐藏进度条预览
    * @property {boolean} disablePartInformation 隐藏分 P 信息
+   * @property {boolean} disableSegmentInformation 隐藏分段信息
    * @property {number} offsetTransformFactor 进度条极端偏移因子
    * @property {number} offsetLeft 进度条偏移极左值
    * @property {number} offsetRight 进度条偏移极右值
@@ -146,31 +146,16 @@
   const gm = {
     id: 'gm411092',
     configVersion: GM_getValue('configVersion'),
-    configUpdate: 20210804,
-    config: {
-      bangumiEnabled: false,
-      simpleScriptControl: false,
-      disableCurrentPoint: true,
-      disableDuration: true,
-      disablePbp: true,
-      disablePreview: false,
-      disablePartInformation: true,
-      offsetTransformFactor: null,
-      offsetLeft: null,
-      offsetRight: null,
-      reservedLeft: null,
-      reservedRight: null,
-      postponeOffset: true,
-      reloadAfterSetting: true,
-    },
+    configUpdate: 20210806,
+    config: {},
     configMap: {
       bangumiEnabled: { default: false, attr: 'checked', needNotReload: true },
       simpleScriptControl: { default: false, attr: 'checked' },
       disableCurrentPoint: { default: true, attr: 'checked', configVersion: 20200912 },
       disableDuration: { default: true, attr: 'checked' },
-      disablePbp: { default: true, attr: 'checked' },
       disablePreview: { default: false, attr: 'checked' },
       disablePartInformation: { default: true, attr: 'checked', configVersion: 20210302 },
+      disableSegmentInformation: { default: true, attr: 'checked', configVersion: 20210806 },
       offsetTransformFactor: { default: 0.65, type: 'float', attr: 'value', needNotReload: true, max: 5.0, configVersion: 20210722 },
       offsetLeft: { default: 40, type: 'int', attr: 'value', needNotReload: true, configVersion: 20210722 },
       offsetRight: { default: 40, type: 'int', attr: 'value', needNotReload: true, configVersion: 20210722 },
@@ -342,6 +327,11 @@
      */
     updateVersion() {
       const _self = this
+
+      if ((gm.configVersion ?? 0) < 20210806) {
+        api.message.alert('据说B站近段时间在分批推送 V3 播放器，如果你有幸被选中，那这个脚本也是凭想象力去做了适配的，大概不会出错吧，否则请提供反馈。\n还有一种情况，就是启用了分段进度条的 V3 播放器，脚本必然无法工作，毕竟这东西目前可能还不存在于世界上。\n- 2021年8月6日')
+      }
+
       if (gm.configVersion > 0) {
         if (gm.configVersion < gm.configUpdate) {
           // 必须按从旧到新的顺序写
@@ -352,13 +342,13 @@
             GM_deleteValue('openSettingAfterConfigUpdate')
           }
 
-          // 1.9.13.20210804
-          if (gm.configVersion < 20210804) {
-            api.message.alert('明确不支持分段进度条——主要是因为按目前的实现方式要支持分段进度条非常困难。\n另一方面，既然 UP 主在某视频启用了分段进度条，本身就说明该视频向观众提供章节并不影响体验，换句话说这种视频理应是没有剧透问题的；否则，UP 主才是「剧透」的元凶。\n以后可能会采用更合理的实现方式将脚本重写一遍，到时候也许会重新考虑支持分段进度条。')
+          // 2.0.0.20210806
+          if (gm.configVersion < 20210806) {
+            GM_deleteValue('disablePbp')
           }
 
           // 功能性更新后更新此处配置版本
-          if (gm.configVersion < 20210722) {
+          if (gm.configVersion < 20210806) {
             _self.openUserSetting(2)
           } else {
             gm.configVersion = gm.configUpdate
@@ -508,14 +498,6 @@
                       </label>
                     </td>
                   </tr>
-                  <tr class="gm-subitem" title="是否在防剧透进度条中隐藏「热度」曲线？该功能可能会造成剧透。（pakku 扩展的弹幕频率图也会被禁用）">
-                    <td>
-                      <label>
-                        <span>隐藏「热度」曲线</span>
-                        <input id="gm-disablePbp" type="checkbox">
-                      </label>
-                    </td>
-                  </tr>
                   <tr class="gm-subitem" title="是否在防剧透进度条中隐藏进度条预览？该功能可能会造成剧透。">
                     <td>
                       <label>
@@ -529,6 +511,14 @@
                       <label>
                         <span>隐藏分 P 信息</span>
                         <input id="gm-disablePartInformation" type="checkbox">
+                      </label>
+                    </td>
+                  </tr>
+                  <tr class="gm-subitem" title="是否隐藏视频分段信息？它们可能会造成剧透。">
+                    <td>
+                      <label>
+                        <span>隐藏分段信息</span>
+                        <input id="gm-disableSegmentInformation" type="checkbox">
                       </label>
                     </td>
                   </tr>
@@ -1121,13 +1111,9 @@
        * 进度条
        * @typedef ProgressBar
        * @property {HTMLElement} root 进度条根元素
-       * @property {HTMLElement} bar 进度条主体
-       * @property {HTMLElement} slider 进度条滑块槽
        * @property {HTMLElement} thumb 进度条滑块
-       * @property {HTMLElement} track 进度条滑槽
-       * @property {HTMLElement} buffer 进度条缓冲显示
-       * @property {HTMLElement} played 进度条已播放显示
        * @property {HTMLElement} preview 进度条预览
+       * @property {HTMLElement[]} dispEl 进度条中应该被隐藏的可视部分
        */
       /**
        * 进度条
@@ -1135,20 +1121,17 @@
        */
       this.progress = {}
       /**
-       * 视频最底下的影子进度条
-       * @type {HTMLElement}
+       * 伪进度条
+       * @typedef FakeProgressBar
+       * @property {HTMLElement} root 伪进度条根元素
+       * @property {HTMLElement} track 伪进度条滑槽
+       * @property {HTMLElement} played 伪进度条已播放部分
        */
-      this.shadowProgress = null
       /**
-       * 用于模仿被隐藏的进度条滑槽
-       * @type {HTMLElement}
+       * 伪进度条
+       * @type {FakeProgressBar}
        */
-      this.fakeTrack = null
-      /**
-       * 用于模仿被隐藏的进度条滑槽中的已播放显示
-       * @type {HTMLElement}
-       */
-      this.fakePlayed = null
+      this.fakeProgress = {}
 
       /**
        * 脚本控制条
@@ -1170,6 +1153,22 @@
        * 通用方法
        */
       this.method = {
+        /**
+         * 判断播放器是否为 V3
+         * @returns 播放器是否为 V3
+         */
+        isV3Player() {
+          return !!document.querySelector('.bpx-player-video-area')
+        },
+
+        /**
+         * 判断播放器是否启用分段进度条
+         * @returns 播放器是否启用分段进度条
+         */
+        isSegmentedProgress() {
+          return !!document.querySelector('.bilibili-player-video-btn-viewpointlist')
+        },
+
         /**
          * 从 URL 获取视频 ID
          * @param {string} [url=location.pathname] 提取视频 ID 的源字符串
@@ -1204,14 +1203,8 @@
          * @returns 当前播放时间
          */
         getCurrentTime() {
-          let result = 0
           const el = webpage.control.querySelector('.bilibili-player-video-time-now, .squirtle-video-time-now')
-          const factors = [24 * 3600, 3600, 60, 1]
-          const parts = el.innerText.split(':')
-          while (parts.length > 0) {
-            result += parts.pop() * factors.pop()
-          }
-          return result
+          return this.getTimeFromElement(el)
         },
 
         /**
@@ -1219,8 +1212,17 @@
          * @returns 视频时长
          */
         getDuration() {
-          let result = 0
           const el = webpage.control.querySelector('.bilibili-player-video-time-total, .squirtle-video-time-total')
+          return this.getTimeFromElement(el)
+        },
+
+        /**
+         * 从元素中提取时间
+         * @param {HTMLElement} el 元素
+         * @returns 时间
+         */
+        getTimeFromElement(el) {
+          let result = 0
           const factors = [24 * 3600, 3600, 60, 1]
           const parts = el.innerText.split(':')
           while (parts.length > 0) {
@@ -1237,106 +1239,89 @@
      */
     async initWebpage() {
       const _self = this
-      _self.uploaderEnabled = false
-      _self.enabled = await _self.detectEnabled()
+      const selector = {
+        control: '.bilibili-player-video-control, .squirtle-controller',
+        controlPanel: '.bilibili-player-video-control-bottom, .squirtle-controller-wrap',
+        progressRoot: '.bilibili-player-video-progress, .squirtle-progress-wrap',
+      }
+      _self.control = await api.wait.waitQuerySelector(selector.control)
+      _self.controlPanel = await api.wait.waitQuerySelector(selector.controlPanel, _self.control)
+      _self.progress.root = await api.wait.waitQuerySelector(selector.progressRoot, _self.control)
+      _self.initScriptControl()
+    }
 
-      if (api.web.urlMatch(gm.regex.page_bangumi)) {
-        const selector = {
-          control: '.squirtle-controller',
-          controlPanel: '.squirtle-controller-wrap',
-          progress: {
-            root: '.squirtle-progress-wrap',
-            slider: '.squirtle-progress-dot-container',
-            thumb: '.squirtle-progress-dot',
-            track: '.squirtle-progress-totalline',
-            buffer: '.squirtle-progress-buffer',
-            played: '.squirtle-progress-timeline',
-            preview: '.squirtle-progress-detail',
-          },
-        }
-
-        const initCore = async () => {
-          _self.control = await api.wait.waitQuerySelector(selector.control)
-          _self.controlPanel = await api.wait.waitQuerySelector(selector.controlPanel, _self.control)
-          _self.progress.root = await api.wait.waitQuerySelector(selector.progress.root, _self.control)
-          _self.progress.slider = await api.wait.waitQuerySelector(selector.progress.slider, _self.control)
-          _self.progress.thumb = await api.wait.waitQuerySelector(selector.progress.thumb, _self.control)
-          _self.progress.track = await api.wait.waitQuerySelector(selector.progress.track, _self.control)
-          _self.progress.buffer = await api.wait.waitQuerySelector(selector.progress.buffer, _self.control)
-          _self.progress.played = await api.wait.waitQuerySelector(selector.progress.played, _self.control)
-          _self.progress.preview = await api.wait.waitQuerySelector(selector.progress.preview, _self.control)
-
-          if (!_self.control.contains(_self.fakePlayed)) {
-            _self.fakePlayed = _self.progress.played.insertAdjacentElement('afterend', _self.progress.played.cloneNode(true))
-            _self.fakePlayed.style.visibility = 'hidden'
-          }
-        }
-
-        await initCore()
-        _self.initScriptControl()
+    /**
+     * 初始化进度条
+     * @async
+     */
+    async initProgress() {
+      const _self = this
+      const segmented = _self.method.isSegmentedProgress() // 目前还没出现 V3 的分段进度条
+      const selector = {
+        thumb: segmented
+          ? '.bilibili-player-video-segmentation-progress-slider .bui-thumb'
+          : '.bui-thumb, .squirtle-progress-dot',
+        preview: '.bilibili-player-video-progress-detail, .squirtle-progress-detail',
+      }
+      if (_self.method.isV3Player()) {
+        selector.dispEl = [
+          '.squirtle-progress-totalline', // 进度条背景
+          '.squirtle-progress-timeline', // 已播放条
+          '.squirtle-progress-buffer', // 缓冲条
+        ]
       } else {
-        const selector = {
-          control: '.bilibili-player-video-control',
-          controlPanel: '.bilibili-player-video-control-bottom',
-          progress: {
-            root: '.bilibili-player-video-progress',
-            bar: '.bilibili-player-video-progress-slider',
-            slider: '.bui-track',
-            thumb: '.bui-thumb',
-            track: '.bui-bar-wrap, .bui-schedule-wrap',
-            buffer: '.bui-bar-buffer, .bui-schedule-buffer',
-            played: '.bui-bar-normal, .bui-schedule-current',
-            preview: '.bilibili-player-video-progress-detail',
+        if (segmented) {
+          selector.dispEl = [
+            '/* <select-all> */.bilibili-player-video-segmentation-progress-slider .bui-bar-wrap.bui-segmented', // 各分段可视部分
+            '.bilibili-player-video-progress-shadow.segmented', // 影子进度条
+          ]
+        } else {
+          selector.dispEl = [
+            '.bui-bar-wrap', // 进度条可视部分
+            '.bilibili-player-video-progress-shadow', // 影子进度条
+          ]
+        }
+      }
+
+      _self.progress.thumb = await api.wait.waitQuerySelector(selector.thumb, _self.control)
+      _self.progress.preview = await api.wait.waitQuerySelector(selector.preview, _self.control)
+      _self.progress.dispEl = []
+      for (const elSelector of selector.dispEl) {
+        if (elSelector.indexOf('<select-all>') >= 0) {
+          await api.wait.waitQuerySelector(elSelector, _self.control)
+          _self.control.querySelectorAll(elSelector).forEach(el => _self.progress.dispEl.push(el))
+        } else {
+          _self.progress.dispEl.push(await api.wait.waitQuerySelector(elSelector, _self.control))
+        }
+      }
+
+      if (!_self.control.contains(_self.fakeProgress.root)) {
+        _self.fakeProgress.root = _self.progress.root.insertAdjacentElement('beforebegin', document.createElement('div'))
+        _self.fakeProgress.root.id = `${gm.id}-fake-progress`
+        if (_self.method.isV3Player()) {
+          _self.fakeProgress.root.className = 'gm-v3'
+        }
+        _self.fakeProgress.root.innerHTML = `
+            <div class='fake-track'></div>
+            <div class='fake-played'></div>
+          `
+        _self.fakeProgress.track = _self.fakeProgress.root.children[0]
+        _self.fakeProgress.played = _self.fakeProgress.root.children[1]
+      }
+
+      if (!_self.progress.thumb._replaceDetect) {
+        // 有些播放页面，自动跳转到上次播放进度时，thumb 被会被替换成新的
+        // 似乎最多只会变一次，暂时就只处理一次
+        api.wait.executeAfterElementLoaded({
+          selector: selector.thumb,
+          base: _self.progress.root,
+          exclude: [_self.progress.thumb],
+          onTimeout: null,
+          callback: thumb => {
+            _self.progress.thumb = thumb
           },
-          shadowProgress: '.bilibili-player-video-progress-shadow',
-        }
-
-        const initCore = async () => {
-          _self.control = await api.wait.waitQuerySelector(selector.control)
-          _self.controlPanel = await api.wait.waitQuerySelector(selector.controlPanel, _self.control)
-          _self.progress.root = await api.wait.waitQuerySelector(selector.progress.root, _self.control)
-          _self.progress.bar = await api.wait.waitQuerySelector(selector.progress.bar, _self.progress.root)
-          _self.progress.slider = await api.wait.waitQuerySelector(selector.progress.slider, _self.progress.bar)
-          // slider 在某些情况下被重新生成，监听到就重新处理
-          // 一定要在这个地方检测，放其他地方可能会错过时机！
-          api.wait.waitForElementLoaded({
-            selector: selector.progress.slider,
-            base: _self.progress.bar,
-            exclude: [_self.progress.slider],
-            subtree: false,
-            timeout: 0,
-          }).then(() => {
-            initCore()
-          })
-          _self.progress.thumb = await api.wait.waitQuerySelector(selector.progress.thumb, _self.progress.slider)
-          _self.progress.track = await api.wait.waitQuerySelector(selector.progress.track, _self.progress.slider)
-          _self.progress.buffer = await api.wait.waitQuerySelector(selector.progress.buffer, _self.progress.track)
-          _self.progress.played = await api.wait.waitQuerySelector(selector.progress.played, _self.progress.track)
-          _self.progress.preview = await api.wait.waitQuerySelector(selector.progress.preview, _self.progress.root)
-          _self.shadowProgress = await api.wait.waitQuerySelector(selector.shadowProgress, _self.control)
-
-          if (!_self.control.contains(_self.fakeTrack)) {
-            _self.fakeTrack = _self.progress.track.insertAdjacentElement('afterend', _self.progress.track.cloneNode(true)) // 必须在 thumb 前，否则 z 轴层次错误
-            _self.fakeTrack.style.visibility = 'hidden'
-            _self.fakeTrack.querySelector(selector.progress.buffer).style.visibility = 'hidden'
-            _self.fakePlayed = _self.fakeTrack.querySelector(selector.progress.played)
-          }
-
-          // 有些播放页面，自动跳转到上次播放进度时，thumb 被会被替换成新的
-          // 似乎最多只会变一次，暂时就只处理一次
-          api.wait.executeAfterElementLoaded({
-            selector: selector.progress.thumb,
-            base: _self.progress.bar,
-            exclude: [_self.progress.thumb],
-            onTimeout: null,
-            callback: thumb => {
-              _self.progress.thumb = thumb
-            },
-          })
-        }
-
-        await initCore()
-        _self.initScriptControl()
+        })
+        _self.progress.thumb._replaceDetect = true
       }
     }
 
@@ -1363,29 +1348,37 @@
         } catch (e) {
           api.logger.error(e)
         }
-      } else if (api.web.urlMatch(gm.regex.page_bangumi)) {
-        if (gm.config.bangumiEnabled) {
-          return true
-        }
+      } else if (api.web.urlMatch(gm.regex.page_bangumi) && gm.config.bangumiEnabled) {
+        return true
       }
       return false
     }
 
     /**
      * 防剧透功能处理流程
+     * @async
      */
-    processNoSpoil() {
+    async processNoSpoil() {
       const _self = this
-      setTimeout(() => {
-        hideElementStatic()
-        processControlShow()
-        core()
-      })
+      if (unsafeWindow.player) {
+        await api.wait.waitForConditionPassed({
+          condition: () => unsafeWindow.player.isInitialized(),
+        })
+      }
+      await _self.initProgress()
+      hideElementStatic()
+      processControlShow()
+      core()
+      if (_self.enabled) {
+        _self.scriptControl.enabled.setAttribute('enabled', '')
+      } else {
+        _self.scriptControl.enabled.removeAttribute('enabled')
+      }
 
       /**
        * 隐藏必要元素（相关设置修改后需刷新页面）
        */
-      const hideElementStatic = () => {
+      function hideElementStatic() {
         // 隐藏进度条预览
         if (_self.enabled) {
           _self.progress.preview.style.visibility = gm.config.disablePreview ? 'hidden' : 'visible'
@@ -1447,14 +1440,12 @@
 
         // 隐藏高能进度条的「热度」曲线（可能存在）
         api.wait.waitQuerySelector('#bilibili_pbp', _self.control, document, true).then(pbp => {
-          const hide = _self.enabled && gm.config.disablePbp
-          pbp.style.visibility = hide ? 'hidden' : ''
+          pbp.style.visibility = _self.enabled ? 'hidden' : ''
         }).catch(() => {})
 
         // 隐藏 pakku 扩展引入的弹幕密度显示（可能存在）
-        api.wait.waitQuerySelector('canvas.pakku-fluctlight', _self.control, document, true).then(pakku => {
-          const hide = _self.enabled && gm.config.disablePbp
-          pakku.style.visibility = hide ? 'hidden' : ''
+        api.wait.waitQuerySelector('.pakku-fluctlight', _self.control, document, true).then(pakku => {
+          pakku.style.visibility = _self.enabled ? 'hidden' : ''
         }).catch(() => {})
 
         // 隐藏分 P 信息（番剧没有必要隐藏）
@@ -1513,36 +1504,54 @@
             }
           }
         }
+
+        // 隐藏分段信息
+        if (gm.config.disableSegmentInformation && _self.method.isSegmentedProgress()) {
+          if (!_self.method.isV3Player()) {
+            // 分段按钮
+            api.wait.waitQuerySelector('.bilibili-player-video-btn-viewpointlist', _self.control).then(btn => {
+              btn.style.visibility = _self.enabled ? 'hidden' : ''
+            })
+            // 分段列表
+            api.wait.waitQuerySelector('.player-auxiliary-collapse-viewpointlist').then(list => {
+              list.style.display = 'none' // 一律隐藏即可，用户要看就再点一次分段按钮
+            })
+            // 进度条预览上的分段标题（必定存在）
+            api.wait.waitQuerySelector('.bilibili-player-video-progress-detail-content').then(content => {
+              content.style.display = _self.enabled ? 'none' : ''
+            })
+          }
+        }
       }
 
       /**
        * 处理视频控制的显隐
        */
-      const processControlShow = () => {
+      function processControlShow() {
         if (!_self.enabled) return
 
         const addObserver = target => {
           if (!target._obPlayRate) {
-            target._obPlayRate = new MutationObserver(() => {
+            target._obPlayRate = new MutationObserver(api.tool.throttle(() => {
               _self.processFakePlayed()
-            })
+            }, 500))
             target._obPlayRate.observe(_self.progress.thumb, { attributeFilter: ['style'] })
           }
         }
-        if (api.web.urlMatch(gm.regex.page_bangumi)) {
+        if (_self.method.isV3Player()) {
           const panel = _self.controlPanel
           if (!_self.controlPanel._obControlShow) {
             // 切换视频控制显隐时，添加或删除 ob 以控制伪进度条
             panel._obControlShow = new MutationObserver(() => {
               if (panel.style.display != 'none') {
                 if (_self.enabled) {
-                  _self.fakePlayed.style.visibility = 'visible'
+                  _self.fakeProgress.root.style.visibility = 'visible'
                   core(true)
                   addObserver(panel)
                 }
               } else {
                 if (_self.enabled) {
-                  _self.fakePlayed.style.visibility = 'hidden'
+                  _self.fakeProgress.root.style.visibility = ''
                 }
                 if (panel._obPlayRate) {
                   panel._obPlayRate.disconnect()
@@ -1552,8 +1561,6 @@
             })
             panel._obControlShow.observe(panel, { attributeFilter: ['style'] })
           }
-
-          // 执行到此处时，若视频控制已处于显示状态，则直接添加 ob
           if (panel.style.display != 'none') {
             addObserver(panel)
           }
@@ -1583,8 +1590,6 @@
               attributeOldValue: true,
             })
           }
-
-          // 执行到此处时，若视频控制已处于显示状态，则直接添加 ob
           if (api.dom.containsClass(playerArea, clzControlShow)) {
             addObserver(playerArea)
           }
@@ -1595,7 +1600,7 @@
        * 防剧透处理核心流程
        * @param {boolean} [noPostpone] 不延后执行
        */
-      const core = noPostpone => {
+      function core(noPostpone) {
         let offset = 'offset'
         let playRate = 0
         if (_self.enabled) {
@@ -1618,79 +1623,41 @@
         }
 
         if (typeof offset == 'number') {
-          if (api.web.urlMatch(gm.regex.page_bangumi)) {
-            const handler = () => {
-              _self.progress.root._offset = offset
-              _self.progress.root.style.transform = `translateX(${offset}%)`
-              if (_self.enabled) {
-                _self.progress.slider.style.background = 'unset'
-                _self.progress.track.style.transform = `translateX(${-offset}%)`
-                _self.fakePlayed.style.transform = `translateX(${-offset}%)`
-              } else {
-                _self.progress.slider.style.background = ''
-                _self.progress.track.style.transform = ''
-              }
+          const handler = () => {
+            _self.progress.root._offset = offset
+            _self.progress.root.style.transform = `translateX(${offset}%)`
+          }
+
+          if (_self.enabled) {
+            _self.progress.dispEl.forEach(el => {
+              el.style.visibility = 'hidden'
+            })
+            if (_self.method.isV3Player()) {
+              _self.progress.thumb.parentNode.style.backgroundColor = 'unset'
             }
+            _self.fakeProgress.root.style.visibility = 'visible'
 
-            if (_self.enabled) {
-              _self.progress.buffer.style.visibility = 'hidden'
-              _self.progress.played.style.visibility = 'hidden'
-              _self.fakePlayed.style.visibility = 'visible'
-
-              if (noPostpone || !gm.config.postponeOffset) {
-                handler()
-              } else if (!_self.progress._noSpoil) { // 首次打开
-                _self.progress.root._offset = 0
-                _self.progress.root.style.transform = 'translateX(0)'
-                _self.progress.slider.style.background = 'unset'
-                _self.progress.track.style.transform = 'translateX(0)'
-                _self.fakePlayed.style.transform = 'translateX(0)'
-              }
-              _self.processFakePlayed()
-
-              _self.progress._noSpoil = true
-            } else {
-              _self.progress.buffer.style.visibility = 'visible'
-              _self.progress.played.style.visibility = 'visible'
-              _self.fakePlayed.style.visibility = 'hidden'
+            if (noPostpone || !gm.config.postponeOffset) {
               handler()
-
-              _self.progress._noSpoil = false
+            } else if (!_self.progress._noSpoil) { // 首次打开
+              _self.progress.root._offset = 0
+              _self.progress.root.style.transform = 'translateX(0)'
+              _self.fakeProgress.played.style.transform = 'scaleX(0)'
             }
+            _self.processFakePlayed()
+
+            _self.progress._noSpoil = true
           } else {
-            const handler = () => {
-              _self.progress.root._offset = offset
-              _self.progress.root.style.transform = `translateX(${offset}%)`
-              if (_self.enabled) {
-                _self.fakeTrack.style.transform = `translateX(${-offset}%)`
-              }
+            _self.progress.dispEl.forEach(el => {
+              el.style.visibility = ''
+            })
+            if (_self.method.isV3Player()) {
+              _self.progress.thumb.parentNode.style.backgroundColor = ''
             }
+            _self.fakeProgress.root.style.visibility = ''
+            handler()
 
-            if (_self.enabled) {
-              _self.progress.track.style.visibility = 'hidden'
-              _self.progress.buffer.style.visibility = 'hidden'
-              _self.shadowProgress.style.visibility = 'hidden'
-              _self.fakeTrack.style.visibility = 'visible'
-
-              if (noPostpone || !gm.config.postponeOffset) {
-                handler()
-              } else if (!_self.progress._noSpoil) { // 首次打开
-                _self.progress.root._offset = 0
-                _self.progress.root.style.transform = 'translateX(0)'
-                _self.fakeTrack.style.transform = 'translateX(0)'
-              }
-              _self.processFakePlayed()
-
-              _self.progress._noSpoil = true
-            } else {
-              _self.progress.track.style.visibility = 'visible'
-              _self.progress.buffer.style.visibility = 'visible'
-              _self.shadowProgress.style.visibility = 'visible'
-              _self.fakeTrack.style.visibility = 'hidden'
-              handler()
-
-              _self.progress._noSpoil = false
-            }
+            _self.progress._noSpoil = false
           }
         }
 
@@ -1714,7 +1681,7 @@
        * 获取偏移后进度条尾部位置
        * @returns {number} 偏移后进度条尾部位置
        */
-      const getEndPoint = () => {
+      function getEndPoint() {
         if (!_self.progress._noSpoil) {
           _self.progress._fakeRandom = Math.random()
         }
@@ -1742,8 +1709,12 @@
      */
     async initNoSpoil() {
       const _self = this
+      _self.uploaderEnabled = false
+      _self.enabled = await _self.detectEnabled()
       await _self.initWebpage()
-      await _self.processNoSpoil()
+      if (_self.enabled) {
+        await _self.processNoSpoil()
+      }
 
       // 加载完页面后，有时候视频会莫名其妙地重新刷新，原因不明
       // 总之，先等一下看注入的内容还在，如果不在则重新初始化
@@ -1824,41 +1795,26 @@
       const _self = this
       if (!_self.controlPanel.contains(_self.scriptControl)) {
         _self.scriptControl = _self.controlPanel.appendChild(document.createElement('div'))
-        if (api.web.urlMatch(gm.regex.page_bangumi)) {
-          _self.scriptControl.style.left = '1em'
-          _self.scriptControl.style.marginBottom = '0.5em'
-        }
         _self.control._scriptControl = _self.scriptControl
-        _self.scriptControl.className = `${gm.id}-scriptControl`
+        if (_self.method.isV3Player()) {
+          _self.scriptControl.className = `${gm.id}-scriptControl gm-v3`
+        } else {
+          _self.scriptControl.className = `${gm.id}-scriptControl`
+        }
         _self.scriptControl.innerHTML = `
           <span id="${gm.id}-enabled">防剧透</span>
           <span id="${gm.id}-uploaderEnabled" style="display:none">将UP主加入防剧透名单</span>
           <span id="${gm.id}-bangumiEnabled" style="display:none">番剧自动启用防剧透</span>
           <span id="${gm.id}-setting" style="display:none">设置</span>
         `
-
         _self.scriptControl.enabled = _self.scriptControl.querySelector(`#${gm.id}-enabled`)
         _self.scriptControl.uploaderEnabled = _self.scriptControl.querySelector(`#${gm.id}-uploaderEnabled`)
         _self.scriptControl.bangumiEnabled = _self.scriptControl.querySelector(`#${gm.id}-bangumiEnabled`)
         _self.scriptControl.setting = _self.scriptControl.querySelector(`#${gm.id}-setting`)
 
-        _self.scriptControl.enabled.handler = function() {
-          if (_self.enabled) {
-            if (api.dom.containsClass(_self.control, 'bilibili-player-view-point')) { // 开启了分段进度条
-              _self.enabled = false
-              api.message.create('不支持分段进度条', { position: { top: '70%', left: '35%' } })
-              return
-            } else {
-              this.setAttribute('enabled', '')
-            }
-          } else {
-            this.removeAttribute('enabled')
-          }
-          _self.processNoSpoil()
-        }
         _self.scriptControl.enabled.onclick = function() {
           _self.enabled = !_self.enabled
-          this.handler()
+          _self.processNoSpoil()
         }
 
         if (!gm.config.simpleScriptControl) {
@@ -1912,21 +1868,17 @@
         api.dom.fade(true, _self.scriptControl, null, 'flex')
       }
 
-      if (_self.progress.bar && !_self.progress.bar._scriptControlListeners) {
+      if (!_self.progress.root._scriptControlListeners) {
         // 临时将 z-index 调至底层，不要影响信息的显示
         // 不通过样式直接将 z-index 设为最底层，是因为会被 pbp 遮盖导致点击不了
         // 问题的关键在于，B站已经给进度条和 pbp 内所有元素都设定好 z-index，只能用这种奇技淫巧来解决
-        _self.progress.bar.addEventListener('mouseenter', function() {
+        _self.progress.root.addEventListener('mouseenter', function() {
           _self.scriptControl.style.zIndex = '-1'
         })
-        _self.progress.bar.addEventListener('mouseleave', function() {
+        _self.progress.root.addEventListener('mouseleave', function() {
           _self.scriptControl.style.zIndex = ''
         })
-        _self.progress.bar._scriptControlListeners = true
-      }
-
-      if (this.enabled) {
-        _self.scriptControl.enabled.handler()
+        _self.progress.root._scriptControlListeners = true
       }
     }
 
@@ -1956,21 +1908,9 @@
         if (reservedZone) {
           _self.progress.root._offset = offset
           _self.progress.root.style.transform = `translateX(${offset}%)`
-          if (api.web.urlMatch(gm.regex.page_bangumi)) {
-            _self.progress.track.style.transform = `translateX(${-offset}%)`
-            _self.fakePlayed.style.transform = `translateX(${-offset}%)`
-          } else {
-            _self.fakeTrack.style.transform = `translateX(${-offset}%)`
-          }
         }
       }
-      if (api.web.urlMatch(gm.regex.page_bangumi)) {
-        const scaleX = playRate + offset / 100
-        const translateX = -offset / scaleX
-        _self.fakePlayed.style.transform = `scaleX(${scaleX}) translateX(${translateX}%)`
-      } else {
-        _self.fakePlayed.style.transform = `scaleX(${playRate + offset / 100})`
-      }
+      _self.fakeProgress.played.style.transform = `scaleX(${playRate + offset / 100})`
     }
 
     /**
@@ -1979,6 +1919,8 @@
     addStyle() {
       GM_addStyle(`
         :root {
+          --progress-track-color: hsla(0, 0%, 100%, .3);
+          --progress-played-color: rgba(35, 173, 229, 1);
           --control-item-selected-color: #00c7ff;
           --control-item-shadow-color: #00000080;
           --text-color: black;
@@ -2011,6 +1953,10 @@
           display: flex;
           opacity: 0;
           transition: opacity ${gm.const.fadeTime}ms ease-in-out;
+        }
+        .${gm.id}-scriptControl.gm-v3 {
+          left: 1em;
+          margin-bottom: 0.5em;
         }
 
         .${gm.id}-scriptControl > * {
@@ -2324,6 +2270,36 @@
         #${gm.id} .gm-setting .gm-items::-webkit-scrollbar-corner,
         #${gm.id} .gm-uploaderList .gm-list-editor textarea::-webkit-scrollbar-corner {
           background-color: var(--scrollbar-background-color);
+        }
+
+        #${gm.id}-fake-progress {
+          position: absolute;
+          top: 42%;
+          left: 0;
+          height: 4px;
+          width: 100%;
+          pointer-events: none;
+          visibility: hidden;
+        }
+        #${gm.id}-fake-progress.gm-v3 {
+          top: 10%;
+          left: 1.5%;
+          width: 97%;
+        }
+        #${gm.id}-fake-progress > * {
+          position: absolute;
+          top: 0;
+          left: 0;
+          height: 100%;
+          width: 100%
+        }
+        #${gm.id}-fake-progress .fake-track {
+          background-color: var(--progress-track-color);
+        }
+        #${gm.id}-fake-progress .fake-played {
+          background-color: var(--progress-played-color);
+          transform-origin: left;
+          transform: scaleX(0);
         }
 
         /* 隐藏番剧中的进度条自动跳转提示（该提示出现太快，常规方式处理不及，这里先用样式覆盖一下） */
