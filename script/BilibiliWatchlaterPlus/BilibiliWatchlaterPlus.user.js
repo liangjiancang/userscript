@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.16.19.20210806
+// @version         4.16.20.20210807
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -17,7 +17,7 @@
 // @exclude         *://message.bilibili.com/*/*
 // @exclude         *://t.bilibili.com/h5/*
 // @exclude         *://www.bilibili.com/page-proxy/*
-// @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=957714
+// @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=958043
 // @grant           GM_addStyle
 // @grant           GM_registerMenuCommand
 // @grant           GM_xmlhttpRequest
@@ -432,7 +432,6 @@
          * GM 读取流程
          *
          * 一般情况下，读取用户配置；如果配置出错，则沿用默认值，并将默认值写入配置中
-         *
          * @param {string} gmKey 键名
          * @param {*} defaultValue 默认值
          * @param {boolean} [writeback=true] 配置出错时是否将默认值回写入配置中
@@ -1923,13 +1922,13 @@
           if (gm.menu[name].state == 1) {
             await api.wait.waitForConditionPassed({
               condition: () => gm.menu[name].state == 2,
-              timeout: 2000,
+              timeout: 1500 + (gm.menu[name].el.fadeInTime ?? gm.const.fadeTime),
             })
             return true
           } else if (gm.menu[name].state == 3) {
             await api.wait.waitForConditionPassed({
               condition: () => gm.menu[name].state == 0,
-              timeout: 2000,
+              timeout: 1500 + (gm.menu[name].el.fadeOutTime ?? gm.const.fadeTime),
             })
           }
         } catch (e) {
@@ -1985,12 +1984,12 @@
           if (menu.state == 1) {
             await api.wait.waitForConditionPassed({
               condition: () => menu.state == 2,
-              timeout: 2000,
+              timeout: 1500 + (menu.el.fadeInTime ?? gm.const.fadeTime),
             })
           } else if (menu.state == 3) {
             await api.wait.waitForConditionPassed({
               condition: () => menu.state == 0,
-              timeout: 2000,
+              timeout: 1500 + (menu.el.fadeOutTime ?? gm.const.fadeTime),
             })
             return true
           }
@@ -2529,7 +2528,8 @@
       function processPopup(watchlater) {
         if (gm.config.headerMenu == Enums.headerMenu.disable) return
         const popup = gm.menu.entryPopup.el
-        // 此处必须用 over；若用 enter，且网页刚加载完成时光标正好在入口上，无法轻移光标以触发事件
+        popup.fadeInFunction = 'cubic-bezier(0.68, -0.55, 0.27, 1.55)' // 快速弹出
+        // 此处必须用 over；若用 enter，且网页刚加载完成时鼠标正好在入口上，无法轻移鼠标以触发事件
         watchlater.addEventListener('mouseover', onOverWatchlater)
         watchlater.addEventListener('mouseleave', onLeaveWatchlater)
         popup.addEventListener('mouseenter', onEnterPopup)
@@ -2552,10 +2552,29 @@
         function onOverWatchlater() {
           if (this.mouseOver) return
           this.mouseOver = true
-          popup.style.position = api.dom.isFixed(watchlater.parentNode) ? 'fixed' : ''
-          popup.style.top = `${api.dom.getElementTop(watchlater) + watchlater.offsetHeight}px`
-          popup.style.left = `calc(${api.dom.getElementLeft(watchlater) + watchlater.offsetWidth / 2}px - 16em)`
-          openEntryPopup()
+          // 预加载数据，延时以在避免误触与加载速度间作平衡
+          if (gm.config.watchlaterListCacheValidPeriod > 0) {
+            setTimeout(() => {
+              if (this.mouseOver) {
+                if (gm.menu.entryPopup.needReload) {
+                  gm.menu.entryPopup.needReload = false
+                  gm.data.watchlaterListData(true)
+                } else {
+                  gm.data.watchlaterListData(false, true, true) // 启用本地缓存但禁用页面缓存
+                }
+              }
+            }, 25) // 以鼠标快速掠过不触发为准
+          }
+          // 完整加载，延时以避免误触
+          // 误触率与弹出速度正相关，与数据加载时间无关
+          setTimeout(() => {
+            if (this.mouseOver) {
+              popup.style.position = api.dom.isFixed(watchlater.parentNode) ? 'fixed' : ''
+              popup.style.top = `${api.dom.getElementTop(watchlater) + watchlater.offsetHeight}px`
+              popup.style.left = `calc(${api.dom.getElementLeft(watchlater) + watchlater.offsetWidth / 2}px - 16em)`
+              openEntryPopup()
+            }
+          }, 125) // 以鼠标中速掠过不触发为准
         }
 
         /**
@@ -2825,8 +2844,8 @@
             el.entryRemovedList.innerHTML = ''
             el.entryRemovedList.total = 0
             let data = []
-            if (el.entryList.needReload) {
-              el.entryList.needReload = false
+            if (gm.menu.entryPopup.needReload) {
+              gm.menu.entryPopup.needReload = false
               data = await gm.data.watchlaterListData(true)
             } else {
               data = await gm.data.watchlaterListData(false, true, true) // 启用本地缓存但禁用页面缓存
@@ -2888,7 +2907,7 @@
                   card.added = true
                   const switcher = card.querySelector('.gm-card-switcher')
                   switcher.addEventListener('click', function(e) {
-                    el.entryList.needReload = true
+                    gm.menu.entryPopup.needReload = true
                     e.preventDefault() // 不能放到 async 中
                     setTimeout(async () => {
                       const added = card.added
@@ -2952,7 +2971,7 @@
                           if (api.dom.containsClass(e.target, ['gm-card-switcher', 'gm-card-uploader'])) return
                         }
                         if (autoRemoveControl.autoRemove) {
-                          el.entryList.needReload = true
+                          gm.menu.entryPopup.needReload = true
                           api.dom.addClass(card, 'gm-removed')
                           card.added = false
                         }
@@ -3692,7 +3711,6 @@
           --scrollbar-background-color: transparent;
           --scrollbar-thumb-color: #0000002b;
           --opacity-fade-transition: opacity ${gm.const.fadeTime}ms ease-in-out;
-          --opacity-fade-popup-transition: opacity ${gm.const.fadeTime}ms cubic-bezier(0.68, -0.55, 0.27, 1.55);
         }
 
         #${gm.id} {
@@ -3705,7 +3723,7 @@
         #${gm.id} .gm-entrypopup {
           font-size: 12px;
           line-height: normal;
-          transition: var(--opacity-fade-popup-transition);
+          transition: var(--opacity-fade-transition);
           opacity: 0;
           display: none;
           position: absolute;
