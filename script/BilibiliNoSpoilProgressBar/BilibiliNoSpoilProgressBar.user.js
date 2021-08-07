@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站防剧透进度条
-// @version         2.0.1.20210807
+// @version         2.0.2.20210807
 // @namespace       laster2800
 // @author          Laster2800
 // @description     看比赛、看番总是被进度条剧透？装上这个脚本再也不用担心这些问题了
@@ -13,7 +13,7 @@
 // @include         *://www.bilibili.com/medialist/play/watchlater
 // @include         *://www.bilibili.com/medialist/play/watchlater/*
 // @include         *://www.bilibili.com/bangumi/play/*
-// @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=958043
+// @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=958115
 // @grant           GM_addStyle
 // @grant           GM_registerMenuCommand
 // @grant           GM_xmlhttpRequest
@@ -133,6 +133,7 @@
   /**
    * @typedef GMObject_menu_item
    * @property {0 | 1 | 2 | 3 | -1} state 打开状态（关闭 | 开启中 | 打开 | 关闭中 | 错误）
+   * @property {0 | 1 | 2} wait 等待阻塞状态（无等待阻塞 | 等待开启 | 等待关闭）
    * @property {HTMLElement} el 菜单元素
    * @property {() => void} [openHandler] 打开菜单的回调函数
    * @property {() => void} [closeHandler] 关闭菜单的回调函数
@@ -183,8 +184,8 @@
       fadeTime: 400,
     },
     menu: {
-      setting: { state: 0, el: null },
-      uploaderList: { state: 0, el: null },
+      setting: { state: 0, wait: 0, el: null },
+      uploaderList: { state: 0, wait: 0, el: null },
     },
     el: {
       gmRoot: null,
@@ -989,25 +990,31 @@
     async openMenuItem(name, callback, keepOthers) {
       const _self = this
       let success = false
+      const menu = gm.menu[name]
+      if (menu.wait > 0) return false
       try {
         try {
-          if (gm.menu[name].state == 1) {
+          if (menu.state == 1) {
+            menu.wait = 1
             await api.wait.waitForConditionPassed({
-              condition: () => gm.menu[name].state == 2,
-              timeout: 1500 + (gm.menu[name].el.fadeInTime ?? gm.const.fadeTime),
+              condition: () => menu.state == 2,
+              timeout: 1500 + (menu.el.fadeInTime ?? gm.const.fadeTime),
             })
             return true
-          } else if (gm.menu[name].state == 3) {
+          } else if (menu.state == 3) {
+            menu.wait = 1
             await api.wait.waitForConditionPassed({
-              condition: () => gm.menu[name].state == 0,
-              timeout: 1500 + (gm.menu[name].el.fadeOutTime ?? gm.const.fadeTime),
+              condition: () => menu.state == 0,
+              timeout: 1500 + (menu.el.fadeOutTime ?? gm.const.fadeTime),
             })
           }
         } catch (e) {
-          gm.menu[name].state = -1
+          menu.state = -1
           api.logger.error(e)
+        } finally {
+          menu.wait = 0
         }
-        if (gm.menu[name].state == 0 || gm.menu[name].state == -1) {
+        if (menu.state == 0 || menu.state == -1) {
           for (const key in gm.menu) {
             /** @type {GMObject_menu_item} */
             const menu = gm.menu[key]
@@ -1051,14 +1058,17 @@
     async closeMenuItem(name, callback) {
       /** @type {GMObject_menu_item} */
       const menu = gm.menu[name]
+      if (menu.wait > 0) return
       try {
         try {
           if (menu.state == 1) {
+            menu.wait = 2
             await api.wait.waitForConditionPassed({
               condition: () => menu.state == 2,
               timeout: 1500 + (menu.el.fadeInTime ?? gm.const.fadeTime),
             })
           } else if (menu.state == 3) {
+            menu.wait = 2
             await api.wait.waitForConditionPassed({
               condition: () => menu.state == 0,
               timeout: 1500 + (menu.el.fadeOutTime ?? gm.const.fadeTime),
@@ -1068,6 +1078,8 @@
         } catch (e) {
           menu.state = -1
           api.logger.error(e)
+        } finally {
+          menu.wait = 0
         }
         if (menu.state == 2 || menu.state == -1) {
           menu.state = 3
