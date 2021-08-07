@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.16.21.20210807
+// @version         4.16.22.20210807
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -17,7 +17,7 @@
 // @exclude         *://message.bilibili.com/*/*
 // @exclude         *://t.bilibili.com/h5/*
 // @exclude         *://www.bilibili.com/page-proxy/*
-// @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=958043
+// @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=958115
 // @grant           GM_addStyle
 // @grant           GM_registerMenuCommand
 // @grant           GM_xmlhttpRequest
@@ -307,6 +307,7 @@
   /**
    * @typedef GMObject_menu_item
    * @property {0 | 1 | 2 | 3 | -1} state 打开状态（关闭 | 开启中 | 打开 | 关闭中 | 错误）
+   * @property {0 | 1 | 2} wait 等待阻塞状态（无等待阻塞 | 等待开启 | 等待关闭）
    * @property {HTMLElement} el 菜单元素
    * @property {() => void} [openHandler] 打开菜单的回调函数
    * @property {() => void} [closeHandler] 关闭菜单的回调函数
@@ -396,9 +397,9 @@
       textFadeTime: 100,
     },
     menu: {
-      setting: { state: 0, el: null },
-      history: { state: 0, el: null },
-      entryPopup: { state: 0, el: document.createElement('div') }
+      setting: { state: 0, wait: 0, el: null },
+      history: { state: 0, wait: 0, el: null },
+      entryPopup: { state: 0, wait: 0, el: document.createElement('div') }
     },
     el: {
       gmRoot: null,
@@ -1917,25 +1918,31 @@
     async openMenuItem(name, callback, keepOthers) {
       const _self = this
       let success = false
+      const menu = gm.menu[name]
+      if (menu.wait > 0) return false
       try {
         try {
-          if (gm.menu[name].state == 1) {
+          if (menu.state == 1) {
+            menu.wait = 1
             await api.wait.waitForConditionPassed({
-              condition: () => gm.menu[name].state == 2,
-              timeout: 1500 + (gm.menu[name].el.fadeInTime ?? gm.const.fadeTime),
+              condition: () => menu.state == 2,
+              timeout: 1500 + (menu.el.fadeInTime ?? gm.const.fadeTime),
             })
             return true
-          } else if (gm.menu[name].state == 3) {
+          } else if (menu.state == 3) {
+            menu.wait = 1
             await api.wait.waitForConditionPassed({
-              condition: () => gm.menu[name].state == 0,
-              timeout: 1500 + (gm.menu[name].el.fadeOutTime ?? gm.const.fadeTime),
+              condition: () => menu.state == 0,
+              timeout: 1500 + (menu.el.fadeOutTime ?? gm.const.fadeTime),
             })
           }
         } catch (e) {
-          gm.menu[name].state = -1
+          menu.state = -1
           api.logger.error(e)
+        } finally {
+          menu.wait = 0
         }
-        if (gm.menu[name].state == 0 || gm.menu[name].state == -1) {
+        if (menu.state == 0 || menu.state == -1) {
           for (const key in gm.menu) {
             /** @type {GMObject_menu_item} */
             const menu = gm.menu[key]
@@ -1979,14 +1986,17 @@
     async closeMenuItem(name, callback) {
       /** @type {GMObject_menu_item} */
       const menu = gm.menu[name]
+      if (menu.wait > 0) return
       try {
         try {
           if (menu.state == 1) {
+            menu.wait = 2
             await api.wait.waitForConditionPassed({
               condition: () => menu.state == 2,
               timeout: 1500 + (menu.el.fadeInTime ?? gm.const.fadeTime),
             })
           } else if (menu.state == 3) {
+            menu.wait = 2
             await api.wait.waitForConditionPassed({
               condition: () => menu.state == 0,
               timeout: 1500 + (menu.el.fadeOutTime ?? gm.const.fadeTime),
@@ -1996,6 +2006,8 @@
         } catch (e) {
           menu.state = -1
           api.logger.error(e)
+        } finally {
+          menu.wait = 0
         }
         if (menu.state == 2 || menu.state == -1) {
           menu.state = 3
@@ -2528,7 +2540,9 @@
       function processPopup(watchlater) {
         if (gm.config.headerMenu == Enums.headerMenu.disable) return
         const popup = gm.menu.entryPopup.el
-        popup.fadeInFunction = 'cubic-bezier(0.68, -0.55, 0.27, 1.55)' // 模仿官方顶栏弹出菜单的弹出效果
+        // 模仿官方顶栏弹出菜单的弹出与关闭效果
+        popup.fadeInFunction = 'cubic-bezier(0.68, -0.55, 0.27, 1.55)'
+        popup.fadeOutFunction = 'cubic-bezier(0.6, -0.3, 0.65, 1)'
         // 此处必须用 over；若用 enter，且网页刚加载完成时鼠标正好在入口上，无法轻移鼠标以触发事件
         watchlater.addEventListener('mouseover', onOverWatchlater)
         watchlater.addEventListener('mouseleave', onLeaveWatchlater)
@@ -2584,7 +2598,7 @@
         function onLeaveWatchlater(e) {
           this.mouseOver = false
           setTimeout(() => {
-            if ((gm.menu.entryPopup.state == 2 && !popup.mouseOver) || withinHeader(e)) {
+            if (!popup.mouseOver || withinHeader(e)) {
               script.closeMenuItem('entryPopup')
             }
           }, 200)
@@ -3741,16 +3755,28 @@
         }
         #${gm.id} .gm-entrypopup .gm-popup-arrow {
           position: absolute;
-          z-index: -1;
-          top: -14px;
-          left: calc(16em - 7px);
+          top: -6px;
+          left: calc(16em - 6px);
           width: 0;
           height: 0;
-          border-width: 8px;
-          border-bottom-width: 8px;
+          border-width: 6px;
+          border-top-width: 0;
           border-style: solid;
           border-color: transparent;
-          border-bottom-color: var(--background-color);
+          border-bottom-color: #dfdfdf; /* 必须在 border-color 后 */
+        }
+        #${gm.id} .gm-entrypopup .gm-popup-arrow::after {
+          content: " ";
+          position: absolute;
+          top: 1px;
+          width: 0;
+          height: 0;
+          margin-left: -6px;
+          border-width: 6px;
+          border-top-width: 0;
+          border-style: solid;
+          border-color: transparent;
+          border-bottom-color: var(--background-color); /* 必须在 border-color 后 */
         }
 
         #${gm.id} .gm-entrypopup .gm-popup-header {
