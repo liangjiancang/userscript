@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.16.20.20210807
+// @version         4.16.21.20210807
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -2528,7 +2528,7 @@
       function processPopup(watchlater) {
         if (gm.config.headerMenu == Enums.headerMenu.disable) return
         const popup = gm.menu.entryPopup.el
-        popup.fadeInFunction = 'cubic-bezier(0.68, -0.55, 0.27, 1.55)' // 快速弹出
+        popup.fadeInFunction = 'cubic-bezier(0.68, -0.55, 0.27, 1.55)' // 模仿官方顶栏弹出菜单的弹出效果
         // 此处必须用 over；若用 enter，且网页刚加载完成时鼠标正好在入口上，无法轻移鼠标以触发事件
         watchlater.addEventListener('mouseover', onOverWatchlater)
         watchlater.addEventListener('mouseleave', onLeaveWatchlater)
