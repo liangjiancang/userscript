@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站防剧透进度条
-// @version         2.0.0.20210806
+// @version         2.0.1.20210807
 // @namespace       laster2800
 // @author          Laster2800
 // @description     看比赛、看番总是被进度条剧透？装上这个脚本再也不用担心这些问题了
@@ -13,7 +13,7 @@
 // @include         *://www.bilibili.com/medialist/play/watchlater
 // @include         *://www.bilibili.com/medialist/play/watchlater/*
 // @include         *://www.bilibili.com/bangumi/play/*
-// @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=957714
+// @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=958043
 // @grant           GM_addStyle
 // @grant           GM_registerMenuCommand
 // @grant           GM_xmlhttpRequest
@@ -219,7 +219,6 @@
          * GM 读取流程
          *
          * 一般情况下，读取用户配置；如果配置出错，则沿用默认值，并将默认值写入配置中
-         *
          * @param {string} gmKey 键名
          * @param {*} defaultValue 默认值
          * @param {boolean} [writeback=true] 配置出错时是否将默认值回写入配置中
@@ -995,13 +994,13 @@
           if (gm.menu[name].state == 1) {
             await api.wait.waitForConditionPassed({
               condition: () => gm.menu[name].state == 2,
-              timeout: 2000,
+              timeout: 1500 + (gm.menu[name].el.fadeInTime ?? gm.const.fadeTime),
             })
             return true
           } else if (gm.menu[name].state == 3) {
             await api.wait.waitForConditionPassed({
               condition: () => gm.menu[name].state == 0,
-              timeout: 2000,
+              timeout: 1500 + (gm.menu[name].el.fadeOutTime ?? gm.const.fadeTime),
             })
           }
         } catch (e) {
@@ -1057,12 +1056,12 @@
           if (menu.state == 1) {
             await api.wait.waitForConditionPassed({
               condition: () => menu.state == 2,
-              timeout: 2000,
+              timeout: 1500 + (menu.el.fadeInTime ?? gm.const.fadeTime),
             })
           } else if (menu.state == 3) {
             await api.wait.waitForConditionPassed({
               condition: () => menu.state == 0,
-              timeout: 2000,
+              timeout: 1500 + (menu.el.fadeOutTime ?? gm.const.fadeTime),
             })
             return true
           }
