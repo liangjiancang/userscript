@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.16.23.20210808
+// @version         4.16.24.20210808
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -1718,8 +1718,8 @@
         const onOpen = async () => {
           if (el.content) {
             const oldContent = el.content
-            oldContent.style.opacity = '0'
-            setTimeout(() => oldContent.remove(), gm.const.textFadeTime)
+            oldContent.fadeOutTime = gm.const.textFadeTime
+            api.dom.fade(false, oldContent, () => oldContent.remove())
           }
           el.content = el.historyPage.appendChild(document.createElement('div'))
           el.content.className = 'gm-content'
@@ -1816,20 +1816,14 @@
                 })
               }
             } else {
-              el.content.innerHTML = '<div>没有找到移除记录，请尝试增大历史回溯深度</div>'
-              const hint = el.content.firstElementChild
-              hint.style.color = 'gray'
-              hint.style.fontSize = '1.5em'
-              hint.style.paddingTop = '1em'
+              setEmptyContent('没有找到移除记录，请尝试增大历史回溯深度')
             }
-            el.content.style.opacity = '1'
           } catch (e) {
             setContentTop() // 在设置内容前设置好 top，这样看不出修改的痕迹
-            el.content.innerHTML = `网络连接错误，出现这个问题有可能是因为网络加载速度不足或者B站后台 API 被改动。也不排除是脚本内部数据出错造成的，初始化脚本或清空稍后再看历史数据也许能解决问题。无法解决请联系脚本作者：${GM_info.script.supportURL}`
-            el.content.style.color = 'gray'
-            el.content.style.fontSize = '1.5em'
-            el.content.style.paddingTop = '1em'
+            setEmptyContent(`网络连接错误，出现这个问题有可能是因为网络加载速度不足或者B站后台 API 被改动。也不排除是脚本内部数据出错造成的，初始化脚本或清空稍后再看历史数据也许能解决问题。无法解决请联系脚本作者：${GM_info.script.supportURL}`)
             api.logger.error(e)
+          } finally {
+            el.content.style.opacity = '1'
           }
         }
 
@@ -1837,6 +1831,13 @@
           if (el.content) {
             el.content.style.top = `${el.comment.offsetTop + el.comment.offsetHeight}px`
           }
+        }
+
+        const setEmptyContent = text => {
+          el.content.innerText = text
+          el.content.style.color = 'gray'
+          el.content.style.fontSize = '1.5em'
+          el.content.style.paddingTop = '2em'
         }
       }
     }
@@ -4184,7 +4185,6 @@
           left: 0;
           right: 0;
           opacity: 0;
-          transition: opacity ${gm.const.textFadeTime}ms ease-in-out;
           user-select: text;
         }
         #${gm.id} .gm-history .gm-content > * {
