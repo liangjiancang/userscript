@@ -7,6 +7,9 @@
 1. 库：修复在网速极慢的情况下，在 `document-start` 时期运行出错的问题。
 2. `message`：增加 `alert()`、`confirm()`、`prompt()` 方法。
 3. `dom`: `fade()` 增加 `display` 参数，用于控制元素在可视状态下的 `display` 样式。
+4. `dom`: `fade()` 读取 `target` 上的 `fadeInTime` 和 `fadeOutTime` 属性来设定渐显和渐隐时间，它们应为以 `ms` 为单位的 `number`；否则，`target.style.transition` 上关于时间的设定应该与 `api.options.fadeTime` 保持一致。
+5. `dom`: `fade()` 读取 `target` 上的 `fadeInFunction` 和 `fadeOutFunction` 属性来设定渐变效果（默认 `ease-in-out`），它们应为符合 `transition-timing-function` 的 `string`。
+6. `dom`: `fade()` 读取 `target` 上的 `fadeInNoInteractive` 和 `fadeOutNoInteractive` 属性来设定渐显和渐隐期间是否禁止交互，它们应为 `boolean`。
 
 ## V1.2
 
