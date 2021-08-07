@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.16.22.20210807
+// @version         4.16.23.20210808
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -321,7 +321,7 @@
   const gm = {
     id: gmId,
     configVersion: GM_getValue('configVersion'),
-    configUpdate: 20210726,
+    configUpdate: 20210808,
     searchParams: new URL(location.href).searchParams,
     config: {},
     configMap: {
@@ -345,9 +345,9 @@
       removeHistory: { default: true, attr: 'checked', manual: true, configVersion: 20210628 },
       removeHistorySavePoint: { default: Enums.removeHistorySavePoint.listAndMenu, attr: 'value', configVersion: 20210628 },
       removeHistoryFuzzyCompare: { default: 1, type: 'int', attr: 'value', max: 5, needNotReload: true, configVersion: 20210722 },
-      removeHistorySaves: { default: 500, type: 'int', attr: 'value', manual: true, needNotReload: true, min: 10, max: 100000, configVersion: 20210628 },
+      removeHistorySaves: { default: 100, type: 'int', attr: 'value', manual: true, needNotReload: true, min: 10, max: 500, configVersion: 20210808 },
       removeHistoryTimestamp: { default: true, attr: 'checked', needNotReload: true, configVersion: 20210703 },
-      removeHistorySearchTimes: { default: 500, type: 'int', attr: 'value', manual: true, needNotReload: true, min: 1, max: 100000, configVersion: 20210703 },
+      removeHistorySearchTimes: { default: 50, type: 'int', attr: 'value', manual: true, needNotReload: true, min: 1, max: 500, configVersion: 20210808 },
       fillWatchlaterStatus: { default: Enums.fillWatchlaterStatus.dynamic, attr: 'value', configVersion: 20200819 },
       hideWatchlaterInCollect: { default: true, attr: 'checked', configVersion: 20210322 },
       videoButton: { default: true, attr: 'checked' },
@@ -644,12 +644,9 @@
           if (gm.configVersion < 20210628) {
             GM_deleteValue('openSettingAfterConfigUpdate')
             // reset everything about history
-            GM_deleteValue('removeHistoryData')
             GM_deleteValue('removeHistory')
             GM_deleteValue('removeHistorySavePoint')
             GM_deleteValue('removeHistoryFuzzyCompare')
-            GM_deleteValue('removeHistorySaves')
-            GM_deleteValue('removeHistorySearchTimes')
           }
 
           // 4.11.7.20210701
@@ -660,23 +657,18 @@
             }
           }
 
-          // 4.12.0.20210703
-          if (gm.configVersion < 20210703) {
+          // 4.16.23.20210808
+          if (gm.configVersion < 20210808) {
             GM_deleteValue('removeHistoryData')
             GM_deleteValue('removeHistoryFuzzyCompareReference')
+            GM_deleteValue('removeHistorySaves')
             GM_deleteValue('removeHistorySearchTimes')
             GM_deleteValue('watchlaterListCacheTime')
             GM_deleteValue('watchlaterListCache')
           }
 
-          // 4.12.3.20210708
-          if (gm.configVersion < 20210708) {
-            GM_deleteValue('watchlaterListCacheTime')
-            GM_deleteValue('watchlaterListCache')
-          }
-
           // 功能性更新后更新此处配置版本
-          if (gm.configVersion < 20210726) {
+          if (gm.configVersion < 20210808) {
             _self.openUserSetting(2)
           } else {
             gm.configVersion = gm.configUpdate
@@ -1172,34 +1164,9 @@
           `, '💬', { width: '36em', flagSize: '2em', disabled: () => el.rhfcInformation.parentNode.hasAttribute('disabled') })
           el.rhsInformation = gm.el.setting.querySelector('#gm-rhsInformation')
           api.message.advanced(el.rhsInformation, `
-            <style type="text/css">
-              .${gm.id}-rhsTmp {
-                margin: 0.5em 0;
-              }
-              .${gm.id}-rhsTmp table {
-                width: 100%;
-              }
-              .${gm.id}-rhsTmp table,
-              .${gm.id}-rhsTmp th,
-              .${gm.id}-rhsTmp td {
-                border: 1px solid white;
-                border-collapse: separate;
-                border-spacing: 4px;
-              }
-              .${gm.id}-rhsTmp th,
-              .${gm.id}-rhsTmp td {
-                text-align: center;
-              }
-            </style>
-            <div>作者所作的简单性能测试结果如下（单位：毫秒）。注意，此处「读取」不含脚本管理器对数据进行预加载的时间。</div>
-            <div>测试条件为设想中的最差情况，100 次取平均。测试环境是不可能写的，反正仅供参考。</div>
-            <div class="${gm.id}-rhsTmp">
-              <table>
-                <tr><th>N</th><th>读取</th><th>写入</th><th>处理</th></tr>
-                <tr><td>5000</td><td>2.2</td><td>7.2</td><td>1.0</td></tr>
-                <tr><td>10000</td><td>4.4</td><td>16</td><td>1.9</td></tr>
-                <tr><td>100000</td><td>69</td><td>170</td><td>22</td></tr>
-              </table>
+            <div style="text-indent:2em;line-height:1.6em">
+              <p>在脚本限制的取值范围内，稍后再看历史数据的保存与读取对页面加载的影响几乎可以忽略不计（小于 1ms，不含脚本管理器对数据进行预加载的时间）。</p>
+              <p>但是打开移除记录时，根据大量数据生成历史的过程较为耗时。不过，只要将「默认历史回溯深度」设置在 100 以下就不会有明显的生成延迟。</p>
             </div>
           `, '💬', { width: '36em', flagSize: '2em', disabled: () => el.rhsInformation.parentNode.hasAttribute('disabled') })
           el.rhtInformation = gm.el.setting.querySelector('#gm-rhtInformation')
@@ -1399,7 +1366,6 @@
           const _self = this
           gm.menu.setting.openHandler = onOpen
           gm.menu.setting.openedHandler = () => {
-            api.dom.setAbsoluteCenter(el.settingPage)
             el.items.scrollTop = 0
           }
           el.save.onclick = onSave
@@ -1522,14 +1488,13 @@
             // 需要等所有配置读取完成后再进行选项初始化
             el[name].init?.()
           }
-
           if (gm.config.removeHistory) {
             el.cleanRemoveHistoryData.innerText = `清空数据(${gm.data.removeHistoryData().size}条)`
           } else {
             el.cleanRemoveHistoryData.innerText = '清空数据(0条)'
           }
-
           el.settingPage.parentNode.style.display = 'block'
+          api.dom.setAbsoluteCenter(el.settingPage)
         }
 
         /**
@@ -1729,21 +1694,19 @@
           // 排序方式
           el.historySort = gm.el.history.querySelector('#gm-history-sort')
           el.historySort.type = 0
-          el.historySort.typeText = ['降序', '升序']
-          // el.historySort.innerText = el.historySort.typeText[el.historySort.type]
+          el.historySort.typeText = ['降序', '升序', '完全升序']
           el.historySort.title = '点击切换升序'
           el.historySort.setType = function(type) {
             this.type = type
             this.innerText = this.typeText[type]
-            this.title = `点击切换${this.typeText[(type + 1) % 2]}`
+            this.title = `点击切换${this.typeText[(type + 1) % this.typeText.length]}`
           }
           el.historySort.onclick = function() {
-            this.setType((this.type + 1) % 2)
+            this.setType((this.type + 1) % this.typeText.length)
             gm.menu.history.openHandler()
           }
 
           gm.menu.history.openHandler = onOpen
-          gm.menu.history.openedHandler = () => api.dom.setAbsoluteCenter(el.historyPage)
           window.addEventListener('resize', api.tool.throttle(setContentTop, 100))
           el.shadow.onclick = () => _self.closeMenuItem('history')
         }
@@ -1762,10 +1725,18 @@
           el.content.className = 'gm-content'
           el.timePoint.innerText = gm.config.removeHistoryTimestamp ? '最后一次' : '第一次'
           el.historyPage.parentNode.style.display = 'block'
+          api.dom.setAbsoluteCenter(el.historyPage)
 
           try {
             const map = await webpage.method.getWatchlaterDataMap(item => item.bvid, null, true)
-            const data = gm.data.removeHistoryData().toArray(el.searchTimes.current)
+            const depth = parseInt(el.searchTimes.current)
+            let data = null
+            if (el.historySort.type < 2) {
+              data = gm.data.removeHistoryData().toArray(depth)
+            } else {
+              const rhd = gm.data.removeHistoryData()
+              data = rhd.toArray(depth, rhd.size - depth)
+            }
             el.saveTimes.innerText = data.length
             let history = []
             const result = []
@@ -1792,7 +1763,7 @@
               const tsIdx = Array.from(tsMap.keys())
               tsIdx.sort()
               history = []
-              if (el.historySort.type != 1) {
+              if (el.historySort.type < 1) {
                 for (let i = tsIdx.length - 1; i >= 0; i--) {
                   history = history.concat(tsMap.get(tsIdx[i]))
                 }
@@ -1845,10 +1816,11 @@
                 })
               }
             } else {
-              el.content.innerText = '没有找到移除记录，请尝试增大历史回溯深度'
-              el.content.style.color = 'gray'
-              el.content.style.fontSize = '1.5em'
-              el.content.style.paddingTop = '1em'
+              el.content.innerHTML = '<div>没有找到移除记录，请尝试增大历史回溯深度</div>'
+              const hint = el.content.firstElementChild
+              hint.style.color = 'gray'
+              hint.style.fontSize = '1.5em'
+              hint.style.paddingTop = '1em'
             }
             el.content.style.opacity = '1'
           } catch (e) {
@@ -4563,15 +4535,23 @@
     /**
      * 将推入队列以数组的形式返回
      * @param {number} [maxLength=size] 读取的最大长度
+     * @param {number} [offset=0] 起始点
      * @returns {Array<T>} 队列数据的数组形式
      */
-    toArray(maxLength) {
-      if (isNaN(maxLength) || maxLength > this.size || maxLength < 0) {
-        maxLength = this.size
+    toArray(maxLength = this.size, offset = 0) {
+      if (offset < 0) {
+        offset = 0
+      }
+      if (offset + maxLength > this.size) {
+        maxLength = this.size - offset
       }
       const ar = []
-      let end = this.index - maxLength
-      for (let i = this.index - 1; i >= end && i >= 0; i--) {
+      let start = this.index - offset
+      if (start < 0) {
+        start += this.capacity
+      }
+      let end = start - maxLength
+      for (let i = start - 1; i >= end && i >= 0; i--) {
         ar.push(this.data[i])
       }
       if (end < 0) {
