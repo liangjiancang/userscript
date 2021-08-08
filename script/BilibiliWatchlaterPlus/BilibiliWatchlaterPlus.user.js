@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.17.0.20210808
+// @version         4.17.1.20210808
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -396,7 +396,7 @@
     menu: {
       setting: { state: 0, wait: 0, el: null },
       history: { state: 0, wait: 0, el: null },
-      entryPopup: { state: 0, wait: 0, el: document.createElement('div') }
+      entryPopup: { state: 0, wait: 0, el: null }
     },
     el: {
       gmRoot: null,
@@ -1507,14 +1507,13 @@
           }
           el.settingPage.parentNode.style.display = 'block'
           api.dom.setAbsoluteCenter(el.settingPage)
+          el.items.scrollTop = 0
         }
 
         /**
          * 设置打开后执行
          */
         const onOpened = () => {
-          el.items.scrollTop = 0
-
           if (type == 2) {
             const points = []
             const totalLength = el.items.firstElementChild.offsetHeight
@@ -2578,6 +2577,7 @@
        */
       function processPopup(watchlater) {
         if (gm.config.headerMenu == Enums.headerMenu.disable) return
+        gm.menu.entryPopup.el = document.createElement('div')
         const popup = gm.menu.entryPopup.el
         // 模仿官方顶栏弹出菜单的弹出与关闭效果
         popup.fadeInFunction = 'cubic-bezier(0.68, -0.55, 0.27, 1.55)'
@@ -2738,8 +2738,6 @@
               if (el.search.value.length > 0) {
                 el.search.dispatchEvent(new Event('input'))
               }
-              el.entryList.scrollTop = 0
-              el.entryRemovedList.scrollTop = 0
             }
 
             if (gm.config.headerMenuSearch) {
@@ -3081,6 +3079,10 @@
             if (gm.config.removeHistory && gm.config.removeHistorySavePoint == Enums.removeHistorySavePoint.listAndMenu) {
               _self.method.updateRemoveHistoryData()
             }
+
+            gm.el.entryPopup.style.display = 'unset'
+            el.entryList.scrollTop = 0
+            el.entryRemovedList.scrollTop = 0
           }
         }
       }
