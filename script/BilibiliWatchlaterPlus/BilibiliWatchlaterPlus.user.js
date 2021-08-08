@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.16.26.20210808
+// @version         4.17.0.20210808
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -90,15 +90,6 @@
      * @readonly
      * @enum {string}
      */
-    menuScrollbarSetting: {
-      beautify: 'beautify',
-      hidden: 'hidden',
-      original: 'original',
-    },
-    /**
-     * @readonly
-     * @enum {string}
-     */
     removeHistorySavePoint: {
       list: 'list',
       listAndMenu: 'listAndMenu',
@@ -136,6 +127,15 @@
      * @readonly
      * @enum {string}
      */
+    menuScrollbarSetting: {
+      beautify: 'beautify',
+      hidden: 'hidden',
+      original: 'original',
+    },
+    /**
+     * @readonly
+     * @enum {string}
+     */
     mainRunAt: {
       DOMContentLoaded: 'DOMContentLoaded',
       load: 'load',
@@ -158,7 +158,7 @@
    * @property {GMObject_data} data 脚本数据
    * @property {GMObject_url} url URL
    * @property {GMObject_regex} regex 正则表达式
-   * @property {GMObject_const} const 常量
+   * @property {{string: *}} const 常量
    * @property {GMObject_menu} menu 菜单
    * @property {{[s: string]: HTMLElement}} el HTML 元素
    */
@@ -170,7 +170,6 @@
    * @property {headerButtonOp} headerButtonOpM 顶栏入口中键点击行为
    * @property {headerMenu} headerMenu 顶栏入口弹出菜单设置
    * @property {openHeaderMenuLink} openHeaderMenuLink 顶栏弹出菜单链接点击行为
-   * @property {menuScrollbarSetting} menuScrollbarSetting 弹出菜单的滚动条设置
    * @property {boolean} headerMenuKeepRemoved 弹出菜单保留被移除视频
    * @property {boolean} headerMenuSearch 弹出菜单搜索框
    * @property {boolean} headerMenuAutoRemoveControl 弹出菜单自动移除控制
@@ -188,13 +187,15 @@
    * @property {boolean} removeHistoryTimestamp 使用时间戳优化移除记录
    * @property {number} removeHistorySearchTimes 历史回溯深度
    * @property {fillWatchlaterStatus} fillWatchlaterStatus 填充稍后再看状态
-   * @property {boolean} hideWatchlaterInCollect 隐藏「收藏」中的「稍后再看」
    * @property {boolean} videoButton 视频播放页稍后再看状态快速切换
    * @property {autoRemove} autoRemove 自动将视频从播放列表移除
    * @property {boolean} redirect 稍后再看模式重定向至普通模式播放
    * @property {openListVideo} openListVideo 列表页面视频点击行为
    * @property {boolean} removeButton_removeAll 移除「一键清空」按钮
    * @property {boolean} removeButton_removeWatched 移除「移除已观看视频」按钮
+   * @property {boolean} fixHeader 固顶顶栏
+   * @property {menuScrollbarSetting} menuScrollbarSetting 弹出菜单的滚动条设置
+   * @property {boolean} hideWatchlaterInCollect 隐藏「收藏」中的「稍后再看」
    * @property {mainRunAt} mainRunAt 主要逻辑运行时期
    * @property {boolean} disablePageCache 禁用页面缓存
    * @property {number} watchlaterListCacheValidPeriod 稍后再看列表数据本地缓存有效期（单位：秒）
@@ -293,12 +294,6 @@
    * @property {RegExp} page_userSpace 匹配用户空间
    */
   /**
-   * @typedef GMObject_const
-   * @property {number} rhsWarning 稍后再看历史数据保存数警告线
-   * @property {number} fadeTime UI 渐变时间（单位：ms）
-   * @property {number} textFadeTime 文字渐变时间（单位：ms）
-   */
-  /**
    * @typedef GMObject_menu
    * @property {GMObject_menu_item} setting 设置
    * @property {GMObject_menu_item} history 移除记录
@@ -321,7 +316,7 @@
   const gm = {
     id: gmId,
     configVersion: GM_getValue('configVersion'),
-    configUpdate: 20210808,
+    configUpdate: 20210808.1,
     searchParams: new URL(location.href).searchParams,
     config: {},
     configMap: {
@@ -331,7 +326,6 @@
       headerButtonOpM: { default: Enums.headerButtonOp.openListInNew, attr: 'value', configVersion: 20210323 },
       headerMenu: { default: Enums.headerMenu.enable, attr: 'value', manual: true, configVersion: 20210706 },
       openHeaderMenuLink: { default: Enums.openHeaderMenuLink.openInCurrent, attr: 'value', configVersion: 20200717 },
-      menuScrollbarSetting: { default: Enums.menuScrollbarSetting.beautify, attr: 'value', configVersion: 20200722 },
       headerMenuKeepRemoved: { default: true, attr: 'checked', needNotReload: true, configVersion: 20210724 },
       headerMenuSearch: { default: true, attr: 'checked', configVersion: 20210323.1 },
       headerMenuAutoRemoveControl: { default: true, attr: 'checked', configVersion: 20210723 },
@@ -349,20 +343,22 @@
       removeHistoryTimestamp: { default: true, attr: 'checked', needNotReload: true, configVersion: 20210703 },
       removeHistorySearchTimes: { default: 50, type: 'int', attr: 'value', manual: true, needNotReload: true, min: 1, max: 500, configVersion: 20210808 },
       fillWatchlaterStatus: { default: Enums.fillWatchlaterStatus.dynamic, attr: 'value', configVersion: 20200819 },
-      hideWatchlaterInCollect: { default: true, attr: 'checked', configVersion: 20210322 },
       videoButton: { default: true, attr: 'checked' },
       autoRemove: { default: Enums.autoRemove.openFromList, attr: 'value', configVersion: 20210612 },
       redirect: { default: false, attr: 'checked', configVersion: 20210322.1 },
       openListVideo: { default: Enums.openListVideo.openInCurrent, attr: 'value', configVersion: 20200717 },
       removeButton_removeAll: { default: false, attr: 'checked', configVersion: 20200722 },
       removeButton_removeWatched: { default: false, attr: 'checked', configVersion: 20200722 },
+      fixHeader: { default: false, attr: 'checked', configVersion: 20210808.1 },
+      menuScrollbarSetting: { default: Enums.menuScrollbarSetting.beautify, attr: 'value', configVersion: 20210808.1 },
+      hideWatchlaterInCollect: { default: false, attr: 'checked', configVersion: 20210808.1 },
       mainRunAt: { default: Enums.mainRunAt.DOMContentLoaded, attr: 'value', needNotReload: true, configVersion: 20210726 },
       disablePageCache: { default: false, attr: 'checked', configVersion: 20210322 },
       watchlaterListCacheValidPeriod: { default: 15, type: 'int', attr: 'value', needNotReload: true, max: 600, configVersion: 20210722 },
       hideDisabledSubitems: { default: true, attr: 'checked', configVersion: 20210505 },
       reloadAfterSetting: { default: true, attr: 'checked', needNotReload: true, configVersion: 20200715 },
     },
-    configDocumentStart: ['redirect', 'mainRunAt'],
+    configDocumentStart: ['redirect', 'fixHeader', 'menuScrollbarSetting', 'mainRunAt'],
     data: {
       removeHistoryData: null,
       watchlaterListData: null,
@@ -395,6 +391,7 @@
       rhsWarning: 10000,
       fadeTime: 400,
       textFadeTime: 100,
+      updateHighlightColor: '#4cff9c',
     },
     menu: {
       setting: { state: 0, wait: 0, el: null },
@@ -667,8 +664,13 @@
             GM_deleteValue('watchlaterListCache')
           }
 
+          // 4.17.0.20210808
+          if (gm.configVersion < 20210808.1) {
+            GM_deleteValue('hideWatchlaterInCollect')
+          }
+
           // 功能性更新后更新此处配置版本
-          if (gm.configVersion < 20210808) {
+          if (gm.configVersion < 20210808.1) {
             _self.openUserSetting(2)
           } else {
             gm.configVersion = gm.configUpdate
@@ -758,7 +760,7 @@
               <div class="gm-items">
                 <table>
                   <tr class="gm-item" title="在顶栏「动态」和「收藏」之间加入稍后再看入口，鼠标移至上方时弹出列表菜单，支持点击功能设置。">
-                    <td rowspan="12"><div>全局功能</div></td>
+                    <td rowspan="11"><div>全局功能</div></td>
                     <td>
                       <label>
                         <span>在顶栏中加入稍后再看入口</span>
@@ -809,18 +811,6 @@
                         <select id="gm-openHeaderMenuLink">
                           <option value="${Enums.openHeaderMenuLink.openInCurrent}">在当前页面打开</option>
                           <option value="${Enums.openHeaderMenuLink.openInNew}">在新标签页打开</option>
-                        </select>
-                      </div>
-                    </td>
-                  </tr>
-                  <tr class="gm-subitem" title="对弹出菜单中滚动条样式进行设置。为了保持外观一致，这个选项也会影响「动态」「收藏」「历史」等其他入口的弹出菜单。">
-                    <td>
-                      <div>
-                        <span>对于弹出菜单中的滚动条</span>
-                        <select id="gm-menuScrollbarSetting">
-                          <option value="${Enums.menuScrollbarSetting.beautify}">修改其外观为扁平化风格</option>
-                          <option value="${Enums.menuScrollbarSetting.hidden}">将其隐藏（不影响鼠标滚动）</option>
-                          <option value="${Enums.menuScrollbarSetting.original}">维持官方的滚动条样式</option>
                         </select>
                       </div>
                     </td>
@@ -964,16 +954,6 @@
                     </td>
                   </tr>
 
-                  <tr class="gm-item" title="隐藏顶栏「收藏」入口弹出菜单中的「稍后再看」。">
-                    <td><div>全局功能</div></td>
-                    <td>
-                      <label>
-                        <span>隐藏「收藏」中的「稍后再看」</span>
-                        <input id="gm-hideWatchlaterInCollect" type="checkbox">
-                      </label>
-                    </td>
-                  </tr>
-
                   <tr class="gm-item" title="在播放页面（包括普通模式和稍后再看模式）中加入能将视频快速切换添加或移除出稍后再看列表的按钮。">
                     <td><div>播放页面</div></td>
                     <td>
@@ -1038,6 +1018,40 @@
                       <label>
                         <span>移除「移除已观看视频」按钮</span>
                         <input id="gm-removeButton_removeWatched" type="checkbox">
+                      </label>
+                    </td>
+                  </tr>
+
+                  <tr class="gm-item" title="固顶官方顶栏。">
+                    <td><div>相关调整</div></td>
+                    <td>
+                      <label>
+                        <span>将顶栏固定在页面顶部</span>
+                        <input id="gm-fixHeader" type="checkbox">
+                      </label>
+                    </td>
+                  </tr>
+
+                  <tr class="gm-item" title="对顶栏各入口弹出菜单中滚动条的样式进行设置。">
+                    <td><div>相关调整</div></td>
+                    <td>
+                      <div>
+                        <span>对于弹出菜单中的滚动条</span>
+                        <select id="gm-menuScrollbarSetting">
+                          <option value="${Enums.menuScrollbarSetting.beautify}">修改其外观为现代风格</option>
+                          <option value="${Enums.menuScrollbarSetting.hidden}">将其隐藏（不影响鼠标滚动）</option>
+                          <option value="${Enums.menuScrollbarSetting.original}">维持官方的滚动条样式</option>
+                        </select>
+                      </div>
+                    </td>
+                  </tr>
+
+                  <tr class="gm-item" title="隐藏顶栏「收藏」入口弹出菜单中的「稍后再看」。">
+                    <td><div>相关调整</div></td>
+                    <td>
+                      <label>
+                        <span>隐藏「收藏」中的「稍后再看」</span>
+                        <input id="gm-hideWatchlaterInCollect" type="checkbox">
                       </label>
                     </td>
                   </tr>
@@ -1242,7 +1256,7 @@
           }
           el.headerMenuFn = el.headerMenuFnSetting.parentNode.parentNode
           el.headerButton.init = function() {
-            subitemChange(this, [el.headerButtonOpL, el.headerButtonOpR, el.headerButtonOpM, el.headerMenu, el.openHeaderMenuLink, el.menuScrollbarSetting, el.headerMenuKeepRemoved, el.headerMenuSearch, el.headerMenuAutoRemoveControl, el.headerMenuFnSetting, el.headerMenuFnHistory, el.headerMenuFnRemoveAll, el.headerMenuFnRemoveWatched, el.headerMenuFnShowAll, el.headerMenuFnPlayAll, el.headerCompatible])
+            subitemChange(this, [el.headerButtonOpL, el.headerButtonOpR, el.headerButtonOpM, el.headerMenu, el.openHeaderMenuLink, el.headerMenuKeepRemoved, el.headerMenuSearch, el.headerMenuAutoRemoveControl, el.headerMenuFnSetting, el.headerMenuFnHistory, el.headerMenuFnRemoveAll, el.headerMenuFnRemoveWatched, el.headerMenuFnShowAll, el.headerMenuFnPlayAll, el.headerCompatible])
             if (this.checked) {
               el.headerMenuFn.removeAttribute('disabled')
             } else {
@@ -1365,9 +1379,7 @@
         const processSettingItem = () => {
           const _self = this
           gm.menu.setting.openHandler = onOpen
-          gm.menu.setting.openedHandler = () => {
-            el.items.scrollTop = 0
-          }
+          gm.menu.setting.openedHandler = onOpened
           el.save.onclick = onSave
           el.cancel.onclick = () => _self.closeMenuItem('setting')
           el.shadow.onclick = function() {
@@ -1495,6 +1507,60 @@
           }
           el.settingPage.parentNode.style.display = 'block'
           api.dom.setAbsoluteCenter(el.settingPage)
+        }
+
+        /**
+         * 设置打开后执行
+         */
+        const onOpened = () => {
+          el.items.scrollTop = 0
+
+          if (type == 2) {
+            const points = []
+            const totalLength = el.items.firstElementChild.offsetHeight
+            const items = el.items.querySelectorAll('.gm-updated')
+            for (const item of items) {
+              const tr = item.parentNode.parentNode
+              points.push(tr.offsetTop / totalLength * 100)
+            }
+
+            if (points.length > 0) {
+              const range = 5
+              const start = []
+              const end = []
+              let currentStart = points[0]
+              let currentEnd = points[0] + range
+              for (let i = 1; i < points.length; i++) {
+                const point = points[i]
+                if (point < currentEnd) {
+                  currentEnd = point + range
+                } else {
+                  start.push(currentStart)
+                  end.push(currentEnd)
+                  currentStart = point
+                  currentEnd = point + range
+                  if (currentEnd >= 100) {
+                    currentEnd = 100
+                    break
+                  }
+                }
+              }
+              start.push(currentStart)
+              end.push(currentEnd)
+
+              let linear = ''
+              for (let i = 0; i < start.length; i++) {
+                linear += `, transparent ${start[i]}%, ${gm.const.updateHighlightColor} ${start[i]}%, ${gm.const.updateHighlightColor} ${end[i]}%, transparent ${end[i]}%`
+              }
+              linear = linear.slice(2)
+
+              GM_addStyle(`
+                #${gm.id} [setting-type=updated] .gm-items::-webkit-scrollbar {
+                  background: linear-gradient(${linear})
+                }
+              `)
+            }
+          }
         }
 
         /**
@@ -3195,10 +3261,10 @@
     }
 
     /**
-     * 正常模式播放页加入快速切换稍后再看状态的按钮
+     * 在播放页加入快速切换稍后再看状态的按钮
      * @async
      */
-    async addVideoButton_Normal() {
+    async addVideoButton() {
       const _self = this
       let bus = {}
 
@@ -3329,14 +3395,6 @@
           location.replace(gm.url.page_watchlaterList)
         }
       }
-    }
-
-    /**
-     * 稍后再看模式播放页加入快速切换稍后再看状态的按钮
-     * @async
-     */
-    async addVideoButton_Watchlater() {
-      return await this.addVideoButton_Normal() // 改进后与普通模式播放页一致
     }
 
     /**
@@ -3612,6 +3670,30 @@
     }
 
     /**
+     * 添加顶栏固顶样式
+     */
+    addFixHeaderStyle() {
+      if (gm.config.fixHeader) {
+        GM_addStyle(`
+          #internationalHeader .mini-header {
+            position: fixed;
+            top: 0;
+          }
+          #internationalHeader .mini-header:not(.mini-type) {
+            background-image: linear-gradient(#000000A0, #00000000);
+          }
+
+          .home-page .left-panel .scroll-content {
+            top: 55px !important;
+          }
+          .home-page .right-panel .scroll-content {
+            top: 63px !important;
+          }
+        `)
+      }
+    }
+
+    /**
      * 添加弹出菜单的滚动条样式
      */
     addMenuScrollbarStyle() {
@@ -3675,711 +3757,721 @@
      * 添加脚本样式
      */
     addStyle() {
-      // 弹出菜单滚动条样式
-      this.addMenuScrollbarStyle()
-      // 通用样式
-      GM_addStyle(`
-        :root {
-          --text-color: #0d0d0d;
-          --text-bold-color: #3a3a3a;
-          --light-text-color: white;
-          --hint-text-color: gray;
-          --light-hint-text-color: #909090;
-          --hint-text-emphasis-color: #666666;
-          --hint-text-hightlight-color: #555555;
-          --background-color: white;
-          --background-hightlight-color: #ebebeb;
-          --update-hightlight-color: #c2ffc2;
-          --update-hightlight-hover-color: #a90000;
-          --border-color: black;
-          --light-border-color: #e7e7e7;
-          --shadow-color: #000000bf;
-          --text-shadow-color: #00000080;
-          --box-shadow-color: #00000033;
-          --hightlight-color: #0075ff;
-          --important-color: red;
-          --warn-color: #e37100;
-          --disabled-color: gray;
-          --link-visited-color: #551a8b;
-          --scrollbar-background-color: transparent;
-          --scrollbar-thumb-color: #0000002b;
-          --opacity-fade-transition: opacity ${gm.const.fadeTime}ms ease-in-out;
-        }
-
-        #${gm.id} {
-          color: var(--text-color);
-        }
-        #${gm.id} * {
-          box-sizing: content-box;
-        }
-
-        #${gm.id} .gm-entrypopup {
-          font-size: 12px;
-          line-height: normal;
-          transition: var(--opacity-fade-transition);
-          opacity: 0;
-          display: none;
-          position: absolute;
-          z-index: 15000;
-          user-select: none;
-          width: 32em;
-          padding-top: 1em;
-        }
-        #${gm.id} .gm-entrypopup .gm-entrypopup-page {
-          position: relative;
-          border-radius: 4px;
-          border: none;
-          box-shadow: var(--box-shadow-color) 0px 3px 6px;
-          background-color: var(--background-color);
-        }
-        #${gm.id} .gm-entrypopup .gm-popup-arrow {
-          position: absolute;
-          top: -6px;
-          left: calc(16em - 6px);
-          width: 0;
-          height: 0;
-          border-width: 6px;
-          border-top-width: 0;
-          border-style: solid;
-          border-color: transparent;
-          border-bottom-color: #dfdfdf; /* 必须在 border-color 后 */
-        }
-        #${gm.id} .gm-entrypopup .gm-popup-arrow::after {
-          content: " ";
-          position: absolute;
-          top: 1px;
-          width: 0;
-          height: 0;
-          margin-left: -6px;
-          border-width: 6px;
-          border-top-width: 0;
-          border-style: solid;
-          border-color: transparent;
-          border-bottom-color: var(--background-color); /* 必须在 border-color 后 */
-        }
-
-        #${gm.id} .gm-entrypopup .gm-popup-header {
-          position: relative;
-          height: 2.8em;
-          border-bottom: 1px solid var(--light-border-color);
-        }
-        #${gm.id} .gm-entrypopup .gm-popup-search {
-          font-size: 1.3em;
-          line-height: 2.6em;
-          padding-left: 0.9em;
-        }
-        #${gm.id} .gm-entrypopup .gm-popup-search input[type=text] {
-          line-height: normal;
-          outline: none;
-          border: none;
-          width: 18em;
-          padding-right: 6px;
-          color: var(--text-color);
-        }
-        #${gm.id} .gm-entrypopup .gm-popup-search input[type=text]::placeholder {
-          font-size: 0.9em;
-          color: var(--light-hint-text-color);
-        }
-        #${gm.id} .gm-entrypopup .gm-popup-search-clear {
-          display: inline-block;
-          color: var(--hint-text-color);
-          cursor: pointer;
-          visibility: hidden;
-        }
-        #${gm.id} .gm-entrypopup .gm-popup-total {
-          position: absolute;
-          line-height: 2.6em;
-          right: 1.3em;
-          top: 0;
-          font-size: 1.2em;
-          color: var(--hint-text-color);
-        }
-
-        #${gm.id} .gm-entrypopup .gm-entry-list {
-          position: relative;
-          height: 42em;
-          overflow-y: auto;
-          padding: 0.2em 0;
-        }
-        #${gm.id} .gm-entrypopup .gm-entry-list.gm-entry-removed-list {
-          border-top: 3px solid var(--light-border-color);
-          display: none;
-        }
-        #${gm.id} .gm-entrypopup .gm-entry-list-empty {
-          position: absolute;
-          display: none;
-          top: 20%;
-          left: calc(50% - 7em);
-          line-height: 4em;
-          width: 14em;
-          font-size: 1.4em;
-          text-align: center;
-          color: var(--hint-text-color);
-        }
-
-        #${gm.id} .gm-entrypopup .gm-entry-list .gm-entry-list-item {
-          display: flex;
-          height: 4.4em;
-          padding: 0.5em 1em;
-          color: var(--text-color);
-          font-size: 1.15em;
-          cursor: pointer;
-        }
-        #${gm.id} .gm-entrypopup .gm-entry-list .gm-entry-list-item.gm-invalid {
-          cursor: not-allowed;
-        }
-        #${gm.id} .gm-entrypopup .gm-entry-list .gm-entry-list-item.gm-invalid,
-        #${gm.id} .gm-entrypopup .gm-entry-list .gm-entry-list-item.gm-removed {
-          filter: grayscale(1);
-          color: var(--hint-text-color);
-        }
-        #${gm.id} .gm-entrypopup .gm-entry-list .gm-entry-list-item .gm-card-left {
-          position: relative;
-          flex: 0;
-          cursor: default;
-        }
-        #${gm.id} .gm-entrypopup .gm-entry-list .gm-entry-list-item .gm-card-cover {
-          width: 7.82em;
-          height: 4.40em;
-          border-radius: 2px;
-        }
-        #${gm.id} .gm-entrypopup .gm-entry-list .gm-entry-list-item .gm-card-switcher {
-          position: absolute;
-          background-image: url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADgAAAA4CAYAAACohjseAAAACXBIWXMAAAsSAAALEgHS3X78AAAA/ElEQVRoge3bsQ3CMBSE4bOBAmZIzSLUrMECjMACtLBGKgq2yQ4uHzJKgaIghHHAZ+6rQfKvnCIRBWdmiJxzWwAbAEtwCwCuZtbeuwCsAOwBNORhQ52ZHXx/1WqLi5q4yngFjxXM8pngK46Llr6AQ0xKgewUyE6B7BTIbj7F+c1sl/I959w591k0UXbx18Tp3YbUCX4qZcKaKLukiY55nO3YlIazfvWZXHdUTZSdAtkpkJ0C2SmQnQLZKZCdAtkpkN3PHvx+68mcJsou21O1Ummi7BTIToHsFMjuLwJDAeeYSpgBWABY19mHi+/fTu8KOExu8aX0tu6/FQC4AVY1Ql6j10UHAAAAAElFTkSuQmCC);
-          background-size: contain;
-          width: 34px;
-          height: 34px;
-          top: calc(2.2em - 17px);
-          left: calc(3.9em - 17px);
-          z-index: 1;
-          display: none;
-          cursor: pointer;
-        }
-        #${gm.id} .gm-entrypopup .gm-entry-list .gm-entry-list-item.gm-removed .gm-card-switcher {
-          background-image: url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADgAAAA4CAMAAACfWMssAAAAwFBMVEUAAAAGBgavr69EREQUFBQ1NTUODg7t7e3FxcV0dHRbW1sAAAAAAAAAAAD+/v77+/v4+Pj09PTj4+P8/PzV1dWpqamSkpIhISH19fXX19fLy8ulpaWdnZ1kZGRVVVUsLCz6+vrm5uba2tq9vb20tLSsrKyXl5eMjIx+fn54eHhsbGxpaWk+Pj4AAAAAAADv7+/e3t7AwMC3t7ehoaFLS0vo6OjR0dHOzs7CwsKCgoKCgoJiYmLp6enMzMywsLD////DVMIGAAAAP3RSTlOZmtOrnqec8927sopkEf38+ffu/eXPxqH45+DOyrWwpPvv6NnV0cjEv724t6qPAPTr2tbNru/j4tvAv7Tw4dTgAD9iAAABpElEQVRIx+ST13KCUBiEDyCCBRBQsaHGHrvp/Xv/twpDTBgRonjr3u0w38zu8h+xNsolkVGlsrEWxkpcoJUhyuISBVjpIi7Arli9bmE6mb0rUhZI6tZu2KuxK+TO5RYOB2pM8udgShWASlOXa8MnDYDN7DRX6AOVkf/bTemEqe9OdW0DluwdNH7VgKZ3knNUEVN+CGz/K3oLtJJGrJugp3MPFrSSy7wBnVRwAE7aTxuDq6YNCpaaehRN2KV8eoRaNMh8GesBKIlgEewoaAtTPoytw0gIXz4KJYMcORfQ5n/Wy4kuaMKHzzioQTFyhNJ7P27ZMNuSDb4Noxingi3FQSpTab8bWx0+YOMdV6yKIxAGSuCkZ6Dv9sEsJlzNSxKIex/ejgUkXkEdxokgLMJn4gBUpcygyH+BHYyVMWo4w/eMwXFIfOCgAVKiAxMQTgCYAH+S44MkOXRAOJGbYyRyHXU24rIVWgjqCNgbkZWRRYA+JrfoYKaksKK8eKS8QCZcBVBe6VBezRGuWGlalSMaD2KQxsMooCMgu6FLdtOa7MY82d0HAP3jZ1lFdjimAAAAAElFTkSuQmCC);
-        }
-        #${gm.id} .gm-entrypopup .gm-entry-list .gm-entry-list-item:hover .gm-card-switcher {
-          display: unset;
-        }
-        #${gm.id} .gm-entrypopup .gm-entry-list .gm-entry-list-item .gm-card-duration {
-          position: absolute;
-          bottom: 0;
-          right: 0;
-          background: var(--text-shadow-color);
-          color: var(--light-text-color);
-          border-radius: 2px;
-          padding: 2px 3px;
-          font-size: 0.8em;
-          z-index: 1;
-        }
-        #${gm.id} .gm-entrypopup .gm-entry-list .gm-entry-list-item .gm-card-right {
-          position: relative;
-          display: flex;
-          flex-direction: column;
-          justify-content: space-between;
-          flex: 1;
-          margin-left: 0.8em;
-        }
-        #${gm.id} .gm-entrypopup .gm-entry-list .gm-entry-list-item .gm-card-title {
-          display: -webkit-box;
-          -webkit-line-clamp: 2;
-          -webkit-box-orient: vertical;
-          overflow: hidden;
-          text-overflow: ellipsis;
-          word-break: break-all;
-          text-align: justify;
-          height: 2.8em;
-        }
-        #${gm.id} .gm-entrypopup .gm-entry-list .gm-entry-list-item.gm-removed .gm-card-title {
-          text-decoration: line-through;
-        }
-        #${gm.id} .gm-entrypopup .gm-entry-list .gm-entry-list-item .gm-card-uploader {
-          font-size: 0.8em;
-          text-overflow: ellipsis;
-          white-space: nowrap;
-          overflow: hidden;
-          width: fit-content;
-          max-width: 21em;
-          color: var(--hint-text-color);
-          cursor: pointer;
-        }
-        #${gm.id} .gm-entrypopup .gm-entry-list .gm-entry-list-item .gm-card-uploader:hover {
-          text-decoration: underline;
-          font-weight: bold;
-          color: var(--text-bold-color);
-        }
-        #${gm.id} .gm-entrypopup .gm-entry-list .gm-entry-list-item .gm-card-progress {
-          position: absolute;
-          bottom: 0;
-          right: 0;
-          font-size: 0.8em;
-          color: var(--hint-text-color);
-          display: none;
-        }
-        #${gm.id} .gm-entrypopup .gm-entry-list .gm-entry-list-item:hover .gm-card-progress {
-          color: var(--hightlight-color);
-        }
-        #${gm.id} .gm-entrypopup .gm-entry-list .gm-entry-list-item .gm-card-progress::before {
-          content: "▶";
-          padding-right: 1px;
-        }
-
-        #${gm.id} .gm-entrypopup .gm-entry-list .gm-entry-list-simple-item {
-          display: block;
-          color: var(--text-color);
-          font-size: 1.2em;
-          padding: 0.5em 1em;
-          cursor: pointer;
-        }
-        #${gm.id} .gm-entrypopup .gm-entry-list .gm-entry-list-simple-item:not(:last-child) {
-          border-bottom: 1px solid var(--light-border-color);
-        }
-        #${gm.id} .gm-entrypopup .gm-entry-list .gm-entry-list-simple-item.gm-invalid,
-        #${gm.id} .gm-entrypopup .gm-entry-list .gm-entry-list-simple-item.gm-invalid:hover {
-          cursor: not-allowed;
-          color: var(--hint-text-color);
-        }
-        #${gm.id} .gm-entrypopup .gm-entry-list .gm-entry-list-simple-item.gm-removed {
-          text-decoration: line-through;
-          color: var(--hint-text-color);
-        }
-
-        #${gm.id} .gm-entrypopup .gm-entry-list .gm-search-hide {
-          display: none;
-        }
-
-        #${gm.id} .gm-entrypopup .gm-entry-bottom {
-          display: flex;
-          border-top: 1px solid var(--light-border-color);
-          height: 3em;
-        }
-        #${gm.id} .gm-entrypopup .gm-entry-bottom .gm-entry-button {
-          flex: 1;
-          text-align: center;
-          padding: 0.6em 0;
-          font-size: 1.2em;
-          cursor: pointer;
-          color: var(--text-color);
-        }
-        #${gm.id} .gm-entrypopup .gm-entry-bottom .gm-entry-button:not([enabled]) {
-          display: none;
-        }
-        #${gm.id} .gm-entrypopup .gm-entry-bottom .gm-entry-button[disabled],
-        #${gm.id} .gm-entrypopup .gm-entry-bottom .gm-entry-button[disabled]:hover {
-          color: var(--disabled-color);
-          cursor: not-allowed;
-        }
-
-        #${gm.id} .gm-entrypopup .gm-entry-bottom .gm-entry-button[fn=autoRemoveControl]:not([disabled]),
-        #${gm.id} .gm-entrypopup .gm-entry-bottom .gm-entry-button[fn=autoRemoveControl]:not([disabled]):hover {
-          color: var(--text-color);
-        }
-        #${gm.id} .gm-entrypopup .gm-entry-bottom .gm-entry-button.gm-popup-auto-remove[fn=autoRemoveControl]:not([disabled]) {
-          color: var(--hightlight-color);
-        }
-
-        #${gm.id} .gm-entrypopup .gm-entry-list .gm-entry-list-item:hover,
-        #${gm.id} .gm-entrypopup .gm-entry-list .gm-entry-list-simple-item:hover,
-        #${gm.id} .gm-entrypopup .gm-entry-bottom .gm-entry-button:hover {
-          color: var(--hightlight-color);
-          background-color: var(--background-hightlight-color);
-        }
-
-        #${gm.id} .gm-setting {
-          font-size: 12px;
-          line-height: normal;
-          transition: var(--opacity-fade-transition);
-          opacity: 0;
-          display: none;
-          position: fixed;
-          z-index: 15000;
-          user-select: none;
-        }
-
-        #${gm.id} .gm-setting #gm-setting-page {
-          background-color: var(--background-color);
-          border-radius: 10px;
-          z-index: 65535;
-          min-width: 53em;
-          padding: 1em 1.4em;
-          transition: top 100ms, left 100ms;
-        }
-
-        #${gm.id} .gm-setting #gm-maintitle * {
-          cursor: pointer;
-          color: var(--text-color);
-        }
-        #${gm.id} .gm-setting #gm-maintitle:hover * {
-          color: var(--hightlight-color);
-        }
-
-        #${gm.id} .gm-setting .gm-items {
-          margin: 0 0.2em;
-          padding: 0 1.8em 0 2.2em;
-          font-size: 1.2em;
-          max-height: 66vh;
-          overflow-y: auto;
-        }
-
-        #${gm.id} .gm-setting table {
-          width: 100%;
-          border-collapse: separate;
-          border-spacing: 0;
-        }
-        #${gm.id} .gm-setting td {
-          position: relative;
-        }
-        #${gm.id} .gm-setting .gm-item td:first-child {
-          vertical-align: top;
-          padding-right: 0.6em;
-          font-weight: bold;
-          color: var(--text-bold-color);
-        }
-        #${gm.id} .gm-setting .gm-item:not(:first-child) td {
-          padding-top: 0.5em;
-        }
-        #${gm.id} .gm-setting td > * {
-          padding: 0.2em;
-          border-radius: 0.2em;
-        }
-
-        #${gm.id} .gm-setting .gm-item:hover {
-          color: var(--hightlight-color);
-        }
-
-        #${gm.id} .gm-setting .gm-subitem[disabled] {
-          color: var(--disabled-color);
-        }
-        #${gm.id} .gm-setting .gm-subitem:hover:not([disabled]) {
-          color: var(--hightlight-color);
-        }
-
-        #${gm.id} .gm-setting .gm-subitem .gm-lineitems[disabled] {
-          color: var(--disabled-color);
-        }
-        #${gm.id} .gm-setting .gm-subitem .gm-lineitems {
-          color: var(--text-color);
-        }
-        #${gm.id} .gm-setting .gm-subitem .gm-lineitem {
-          display: inline-block;
-          padding-right: 8px;
-        }
-        #${gm.id} .gm-setting .gm-subitem .gm-lineitem:hover {
-          color: var(--hightlight-color);
-        }
-        #${gm.id} .gm-setting .gm-subitem .gm-lineitems[disabled] .gm-lineitem {
-          color: var(--disabled-color);
-        }
-        #${gm.id} .gm-setting .gm-subitem .gm-lineitem input[type=checkbox] {
-          margin-left: 2px;
-          vertical-align: -1px;
-        }
-
-        #${gm.id} .gm-setting .gm-hint-option {
-          font-size: 0.8em;
-          color: var(--hint-text-color);
-          text-decoration: underline;
-          padding: 0 0.2em;
-          cursor: pointer;
-        }
-        #${gm.id} .gm-setting .gm-hint-option:hover {
-          color: var(--important-color);
-        }
-        #${gm.id} .gm-setting [disabled] .gm-hint-option {
-          color: var(--disabled-color);
-          cursor: not-allowed;
-        }
-
-        #${gm.id} .gm-setting td > * {
-          display: flex;
-          align-items: flex-end;
-        }
-        #${gm.id} .gm-setting input[type=checkbox] {
-          margin-left: auto;
-        }
-        #${gm.id} .gm-setting input[type=text] {
-          border-width: 0 0 1px 0;
-          width: 3.4em;
-          text-align: right;
-          padding: 0 0.2em;
-          margin-left: auto;
-        }
-        #${gm.id} .gm-setting select {
-          border-width: 0 0 1px 0;
-          cursor: pointer;
-        }
-
-        #${gm.id} .gm-setting .gm-information {
-          margin: 0 0.4em;
-          cursor: pointer;
-        }
-        #${gm.id} .gm-setting [disabled] .gm-information {
-          cursor: not-allowed;
-        }
-
-        #${gm.id} .gm-setting .gm-warning {
-          position: absolute;
-          color: var(--warn-color);
-          font-size: 1.4em;
-          line-height: 1em;
-          transition: var(--opacity-fade-transition);
-          opacity: 0;
-          display: none;
-          cursor: pointer;
-        }
-        #${gm.id} .gm-setting .gm-warning.gm-trailing {
-          position: static;
-          margin-left: 0.5em;
-        }
-        #${gm.id} .gm-setting .gm-warning:not(.gm-trailing) {
-          right: -1.1em;
-        }
-
-        #${gm.id} .gm-setting.gm-hideDisabledSubitems #gm-setting-page:not([setting-type]) [disabled] {
-          display: none;
-        }
-
-        #${gm.id} .gm-history {
-          font-size: 12px;
-          line-height: normal;
-          transition: var(--opacity-fade-transition);
-          opacity: 0;
-          display: none;
-          position: fixed;
-          z-index: 15000;
-          user-select: none;
-        }
-
-        #${gm.id} .gm-history .gm-history-page {
-          background-color: var(--background-color);
-          border-radius: 10px;
-          z-index: 65535;
-          height: 75vh;
-          width: 60vw;
-          min-width: 40em;
-          min-height: 50em;
-          transition: top 100ms, left 100ms;
-        }
-
-        #${gm.id} .gm-history .gm-comment {
-          margin: 0 2em;
-          color: var(--hint-text-color);
-          text-indent: 2em;
-        }
-        #${gm.id} .gm-history .gm-comment span,
-        #${gm.id} .gm-history .gm-comment input {
-          padding: 0 0.2em;
-          font-weight: bold;
-          color: var(--hint-text-emphasis-color);
-        }
-        #${gm.id} .gm-history .gm-comment input{
-          text-align: center;
-          width: 3.5em;
-          border-width: 0 0 1px 0;
-        }
-
-        #${gm.id} .gm-history .gm-content {
-          margin: 0.6em 0.2em 2em 0.2em;
-          padding: 0 1.8em;
-          font-size: 1.2em;
-          text-align: center;
-          line-height: 1.6em;
-          overflow-y: auto;
-          position: absolute;
-          top: 8em;
-          bottom: 0;
-          left: 0;
-          right: 0;
-          opacity: 0;
-          user-select: text;
-        }
-        #${gm.id} .gm-history .gm-content > * {
-          position: relative;
-          margin: 1.6em 2em;
-        }
-        #${gm.id} .gm-history .gm-content a {
-          color: var(--text-color);
-        }
-        #${gm.id} .gm-history .gm-content a:hover {
-          font-weight: bold;
-          color: var(--hightlight-color);
-        }
-        #${gm.id} .gm-history .gm-content input[type=checkbox] {
-          position: absolute;
-          right: -2em;
-          height: 1.5em;
-          width: 1em;
-        }
-        #${gm.id} .gm-history .gm-content .gm-history-date {
-          font-size: 0.5em;
-          color: var(--hint-text-color);
-        }
-
-        #${gm.id} .gm-bottom {
-          margin: 1.4em 2em 1em 2em;
-          text-align: center;
-        }
-
-        #${gm.id} .gm-bottom button {
-          font-size: 1em;
-          padding: 0.3em 1em;
-          margin: 0 0.8em;
-          cursor: pointer;
-          background-color: var(--background-color);
-          border: 1px solid var(--border-color);
-          border-radius: 2px;
-        }
-        #${gm.id} .gm-bottom button:hover {
-          background-color: var(--background-hightlight-color);
-        }
-        #${gm.id} .gm-bottom button[disabled] {
-          cursor: not-allowed;
-          border-color: var(--disabled-color);
-          background-color: var(--background-color);
-        }
-
-        #${gm.id} #gm-reset {
-          position: absolute;
-          right: 0;
-          bottom: 0;
-          margin: 1em 1.6em;
-          color: var(--hint-text-color);
-          cursor: pointer;
-        }
-
-        #${gm.id} #gm-changelog {
-          position: absolute;
-          right: 0;
-          bottom: 1.8em;
-          margin: 1em 1.6em;
-          color: var(--hint-text-color);
-          cursor: pointer;
-        }
-        #${gm.id} [setting-type=updated] #gm-changelog {
-          font-weight: bold;
-          color: var(--important-color);
-        }
-        #${gm.id} [setting-type=updated] #gm-changelog:hover {
-          color: var(--important-color);
-        }
-        #${gm.id} [setting-type=updated] .gm-updated,
-        #${gm.id} [setting-type=updated] .gm-updated input,
-        #${gm.id} [setting-type=updated] .gm-updated select {
-          background-color: var(--update-hightlight-color);
-        }
-        #${gm.id} [setting-type=updated] .gm-updated option {
-          background-color: var(--background-color);
-        }
-        #${gm.id} [setting-type=updated] .gm-updated:hover {
-          color: var(--update-hightlight-hover-color);
-        }
-        #${gm.id} [setting-type=updated] .gm-updated .gm-lineitem:hover {
-          color: var(--update-hightlight-hover-color);
-        }
-
-        #${gm.id} #gm-reset:hover,
-        #${gm.id} #gm-changelog:hover {
-          color: var(--hint-text-hightlight-color);
-          text-decoration: underline;
-        }
-
-        #${gm.id} .gm-title {
-          font-size: 1.6em;
-          margin: 1.6em 0.8em 0.8em 0.8em;
-          text-align: center;
-        }
-
-        #${gm.id} .gm-subtitle {
-          font-size: 0.4em;
-          margin-top: 0.4em;
-        }
-
-        #${gm.id} .gm-shadow {
-          background-color: var(--shadow-color);
-          position: fixed;
-          top: 0%;
-          left: 0%;
-          z-index: 15000;
-          width: 100%;
-          height: 100%;
-        }
-        #${gm.id} .gm-shadow[disabled] {
-          cursor: auto;
-        }
-
-        #${gm.id} label {
-          cursor: pointer;
-        }
-
-        #${gm.id} input,
-        #${gm.id} select,
-        #${gm.id} button {
-          font-size: 100%;
-          color: var(--text-color);
-          outline: none;
-          border: 1px solid var(--border-color); /* 在某些页面被覆盖 */
-          border-radius: 0;
-          appearance: auto; /* 番剧播放页该项被覆盖 */
-        }
-
-        #${gm.id} a {
-        color: var(--hightlight-color)
-        }
-        #${gm.id} a:visited {
-        color: var(--link-visited-color)
-        }
-
-        #${gm.id} [disabled],
-        #${gm.id} [disabled] input,
-        #${gm.id} [disabled] select {
-          cursor: not-allowed;
-          color: var(--disabled-color);
-        }
-
-        #${gm.id}-video-btn {
-          display: flex;
-          align-items: center;
-          cursor: pointer;
-        }
-        #${gm.id}-video-btn input[type=checkbox] {
-          margin-right: 2px;
-          cursor: pointer;
-          appearance: auto;
-        }
-
-        #${gm.id} .gm-setting .gm-items::-webkit-scrollbar,
-        #${gm.id} .gm-history .gm-content::-webkit-scrollbar {
-          width: 6px;
-          height: 6px;
-          background-color: var(--scrollbar-background-color);
-        }
-        #${gm.id} .gm-history .gm-content::-webkit-scrollbar-thumb {
-          border-radius: 3px;
-          background-color: var(--scrollbar-background-color);
-        }
-        #${gm.id} .gm-setting .gm-items::-webkit-scrollbar-thumb,
-        #${gm.id} .gm-history .gm-content:hover::-webkit-scrollbar-thumb {
-          border-radius: 3px;
-          background-color: var(--scrollbar-thumb-color);
-        }
-        #${gm.id} .gm-setting .gm-items::-webkit-scrollbar-corner,
-        #${gm.id} .gm-history .gm-content::-webkit-scrollbar-corner {
-          background-color: var(--scrollbar-background-color);
-        }
-
-        .gm-watchlater-item-deleted {
-          filter: grayscale(1);
-          border-radius: 5px;
-        }
-        .gm-watchlater-item-deleted .key,
-        .gm-watchlater-item-deleted .btn-del {
-          visibility: hidden;
-        }
-        .gm-watchlater-item-deleted .t,
-        .gm-watchlater-item-deleted .t:hover {
-          text-decoration: line-through;
-        }
-      `)
+      if (self == top) {
+        this.addFixHeaderStyle()
+        this.addMenuScrollbarStyle()
+        // 通用样式
+        GM_addStyle(`
+          :root {
+            --text-color: #0d0d0d;
+            --text-bold-color: #3a3a3a;
+            --light-text-color: white;
+            --hint-text-color: gray;
+            --light-hint-text-color: #909090;
+            --hint-text-emphasis-color: #666666;
+            --hint-text-hightlight-color: #555555;
+            --background-color: white;
+            --background-hightlight-color: #ebebeb;
+            --update-hightlight-color: ${gm.const.updateHighlightColor};
+            --update-hightlight-hover-color: red;
+            --border-color: black;
+            --light-border-color: #e7e7e7;
+            --shadow-color: #000000bf;
+            --text-shadow-color: #00000080;
+            --box-shadow-color: #00000033;
+            --hightlight-color: #0075ff;
+            --important-color: red;
+            --warn-color: #e37100;
+            --disabled-color: gray;
+            --link-visited-color: #551a8b;
+            --scrollbar-background-color: transparent;
+            --scrollbar-thumb-color: #0000002b;
+            --opacity-fade-transition: opacity ${gm.const.fadeTime}ms ease-in-out;
+          }
+  
+          #${gm.id} {
+            color: var(--text-color);
+          }
+          #${gm.id} * {
+            box-sizing: content-box;
+          }
+  
+          #${gm.id} .gm-entrypopup {
+            font-size: 12px;
+            line-height: normal;
+            transition: var(--opacity-fade-transition);
+            opacity: 0;
+            display: none;
+            position: absolute;
+            z-index: 15000;
+            user-select: none;
+            width: 32em;
+            padding-top: 1em;
+          }
+          #${gm.id} .gm-entrypopup .gm-entrypopup-page {
+            position: relative;
+            border-radius: 4px;
+            border: none;
+            box-shadow: var(--box-shadow-color) 0px 3px 6px;
+            background-color: var(--background-color);
+            overflow: hidden;
+          }
+          #${gm.id} .gm-entrypopup .gm-popup-arrow {
+            position: absolute;
+            top: -6px;
+            left: calc(16em - 6px);
+            width: 0;
+            height: 0;
+            border-width: 6px;
+            border-top-width: 0;
+            border-style: solid;
+            border-color: transparent;
+            border-bottom-color: #dfdfdf; /* 必须在 border-color 后 */
+          }
+          #${gm.id} .gm-entrypopup .gm-popup-arrow::after {
+            content: " ";
+            position: absolute;
+            top: 1px;
+            width: 0;
+            height: 0;
+            margin-left: -6px;
+            border-width: 6px;
+            border-top-width: 0;
+            border-style: solid;
+            border-color: transparent;
+            border-bottom-color: var(--background-color); /* 必须在 border-color 后 */
+          }
+  
+          #${gm.id} .gm-entrypopup .gm-popup-header {
+            position: relative;
+            height: 2.8em;
+            border-bottom: 1px solid var(--light-border-color);
+          }
+          #${gm.id} .gm-entrypopup .gm-popup-search {
+            font-size: 1.3em;
+            line-height: 2.6em;
+            padding-left: 0.9em;
+          }
+          #${gm.id} .gm-entrypopup .gm-popup-search input[type=text] {
+            line-height: normal;
+            outline: none;
+            border: none;
+            width: 18em;
+            padding-right: 6px;
+            color: var(--text-color);
+          }
+          #${gm.id} .gm-entrypopup .gm-popup-search input[type=text]::placeholder {
+            font-size: 0.9em;
+            color: var(--light-hint-text-color);
+          }
+          #${gm.id} .gm-entrypopup .gm-popup-search-clear {
+            display: inline-block;
+            color: var(--hint-text-color);
+            cursor: pointer;
+            visibility: hidden;
+          }
+          #${gm.id} .gm-entrypopup .gm-popup-total {
+            position: absolute;
+            line-height: 2.6em;
+            right: 1.3em;
+            top: 0;
+            font-size: 1.2em;
+            color: var(--hint-text-color);
+          }
+  
+          #${gm.id} .gm-entrypopup .gm-entry-list {
+            position: relative;
+            height: 42em;
+            overflow-y: auto;
+            padding: 0.2em 0;
+          }
+          #${gm.id} .gm-entrypopup .gm-entry-list.gm-entry-removed-list {
+            border-top: 3px solid var(--light-border-color);
+            display: none;
+          }
+          #${gm.id} .gm-entrypopup .gm-entry-list-empty {
+            position: absolute;
+            display: none;
+            top: 20%;
+            left: calc(50% - 7em);
+            line-height: 4em;
+            width: 14em;
+            font-size: 1.4em;
+            text-align: center;
+            color: var(--hint-text-color);
+          }
+  
+          #${gm.id} .gm-entrypopup .gm-entry-list .gm-entry-list-item {
+            display: flex;
+            height: 4.4em;
+            padding: 0.5em 1em;
+            color: var(--text-color);
+            font-size: 1.15em;
+            cursor: pointer;
+          }
+          #${gm.id} .gm-entrypopup .gm-entry-list .gm-entry-list-item.gm-invalid {
+            cursor: not-allowed;
+          }
+          #${gm.id} .gm-entrypopup .gm-entry-list .gm-entry-list-item.gm-invalid,
+          #${gm.id} .gm-entrypopup .gm-entry-list .gm-entry-list-item.gm-removed {
+            filter: grayscale(1);
+            color: var(--hint-text-color);
+          }
+          #${gm.id} .gm-entrypopup .gm-entry-list .gm-entry-list-item .gm-card-left {
+            position: relative;
+            flex: 0;
+            cursor: default;
+          }
+          #${gm.id} .gm-entrypopup .gm-entry-list .gm-entry-list-item .gm-card-cover {
+            width: 7.82em;
+            height: 4.40em;
+            border-radius: 2px;
+          }
+          #${gm.id} .gm-entrypopup .gm-entry-list .gm-entry-list-item .gm-card-switcher {
+            position: absolute;
+            background-image: url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADgAAAA4CAYAAACohjseAAAACXBIWXMAAAsSAAALEgHS3X78AAAA/ElEQVRoge3bsQ3CMBSE4bOBAmZIzSLUrMECjMACtLBGKgq2yQ4uHzJKgaIghHHAZ+6rQfKvnCIRBWdmiJxzWwAbAEtwCwCuZtbeuwCsAOwBNORhQ52ZHXx/1WqLi5q4yngFjxXM8pngK46Llr6AQ0xKgewUyE6B7BTIbj7F+c1sl/I959w591k0UXbx18Tp3YbUCX4qZcKaKLukiY55nO3YlIazfvWZXHdUTZSdAtkpkJ0C2SmQnQLZKZCdAtkpkN3PHvx+68mcJsou21O1Ummi7BTIToHsFMjuLwJDAeeYSpgBWABY19mHi+/fTu8KOExu8aX0tu6/FQC4AVY1Ql6j10UHAAAAAElFTkSuQmCC);
+            background-size: contain;
+            width: 34px;
+            height: 34px;
+            top: calc(2.2em - 17px);
+            left: calc(3.9em - 17px);
+            z-index: 1;
+            display: none;
+            cursor: pointer;
+          }
+          #${gm.id} .gm-entrypopup .gm-entry-list .gm-entry-list-item.gm-removed .gm-card-switcher {
+            background-image: url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADgAAAA4CAMAAACfWMssAAAAwFBMVEUAAAAGBgavr69EREQUFBQ1NTUODg7t7e3FxcV0dHRbW1sAAAAAAAAAAAD+/v77+/v4+Pj09PTj4+P8/PzV1dWpqamSkpIhISH19fXX19fLy8ulpaWdnZ1kZGRVVVUsLCz6+vrm5uba2tq9vb20tLSsrKyXl5eMjIx+fn54eHhsbGxpaWk+Pj4AAAAAAADv7+/e3t7AwMC3t7ehoaFLS0vo6OjR0dHOzs7CwsKCgoKCgoJiYmLp6enMzMywsLD////DVMIGAAAAP3RSTlOZmtOrnqec8927sopkEf38+ffu/eXPxqH45+DOyrWwpPvv6NnV0cjEv724t6qPAPTr2tbNru/j4tvAv7Tw4dTgAD9iAAABpElEQVRIx+ST13KCUBiEDyCCBRBQsaHGHrvp/Xv/twpDTBgRonjr3u0w38zu8h+xNsolkVGlsrEWxkpcoJUhyuISBVjpIi7Arli9bmE6mb0rUhZI6tZu2KuxK+TO5RYOB2pM8udgShWASlOXa8MnDYDN7DRX6AOVkf/bTemEqe9OdW0DluwdNH7VgKZ3knNUEVN+CGz/K3oLtJJGrJugp3MPFrSSy7wBnVRwAE7aTxuDq6YNCpaaehRN2KV8eoRaNMh8GesBKIlgEewoaAtTPoytw0gIXz4KJYMcORfQ5n/Wy4kuaMKHzzioQTFyhNJ7P27ZMNuSDb4Noxingi3FQSpTab8bWx0+YOMdV6yKIxAGSuCkZ6Dv9sEsJlzNSxKIex/ejgUkXkEdxokgLMJn4gBUpcygyH+BHYyVMWo4w/eMwXFIfOCgAVKiAxMQTgCYAH+S44MkOXRAOJGbYyRyHXU24rIVWgjqCNgbkZWRRYA+JrfoYKaksKK8eKS8QCZcBVBe6VBezRGuWGlalSMaD2KQxsMooCMgu6FLdtOa7MY82d0HAP3jZ1lFdjimAAAAAElFTkSuQmCC);
+          }
+          #${gm.id} .gm-entrypopup .gm-entry-list .gm-entry-list-item:hover .gm-card-switcher {
+            display: unset;
+          }
+          #${gm.id} .gm-entrypopup .gm-entry-list .gm-entry-list-item .gm-card-duration {
+            position: absolute;
+            bottom: 0;
+            right: 0;
+            background: var(--text-shadow-color);
+            color: var(--light-text-color);
+            border-radius: 2px;
+            padding: 2px 3px;
+            font-size: 0.8em;
+            z-index: 1;
+          }
+          #${gm.id} .gm-entrypopup .gm-entry-list .gm-entry-list-item .gm-card-right {
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            flex: 1;
+            margin-left: 0.8em;
+          }
+          #${gm.id} .gm-entrypopup .gm-entry-list .gm-entry-list-item .gm-card-title {
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            word-break: break-all;
+            text-align: justify;
+            height: 2.8em;
+          }
+          #${gm.id} .gm-entrypopup .gm-entry-list .gm-entry-list-item.gm-removed .gm-card-title {
+            text-decoration: line-through;
+          }
+          #${gm.id} .gm-entrypopup .gm-entry-list .gm-entry-list-item .gm-card-uploader {
+            font-size: 0.8em;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            overflow: hidden;
+            width: fit-content;
+            max-width: 21em;
+            color: var(--hint-text-color);
+            cursor: pointer;
+          }
+          #${gm.id} .gm-entrypopup .gm-entry-list .gm-entry-list-item .gm-card-uploader:hover {
+            text-decoration: underline;
+            font-weight: bold;
+            color: var(--text-bold-color);
+          }
+          #${gm.id} .gm-entrypopup .gm-entry-list .gm-entry-list-item .gm-card-progress {
+            position: absolute;
+            bottom: 0;
+            right: 0;
+            font-size: 0.8em;
+            color: var(--hint-text-color);
+            display: none;
+          }
+          #${gm.id} .gm-entrypopup .gm-entry-list .gm-entry-list-item:hover .gm-card-progress {
+            color: var(--hightlight-color);
+          }
+          #${gm.id} .gm-entrypopup .gm-entry-list .gm-entry-list-item .gm-card-progress::before {
+            content: "▶";
+            padding-right: 1px;
+          }
+  
+          #${gm.id} .gm-entrypopup .gm-entry-list .gm-entry-list-simple-item {
+            display: block;
+            color: var(--text-color);
+            font-size: 1.2em;
+            padding: 0.5em 1em;
+            cursor: pointer;
+          }
+          #${gm.id} .gm-entrypopup .gm-entry-list .gm-entry-list-simple-item:not(:last-child) {
+            border-bottom: 1px solid var(--light-border-color);
+          }
+          #${gm.id} .gm-entrypopup .gm-entry-list .gm-entry-list-simple-item.gm-invalid,
+          #${gm.id} .gm-entrypopup .gm-entry-list .gm-entry-list-simple-item.gm-invalid:hover {
+            cursor: not-allowed;
+            color: var(--hint-text-color);
+          }
+          #${gm.id} .gm-entrypopup .gm-entry-list .gm-entry-list-simple-item.gm-removed {
+            text-decoration: line-through;
+            color: var(--hint-text-color);
+          }
+  
+          #${gm.id} .gm-entrypopup .gm-entry-list .gm-search-hide {
+            display: none;
+          }
+  
+          #${gm.id} .gm-entrypopup .gm-entry-bottom {
+            display: flex;
+            border-top: 1px solid var(--light-border-color);
+            height: 3em;
+          }
+          #${gm.id} .gm-entrypopup .gm-entry-bottom .gm-entry-button {
+            flex: 1;
+            text-align: center;
+            padding: 0.6em 0;
+            font-size: 1.2em;
+            cursor: pointer;
+            color: var(--text-color);
+          }
+          #${gm.id} .gm-entrypopup .gm-entry-bottom .gm-entry-button:not([enabled]) {
+            display: none;
+          }
+          #${gm.id} .gm-entrypopup .gm-entry-bottom .gm-entry-button[disabled],
+          #${gm.id} .gm-entrypopup .gm-entry-bottom .gm-entry-button[disabled]:hover {
+            color: var(--disabled-color);
+            cursor: not-allowed;
+          }
+  
+          #${gm.id} .gm-entrypopup .gm-entry-bottom .gm-entry-button[fn=autoRemoveControl]:not([disabled]),
+          #${gm.id} .gm-entrypopup .gm-entry-bottom .gm-entry-button[fn=autoRemoveControl]:not([disabled]):hover {
+            color: var(--text-color);
+          }
+          #${gm.id} .gm-entrypopup .gm-entry-bottom .gm-entry-button.gm-popup-auto-remove[fn=autoRemoveControl]:not([disabled]) {
+            color: var(--hightlight-color);
+          }
+  
+          #${gm.id} .gm-entrypopup .gm-entry-list .gm-entry-list-item:hover,
+          #${gm.id} .gm-entrypopup .gm-entry-list .gm-entry-list-simple-item:hover,
+          #${gm.id} .gm-entrypopup .gm-entry-bottom .gm-entry-button:hover {
+            color: var(--hightlight-color);
+            background-color: var(--background-hightlight-color);
+          }
+  
+          #${gm.id} .gm-setting {
+            font-size: 12px;
+            line-height: normal;
+            transition: var(--opacity-fade-transition);
+            opacity: 0;
+            display: none;
+            position: fixed;
+            z-index: 15000;
+            user-select: none;
+          }
+  
+          #${gm.id} .gm-setting #gm-setting-page {
+            background-color: var(--background-color);
+            border-radius: 10px;
+            z-index: 65535;
+            min-width: 53em;
+            padding: 1em 1.4em;
+            transition: top 100ms, left 100ms;
+          }
+  
+          #${gm.id} .gm-setting #gm-maintitle * {
+            cursor: pointer;
+            color: var(--text-color);
+          }
+          #${gm.id} .gm-setting #gm-maintitle:hover * {
+            color: var(--hightlight-color);
+          }
+  
+          #${gm.id} .gm-setting .gm-items {
+            margin: 0 0.2em;
+            padding: 0 1.8em 0 2.2em;
+            font-size: 1.2em;
+            max-height: 66vh;
+            overflow-y: auto;
+          }
+  
+          #${gm.id} .gm-setting table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+          }
+          #${gm.id} .gm-setting td {
+            position: relative;
+          }
+          #${gm.id} .gm-setting .gm-item td:first-child {
+            vertical-align: top;
+            padding-right: 0.6em;
+            font-weight: bold;
+            color: var(--text-bold-color);
+          }
+          #${gm.id} .gm-setting .gm-item:not(:first-child) td {
+            padding-top: 0.5em;
+          }
+          #${gm.id} .gm-setting td > * {
+            padding: 0.2em;
+            border-radius: 0.2em;
+          }
+  
+          #${gm.id} .gm-setting .gm-item:hover {
+            color: var(--hightlight-color);
+          }
+  
+          #${gm.id} .gm-setting .gm-subitem[disabled] {
+            color: var(--disabled-color);
+          }
+          #${gm.id} .gm-setting .gm-subitem:hover:not([disabled]) {
+            color: var(--hightlight-color);
+          }
+  
+          #${gm.id} .gm-setting .gm-subitem .gm-lineitems[disabled] {
+            color: var(--disabled-color);
+          }
+          #${gm.id} .gm-setting .gm-subitem .gm-lineitems {
+            color: var(--text-color);
+          }
+          #${gm.id} .gm-setting .gm-subitem .gm-lineitem {
+            display: inline-block;
+            padding-right: 8px;
+          }
+          #${gm.id} .gm-setting .gm-subitem .gm-lineitem:hover {
+            color: var(--hightlight-color);
+          }
+          #${gm.id} .gm-setting .gm-subitem .gm-lineitems[disabled] .gm-lineitem {
+            color: var(--disabled-color);
+          }
+          #${gm.id} .gm-setting .gm-subitem .gm-lineitem input[type=checkbox] {
+            margin-left: 2px;
+            vertical-align: -1px;
+          }
+  
+          #${gm.id} .gm-setting .gm-hint-option {
+            font-size: 0.8em;
+            color: var(--hint-text-color);
+            text-decoration: underline;
+            padding: 0 0.2em;
+            cursor: pointer;
+          }
+          #${gm.id} .gm-setting .gm-hint-option:hover {
+            color: var(--important-color);
+          }
+          #${gm.id} .gm-setting [disabled] .gm-hint-option {
+            color: var(--disabled-color);
+            cursor: not-allowed;
+          }
+  
+          #${gm.id} .gm-setting td > * {
+            display: flex;
+            align-items: flex-end;
+          }
+          #${gm.id} .gm-setting input[type=checkbox] {
+            margin-left: auto;
+          }
+          #${gm.id} .gm-setting input[type=text] {
+            border-width: 0 0 1px 0;
+            width: 3.4em;
+            text-align: right;
+            padding: 0 0.2em;
+            margin-left: auto;
+          }
+          #${gm.id} .gm-setting select {
+            border-width: 0 0 1px 0;
+            cursor: pointer;
+          }
+  
+          #${gm.id} .gm-setting .gm-information {
+            margin: 0 0.4em;
+            cursor: pointer;
+          }
+          #${gm.id} .gm-setting [disabled] .gm-information {
+            cursor: not-allowed;
+          }
+  
+          #${gm.id} .gm-setting .gm-warning {
+            position: absolute;
+            color: var(--warn-color);
+            font-size: 1.4em;
+            line-height: 1em;
+            transition: var(--opacity-fade-transition);
+            opacity: 0;
+            display: none;
+            cursor: pointer;
+          }
+          #${gm.id} .gm-setting .gm-warning.gm-trailing {
+            position: static;
+            margin-left: 0.5em;
+          }
+          #${gm.id} .gm-setting .gm-warning:not(.gm-trailing) {
+            right: -1.1em;
+          }
+  
+          #${gm.id} .gm-setting.gm-hideDisabledSubitems #gm-setting-page:not([setting-type]) [disabled] {
+            display: none;
+          }
+  
+          #${gm.id} .gm-history {
+            font-size: 12px;
+            line-height: normal;
+            transition: var(--opacity-fade-transition);
+            opacity: 0;
+            display: none;
+            position: fixed;
+            z-index: 15000;
+            user-select: none;
+          }
+  
+          #${gm.id} .gm-history .gm-history-page {
+            background-color: var(--background-color);
+            border-radius: 10px;
+            z-index: 65535;
+            height: 75vh;
+            width: 60vw;
+            min-width: 40em;
+            min-height: 50em;
+            transition: top 100ms, left 100ms;
+          }
+  
+          #${gm.id} .gm-history .gm-comment {
+            margin: 0 2em;
+            color: var(--hint-text-color);
+            text-indent: 2em;
+          }
+          #${gm.id} .gm-history .gm-comment span,
+          #${gm.id} .gm-history .gm-comment input {
+            padding: 0 0.2em;
+            font-weight: bold;
+            color: var(--hint-text-emphasis-color);
+          }
+          #${gm.id} .gm-history .gm-comment input{
+            text-align: center;
+            width: 3.5em;
+            border-width: 0 0 1px 0;
+          }
+  
+          #${gm.id} .gm-history .gm-content {
+            margin: 0.6em 0.2em 2em 0.2em;
+            padding: 0 1.8em;
+            font-size: 1.2em;
+            text-align: center;
+            line-height: 1.6em;
+            overflow-y: auto;
+            position: absolute;
+            top: 8em;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            opacity: 0;
+            user-select: text;
+          }
+          #${gm.id} .gm-history .gm-content > * {
+            position: relative;
+            margin: 1.6em 2em;
+          }
+          #${gm.id} .gm-history .gm-content a {
+            color: var(--text-color);
+          }
+          #${gm.id} .gm-history .gm-content input[type=checkbox] {
+            position: absolute;
+            right: -2em;
+            height: 1.5em;
+            width: 1em;
+            cursor: pointer;
+          }
+          #${gm.id} .gm-history .gm-content .gm-history-date {
+            font-size: 0.5em;
+            color: var(--hint-text-color);
+          }
+          #${gm.id} .gm-history .gm-content > *:hover input[type=checkbox] {
+            filter: brightness(0.9);
+          }
+          #${gm.id} .gm-history .gm-content > *:hover a {
+            font-weight: bold;
+            color: var(--hightlight-color);
+          }
+  
+          #${gm.id} .gm-bottom {
+            margin: 1.4em 2em 1em 2em;
+            text-align: center;
+          }
+  
+          #${gm.id} .gm-bottom button {
+            font-size: 1em;
+            padding: 0.3em 1em;
+            margin: 0 0.8em;
+            cursor: pointer;
+            background-color: var(--background-color);
+            border: 1px solid var(--border-color);
+            border-radius: 2px;
+          }
+          #${gm.id} .gm-bottom button:hover {
+            background-color: var(--background-hightlight-color);
+          }
+          #${gm.id} .gm-bottom button[disabled] {
+            cursor: not-allowed;
+            border-color: var(--disabled-color);
+            background-color: var(--background-color);
+          }
+  
+          #${gm.id} #gm-reset {
+            position: absolute;
+            right: 0;
+            bottom: 0;
+            margin: 1em 1.6em;
+            color: var(--hint-text-color);
+            cursor: pointer;
+          }
+  
+          #${gm.id} #gm-changelog {
+            position: absolute;
+            right: 0;
+            bottom: 1.8em;
+            margin: 1em 1.6em;
+            color: var(--hint-text-color);
+            cursor: pointer;
+          }
+          #${gm.id} [setting-type=updated] #gm-changelog {
+            font-weight: bold;
+            color: var(--update-hightlight-hover-color);
+          }
+          #${gm.id} [setting-type=updated] #gm-changelog:hover {
+            color: var(--update-hightlight-hover-color);
+          }
+          #${gm.id} [setting-type=updated] .gm-updated,
+          #${gm.id} [setting-type=updated] .gm-updated input,
+          #${gm.id} [setting-type=updated] .gm-updated select {
+            background-color: var(--update-hightlight-color);
+          }
+          #${gm.id} [setting-type=updated] .gm-updated option {
+            background-color: var(--background-color);
+          }
+          #${gm.id} [setting-type=updated] tr:hover .gm-updated,
+          #${gm.id} [setting-type=updated] tr:hover .gm-updated .gm-lineitem {
+            color: var(--update-hightlight-hover-color);
+            font-weight: bold;
+          }
+  
+          #${gm.id} #gm-reset:hover,
+          #${gm.id} #gm-changelog:hover {
+            color: var(--hint-text-hightlight-color);
+            text-decoration: underline;
+          }
+  
+          #${gm.id} .gm-title {
+            font-size: 1.6em;
+            margin: 1.6em 0.8em 0.8em 0.8em;
+            text-align: center;
+          }
+  
+          #${gm.id} .gm-subtitle {
+            font-size: 0.4em;
+            margin-top: 0.4em;
+          }
+  
+          #${gm.id} .gm-shadow {
+            background-color: var(--shadow-color);
+            position: fixed;
+            top: 0%;
+            left: 0%;
+            z-index: 15000;
+            width: 100%;
+            height: 100%;
+          }
+          #${gm.id} .gm-shadow[disabled] {
+            cursor: auto;
+          }
+  
+          #${gm.id} label {
+            cursor: pointer;
+          }
+  
+          #${gm.id} input,
+          #${gm.id} select,
+          #${gm.id} button {
+            font-size: 100%;
+            color: var(--text-color);
+            outline: none;
+            border: 1px solid var(--border-color); /* 在某些页面被覆盖 */
+            border-radius: 0;
+            appearance: auto; /* 番剧播放页该项被覆盖 */
+          }
+  
+          #${gm.id} a {
+          color: var(--hightlight-color)
+          }
+          #${gm.id} a:visited {
+          color: var(--link-visited-color)
+          }
+  
+          #${gm.id} [disabled],
+          #${gm.id} [disabled] input,
+          #${gm.id} [disabled] select {
+            cursor: not-allowed;
+            color: var(--disabled-color);
+          }
+  
+          #${gm.id}-video-btn {
+            display: flex;
+            align-items: center;
+            cursor: pointer;
+          }
+          #${gm.id}-video-btn input[type=checkbox] {
+            margin-right: 2px;
+            cursor: pointer;
+            appearance: auto;
+          }
+  
+          #${gm.id} .gm-setting .gm-items::-webkit-scrollbar,
+          #${gm.id} .gm-history .gm-content::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+            background-color: var(--scrollbar-background-color);
+          }
+          #${gm.id} .gm-history .gm-content::-webkit-scrollbar-thumb {
+            border-radius: 3px;
+            background-color: var(--scrollbar-background-color);
+          }
+          #${gm.id} .gm-setting .gm-items::-webkit-scrollbar-thumb,
+          #${gm.id} .gm-history .gm-content:hover::-webkit-scrollbar-thumb {
+            border-radius: 3px;
+            background-color: var(--scrollbar-thumb-color);
+          }
+          #${gm.id} .gm-setting .gm-items::-webkit-scrollbar-corner,
+          #${gm.id} .gm-history .gm-content::-webkit-scrollbar-corner {
+            background-color: var(--scrollbar-background-color);
+          }
+  
+          .gm-watchlater-item-deleted {
+            filter: grayscale(1);
+            border-radius: 5px;
+          }
+          .gm-watchlater-item-deleted .key,
+          .gm-watchlater-item-deleted .btn-del {
+            visibility: hidden;
+          }
+          .gm-watchlater-item-deleted .t,
+          .gm-watchlater-item-deleted .t:hover {
+            text-decoration: line-through;
+          }
+        `)
+      } else {
+        if (api.web.urlMatch(gm.regex.page_dynamicMenu)) {
+          this.addMenuScrollbarStyle()
+        }
+      }
     }
   }
 
@@ -4618,6 +4710,7 @@
     }
 
     webpage.method.cleanSearchParams()
+    webpage.addStyle()
     if (gm.config.mainRunAt == Enums.mainRunAt.DOMContentLoaded) {
       document.addEventListener('DOMContentLoaded', main)
     } else {
@@ -4628,7 +4721,6 @@
       script.init()
       if (self == top) {
         script.addScriptMenu()
-        webpage.addStyle()
 
         if (gm.config.headerButton) {
           webpage.addHeaderButton()
@@ -4644,25 +4736,17 @@
         }
 
         if (api.web.urlMatch(gm.regex.page_watchlaterList)) {
-          // 列表页面
           webpage.adjustWatchlaterListUI()
           webpage.processWatchlaterList()
-        } else if (api.web.urlMatch(gm.regex.page_videoNormalMode)) {
-          // 播放页面（正常模式）
+        } else if (api.web.urlMatch([gm.regex.page_videoNormalMode, gm.regex.page_videoWatchlaterMode], 'OR')) {
           if (gm.config.videoButton) {
-            webpage.addVideoButton_Normal()
-          }
-        } else if (api.web.urlMatch(gm.regex.page_videoWatchlaterMode)) {
-          // 播放页面（稍后再看模式）
-          if (gm.config.videoButton) {
-            webpage.addVideoButton_Watchlater()
+            webpage.addVideoButton()
           }
         }
+
         webpage.processSearchParams()
       } else {
         if (api.web.urlMatch(gm.regex.page_dynamicMenu)) {
-          // 动态入口弹出菜单页面的处理
-          webpage.addMenuScrollbarStyle()
           if (gm.config.fillWatchlaterStatus != Enums.fillWatchlaterStatus.never) {
             webpage.fillWatchlaterStatus()
           }
