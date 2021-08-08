@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站防剧透进度条
-// @version         2.0.3.20210807
+// @version         2.0.4.20210808
 // @namespace       laster2800
 // @author          Laster2800
 // @description     看比赛、看番总是被进度条剧透？装上这个脚本再也不用担心这些问题了
@@ -52,7 +52,7 @@
    * @property {GMObject_data} data 脚本数据
    * @property {GMObject_url} url URL
    * @property {GMObject_regex} regex 正则表达式
-   * @property {GMObject_const} const 常量
+   * @property {{string: *}} const 常量
    * @property {GMObject_menu} menu 菜单
    * @property {{[s: string]: HTMLElement}} el HTML 元素
    */
@@ -120,10 +120,6 @@
    * @property {RegExp} page_videoNormalMode 匹配正常模式播放页
    * @property {RegExp} page_videoWatchlaterMode 匹配稍后再看模式播放页
    * @property {RegExp} page_bangumi 匹配番剧播放页
-   */
-  /**
-   * @typedef GMObject_const
-   * @property {number} fadeTime UI 渐变时间（单位：ms）
    */
   /**
    * @typedef GMObject_menu
@@ -1941,8 +1937,8 @@
           --hint-text-hightlight-color: #555555;
           --background-color: white;
           --background-hightlight-color: #ebebeb;
-          --update-hightlight-color: #c2ffc2;
-          --update-hightlight-hover-color: #a90000;
+          --update-hightlight-color: #4cff9c;
+          --update-hightlight-hover-color: red;
           --border-color: black;
           --shadow-color: #000000bf;
           --hightlight-color: #0075FF;
@@ -2193,10 +2189,10 @@
         }
         #${gm.id} [setting-type=updated] #gm-changelog {
           font-weight: bold;
-          color: var(--important-color);
+          color: var(--update-hightlight-hover-color);
         }
         #${gm.id} [setting-type=updated] #gm-changelog:hover {
-          color: var(--important-color);
+          color: var(--update-hightlight-hover-color);
         }
         #${gm.id} [setting-type=updated] .gm-updated,
         #${gm.id} [setting-type=updated] .gm-updated input,
@@ -2206,8 +2202,9 @@
         #${gm.id} [setting-type=updated] .gm-updated option {
           background-color: var(--background-color);
         }
-        #${gm.id} [setting-type=updated] .gm-updated:hover {
+        #${gm.id} [setting-type=updated] tr:hover .gm-updated {
           color: var(--update-hightlight-hover-color);
+          font-weight: bold;
         }
 
         #${gm.id} #gm-reset:hover,
