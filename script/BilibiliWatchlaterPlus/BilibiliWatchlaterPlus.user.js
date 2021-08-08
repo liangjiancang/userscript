@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.16.25.20210808
+// @version         4.16.26.20210808
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -2532,7 +2532,7 @@
           const top = api.dom.getElementTop(watchlater)
           const bottom = top + watchlater.offsetHeight
           const trim = 2 // 计算因四舍五入与事件触发边缘位置有一定偏差，向内修正以确保正确性（此处理论取 1 即可）
-          return (y >= top + trim && y <= bottom - trim)
+          return y >= top + trim && y <= bottom - trim
         }
 
         /**
