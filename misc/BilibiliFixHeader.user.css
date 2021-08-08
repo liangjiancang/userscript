@@ -1,6 +1,6 @@
 /* ==UserStyle==
 @name           B站顶栏固顶
-@version        1.0.0.20210803
+@version        1.1.0.20210808
 @namespace      laster2800
 @author         Laster2800
 @description    固顶B站顶栏
@@ -15,5 +15,15 @@
 
     #internationalHeader .mini-header:not(.mini-type) {
         background-image: linear-gradient(#000000A0, #00000000);
+    }
+}
+
+@-moz-document domain("t.bilibili.com") {
+    .home-page .left-panel .scroll-content {
+        top: 55px !important;
+    }
+
+    .home-page .right-panel .scroll-content {
+        top: 63px !important;
     }
 }
