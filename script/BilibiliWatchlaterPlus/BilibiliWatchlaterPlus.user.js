@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.16.24.20210808
+// @version         4.16.25.20210808
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -2516,6 +2516,7 @@
         // 模仿官方顶栏弹出菜单的弹出与关闭效果
         popup.fadeInFunction = 'cubic-bezier(0.68, -0.55, 0.27, 1.55)'
         popup.fadeOutFunction = 'cubic-bezier(0.6, -0.3, 0.65, 1)'
+        popup.fadeOutNoInteractive = true
         // 此处必须用 over；若用 enter，且网页刚加载完成时鼠标正好在入口上，无法轻移鼠标以触发事件
         watchlater.addEventListener('mouseover', onOverWatchlater)
         watchlater.addEventListener('mouseleave', onLeaveWatchlater)
@@ -2529,8 +2530,9 @@
         function withinHeader(e) {
           const y = e.clientY
           const top = api.dom.getElementTop(watchlater)
-          const margin = 5
-          return (y > top - margin) && (y < top + margin)
+          const bottom = top + watchlater.offsetHeight
+          const trim = 2 // 计算因四舍五入与事件触发边缘位置有一定偏差，向内修正以确保正确性（此处理论取 1 即可）
+          return (y >= top + trim && y <= bottom - trim)
         }
 
         /**
@@ -2570,11 +2572,15 @@
          */
         function onLeaveWatchlater(e) {
           this.mouseOver = false
-          setTimeout(() => {
-            if (!popup.mouseOver || withinHeader(e)) {
-              script.closeMenuItem('entryPopup')
-            }
-          }, 200)
+          if (withinHeader(e)) {
+            script.closeMenuItem('entryPopup')
+          } else {
+            setTimeout(() => {
+              if (!this.mouseOver && !popup.mouseOver) {
+                script.closeMenuItem('entryPopup')
+              }
+            }, 150)
+          }
         }
 
         /**
@@ -2590,10 +2596,10 @@
         function onLeavePopup() {
           this.mouseOver = false
           setTimeout(() => {
-            if (!watchlater.mouseOver) {
+            if (!this.mouseOver && !watchlater.mouseOver) {
               script.closeMenuItem('entryPopup')
             }
-          }, 80)
+          }, 50)
         }
       }
 
