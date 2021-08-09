@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.17.1.20210808
+// @version         4.17.2.20210810
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -42,6 +42,14 @@
     script.supportURL = script.supportURL ?? 'https://greasyfork.org/zh-CN/scripts/395456/feedback'
   }
 
+  const sortType = {
+    default: 'serial',
+    defaultR: 'serial:R',
+    duration: 'duration',
+    durationR: 'duration:R',
+    uploader: 'uploader',
+    title: 'vTitle',
+  }
   /**
    * 脚本内用到的枚举定义
    */
@@ -77,6 +85,19 @@
     headerCompatible: {
       none: 'none',
       bilibiliEvolved: 'bilibiliEvolved',
+    },
+    /**
+     * @readonly
+     * @enum {string}
+     */
+    sortType: sortType,
+    /**
+     * @readonly
+     * @enum {string}
+     */
+    autoSort: {
+      auto: 'auto',
+      ...sortType,
     },
     /**
      * @readonly
@@ -172,7 +193,8 @@
    * @property {openHeaderMenuLink} openHeaderMenuLink 顶栏弹出菜单链接点击行为
    * @property {boolean} headerMenuKeepRemoved 弹出菜单保留被移除视频
    * @property {boolean} headerMenuSearch 弹出菜单搜索框
-   * @property {boolean} headerMenuAutoRemoveControl 弹出菜单自动移除控制
+   * @property {boolean} headerMenuSortControl 弹出菜单排序控制器
+   * @property {boolean} headerMenuAutoRemoveControl 弹出菜单自动移除控制器
    * @property {boolean} headerMenuFnSetting 弹出菜单：设置
    * @property {boolean} headerMenuFnHistory 弹出菜单：历史
    * @property {boolean} headerMenuFnRemoveAll 弹出菜单：清空
@@ -187,9 +209,11 @@
    * @property {boolean} removeHistoryTimestamp 使用时间戳优化移除记录
    * @property {number} removeHistorySearchTimes 历史回溯深度
    * @property {fillWatchlaterStatus} fillWatchlaterStatus 填充稍后再看状态
+   * @property {autoSort} autoSort 自动排序
    * @property {boolean} videoButton 视频播放页稍后再看状态快速切换
    * @property {autoRemove} autoRemove 自动将视频从播放列表移除
    * @property {boolean} redirect 稍后再看模式重定向至普通模式播放
+   * @property {boolean} listSortControl 列表页面排序控制器
    * @property {openListVideo} openListVideo 列表页面视频点击行为
    * @property {boolean} removeButton_removeAll 移除「一键清空」按钮
    * @property {boolean} removeButton_removeWatched 移除「移除已观看视频」按钮
@@ -316,7 +340,7 @@
   const gm = {
     id: gmId,
     configVersion: GM_getValue('configVersion'),
-    configUpdate: 20210808.1,
+    configUpdate: 20210810,
     searchParams: new URL(location.href).searchParams,
     config: {},
     configMap: {
@@ -328,6 +352,7 @@
       openHeaderMenuLink: { default: Enums.openHeaderMenuLink.openInCurrent, attr: 'value', configVersion: 20200717 },
       headerMenuKeepRemoved: { default: true, attr: 'checked', needNotReload: true, configVersion: 20210724 },
       headerMenuSearch: { default: true, attr: 'checked', configVersion: 20210323.1 },
+      headerMenuSortControl: { default: true, attr: 'checked', configVersion: 20210810 },
       headerMenuAutoRemoveControl: { default: true, attr: 'checked', configVersion: 20210723 },
       headerMenuFnSetting: { default: true, attr: 'checked', configVersion: 20210322 },
       headerMenuFnHistory: { default: true, attr: 'checked', configVersion: 20210322 },
@@ -343,9 +368,11 @@
       removeHistoryTimestamp: { default: true, attr: 'checked', needNotReload: true, configVersion: 20210703 },
       removeHistorySearchTimes: { default: 50, type: 'int', attr: 'value', manual: true, needNotReload: true, min: 1, max: 500, configVersion: 20210808 },
       fillWatchlaterStatus: { default: Enums.fillWatchlaterStatus.dynamic, attr: 'value', configVersion: 20200819 },
+      autoSort: { default: Enums.autoSort.auto, attr: 'value', configVersion: 20210810 },
       videoButton: { default: true, attr: 'checked' },
       autoRemove: { default: Enums.autoRemove.openFromList, attr: 'value', configVersion: 20210612 },
       redirect: { default: false, attr: 'checked', configVersion: 20210322.1 },
+      listSortControl: { default: true, attr: 'checked', configVersion: 20210810 },
       openListVideo: { default: Enums.openListVideo.openInCurrent, attr: 'value', configVersion: 20200717 },
       removeButton_removeAll: { default: false, attr: 'checked', configVersion: 20200722 },
       removeButton_removeWatched: { default: false, attr: 'checked', configVersion: 20200722 },
@@ -438,7 +465,7 @@
         gmValidate(gmKey, defaultValue, writeback = true) {
           const value = GM_getValue(gmKey)
           if (Enums && gmKey in Enums) {
-            if (Enums[gmKey][value]) {
+            if (Object.values(Enums[gmKey]).indexOf(value) >= 0) {
               return value
             }
           } else if (typeof value == typeof defaultValue) { // typeof null == 'object'，对象默认值赋 null 无需额外处理
@@ -670,7 +697,7 @@
           }
 
           // 功能性更新后更新此处配置版本
-          if (gm.configVersion < 20210808.1) {
+          if (gm.configVersion < 20210810) {
             _self.openUserSetting(2)
           } else {
             gm.configVersion = gm.configUpdate
@@ -760,7 +787,7 @@
               <div class="gm-items">
                 <table>
                   <tr class="gm-item" title="在顶栏「动态」和「收藏」之间加入稍后再看入口，鼠标移至上方时弹出列表菜单，支持点击功能设置。">
-                    <td rowspan="11"><div>全局功能</div></td>
+                    <td rowspan="12"><div>全局功能</div></td>
                     <td>
                       <label>
                         <span>在顶栏中加入稍后再看入口</span>
@@ -768,7 +795,7 @@
                       </label>
                     </td>
                   </tr>
-                  <tr class="gm-subitem" title="选择左键点击入口时执行的操作。">
+                  <tr class="gm-subitem" sup="headerButton" title="选择左键点击入口时执行的操作。">
                     <td>
                       <div>
                         <span>在入口上点击鼠标左键时</span>
@@ -776,7 +803,7 @@
                       </div>
                     </td>
                   </tr>
-                  <tr class="gm-subitem" title="选择右键点击入口时执行的操作。">
+                  <tr class="gm-subitem" sup="headerButton" title="选择右键点击入口时执行的操作。">
                     <td>
                       <div>
                         <span>在入口上点击鼠标右键时</span>
@@ -784,7 +811,7 @@
                       </div>
                     </td>
                   </tr>
-                  <tr class="gm-subitem" title="选择中键点击入口时执行的操作。">
+                  <tr class="gm-subitem" sup="headerButton" title="选择中键点击入口时执行的操作。">
                     <td>
                       <div>
                         <span>在入口上点击鼠标中键时</span>
@@ -792,7 +819,7 @@
                       </div>
                     </td>
                   </tr>
-                  <tr class="gm-subitem" title="设置入口弹出菜单。">
+                  <tr class="gm-subitem" sup="headerButton" title="设置入口弹出菜单。">
                     <td>
                       <div>
                         <span>将鼠标移动至入口上方时</span>
@@ -804,7 +831,7 @@
                       </div>
                     </td>
                   </tr>
-                  <tr class="gm-subitem" title="选择在弹出菜单中点击链接的行为。">
+                  <tr class="gm-subitem" sup="headerButton" title="选择在弹出菜单中点击链接的行为。">
                     <td>
                       <div>
                         <span>在弹出菜单中点击链接时</span>
@@ -815,7 +842,7 @@
                       </div>
                     </td>
                   </tr>
-                  <tr class="gm-subitem" title="在弹出菜单中显示自页面打开以来，从弹出菜单移除的视频。">
+                  <tr class="gm-subitem" sup="headerButton" title="在弹出菜单中显示自页面打开以来，从弹出菜单移除的视频。">
                     <td>
                       <label>
                         <span>在弹出菜单中显示被移除的视频</span>
@@ -823,7 +850,7 @@
                       </label>
                     </td>
                   </tr>
-                  <tr class="gm-subitem" title="在弹出菜单顶部显示搜索框。">
+                  <tr class="gm-subitem" sup="headerButton" title="在弹出菜单顶部显示搜索框。">
                     <td>
                       <label>
                         <span>在弹出菜单顶部显示搜索框</span>
@@ -831,15 +858,23 @@
                       </label>
                     </td>
                   </tr>
-                  <tr class="gm-subitem" title="在弹出菜单底部显示自动移除控制。">
+                  <tr class="gm-subitem" sup="headerButton" title="在弹出菜单底部显示排序控制器。">
                     <td>
                       <label>
-                        <span>在弹出菜单底部显示自动移除控制</span>
+                        <span>在弹出菜单底部显示排序控制器</span>
+                        <input id="gm-headerMenuSortControl" type="checkbox">
+                      </label>
+                    </td>
+                  </tr>
+                  <tr class="gm-subitem" sup="headerButton" title="在弹出菜单底部显示自动移除控制器。">
+                    <td>
+                      <label>
+                        <span>在弹出菜单底部显示自动移除控制器</span>
                         <input id="gm-headerMenuAutoRemoveControl" type="checkbox">
                       </label>
                     </td>
                   </tr>
-                  <tr class="gm-subitem" title="设置在弹出列表显示的快捷功能。">
+                  <tr class="gm-subitem" sup="headerButton" title="设置在弹出列表显示的快捷功能。">
                     <td>
                       <div class="gm-lineitems">
                         <span>在弹出菜单底部显示：</span>
@@ -864,7 +899,7 @@
                       </div>
                     </td>
                   </tr>
-                  <tr class="gm-subitem" title="无须兼容第三方顶栏时务必选择「无」，否则脚本无法正常工作！若列表中没有提供您需要的第三方顶栏，且该第三方顶栏有一定用户基数，可在脚本反馈页发起请求。">
+                  <tr class="gm-subitem" sup="headerButton" title="无须兼容第三方顶栏时务必选择「无」，否则脚本无法正常工作！若列表中没有提供您需要的第三方顶栏，且该第三方顶栏有一定用户基数，可在脚本反馈页发起请求。">
                     <td>
                       <div>
                         <span>兼容第三方顶栏：</span>
@@ -887,7 +922,7 @@
                       </label>
                     </td>
                   </tr>
-                  <tr class="gm-subitem" title="选择在何时保存稍后再看历史数据。无论选择哪一种方式，在同一个 URL 对应的页面下至多触发一次保存。">
+                  <tr class="gm-subitem" sup="removeHistory" title="选择在何时保存稍后再看历史数据。无论选择哪一种方式，在同一个 URL 对应的页面下至多触发一次保存。">
                       <td>
                         <div>
                           <span>为了生成移除记录，</span>
@@ -900,7 +935,7 @@
                         </div>
                       </td>
                   </tr>
-                  <tr class="gm-subitem" title="设置模糊比对深度以快速舍弃重复数据从而降低开销，但可能会造成部分记录遗漏。">
+                  <tr class="gm-subitem" sup="removeHistory" title="设置模糊比对深度以快速舍弃重复数据从而降低开销，但可能会造成部分记录遗漏。">
                     <td>
                       <div>
                         <span>模糊比对模式深度</span>
@@ -909,7 +944,7 @@
                       </div>
                     </td>
                   </tr>
-                  <tr class="gm-subitem" title="较大的数值可能会带来较大的开销（具体参考右侧弹出说明）。将该项修改为比原来小的值会清理过期数据，无法恢复！">
+                  <tr class="gm-subitem" sup="removeHistory" title="较大的数值可能会带来较大的开销（具体参考右侧弹出说明）。将该项修改为比原来小的值会清理过期数据，无法恢复！">
                     <td>
                       <div>
                         <span>不重复数据记录保存数</span>
@@ -920,7 +955,7 @@
                       </div>
                     </td>
                   </tr>
-                  <tr class="gm-subitem" title="在稍后再看历史数据记录中保存时间戳，以其优化对数据记录的排序及展示。">
+                  <tr class="gm-subitem" sup="removeHistory" title="在稍后再看历史数据记录中保存时间戳，以其优化对数据记录的排序及展示。">
                     <td>
                       <label>
                         <span>使用时间戳优化移除记录</span>
@@ -929,7 +964,7 @@
                       </label>
                     </td>
                   </tr>
-                  <tr class="gm-subitem" title="搜寻时在最近多少条数据记录中查找，设置较小的值能较好地定位最近被添加到稍后再看的视频。">
+                  <tr class="gm-subitem" sup="removeHistory" title="搜寻时在最近多少条数据记录中查找，设置较小的值能较好地定位最近被添加到稍后再看的视频。">
                     <td>
                       <div>
                         <span>默认历史回溯深度</span>
@@ -950,6 +985,24 @@
                           <option value="${Enums.fillWatchlaterStatus.never}">禁用功能</option>
                         </select>
                         <span id="gm-fwsInformation" class="gm-information" title>💬</span>
+                      </div>
+                    </td>
+                  </tr>
+
+                  <tr class="gm-item" title="在列表页面及顶栏入口弹出菜单内对稍后再看列表内容自动排序。">
+                    <td><div>全局功能</div></td>
+                    <td>
+                      <div>
+                        <span>自动排序：</span>
+                        <select id="gm-autoSort">
+                          <option value="${Enums.autoSort.auto}">由排序控制器决定</option>
+                          <option value="${Enums.autoSort.default}">[ 默认 ]（禁用功能）</option>
+                          <option value="${Enums.autoSort.defaultR}">[ 默认↓ ]</option>
+                          <option value="${Enums.autoSort.duration}">[ 时长 ]</option>
+                          <option value="${Enums.autoSort.durationR}">[ 时长↓ ]</option>
+                          <option value="${Enums.autoSort.uploader}">[ UP 主 ]</option>
+                          <option value="${Enums.autoSort.title}">[ 标题 ]</option>
+                        </select>
                       </div>
                     </td>
                   </tr>
@@ -985,6 +1038,16 @@
                       <label>
                         <span>从稍后再看模式强制切换到普通模式播放</span>
                         <input id="gm-redirect" type="checkbox">
+                      </label>
+                    </td>
+                  </tr>
+
+                  <tr class="gm-item" title="在列表页面显示排序控制器。">
+                    <td><div>列表页面</div></td>
+                    <td>
+                      <label>
+                        <span>显示排序控制器</span>
+                        <input id="gm-listSortControl" type="checkbox">
                       </label>
                     </td>
                   </tr>
@@ -1243,20 +1306,23 @@
          */
         const processConfigItem = () => {
           // 子项与父项相关联
-          const subitemChange = (item, subs) => {
-            for (const el of subs) {
-              const parent = el.parentNode
-              if (item.checked) {
-                parent.removeAttribute('disabled')
-              } else {
-                parent.setAttribute('disabled', '')
-              }
-              el.disabled = !item.checked
+          const subitemChange = (item, sup) => {
+            const subitems = el.items.querySelectorAll(`[sup="${sup}"]`)
+            for (const subitem of subitems) {
+              subitem.querySelectorAll('[id|=gm]').forEach(option => {
+                const parent = option.parentNode
+                if (item.checked) {
+                  parent.removeAttribute('disabled')
+                } else {
+                  parent.setAttribute('disabled', '')
+                }
+                option.disabled = !item.checked
+              })
             }
           }
           el.headerMenuFn = el.headerMenuFnSetting.parentNode.parentNode
           el.headerButton.init = function() {
-            subitemChange(this, [el.headerButtonOpL, el.headerButtonOpR, el.headerButtonOpM, el.headerMenu, el.openHeaderMenuLink, el.headerMenuKeepRemoved, el.headerMenuSearch, el.headerMenuAutoRemoveControl, el.headerMenuFnSetting, el.headerMenuFnHistory, el.headerMenuFnRemoveAll, el.headerMenuFnRemoveWatched, el.headerMenuFnShowAll, el.headerMenuFnPlayAll, el.headerCompatible])
+            subitemChange(this, 'headerButton')
             if (this.checked) {
               el.headerMenuFn.removeAttribute('disabled')
             } else {
@@ -1273,7 +1339,7 @@
             setHcWarning()
           }
           el.removeHistory.init = function() {
-            subitemChange(this, [el.removeHistorySavePoint, el.removeHistoryFuzzyCompare, el.removeHistorySaves, el.removeHistoryTimestamp, el.removeHistorySearchTimes])
+            subitemChange(this, 'removeHistory')
             setRhWaring()
           }
           el.removeHistory.onchange = function() {
@@ -2714,7 +2780,22 @@
                   <a class="gm-entry-button" fn="removeWatched" href="${gm.url.noop}" target="_self">移除已看</a>
                   <a class="gm-entry-button" fn="showAll" href="${gm.url.page_watchlaterList}" target="${target}">显示</a>
                   <a class="gm-entry-button" fn="playAll" href="${gm.url.page_watchlaterPlayAll}" target="${target}">播放</a>
-                  <a class="gm-entry-button" fn="autoRemoveControl" href="${gm.url.noop}" target="_self">自动移除</a>
+                  <a class="gm-entry-button" fn="sortControl" href="${gm.url.noop}" target="_self">
+                    <div class="gm-select">
+                      <div class="gm-selected" value="">排序</div>
+                      <div class="gm-options">
+                        <div class="gm-option" value="${Enums.sortType.title}">标题</div>
+                        ${gm.config.headerMenu == Enums.headerMenu.enable ? `
+                          <div class="gm-option" value="${Enums.sortType.uploader}">UP 主</div>
+                          <div class="gm-option" value="${Enums.sortType.durationR}">时长↓</div>
+                          <div class="gm-option" value="${Enums.sortType.duration}">时长</div>
+                        ` : ''}
+                        <div class="gm-option" value="${Enums.sortType.defaultR}">默认↓</div>
+                        <div class="gm-option gm-option-selected" value="${Enums.sortType.default}">默认</div>
+                      </div>
+                    </div>
+                  </a>
+                  <a class="gm-entry-button" fn="autoRemoveControl" href="${gm.url.noop}" target="_self">移除</a>
                 </div>
               </div>
             `
@@ -2735,9 +2816,6 @@
             gm.menu.entryPopup.openHandler = onOpen
             gm.menu.entryPopup.openedHandler = () => {
               gm.config.headerMenuSearch && el.search.focus()
-              if (el.search.value.length > 0) {
-                el.search.dispatchEvent(new Event('input'))
-              }
             }
 
             if (gm.config.headerMenuSearch) {
@@ -2819,7 +2897,79 @@
                 el.entryFn[fn] = button
               }
             }
-            // 自动移除控制
+
+            // 排序控制器
+            {
+              el.entryFn.sortControl.control = el.entryFn.sortControl.firstElementChild
+              const control = el.entryFn.sortControl.control
+              const selected = control.selected = control.children[0]
+              const options = control.options = control.children[1]
+
+              let defaultSelect = options.querySelector('.gm-option-selected') ?? options.firstElementChild
+              if (gm.config.autoSort != Enums.autoSort.default) {
+                let type = gm.config.autoSort
+                if (type == Enums.autoSort.auto) {
+                  type = GM_getValue('autoSort_auto')
+                  if (!type) {
+                    type = Enums.sortType.default
+                    GM_setValue('autoSort_auto', type)
+                  }
+                }
+                selected.option = options.querySelector(`[value="${type}"]`)
+                if (selected.option) {
+                  defaultSelect && api.dom.removeClass(defaultSelect, 'gm-option-selected')
+                  api.dom.addClass(selected.option, 'gm-option-selected')
+                  selected.setAttribute('value', selected.option.getAttribute('value'))
+                } else if (gm.config.autoSort == Enums.autoSort.auto) {
+                  type = Enums.sortType.default
+                  GM_setValue('autoSort_auto', type)
+                }
+              }
+              if (!selected.option) {
+                selected.option = defaultSelect
+                if (selected.option) {
+                  api.dom.addClass(selected.option, 'gm-option-selected')
+                  selected.setAttribute('value', selected.option.getAttribute('value'))
+                }
+              }
+
+              if (gm.config.headerMenuSortControl) {
+                el.entryFn.sortControl.setAttribute('enabled', '')
+                options.fadeOutNoInteractive = true
+
+                el.entryFn.sortControl.addEventListener('click', function() {
+                  if (!control.selecting) {
+                    control.selecting = true
+                    api.dom.fade(true, options)
+                  }
+                })
+                el.entryFn.sortControl.addEventListener('mouseenter', function() {
+                  control.selecting = true
+                  api.dom.fade(true, options)
+                })
+                el.entryFn.sortControl.addEventListener('mouseleave', function() {
+                  control.selecting = false
+                  api.dom.fade(false, options)
+                })
+                options.addEventListener('click', function(e) {
+                  control.selecting = false
+                  api.dom.fade(false, this)
+                  const val = e.target.getAttribute('value')
+                  if (selected.getAttribute('value') != val) {
+                    api.dom.removeClass(selected.option, 'gm-option-selected')
+                    selected.setAttribute('value', val)
+                    selected.option = e.target
+                    api.dom.addClass(selected.option, 'gm-option-selected')
+                    if (gm.config.autoSort == Enums.autoSort.auto) {
+                      GM_setValue('autoSort_auto', val)
+                    }
+                    sort(val)
+                  }
+                })
+              }
+            }
+
+            // 自动移除控制器
             const cfgAutoRemove = gm.config.autoRemove
             const autoRemove = cfgAutoRemove == Enums.autoRemove.always || cfgAutoRemove == Enums.autoRemove.openFromList
             el.entryFn.autoRemoveControl.autoRemove = autoRemove
@@ -2894,6 +3044,7 @@
                 rmBvid.add(rmCard.bvid)
               }
             }
+            gm.menu.entryPopup.sortType = Enums.sortType.default
             el.searchClear.style.visibility = 'hidden'
             el.popupTotal.innerText = '0'
             el.entryList.innerHTML = ''
@@ -2908,6 +3059,7 @@
               data = await gm.data.watchlaterListData(false, true, true) // 启用本地缓存但禁用页面缓存
             }
             const simplePopup = gm.config.headerMenu == Enums.headerMenu.enableSimple
+            let serial = 0
             if (data.length > 0) {
               const openLinkInCurrent = gm.config.openHeaderMenuLink == Enums.openHeaderMenuLink.openInCurrent
               const redirect = gm.config.redirect
@@ -2915,6 +3067,7 @@
               for (const item of data) {
                 /** @type {HTMLAnchorElement} */
                 const card = el.entryList.appendChild(document.createElement('a'))
+                card.serial = serial++
                 const valid = item.state >= 0
                 card.vTitle = item.title
                 card.bvid = item.bvid
@@ -2932,8 +3085,10 @@
                   card.className = 'gm-entry-list-simple-item'
                 } else {
                   card.uploader = item.owner.name
+                  card.duration = item.duration
                   const multiP = item.videos > 1
-                  const duration = multiP ? `${item.videos}P` : _self.method.getSTimeString(item.duration)
+                  const duration = _self.method.getSTimeString(item.duration)
+                  const durationP = multiP ? `${item.videos}P` : duration
                   const played = item.progress > 0
                   let progress = ''
                   if (played) {
@@ -2943,12 +3098,15 @@
                       progress = _self.method.getSTimeString(item.progress)
                     }
                   }
-                  card.className = 'gm-entry-list-item'
+                  card.className = `gm-entry-list-item${multiP ? ' gm-card-multiP' : ''}`
                   card.innerHTML = `
                     <div class="gm-card-left">
                       <img class="gm-card-cover" src="${item.pic}@156w_88h_1c_100q.webp">
                       <div class="gm-card-switcher"></div>
-                      <div class="gm-card-duration">${duration}</div>
+                      <div class="gm-card-duration">
+                        <div>${duration}</div>
+                        ${multiP ? `<div>${durationP}</div>` : ''}
+                      </div>
                     </div>
                     <div class="gm-card-right">
                       <div class="gm-card-title">${valid ? card.vTitle : `<b>[已失效]</b> ${card.vTitle}`}</div>
@@ -3050,6 +3208,7 @@
             if (rmCards?.length > 0) {
               const addedBvid = new Set()
               for (const rmCard of rmCards) {
+                rmCard.serial = serial++
                 const bvid = rmCard.bvid
                 if (addedBvid.has(bvid)) continue
                 if (rmBvid.has(bvid)) {
@@ -3083,6 +3242,49 @@
             gm.el.entryPopup.style.display = 'unset'
             el.entryList.scrollTop = 0
             el.entryRemovedList.scrollTop = 0
+
+            const sortType = el.entryFn.sortControl.control.selected.getAttribute('value')
+            sortType && sort(sortType)
+            if (el.search.value.length > 0) {
+              el.search.dispatchEvent(new Event('input'))
+            }
+          }
+
+          /**
+           * 对弹出菜单列表中的内容进行排序
+           * @param {sortType} type 排序类型
+           */
+          const sort = type => {
+            if (type == gm.menu.entryPopup.sortType) return
+            gm.menu.entryPopup.sortType = type
+            if (el.entryList.total < 2 && el.entryRemovedList.total < 2) return
+            let reverse = type.endsWith(':R')
+            const k = type.replace(/:R$/, '')
+
+            const lists = []
+            if (el.entryList.total > 1) {
+              lists.push(el.entryList)
+            }
+            if (el.entryRemovedList.total > 1) {
+              lists.push(el.entryRemovedList)
+            }
+            for (const list of lists) {
+              const cards = Array.from(list.children)
+              cards.sort((a, b) => {
+                let result = 0
+                const va = a[k]
+                const vb = b[k]
+                if (typeof va == 'string') {
+                  result = va.localeCompare(vb)
+                } else if (!isNaN(va)) {
+                  result = va - vb
+                }
+                return reverse ? -result : result
+              })
+              for (const card of cards) {
+                list.appendChild(card)
+              }
+            }
           }
         }
       }
@@ -3404,35 +3606,36 @@
      * @async
      */
     async processWatchlaterList() {
-      let autoRemoveButton = null
+      const _self = this
+      const sortable = gm.config.autoSort != Enums.autoSort.default || gm.config.listSortControl
+      let autoRemoveControl = null
       if (gm.config.autoRemove != Enums.autoRemove.absoluteNever) {
-        autoRemoveButton = await api.wait.waitQuerySelector('#gm-auto-remove')
+        autoRemoveControl = await api.wait.waitQuerySelector('#gm-auto-remove-control')
       }
       const listBox = await api.wait.waitQuerySelector('.watch-later-list .list-box')
       const elTotal = await api.wait.waitQuerySelector('header .t em')
-      // 尽管事实上列表页面中的视频是一次加载完成，但这里保守地认为它们是动态加载的
-      api.wait.executeAfterElementLoaded({
-        selector: '.av-item:not(.gm-watchlater-item-deleted)',
-        base: listBox,
-        multiple: true,
-        repeat: true,
-        timeout: 0,
-        callback: item => {
-          if (item.children.length > 0) { // 页面变换过程中会有一些莫名其妙的空元素被加进来又立即被移除
-            item.querySelectorAll('a:not([class=user])').forEach(link => processLink(item, link, autoRemoveButton))
-            processDelBtn(item, item.querySelector('.btn-del'))
-          }
-        },
+      listBox.querySelectorAll('.av-item').forEach(item => {
+        if (sortable) {
+          extractInfo(item)
+        }
+        item.querySelectorAll('a:not([class=user])').forEach(link => processLink(item, link, autoRemoveControl))
+        processDelBtn(item, item.querySelector('.btn-del'))
       })
       const ob = new MutationObserver(api.tool.debounce(() => updateTotal(), 500))
       ob.observe(listBox.firstElementChild, { childList: true })
+      if (sortable) {
+        const sortControl = await api.wait.waitQuerySelector('#gm-sort-control')
+        if (sortControl.value != sortControl.prevVal) {
+          _self.sortWatchlaterList()
+        }
+      }
 
       /**
        * 更新列表上方的视频总数统计
        */
       function updateTotal() {
-        const all = listBox.firstElementChild.children.length
-        const total = all - listBox.querySelectorAll('.gm-watchlater-item-deleted').length
+        const all = listBox.querySelectorAll('.av-item:not(.gm-watchlater-item-deleted-origin)').length
+        const total = all - listBox.querySelectorAll('.gm-watchlater-item-deleted:not(.gm-watchlater-item-deleted-origin)').length
         elTotal.innerText = `（${total}/${all}/100）`
       }
 
@@ -3440,18 +3643,18 @@
        * 根据 `autoRemove` 处理链接
        * @param {HTMLElement} base 基元素
        * @param {HTMLAnchorElement} link 链接元素
-       * @param {HTMLElement} [arb] 自动移除按钮，为 `null` 时表示彻底禁用自动移除功能
+       * @param {HTMLElement} [arc] 自动移除按钮，为 `null` 时表示彻底禁用自动移除功能
        */
-      function processLink(base, link, arb) {
+      function processLink(base, link, arc) {
         link.target = gm.config.openListVideo == Enums.openListVideo.openInCurrent ? '_self' : '_blank'
-        if (arb) {
+        if (arc) {
           if (link.href && gm.regex.page_videoWatchlaterMode.test(link.href)) { // 视频被和谐或其他特殊情况
             link.addEventListener('mousedown', function(e) {
               if (e.button == 0 || e.button == 1) { // 左键或中键
                 if (!this._originalHref) {
                   this._originalHref = this.href
                 }
-                if (arb.autoRemove) {
+                if (arc.autoRemove) {
                   if (gm.config.autoRemove != Enums.autoRemove.always) {
                     const url = new URL(this.href)
                     url.searchParams.set(`${gm.id}_remove`, 'true')
@@ -3472,10 +3675,15 @@
             })
             link.addEventListener('mouseup', function(e) {
               if (e.button == 0 || e.button == 1) { // 左键或中键
-                if (arb.autoRemove) {
+                if (arc.autoRemove) {
                   // 添加移除样式并移动至列表末尾
                   api.dom.addClass(base, 'gm-watchlater-item-deleted')
-                  setTimeout(() => base.parentNode.appendChild(base), 100)
+                  setTimeout(() => {
+                    base.parentNode.appendChild(base)
+                    if (sortable) {
+                      _self.sortWatchlaterList(true)
+                    }
+                  }, 100)
                 }
               }
             })
@@ -3495,10 +3703,74 @@
       function processDelBtn(base, del) {
         // 捕获拦截，将其克隆节点添加移除样式后添加至列表末尾
         del.addEventListener('click', function() {
+          // 在排序之后点击移除按钮，click 事件会神奇地触发两次
+          if (api.dom.containsClass(base, 'gm-watchlater-item-deleted-origin')) return
           const cloned = base.cloneNode(true)
+          api.dom.addClass(base, 'gm-watchlater-item-deleted-origin')
           api.dom.addClass(cloned, 'gm-watchlater-item-deleted')
           base.parentNode.appendChild(cloned)
+          if (sortable) {
+            extractInfo(cloned)
+            _self.sortWatchlaterList(true)
+          }
         }, true)
+      }
+
+      /**
+       * 提取列表项信息
+       * @param {HTMLElement} item 列表项
+       */
+      function extractInfo(item) {
+        item.serial = parseInt(item.querySelector('.key').innerText)
+        item.vTitle = item.querySelector('.t').innerText
+        item.uploader = item.querySelector('.user').innerText
+        item.duration = (function(text) {
+          if (!text) return Infinity // 有分 P 直接拉到最高
+          let result = 0
+          const factors = [24 * 3600, 3600, 60, 1]
+          const parts = text.split(':')
+          while (parts.length > 0) {
+            result += parts.pop() * factors.pop()
+          }
+          return result
+        })(item.querySelector('.corner')?.innerText)
+      }
+    }
+
+    /**
+     * 对稍后再看列表页面进行排序
+     * @async
+     * @param {boolean} [onlyDeleted] 是否只对移除列表排序
+     */
+    async sortWatchlaterList(onlyDeleted) {
+      const sortControl = await api.wait.waitQuerySelector('#gm-sort-control')
+      const type = sortControl.value
+      sortControl.prevVal = type
+      let reverse = type.endsWith(':R')
+      const k = type.replace(/:R$/, '')
+
+      const listBox = await api.wait.waitQuerySelector('.watch-later-list .list-box')
+      const container = listBox.querySelector('.av-item').parentNode
+      const lists = []
+      if (!onlyDeleted) {
+        lists.push(Array.from(listBox.querySelectorAll('.av-item:not(.gm-watchlater-item-deleted, .gm-watchlater-item-deleted-origin)')))
+      }
+      lists.push(Array.from(listBox.querySelectorAll('.av-item.gm-watchlater-item-deleted:not(.gm-watchlater-item-deleted-origin)')))
+      for (const items of lists) {
+        items.sort((a, b) => {
+          let result = 0
+          const va = a[k]
+          const vb = b[k]
+          if (typeof va == 'string') {
+            result = va.localeCompare(vb)
+          } else if (!isNaN(va)) {
+            result = va - vb
+          }
+          return reverse ? -result : result
+        })
+        for (const item of items) {
+          container.appendChild(item)
+        }
       }
     }
 
@@ -3581,7 +3853,7 @@
      * @async
      */
     async adjustWatchlaterListUI() {
-      /** @type {HTMLElement} */
+      const _self = this
       const r_con = await api.wait.waitQuerySelector('.watch-later-list.bili-wrapper header .r-con')
       // 页面上本来就存在的「全部播放」按钮不要触发重定向
       const setPlayAll = el => {
@@ -3620,38 +3892,106 @@
         r_con.children[2].style.display = 'none'
       }
 
-      // 增加临时切换自动移除功能的「自动移除」按钮
+      // 增加排序控制
+      {
+        const sortControlButton = r_con.insertAdjacentElement('afterbegin', document.createElement('div'))
+        const control = sortControlButton.appendChild(document.createElement('select'))
+        sortControlButton.className = 'gm-sort-control-container'
+        control.id = 'gm-sort-control'
+        control.innerHTML = `
+          <option value="${Enums.sortType.default}" selected>排序：默认</option>
+          <option value="${Enums.sortType.defaultR}">排序：默认↓</option>
+          <option value="${Enums.sortType.duration}">排序：时长</option>
+          <option value="${Enums.sortType.durationR}">排序：时长↓</option>
+          <option value="${Enums.sortType.uploader}">排序：UP 主</option>
+          <option value="${Enums.sortType.title}">排序：标题</option>
+        `
+        control.prevVal = control.value
+
+        if (gm.config.autoSort != Enums.autoSort.default) {
+          let type = gm.config.autoSort
+          if (type == Enums.autoSort.auto) {
+            type = GM_getValue('autoSort_auto')
+            if (!type) {
+              type = Enums.sortType.default
+              GM_setValue('autoSort_auto', type)
+            }
+          }
+          control.value = type
+        }
+
+        if (gm.config.listSortControl) {
+          /*
+           * 在 control 外套一层，借助这层给 control 染色的原因是：
+           * 如果不这样做，那么点击 control 弹出的下拉框与 control 之间有几个像素的距离，鼠标从 control 移动到下拉框
+           * 的过程中，若鼠标移动速度较慢，会使 control 脱离 hover 状态。
+           * 不管是标准还是浏览器的的锅：凭什么鼠标移动到 option 上 select「不一定」是 hover 状态——哪怕设计成「一定不」
+           * 都是合理的。
+           */
+          GM_addStyle(`
+            .gm-sort-control-container {
+              display: inline-block;
+              padding-bottom: 5px;
+            }
+            .gm-sort-control-container:hover select {
+              background: #00a1d6;
+              color: #fff;
+            }
+            .gm-sort-control-container select {
+              appearance: none;
+              text-align-last: center;
+              line-height: 16.6px;
+            }
+            .gm-sort-control-container option {
+              background: var(--background-color);
+              color: var(--text-color);
+            }
+          `)
+          control.className = 's-btn gm-s-btn'
+
+          control.addEventListener('change', function() {
+            if (gm.config.autoSort == Enums.autoSort.auto) {
+              GM_setValue('autoSort_auto', this.value)
+            }
+            _self.sortWatchlaterList()
+          })
+        } else {
+          sortControlButton.style.display = 'none'
+        }
+      }
+
+      // 增加自动移除控制器
       if (gm.config.autoRemove != Enums.autoRemove.absoluteNever) {
         GM_addStyle(`
-          .watch-later-list header .s-btn.gm-s-btn.gm-s-btn-enabled {
-            background: #00a1d6;
-            color: #fff;
-          }
-          .watch-later-list header .s-btn.gm-s-btn:not(.gm-s-btn-enabled):hover {
+          #gm-auto-remove-control {
             background: #fff;
             color: #00a1d6;
           }
+          #gm-auto-remove-control[enabled] {
+            background: #00a1d6;
+            color: #fff;
+          }
         `)
         const autoRemove = gm.config.autoRemove == Enums.autoRemove.always || gm.config.autoRemove == Enums.autoRemove.openFromList
-        const autoRemoveButton = r_con.insertBefore(document.createElement('div'), r_con.children[0])
-        autoRemoveButton.id = 'gm-auto-remove'
-        autoRemoveButton.innerText = '自动移除'
-        autoRemoveButton.title = '临时切换在当前页面打开视频后是否将其自动移除出「稍后再看」。若要默认开启/关闭自动移除功能，请在「设置」中配置。'
-        autoRemoveButton.className = 's-btn gm-s-btn'
-        autoRemoveButton.autoRemove = autoRemove
+        const autoRemoveControl = r_con.insertAdjacentElement('afterbegin', document.createElement('div'))
+        autoRemoveControl.id = 'gm-auto-remove-control'
+        autoRemoveControl.innerText = '自动移除'
+        autoRemoveControl.title = '临时切换在当前页面打开视频后是否将其自动移除出「稍后再看」。若要默认开启/关闭自动移除功能，请在「用户设置」中配置。'
+        autoRemoveControl.className = 's-btn gm-s-btn'
+        autoRemoveControl.autoRemove = autoRemove
         if (autoRemove) {
-          api.dom.addClass(autoRemoveButton, 'gm-s-btn-enabled')
+          autoRemoveControl.setAttribute('enabled', '')
         }
-        autoRemoveButton.onclick = function() {
+        autoRemoveControl.addEventListener('click', function() {
           if (this.autoRemove) {
-            api.dom.removeClass(this, 'gm-s-btn-enabled')
+            autoRemoveControl.removeAttribute('enabled')
             api.message.create('已临时关闭自动移除功能')
           } else {
-            api.dom.addClass(this, 'gm-s-btn-enabled')
+            autoRemoveControl.setAttribute('enabled', '')
             api.message.create('已临时开启自动移除功能')
           }
           this.autoRemove = !this.autoRemove
-        }
+        })
       }
     }
 
@@ -3789,6 +4129,7 @@
             --scrollbar-background-color: transparent;
             --scrollbar-thumb-color: #0000002b;
             --opacity-fade-transition: opacity ${gm.const.fadeTime}ms ease-in-out;
+            --opacity-fade-quick-transition: opacity ${gm.const.fadeTime}ms cubic-bezier(0.68, -0.55, 0.27, 1.55);
           }
   
           #${gm.id} {
@@ -3805,7 +4146,7 @@
             opacity: 0;
             display: none;
             position: absolute;
-            z-index: 15000;
+            z-index: 14000;
             user-select: none;
             width: 32em;
             padding-top: 1em;
@@ -3937,7 +4278,7 @@
             height: 34px;
             top: calc(2.2em - 17px);
             left: calc(3.9em - 17px);
-            z-index: 1;
+            z-index: 2;
             display: none;
             cursor: pointer;
           }
@@ -3947,7 +4288,8 @@
           #${gm.id} .gm-entrypopup .gm-entry-list .gm-entry-list-item:hover .gm-card-switcher {
             display: unset;
           }
-          #${gm.id} .gm-entrypopup .gm-entry-list .gm-entry-list-item .gm-card-duration {
+          #${gm.id} .gm-entrypopup .gm-entry-list .gm-entry-list-item .gm-card-duration,
+          #${gm.id} .gm-entrypopup .gm-entry-list .gm-card-multiP .gm-card-duration > * {
             position: absolute;
             bottom: 0;
             right: 0;
@@ -3957,6 +4299,17 @@
             padding: 2px 3px;
             font-size: 0.8em;
             z-index: 1;
+          }
+          #${gm.id} .gm-entrypopup .gm-entry-list .gm-card-multiP .gm-card-duration > * {
+            transition: var(--opacity-fade-quick-transition);
+          }
+          #${gm.id} .gm-entrypopup .gm-entry-list .gm-card-multiP .gm-card-duration :first-child,
+          #${gm.id} .gm-entrypopup .gm-entry-list .gm-card-multiP:hover .gm-card-duration :last-child {
+            opacity: 0;
+          }
+          #${gm.id} .gm-entrypopup .gm-entry-list .gm-card-multiP:hover .gm-card-duration :first-child,
+          #${gm.id} .gm-entrypopup .gm-entry-list .gm-card-multiP .gm-card-duration :last-child {
+            opacity: 1;
           }
           #${gm.id} .gm-entrypopup .gm-entry-list .gm-entry-list-item .gm-card-right {
             position: relative;
@@ -4055,7 +4408,36 @@
             color: var(--disabled-color);
             cursor: not-allowed;
           }
-  
+
+          #${gm.id} .gm-entrypopup .gm-entry-bottom .gm-entry-button .gm-select {
+            position: relative;
+          }
+          #${gm.id} .gm-entrypopup .gm-entry-bottom .gm-entry-button .gm-options {
+            position: absolute;
+            bottom: 1.8em;
+            left: calc(50% - 2.5em);
+            width: 5em;
+            border-radius: 4px;
+            box-shadow: var(--box-shadow-color) 0px 3px 6px;
+            background-color: var(--background-color);
+            color: var(--text-color);
+            padding: 0.15em 0;
+            display: none;
+            opacity: 0;
+            transition: var(--opacity-fade-quick-transition);
+            z-index: 10;
+          }
+          #${gm.id} .gm-entrypopup .gm-entry-bottom .gm-entry-button .gm-option {
+            padding: 0.15em 0.6em;
+          }
+          #${gm.id} .gm-entrypopup .gm-entry-bottom .gm-entry-button .gm-option:hover {
+            color: var(--hightlight-color);
+            background-color: var(--background-hightlight-color);
+          }
+          #${gm.id} .gm-entrypopup .gm-entry-bottom .gm-entry-button .gm-option.gm-option-selected {
+            font-weight: bold;
+          }
+
           #${gm.id} .gm-entrypopup .gm-entry-bottom .gm-entry-button[fn=autoRemoveControl]:not([disabled]),
           #${gm.id} .gm-entrypopup .gm-entry-bottom .gm-entry-button[fn=autoRemoveControl]:not([disabled]):hover {
             color: var(--text-color);
@@ -4456,6 +4838,9 @@
             background-color: var(--scrollbar-background-color);
           }
   
+          .gm-watchlater-item-deleted-origin {
+            display: none;
+          }
           .gm-watchlater-item-deleted {
             filter: grayscale(1);
             border-radius: 5px;
