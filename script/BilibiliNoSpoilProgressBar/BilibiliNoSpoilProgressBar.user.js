@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站防剧透进度条
-// @version         2.0.4.20210808
+// @version         2.0.5.20210810
 // @namespace       laster2800
 // @author          Laster2800
 // @description     看比赛、看番总是被进度条剧透？装上这个脚本再也不用担心这些问题了
@@ -224,7 +224,7 @@
         gmValidate(gmKey, defaultValue, writeback = true) {
           const value = GM_getValue(gmKey)
           if (Enums && gmKey in Enums) {
-            if (Enums[gmKey][value]) {
+            if (Object.values(Enums[gmKey]).indexOf(value) >= 0) {
               return value
             }
           } else if (typeof value == typeof defaultValue) { // typeof null == 'object'，对象默认值赋 null 无需额外处理
