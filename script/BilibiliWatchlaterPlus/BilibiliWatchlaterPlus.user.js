@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.17.2.20210810
+// @version         4.17.3.20210810
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -368,7 +368,7 @@
       removeHistoryTimestamp: { default: true, attr: 'checked', needNotReload: true, configVersion: 20210703 },
       removeHistorySearchTimes: { default: 50, type: 'int', attr: 'value', manual: true, needNotReload: true, min: 1, max: 500, configVersion: 20210808 },
       fillWatchlaterStatus: { default: Enums.fillWatchlaterStatus.dynamic, attr: 'value', configVersion: 20200819 },
-      autoSort: { default: Enums.autoSort.auto, attr: 'value', configVersion: 20210810 },
+      autoSort: { default: Enums.autoSort.default, attr: 'value', configVersion: 20210810 },
       videoButton: { default: true, attr: 'checked' },
       autoRemove: { default: Enums.autoRemove.openFromList, attr: 'value', configVersion: 20210612 },
       redirect: { default: false, attr: 'checked', configVersion: 20210322.1 },
@@ -989,19 +989,19 @@
                     </td>
                   </tr>
 
-                  <tr class="gm-item" title="在列表页面及顶栏入口弹出菜单内对稍后再看列表内容自动排序。">
+                  <tr class="gm-item" title="决定首次打开列表页面或顶栏入口弹出菜单时，如何对稍后再看列表内容进行排序。">
                     <td><div>全局功能</div></td>
                     <td>
                       <div>
                         <span>自动排序：</span>
                         <select id="gm-autoSort">
-                          <option value="${Enums.autoSort.auto}">由排序控制器决定</option>
-                          <option value="${Enums.autoSort.default}">[ 默认 ]（禁用功能）</option>
-                          <option value="${Enums.autoSort.defaultR}">[ 默认↓ ]</option>
-                          <option value="${Enums.autoSort.duration}">[ 时长 ]</option>
-                          <option value="${Enums.autoSort.durationR}">[ 时长↓ ]</option>
-                          <option value="${Enums.autoSort.uploader}">[ UP 主 ]</option>
-                          <option value="${Enums.autoSort.title}">[ 标题 ]</option>
+                          <option value="${Enums.autoSort.auto}">使用上一次排序控制器的选择</option>
+                          <option value="${Enums.autoSort.default}">禁用功能</option>
+                          <option value="${Enums.autoSort.defaultR}">固定使用 [ 默认↓ ] 排序</option>
+                          <option value="${Enums.autoSort.duration}">固定使用 [ 时长 ] 排序</option>
+                          <option value="${Enums.autoSort.durationR}">固定使用 [ 时长↓ ] 排序</option>
+                          <option value="${Enums.autoSort.uploader}">固定使用 [ UP 主 ] 排序</option>
+                          <option value="${Enums.autoSort.title}">固定使用 [ 标题 ] 排序</option>
                         </select>
                       </div>
                     </td>
@@ -2538,8 +2538,13 @@
           ob.observe(el, { attributes: true })
         })
         GM_addStyle(`
+          #${gm.id} .gm-entrypopup[gm-compatible] .gm-popup-arrow {
+            display: none;
+          }
           #${gm.id} .gm-entrypopup[gm-compatible] .gm-entrypopup-page {
             box-shadow: rgb(0 0 0 / 20%) 0 4px 8px 0;
+            border-radius: 8px;
+            margin-top: -12px;
           }
         `)
       } else {
@@ -2761,8 +2766,8 @@
             }
             gm.el.entryPopup.className = 'gm-entrypopup'
             gm.el.entryPopup.innerHTML = `
+              <div class="gm-popup-arrow"></div>
               <div class="gm-entrypopup-page">
-                <div class="gm-popup-arrow"></div>
                 <div class="gm-popup-header">
                   <div class="gm-popup-search">
                     <input type="text" placeholder="在列表中搜索... 支持通配符 ( ? * )">
@@ -4151,17 +4156,9 @@
             width: 32em;
             padding-top: 1em;
           }
-          #${gm.id} .gm-entrypopup .gm-entrypopup-page {
-            position: relative;
-            border-radius: 4px;
-            border: none;
-            box-shadow: var(--box-shadow-color) 0px 3px 6px;
-            background-color: var(--background-color);
-            overflow: hidden;
-          }
           #${gm.id} .gm-entrypopup .gm-popup-arrow {
             position: absolute;
-            top: -6px;
+            top: calc(1em - 6px);
             left: calc(16em - 6px);
             width: 0;
             height: 0;
@@ -4170,6 +4167,7 @@
             border-style: solid;
             border-color: transparent;
             border-bottom-color: #dfdfdf; /* 必须在 border-color 后 */
+            z-index: 1;
           }
           #${gm.id} .gm-entrypopup .gm-popup-arrow::after {
             content: " ";
@@ -4184,7 +4182,14 @@
             border-color: transparent;
             border-bottom-color: var(--background-color); /* 必须在 border-color 后 */
           }
-  
+          #${gm.id} .gm-entrypopup .gm-entrypopup-page {
+            position: relative;
+            border-radius: 4px;
+            border: none;
+            box-shadow: var(--box-shadow-color) 0px 3px 6px;
+            background-color: var(--background-color);
+            overflow: hidden;
+          }
           #${gm.id} .gm-entrypopup .gm-popup-header {
             position: relative;
             height: 2.8em;
@@ -4786,11 +4791,12 @@
           #${gm.id} select,
           #${gm.id} button {
             font-size: 100%;
-            color: var(--text-color);
+            appearance: auto;
             outline: none;
-            border: 1px solid var(--border-color); /* 在某些页面被覆盖 */
+            border: 1px solid var(--border-color);
             border-radius: 0;
-            appearance: auto; /* 番剧播放页该项被覆盖 */
+            color: var(--text-color);
+            background-color: var(--background-color);
           }
   
           #${gm.id} a {
