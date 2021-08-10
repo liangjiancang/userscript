@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站防剧透进度条
-// @version         2.0.6.20210810
+// @version         2.0.7.20210810
 // @namespace       laster2800
 // @author          Laster2800
 // @description     看比赛、看番总是被进度条剧透？装上这个脚本再也不用担心这些问题了
@@ -53,7 +53,7 @@
    * @property {GMObject_data} data 脚本数据
    * @property {GMObject_url} url URL
    * @property {GMObject_regex} regex 正则表达式
-   * @property {{string: *}} const 常量
+   * @property {{[c: string]: *}} const 常量
    * @property {GMObject_menu} menu 菜单
    * @property {{[s: string]: HTMLElement}} el HTML 元素
    */
