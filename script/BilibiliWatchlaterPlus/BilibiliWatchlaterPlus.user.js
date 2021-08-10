@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.17.3.20210810
+// @version         4.17.4.20210810
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -47,6 +47,7 @@
     defaultR: 'serial:R',
     duration: 'duration',
     durationR: 'duration:R',
+    progress: 'progress',
     uploader: 'uploader',
     title: 'vTitle',
   }
@@ -174,12 +175,13 @@
    * @property {number} configUpdate 当前版本对应的配置版本号，只要涉及到配置的修改都要更新；若同一天修改多次，可以追加小数来区分
    * @property {URLSearchParams} searchParams URL 查询参数
    * @property {GMObject_config} config 用户配置
-   * @property {string[]} configDocumentStart document-start 时期配置
    * @property {GMObject_configMap} configMap 用户配置属性
+   * @property {GMObject_infoMap} infoMap 信息属性
+   * @property {string[]} configDocumentStart document-start 时期配置
    * @property {GMObject_data} data 脚本数据
    * @property {GMObject_url} url URL
    * @property {GMObject_regex} regex 正则表达式
-   * @property {{string: *}} const 常量
+   * @property {{[c: string]: *}} const 常量
    * @property {GMObject_menu} menu 菜单
    * @property {{[s: string]: HTMLElement}} el HTML 元素
    */
@@ -213,11 +215,11 @@
    * @property {boolean} videoButton 视频播放页稍后再看状态快速切换
    * @property {autoRemove} autoRemove 自动将视频从播放列表移除
    * @property {boolean} redirect 稍后再看模式重定向至普通模式播放
+   * @property {boolean} listSearch 列表页面搜索框
    * @property {boolean} listSortControl 列表页面排序控制器
    * @property {openListVideo} openListVideo 列表页面视频点击行为
    * @property {boolean} removeButton_removeAll 移除「一键清空」按钮
    * @property {boolean} removeButton_removeWatched 移除「移除已观看视频」按钮
-   * @property {boolean} fixHeader 固顶顶栏
    * @property {menuScrollbarSetting} menuScrollbarSetting 弹出菜单的滚动条设置
    * @property {boolean} hideWatchlaterInCollect 隐藏「收藏」中的「稍后再看」
    * @property {mainRunAt} mainRunAt 主要逻辑运行时期
@@ -239,6 +241,13 @@
    * @property {number} [min] 最小值
    * @property {number} [max] 最大值
    * @property {number} [configVersion] 涉及配置更改的最后配置版本
+   */
+  /**
+   * @typedef {{[info: string]: GMObject_infoMap_item}} GMObject_infoMap
+   */
+  /**
+   * @typedef GMObject_infoMap_item
+   * @property {number} [configVersion] 涉及信息更改的最后配置版本
    */
   /**
    * @callback removeHistoryData 通过懒加载方式获取 `removeHistoryData`
@@ -340,7 +349,7 @@
   const gm = {
     id: gmId,
     configVersion: GM_getValue('configVersion'),
-    configUpdate: 20210810,
+    configUpdate: 20210810.1,
     searchParams: new URL(location.href).searchParams,
     config: {},
     configMap: {
@@ -368,15 +377,15 @@
       removeHistoryTimestamp: { default: true, attr: 'checked', needNotReload: true, configVersion: 20210703 },
       removeHistorySearchTimes: { default: 50, type: 'int', attr: 'value', manual: true, needNotReload: true, min: 1, max: 500, configVersion: 20210808 },
       fillWatchlaterStatus: { default: Enums.fillWatchlaterStatus.dynamic, attr: 'value', configVersion: 20200819 },
-      autoSort: { default: Enums.autoSort.default, attr: 'value', configVersion: 20210810 },
+      autoSort: { default: Enums.autoSort.default, attr: 'value', configVersion: 20210810.1 },
       videoButton: { default: true, attr: 'checked' },
       autoRemove: { default: Enums.autoRemove.openFromList, attr: 'value', configVersion: 20210612 },
       redirect: { default: false, attr: 'checked', configVersion: 20210322.1 },
+      listSearch: { default: true, attr: 'checked', configVersion: 20210810.1 },
       listSortControl: { default: true, attr: 'checked', configVersion: 20210810 },
       openListVideo: { default: Enums.openListVideo.openInCurrent, attr: 'value', configVersion: 20200717 },
       removeButton_removeAll: { default: false, attr: 'checked', configVersion: 20200722 },
       removeButton_removeWatched: { default: false, attr: 'checked', configVersion: 20200722 },
-      fixHeader: { default: false, attr: 'checked', configVersion: 20210808.1 },
       menuScrollbarSetting: { default: Enums.menuScrollbarSetting.beautify, attr: 'value', configVersion: 20210808.1 },
       hideWatchlaterInCollect: { default: false, attr: 'checked', configVersion: 20210808.1 },
       mainRunAt: { default: Enums.mainRunAt.DOMContentLoaded, attr: 'value', needNotReload: true, configVersion: 20210726 },
@@ -385,7 +394,11 @@
       hideDisabledSubitems: { default: true, attr: 'checked', configVersion: 20210505 },
       reloadAfterSetting: { default: true, attr: 'checked', needNotReload: true, configVersion: 20200715 },
     },
-    configDocumentStart: ['redirect', 'fixHeader', 'menuScrollbarSetting', 'mainRunAt'],
+    infoMap: {
+      cleanRemoveHistoryData: {},
+      fixHeader: { configVersion: 20210810.1 },
+    },
+    configDocumentStart: ['redirect', 'menuScrollbarSetting', 'mainRunAt'],
     data: {
       removeHistoryData: null,
       watchlaterListData: null,
@@ -402,6 +415,7 @@
       page_watchlaterPlayAll: `https://www.bilibili.com/medialist/play/watchlater/?${gmId}_disable_redirect=true`,
       page_userSpace: uid => `https://space.bilibili.com/${uid}`,
       gm_changelog: 'https://gitee.com/liangjiancang/userscript/blob/master/script/BilibiliWatchlaterPlus/changelog.md',
+      external_fixHeader: 'https://greasyfork.org/zh-CN/scripts/430292',
       noop: 'javascript:void(0)',
     },
     regex: {
@@ -419,6 +433,7 @@
       fadeTime: 400,
       textFadeTime: 100,
       updateHighlightColor: '#4cff9c',
+      inputThrottleWait: 250,
     },
     menu: {
       setting: { state: 0, wait: 0, el: null },
@@ -696,8 +711,13 @@
             GM_deleteValue('hideWatchlaterInCollect')
           }
 
+          // 4.17.4.20210810
+          if (gm.configVersion < 20210810.1) {
+            GM_deleteValue('fixHeader')
+          }
+
           // 功能性更新后更新此处配置版本
-          if (gm.configVersion < 20210810) {
+          if (gm.configVersion < 20210810.1) {
             _self.openUserSetting(2)
           } else {
             gm.configVersion = gm.configUpdate
@@ -949,7 +969,7 @@
                       <div>
                         <span>不重复数据记录保存数</span>
                         <span id="gm-rhsInformation" class="gm-information" title>💬</span>
-                        <span id="gm-cleanRemoveHistoryData" class="gm-hint-option" title="清理已保存的稍后再看历史数据，不可恢复！">清空数据(0条)</span>
+                        <span id="gm-cleanRemoveHistoryData" class="gm-info" title="清理已保存的稍后再看历史数据，不可恢复！">清空数据(0条)</span>
                         <input id="gm-removeHistorySaves" type="text">
                         <span id="gm-rhsWarning" class="gm-warning" title>⚠</span>
                       </div>
@@ -1000,6 +1020,7 @@
                           <option value="${Enums.autoSort.defaultR}">固定使用 [ 默认↓ ] 排序</option>
                           <option value="${Enums.autoSort.duration}">固定使用 [ 时长 ] 排序</option>
                           <option value="${Enums.autoSort.durationR}">固定使用 [ 时长↓ ] 排序</option>
+                          <option value="${Enums.autoSort.progress}">固定使用 [ 进度 ] 排序</option>
                           <option value="${Enums.autoSort.uploader}">固定使用 [ UP 主 ] 排序</option>
                           <option value="${Enums.autoSort.title}">固定使用 [ 标题 ] 排序</option>
                         </select>
@@ -1036,8 +1057,18 @@
                     <td><div>播放页面</div></td>
                     <td>
                       <label>
-                        <span>从稍后再看模式强制切换到普通模式播放</span>
+                        <span>从稍后再看模式强制切换到普通模式播放（重定向）</span>
                         <input id="gm-redirect" type="checkbox">
+                      </label>
+                    </td>
+                  </tr>
+
+                  <tr class="gm-item" title="在列表页面显示搜索框。">
+                    <td><div>列表页面</div></td>
+                    <td>
+                      <label>
+                        <span>显示搜索框</span>
+                        <input id="gm-listSearch" type="checkbox">
                       </label>
                     </td>
                   </tr>
@@ -1085,13 +1116,13 @@
                     </td>
                   </tr>
 
-                  <tr class="gm-item" title="固顶官方顶栏。">
+                  <tr class="gm-item" title="安装固顶官方顶栏的用户样式（建议使用 Stylus 安装）。">
                     <td><div>相关调整</div></td>
                     <td>
-                      <label>
+                      <div>
                         <span>将顶栏固定在页面顶部</span>
-                        <input id="gm-fixHeader" type="checkbox">
-                      </label>
+                        <a id="gm-fixHeader" class="gm-info" href="${gm.url.external_fixHeader}" target="_blank"">安装功能</a>
+                      </div>
                     </td>
                   </tr>
 
@@ -1187,7 +1218,7 @@
           `
 
           // 找出配置对应的元素
-          for (const name in gm.config) {
+          for (const name in { ...gm.configMap, ...gm.infoMap }) {
             el[name] = gm.el.setting.querySelector(`#gm-${name}`)
           }
 
@@ -1203,18 +1234,22 @@
             case 2:
               el.settingPage.setAttribute('setting-type', 'updated')
               el.maintitle.innerHTML += '<br><span style="font-size:0.8em">(功能性更新设置)</span>'
-              for (const name in gm.configMap) {
-                const configVersion = gm.configMap[name].configVersion
-                if (configVersion && configVersion > gm.configVersion) {
-                  let node = el[name]
-                  while (node.nodeName != 'TD') {
-                    node = node.parentNode
-                    if (!node) break
+              {
+                (function(map) {
+                  for (const name in map) {
+                    const configVersion = map[name].configVersion
+                    if (configVersion && configVersion > gm.configVersion) {
+                      let node = el[name]
+                      while (node.nodeName != 'TD') {
+                        node = node.parentNode
+                        if (!node) break
+                      }
+                      if (node?.firstElementChild) {
+                        api.dom.addClass(node.firstElementChild, 'gm-updated')
+                      }
+                    }
                   }
-                  if (node?.firstElementChild) {
-                    api.dom.addClass(node.firstElementChild, 'gm-updated')
-                  }
-                }
+                })({ ...gm.configMap, ...gm.infoMap })
               }
               break
           }
@@ -1222,7 +1257,6 @@
           el.cancel = gm.el.setting.querySelector('#gm-cancel')
           el.shadow = gm.el.setting.querySelector('.gm-shadow')
           el.reset = gm.el.setting.querySelector('#gm-reset')
-          el.cleanRemoveHistoryData = gm.el.setting.querySelector('#gm-cleanRemoveHistoryData')
 
           // 提示信息
           el.rhspInformation = gm.el.setting.querySelector('#gm-rhspInformation')
@@ -2769,9 +2803,9 @@
               <div class="gm-popup-arrow"></div>
               <div class="gm-entrypopup-page">
                 <div class="gm-popup-header">
-                  <div class="gm-popup-search">
+                  <div class="gm-search">
                     <input type="text" placeholder="在列表中搜索... 支持通配符 ( ? * )">
-                    <div class="gm-popup-search-clear">✖</div>
+                    <div class="gm-search-clear">✖</div>
                   </div>
                   <div class="gm-popup-total" title="列表条目数">0</div>
                 </div>
@@ -2792,6 +2826,7 @@
                         <div class="gm-option" value="${Enums.sortType.title}">标题</div>
                         ${gm.config.headerMenu == Enums.headerMenu.enable ? `
                           <div class="gm-option" value="${Enums.sortType.uploader}">UP 主</div>
+                          <div class="gm-option" value="${Enums.sortType.progress}">进度</div>
                           <div class="gm-option" value="${Enums.sortType.durationR}">时长↓</div>
                           <div class="gm-option" value="${Enums.sortType.duration}">时长</div>
                         ` : ''}
@@ -2808,8 +2843,8 @@
             el.entryRemovedList = gm.el.entryPopup.querySelector('.gm-entry-removed-list')
             el.entryListEmpty = gm.el.entryPopup.querySelector('.gm-entry-list-empty')
             el.entryHeader = gm.el.entryPopup.querySelector('.gm-popup-header')
-            el.search = gm.el.entryPopup.querySelector('.gm-popup-search input')
-            el.searchClear = gm.el.entryPopup.querySelector('.gm-popup-search-clear')
+            el.search = gm.el.entryPopup.querySelector('.gm-search input')
+            el.searchClear = gm.el.entryPopup.querySelector('.gm-search-clear')
             el.popupTotal = gm.el.entryPopup.querySelector('.gm-popup-total')
             el.entryBottom = gm.el.entryPopup.querySelector('.gm-entry-bottom')
           }
@@ -2828,14 +2863,15 @@
                 const m = /^\s+(.*)/.exec(this.value)
                 if (m) {
                   this.value = m[1]
+                  this.setSelectionRange(0, 0)
                 }
+                el.searchClear.style.visibility = this.value.length > 0 ? 'visible' : ''
               })
               el.search.addEventListener('input', api.tool.throttle(function() {
                 let val = this.value.trim()
                 const match = str => str && val?.test(str)
                 const lists = gm.config.headerMenuKeepRemoved ? [el.entryList, el.entryRemovedList] : [el.entryList]
                 if (val.length > 0) {
-                  el.searchClear.style.visibility = 'visible'
                   try {
                     val = val.replace(/[.+^${}()|[\]\\]/g, '\\$&') // escape regex
                       .replaceAll('?', '.').replaceAll('*', '.+') // 通配符
@@ -2844,7 +2880,6 @@
                     val = null
                   }
                 } else {
-                  el.searchClear.style.visibility = 'hidden'
                   val = null
                 }
                 const cnt = [0, 0]
@@ -2865,15 +2900,9 @@
                       }
                       if (valid) {
                         cnt[i] += 1
-                        if (card.searchHide) {
-                          api.dom.removeClass(card, 'gm-search-hide')
-                          card.searchHide = false
-                        }
+                        api.dom.removeClass(card, 'gm-search-hide')
                       } else {
-                        if (!card.searchHide) {
-                          api.dom.addClass(card, 'gm-search-hide')
-                          card.searchHide = true
-                        }
+                        api.dom.addClass(card, 'gm-search-hide')
                       }
                     }
                     list.scrollTop = 0
@@ -2885,7 +2914,7 @@
                 } else {
                   el.entryListEmpty.style.display = 'unset'
                 }
-              }, 250))
+              }, gm.const.inputThrottleWait))
               el.searchClear.onclick = function() {
                 el.search.value = ''
                 el.search.dispatchEvent(new Event('input'))
@@ -3050,7 +3079,6 @@
               }
             }
             gm.menu.entryPopup.sortType = Enums.sortType.default
-            el.searchClear.style.visibility = 'hidden'
             el.popupTotal.innerText = '0'
             el.entryList.innerHTML = ''
             el.entryList.total = 0
@@ -3095,6 +3123,7 @@
                   const duration = _self.method.getSTimeString(item.duration)
                   const durationP = multiP ? `${item.videos}P` : duration
                   const played = item.progress > 0
+                  card.progress = (multiP && played) ? card.duration : item.progress
                   let progress = ''
                   if (played) {
                     if (multiP) {
@@ -3613,35 +3642,41 @@
     async processWatchlaterList() {
       const _self = this
       const sortable = gm.config.autoSort != Enums.autoSort.default || gm.config.listSortControl
+      const needInfo = gm.config.listSearch || sortable
       let autoRemoveControl = null
       if (gm.config.autoRemove != Enums.autoRemove.absoluteNever) {
-        autoRemoveControl = await api.wait.waitQuerySelector('#gm-auto-remove-control')
+        autoRemoveControl = await api.wait.waitQuerySelector('#gm-list-auto-remove-control')
       }
-      const listBox = await api.wait.waitQuerySelector('.watch-later-list .list-box')
-      const elTotal = await api.wait.waitQuerySelector('header .t em')
+      const listContainer = await api.wait.waitQuerySelector('.watch-later-list')
+      const listBox = await api.wait.waitQuerySelector('.list-box', listContainer)
       listBox.querySelectorAll('.av-item').forEach(item => {
-        if (sortable) {
-          extractInfo(item)
-        }
+        needInfo && extractInfo(item)
         item.querySelectorAll('a:not([class=user])').forEach(link => processLink(item, link, autoRemoveControl))
         processDelBtn(item, item.querySelector('.btn-del'))
       })
-      const ob = new MutationObserver(api.tool.debounce(() => updateTotal(), 500))
-      ob.observe(listBox.firstElementChild, { childList: true })
+      _self.updateWatchlaterListTotal()
+
+      const obItemChange = new MutationObserver(api.tool.debounce(() => {
+        _self.updateWatchlaterListTotal()
+        _self.triggerWatchlaterListContentLoad()
+      }, 500))
+      obItemChange.observe(listBox.firstElementChild, { childList: true })
+      const obListBoxRemove = new MutationObserver((mutations, observer) => {
+        // 不能检测 listBox 是否在 listContainer 中
+        // 因为有可能删除 listBox，然后添加进 empty 块
+        // 也有可能是将 listBox 变成 empty 块
+        if (!listContainer.querySelector('.list-box')) {
+          _self.updateWatchlaterListTotal(0, 0)
+          observer.disconnect()
+        }
+      })
+      obListBoxRemove.observe(listContainer, { childList: true })
+
       if (sortable) {
-        const sortControl = await api.wait.waitQuerySelector('#gm-sort-control')
+        const sortControl = await api.wait.waitQuerySelector('#gm-list-sort-control')
         if (sortControl.value != sortControl.prevVal) {
           _self.sortWatchlaterList()
         }
-      }
-
-      /**
-       * 更新列表上方的视频总数统计
-       */
-      function updateTotal() {
-        const all = listBox.querySelectorAll('.av-item:not(.gm-watchlater-item-deleted-origin)').length
-        const total = all - listBox.querySelectorAll('.gm-watchlater-item-deleted:not(.gm-watchlater-item-deleted-origin)').length
-        elTotal.innerText = `（${total}/${all}/100）`
       }
 
       /**
@@ -3714,10 +3749,8 @@
           api.dom.addClass(base, 'gm-watchlater-item-deleted-origin')
           api.dom.addClass(cloned, 'gm-watchlater-item-deleted')
           base.parentNode.appendChild(cloned)
-          if (sortable) {
-            extractInfo(cloned)
-            _self.sortWatchlaterList(true)
-          }
+          needInfo && extractInfo(cloned)
+          sortable && _self.sortWatchlaterList(true)
         }, true)
       }
 
@@ -3739,6 +3772,48 @@
           }
           return result
         })(item.querySelector('.corner')?.innerText)
+        item.progress = item.querySelector('.looked') ? 1 : 0
+      }
+    }
+
+    /**
+     * 对稍后再看列表进行搜索
+     * @async
+     */
+    async searchWatchlaterList() {
+      const search = await api.wait.waitQuerySelector('#gm-list-search input')
+      let val = search.value.trim()
+      const match = str => str && val?.test(str)
+      if (val.length > 0) {
+        try {
+          val = val.replace(/[.+^${}()|[\]\\]/g, '\\$&') // escape regex
+            .replaceAll('?', '.').replaceAll('*', '.+') // 通配符
+          val = new RegExp(val, 'i')
+        } catch (e) {
+          val = null
+        }
+      } else {
+        val = null
+      }
+
+      const listBox = await api.wait.waitQuerySelector('.watch-later-list .list-box')
+      const items = listBox.querySelectorAll('.av-item')
+      for (const item of items) {
+        let valid = false
+        if (val) {
+          if (match(item.vTitle)) {
+            valid = true
+          } else if (match(item.uploader)) {
+            valid = true
+          }
+        } else {
+          valid = true
+        }
+        if (valid) {
+          api.dom.removeClass(item, 'gm-search-hide')
+        } else {
+          api.dom.addClass(item, 'gm-search-hide')
+        }
       }
     }
 
@@ -3748,7 +3823,7 @@
      * @param {boolean} [onlyDeleted] 是否只对移除列表排序
      */
     async sortWatchlaterList(onlyDeleted) {
-      const sortControl = await api.wait.waitQuerySelector('#gm-sort-control')
+      const sortControl = await api.wait.waitQuerySelector('#gm-list-sort-control')
       const type = sortControl.value
       sortControl.prevVal = type
       let reverse = type.endsWith(':R')
@@ -3775,6 +3850,42 @@
         })
         for (const item of items) {
           container.appendChild(item)
+        }
+      }
+    }
+
+    /**
+     * 触发列表页面内容加载
+     */
+    triggerWatchlaterListContentLoad() {
+      window.dispatchEvent(new Event('scroll'))
+    }
+
+    /**
+     * 更新列表页面上方的视频总数统计
+     * @async
+     * @param {number} [total] 列表非移除视频总数，默认为自动获取
+     * @param {number} [all] 列表视频总数，默认为自动获取
+     */
+    async updateWatchlaterListTotal(total, all) {
+      const container = await api.wait.waitQuerySelector('.watch-later-list')
+      const listBox = (typeof total == 'undefined' && typeof all == 'undefined') && await api.wait.waitQuerySelector('.list-box', container)
+      const elTotal = await api.wait.waitQuerySelector('header .t em')
+      all = all ?? listBox.querySelectorAll('.av-item:not(.gm-watchlater-item-deleted-origin, .gm-search-hide)').length
+      total = total ?? all - listBox.querySelectorAll('.gm-watchlater-item-deleted:not(.gm-watchlater-item-deleted-origin, .gm-search-hide)').length
+      elTotal.innerText = `（${total}/${all}）`
+
+      const emptyBlocks = container.querySelectorAll('.abnormal-item') // 脚本加进来的，及B站加进来的，可能有两个
+      if (all > 0) {
+        for (const empty of emptyBlocks) {
+          empty.style.display = 'none'
+        }
+      } else {
+        if (emptyBlocks.length > 0) {
+          emptyBlocks[0].style.display = ''
+        } else {
+          const empty = container.appendChild(document.createElement('div'))
+          empty.outerHTML = '<div class="abnormal-item"><img src="//s1.hdslb.com/bfs/static/jinkela/watchlater/asserts/emptylist.png" class="pic"><div class="txt"><p>稍后再看列表还是空的哦，你可以通过以上方式添加~</p></div></div>'
         }
       }
     }
@@ -3859,7 +3970,7 @@
      */
     async adjustWatchlaterListUI() {
       const _self = this
-      const r_con = await api.wait.waitQuerySelector('.watch-later-list.bili-wrapper header .r-con')
+      const r_con = await api.wait.waitQuerySelector('.watch-later-list header .r-con')
       // 页面上本来就存在的「全部播放」按钮不要触发重定向
       const setPlayAll = el => {
         el.href = gm.url.page_watchlaterPlayAll
@@ -3897,17 +4008,79 @@
         r_con.children[2].style.display = 'none'
       }
 
+      // 增加搜索框
+      if (gm.config.listSearch) {
+        GM_addStyle(`
+          #gm-list-search.gm-search {
+            display: inline-block;
+            font-size: 1.6em;
+            line-height: 2em;
+            margin: 10px 21px 0;
+            padding: 0 0.5em;
+            border-radius: 3px;
+            transition: box-shadow ${gm.const.fadeTime}ms ease-in-out;
+          }
+          #gm-list-search.gm-search:hover,
+          #gm-list-search.gm-search.gm-active {
+            box-shadow: var(--box-shadow-color) 0px 3px 6px;
+          }
+          #gm-list-search.gm-search input[type=text] {
+            border: none;
+            width: 18em;
+          }
+        `)
+        const searchContainer = r_con.insertAdjacentElement('afterend', document.createElement('div'))
+        searchContainer.className = 'gm-list-search-container'
+        searchContainer.innerHTML = `
+          <div id="gm-list-search" class="gm-search">
+            <input type="text" placeholder="点击以在列表中搜索... 支持通配符 ( ? * )">
+            <div class="gm-search-clear">✖</div>
+          </div>
+        `
+        const searchBox = searchContainer.firstElementChild
+        const search = searchBox.children[0]
+        const searchClear = searchBox.children[1]
+
+        search.addEventListener('mouseenter', function() {
+          this.focus()
+        })
+        search.addEventListener('input', function() {
+          const m = /^\s+(.*)/.exec(this.value)
+          if (m) {
+            this.value = m[1]
+            this.setSelectionRange(0, 0)
+          }
+          if (this.value.length > 0) {
+            api.dom.addClass(searchBox, 'gm-active')
+            searchClear.style.visibility = 'visible'
+          } else {
+            api.dom.removeClass(searchBox, 'gm-active')
+            searchClear.style.visibility = ''
+          }
+        })
+        search.addEventListener('input', api.tool.throttle(async () => {
+          await _self.searchWatchlaterList()
+          await _self.updateWatchlaterListTotal()
+          _self.triggerWatchlaterListContentLoad()
+        }, gm.const.inputThrottleWait))
+        searchClear.onclick = function() {
+          search.value = ''
+          search.dispatchEvent(new Event('input'))
+        }
+      }
+
       // 增加排序控制
       {
         const sortControlButton = r_con.insertAdjacentElement('afterbegin', document.createElement('div'))
         const control = sortControlButton.appendChild(document.createElement('select'))
-        sortControlButton.className = 'gm-sort-control-container'
-        control.id = 'gm-sort-control'
+        sortControlButton.className = 'gm-list-sort-control-container'
+        control.id = 'gm-list-sort-control'
         control.innerHTML = `
           <option value="${Enums.sortType.default}" selected>排序：默认</option>
           <option value="${Enums.sortType.defaultR}">排序：默认↓</option>
           <option value="${Enums.sortType.duration}">排序：时长</option>
           <option value="${Enums.sortType.durationR}">排序：时长↓</option>
+          <option value="${Enums.sortType.progress}">排序：进度</option>
           <option value="${Enums.sortType.uploader}">排序：UP 主</option>
           <option value="${Enums.sortType.title}">排序：标题</option>
         `
@@ -3934,20 +4107,20 @@
            * 都是合理的。
            */
           GM_addStyle(`
-            .gm-sort-control-container {
+            .gm-list-sort-control-container {
               display: inline-block;
               padding-bottom: 5px;
             }
-            .gm-sort-control-container:hover select {
+            .gm-list-sort-control-container:hover select {
               background: #00a1d6;
               color: #fff;
             }
-            .gm-sort-control-container select {
+            .gm-list-sort-control-container select {
               appearance: none;
               text-align-last: center;
               line-height: 16.6px;
             }
-            .gm-sort-control-container option {
+            .gm-list-sort-control-container option {
               background: var(--background-color);
               color: var(--text-color);
             }
@@ -3968,18 +4141,18 @@
       // 增加自动移除控制器
       if (gm.config.autoRemove != Enums.autoRemove.absoluteNever) {
         GM_addStyle(`
-          #gm-auto-remove-control {
+          #gm-list-auto-remove-control {
             background: #fff;
             color: #00a1d6;
           }
-          #gm-auto-remove-control[enabled] {
+          #gm-list-auto-remove-control[enabled] {
             background: #00a1d6;
             color: #fff;
           }
         `)
         const autoRemove = gm.config.autoRemove == Enums.autoRemove.always || gm.config.autoRemove == Enums.autoRemove.openFromList
         const autoRemoveControl = r_con.insertAdjacentElement('afterbegin', document.createElement('div'))
-        autoRemoveControl.id = 'gm-auto-remove-control'
+        autoRemoveControl.id = 'gm-list-auto-remove-control'
         autoRemoveControl.innerText = '自动移除'
         autoRemoveControl.title = '临时切换在当前页面打开视频后是否将其自动移除出「稍后再看」。若要默认开启/关闭自动移除功能，请在「用户设置」中配置。'
         autoRemoveControl.className = 's-btn gm-s-btn'
@@ -4014,30 +4187,6 @@
         }
         collect.addEventListener('mouseover', process)
       })
-    }
-
-    /**
-     * 添加顶栏固顶样式
-     */
-    addFixHeaderStyle() {
-      if (gm.config.fixHeader) {
-        GM_addStyle(`
-          #internationalHeader .mini-header {
-            position: fixed;
-            top: 0;
-          }
-          #internationalHeader .mini-header:not(.mini-type) {
-            background-image: linear-gradient(#000000A0, #00000000);
-          }
-
-          .home-page .left-panel .scroll-content {
-            top: 55px !important;
-          }
-          .home-page .right-panel .scroll-content {
-            top: 63px !important;
-          }
-        `)
-      }
     }
 
     /**
@@ -4105,7 +4254,6 @@
      */
     addStyle() {
       if (self == top) {
-        this.addFixHeaderStyle()
         this.addMenuScrollbarStyle()
         // 通用样式
         GM_addStyle(`
@@ -4194,29 +4342,6 @@
             position: relative;
             height: 2.8em;
             border-bottom: 1px solid var(--light-border-color);
-          }
-          #${gm.id} .gm-entrypopup .gm-popup-search {
-            font-size: 1.3em;
-            line-height: 2.6em;
-            padding-left: 0.9em;
-          }
-          #${gm.id} .gm-entrypopup .gm-popup-search input[type=text] {
-            line-height: normal;
-            outline: none;
-            border: none;
-            width: 18em;
-            padding-right: 6px;
-            color: var(--text-color);
-          }
-          #${gm.id} .gm-entrypopup .gm-popup-search input[type=text]::placeholder {
-            font-size: 0.9em;
-            color: var(--light-hint-text-color);
-          }
-          #${gm.id} .gm-entrypopup .gm-popup-search-clear {
-            display: inline-block;
-            color: var(--hint-text-color);
-            cursor: pointer;
-            visibility: hidden;
           }
           #${gm.id} .gm-entrypopup .gm-popup-total {
             position: absolute;
@@ -4388,10 +4513,6 @@
             color: var(--hint-text-color);
           }
   
-          #${gm.id} .gm-entrypopup .gm-entry-list .gm-search-hide {
-            display: none;
-          }
-  
           #${gm.id} .gm-entrypopup .gm-entry-bottom {
             display: flex;
             border-top: 1px solid var(--light-border-color);
@@ -4548,21 +4669,6 @@
             vertical-align: -1px;
           }
   
-          #${gm.id} .gm-setting .gm-hint-option {
-            font-size: 0.8em;
-            color: var(--hint-text-color);
-            text-decoration: underline;
-            padding: 0 0.2em;
-            cursor: pointer;
-          }
-          #${gm.id} .gm-setting .gm-hint-option:hover {
-            color: var(--important-color);
-          }
-          #${gm.id} .gm-setting [disabled] .gm-hint-option {
-            color: var(--disabled-color);
-            cursor: not-allowed;
-          }
-  
           #${gm.id} .gm-setting td > * {
             display: flex;
             align-items: flex-end;
@@ -4714,6 +4820,24 @@
             border-color: var(--disabled-color);
             background-color: var(--background-color);
           }
+
+          #${gm.id} .gm-info {
+            font-size: 0.8em;
+            color: var(--hint-text-color);
+            text-decoration: underline;
+            padding: 0 0.2em;
+            cursor: pointer;
+          }
+          #${gm.id} .gm-info:visited {
+            color: var(--hint-text-color);
+          }
+          #${gm.id} .gm-info:hover {
+            color: var(--important-color);
+          }
+          #${gm.id} [disabled] .gm-info {
+            color: var(--disabled-color);
+            cursor: not-allowed;
+          }
   
           #${gm.id} #gm-reset {
             position: absolute;
@@ -4823,7 +4947,7 @@
             cursor: pointer;
             appearance: auto;
           }
-  
+
           #${gm.id} .gm-setting .gm-items::-webkit-scrollbar,
           #${gm.id} .gm-history .gm-content::-webkit-scrollbar {
             width: 6px;
@@ -4843,7 +4967,37 @@
           #${gm.id} .gm-history .gm-content::-webkit-scrollbar-corner {
             background-color: var(--scrollbar-background-color);
           }
-  
+
+          #${gm.id} .gm-entrypopup .gm-search {
+            font-size: 1.3em;
+            line-height: 2.6em;
+            padding-left: 0.9em;
+          }
+          #${gm.id} .gm-entrypopup .gm-search input[type=text] {
+            border: none;
+            width: 18em;
+          }
+
+          .gm-search input[type=text] {
+            line-height: normal;
+            outline: none;
+            padding-right: 6px;
+            color: var(--text-color);
+          }
+          .gm-search input[type=text]::placeholder {
+            font-size: 0.9em;
+            color: var(--light-hint-text-color);
+          }
+          .gm-search-clear {
+            display: inline-block;
+            color: var(--hint-text-color);
+            cursor: pointer;
+            visibility: hidden;
+          }
+          .gm-search-hide {
+            display: none !important;
+          }
+
           .gm-watchlater-item-deleted-origin {
             display: none;
           }
