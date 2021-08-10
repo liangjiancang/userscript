@@ -10,6 +10,7 @@
 4. `dom`: `fade()` 读取 `target` 上的 `fadeInTime` 和 `fadeOutTime` 属性来设定渐显和渐隐时间，它们应为以 `ms` 为单位的 `number`；否则，`target.style.transition` 上关于时间的设定应该与 `api.options.fadeTime` 保持一致。
 5. `dom`: `fade()` 读取 `target` 上的 `fadeInFunction` 和 `fadeOutFunction` 属性来设定渐变效果（默认 `ease-in-out`），它们应为符合 `transition-timing-function` 的 `string`。
 6. `dom`: `fade()` 读取 `target` 上的 `fadeInNoInteractive` 和 `fadeOutNoInteractive` 属性来设定渐显和渐隐期间是否禁止交互，它们应为 `boolean`。
+7. `dom`：移除 `getElementLeft()` 和 `getElementTop()`。
 
 ## V1.2
 
