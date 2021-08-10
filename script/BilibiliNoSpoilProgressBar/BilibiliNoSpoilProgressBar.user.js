@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站防剧透进度条
-// @version         2.0.5.20210810
+// @version         2.0.6.20210810
 // @namespace       laster2800
 // @author          Laster2800
 // @description     看比赛、看番总是被进度条剧透？装上这个脚本再也不用担心这些问题了
@@ -49,6 +49,7 @@
    * @property {number} configUpdate 当前版本对应的配置版本号，只要涉及到配置的修改都要更新；若同一天修改多次，可以追加小数来区分
    * @property {GMObject_config} config 用户配置
    * @property {GMObject_configMap} configMap 用户配置属性
+   * @property {GMObject_infoMap} infoMap 信息属性
    * @property {GMObject_data} data 脚本数据
    * @property {GMObject_url} url URL
    * @property {GMObject_regex} regex 正则表达式
@@ -86,6 +87,13 @@
    * @property {number} [min] 最小值
    * @property {number} [max] 最大值
    * @property {number} [configVersion] 涉及配置更改的最后配置版本
+   */
+  /**
+   * @typedef {{[info: string]: GMObject_infoMap_item}} GMObject_infoMap
+   */
+  /**
+   * @typedef GMObject_infoMap_item
+   * @property {number} [configVersion] 涉及信息更改的最后配置版本
    */
   /**
    * @callback uploaderList 不传入/传入参数时获取/修改防剧透 UP 主名单
@@ -160,6 +168,11 @@
       reservedRight: { default: 10, type: 'int', attr: 'value', needNotReload: true, configVersion: 20210722 },
       postponeOffset: { default: true, attr: 'checked', needNotReload: true, configVersion: 20200911 },
       reloadAfterSetting: { default: true, attr: 'checked', needNotReload: true },
+    },
+    infoMap: {
+      help: {},
+      uploaderList: {},
+      resetParam: {},
     },
     data: {
       uploaderList: null,
@@ -430,12 +443,12 @@
               </div>
               <div class="gm-items">
                 <table>
-                  <tr class="gm-item">
+                  <tr class="gm-item" title="查看脚本防剧透机制的实现原理。">
                     <td><div>说明</div></td>
                     <td>
                       <div>
                         <span>防剧透机制说明</span>
-                        <a class="gm-hint-option" title="查看脚本防剧透机制的实现原理。" href="${gm.url.gm_readme}#防剧透机制说明" target="_blank"">查看</a>
+                        <a id="gm-help" class="gm-info" href="${gm.url.gm_readme}#防剧透机制说明" target="_blank"">查看</a>
                       </div>
                     </td>
                   </tr>
@@ -445,7 +458,7 @@
                     <td>
                       <div>
                         <span>防剧透 UP 主名单</span>
-                        <span id="gm-uploaderList" class="gm-hint-option">编辑</span>
+                        <span id="gm-uploaderList" class="gm-info">编辑</span>
                       </div>
                     </td>
                   </tr>
@@ -524,7 +537,7 @@
                     <td>
                       <div>
                         <span>防剧透参数</span>
-                        <span id="gm-resetParam" class="gm-hint-option" title="重置防剧透参数。">重置</span>
+                        <span id="gm-resetParam" class="gm-info" title="重置防剧透参数。">重置</span>
                       </div>
                     </td>
                   </tr>
@@ -605,7 +618,7 @@
           `
 
           // 找出配置对应的元素
-          for (const name in gm.config) {
+          for (const name in { ...gm.configMap, ...gm.infoMap }) {
             el[name] = gm.el.setting.querySelector(`#gm-${name}`)
           }
 
@@ -620,18 +633,22 @@
             case 2:
               el.settingPage.setAttribute('setting-type', 'updated')
               el.maintitle.innerHTML += '<br><span style="font-size:0.8em">(功能性更新设置)</span>'
-              for (const name in gm.configMap) {
-                const configVersion = gm.configMap[name].configVersion
-                if (configVersion && configVersion > gm.configVersion) {
-                  let node = el[name]
-                  while (node.nodeName != 'TD') {
-                    node = node.parentNode
-                    if (!node) break
+              {
+                (function(map) {
+                  for (const name in map) {
+                    const configVersion = map[name].configVersion
+                    if (configVersion && configVersion > gm.configVersion) {
+                      let node = el[name]
+                      while (node.nodeName != 'TD') {
+                        node = node.parentNode
+                        if (!node) break
+                      }
+                      if (node?.firstElementChild) {
+                        api.dom.addClass(node.firstElementChild, 'gm-updated')
+                      }
+                    }
                   }
-                  if (node?.firstElementChild) {
-                    api.dom.addClass(node.firstElementChild, 'gm-updated')
-                  }
-                }
+                })({ ...gm.configMap, ...gm.infoMap })
               }
               break
           }
@@ -639,8 +656,6 @@
           el.cancel = gm.el.setting.querySelector('#gm-cancel')
           el.shadow = gm.el.setting.querySelector('.gm-shadow')
           el.reset = gm.el.setting.querySelector('#gm-reset')
-          el.resetParam = gm.el.setting.querySelector('#gm-resetParam')
-          el.uploaderList = gm.el.setting.querySelector('#gm-uploaderList')
 
           // 提示信息
           el.offsetTransformFactorInformation = gm.el.setting.querySelector('#gm-offsetTransformFactorInformation')
@@ -905,7 +920,7 @@
             <div class="gm-uploaderList-page">
               <div class="gm-title">防剧透 UP 主名单</div>
               <div class="gm-comment">
-                <div>当打开名单内 UP 主的视频时，会自动启用防剧透进度条。在下方文本框内填入 UP 主的 UID，其中 UID 可在 UP 主的个人空间中找到。每行必须以 UID 开头，UID 后可以用空格隔开进行注释。<b>第一行以&nbsp;&nbsp;*&nbsp;&nbsp;开头</b>时，匹配所有 UP 主。<span id="gm-uploader-list-example" class="gm-hint-option">点击填充示例。</span></div>
+                <div>当打开名单内 UP 主的视频时，会自动启用防剧透进度条。在下方文本框内填入 UP 主的 UID，其中 UID 可在 UP 主的个人空间中找到。每行必须以 UID 开头，UID 后可以用空格隔开进行注释。<b>第一行以&nbsp;&nbsp;*&nbsp;&nbsp;开头</b>时，匹配所有 UP 主。<span id="gm-uploader-list-example" class="gm-info">点击填充示例。</span></div>
               </div>
               <div class="gm-list-editor">
                 <textarea id="gm-uploaderList"></textarea>
@@ -1986,6 +2001,9 @@
         #${gm.id} {
           color: var(--text-color);
         }
+        #${gm.id} * {
+          box-sizing: content-box;
+        }
 
         #${gm.id} .gm-setting {
           font-size: 12px;
@@ -2152,20 +2170,20 @@
           background-color: var(--background-color);
         }
 
-        #${gm.id} .gm-hint-option {
+        #${gm.id} .gm-info {
           font-size: 0.8em;
           color: var(--hint-text-color);
           text-decoration: underline;
           padding: 0 0.2em;
           cursor: pointer;
         }
-        #${gm.id} .gm-hint-option:visited {
+        #${gm.id} .gm-info:visited {
           color: var(--hint-text-color);
         }
-        #${gm.id} .gm-hint-option:hover {
+        #${gm.id} .gm-info:hover {
           color: var(--important-color);
         }
-        #${gm.id} [disabled] .gm-hint-option {
+        #${gm.id} [disabled] .gm-info {
           color: var(--disabled-color);
           cursor: not-allowed;
         }
