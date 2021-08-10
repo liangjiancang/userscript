@@ -4,6 +4,8 @@
 
 其中，用户样式建议使用 Stylus 安装。
 
+![userstyle](https://gitee.com/liangjiancang/userscript/raw/master/misc/screenshot/userstyle.png)
+
 *gitee: [misc](https://gitee.com/liangjiancang/userscript/tree/master/misc)*
 
 *by Laster2800*
