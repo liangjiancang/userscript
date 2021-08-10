@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.17.4.20210810
+// @version         4.17.5.20210810
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -17,7 +17,7 @@
 // @exclude         *://message.bilibili.com/*/*
 // @exclude         *://t.bilibili.com/h5/*
 // @exclude         *://www.bilibili.com/page-proxy/*
-// @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=958115
+// @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=958947
 // @grant           GM_addStyle
 // @grant           GM_registerMenuCommand
 // @grant           GM_xmlhttpRequest
@@ -1492,6 +1492,10 @@
             el.removeHistory.checked && _self.cleanRemoveHistoryData()
           }
           if (type > 0) {
+            if (type == 2) {
+              el.save.title = '向下滚动……'
+              el.save.disabled = true
+            }
             el.cancel.disabled = true
             el.shadow.setAttribute('disabled', '')
           }
@@ -1615,6 +1619,11 @@
          */
         const onOpened = () => {
           if (type == 2) {
+            const resetSave = () => {
+              el.save.title = ''
+              el.save.disabled = false
+            }
+
             const points = []
             const totalLength = el.items.firstElementChild.offsetHeight
             const items = el.items.querySelectorAll('.gm-updated')
@@ -1624,7 +1633,18 @@
             }
 
             if (points.length > 0) {
-              const range = 5
+              let range = 5 // 显示宽度
+              const actualRange = items[0].parentNode.parentNode.offsetHeight / totalLength * 100 // 实际宽度
+              let realRange = actualRange // 校正后原点到真实末尾的宽度
+              if (actualRange > range) {
+                range = actualRange
+              } else {
+                const offset = (actualRange - range) / 2
+                for (let i = 0; i < points.length; i++) {
+                  points[i] = points[i] + offset
+                }
+                realRange = range + offset
+              }
               const start = []
               const end = []
               let currentStart = points[0]
@@ -1658,6 +1678,22 @@
                   background: linear-gradient(${linear})
                 }
               `)
+
+              if (el.items.scrollHeight == el.items.clientHeight) {
+                resetSave()
+              } else {
+                const last = Math.min((points.pop() + realRange) / 100, 0.95) // 给计算误差留点余地
+                const onScroll = api.tool.throttle(function() {
+                  const bottom = (this.scrollTop + this.clientHeight) / this.scrollHeight
+                  if (bottom > last) { // 可视区底部超过最后一个更新点
+                    resetSave()
+                    this.removeEventListener('scroll', onScroll)
+                  }
+                }, 200)
+                el.items.addEventListener('scroll', onScroll)
+              }
+            } else {
+              resetSave()
             }
           }
         }
@@ -2700,10 +2736,9 @@
          */
         function withinHeader(e) {
           const y = e.clientY
-          const top = api.dom.getElementTop(watchlater)
-          const bottom = top + watchlater.offsetHeight
-          const trim = 2 // 计算因四舍五入与事件触发边缘位置有一定偏差，向内修正以确保正确性（此处理论取 1 即可）
-          return y >= top + trim && y <= bottom - trim
+          const rect = watchlater.getBoundingClientRect()
+          const trim = 2 // e.clientY 在旧标准中为长整型，向内修正以确保正确性（此处理论取 1 即可）
+          return y >= rect.top + trim && y <= rect.bottom - trim
         }
 
         /**
@@ -2730,8 +2765,9 @@
           setTimeout(() => {
             if (this.mouseOver) {
               popup.style.position = api.dom.isFixed(watchlater.parentNode) ? 'fixed' : ''
-              popup.style.top = `${api.dom.getElementTop(watchlater) + watchlater.offsetHeight}px`
-              popup.style.left = `calc(${api.dom.getElementLeft(watchlater) + watchlater.offsetWidth / 2}px - 16em)`
+              const rect = watchlater.getBoundingClientRect()
+              popup.style.top = `${rect.bottom}px`
+              popup.style.left = `calc(${(rect.left + rect.right) / 2}px - 16em)`
               openEntryPopup()
             }
           }, 125) // 以鼠标中速掠过不触发为准
