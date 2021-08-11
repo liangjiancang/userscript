@@ -2,6 +2,24 @@
 
 本日志只记录用户友好的更新说明，影响不大的问题修复与修改不作记录，具体修改见 [提交记录](https://gitee.com/liangjiancang/userscript/commits/master/script/BilibiliCover)。
 
+## V5.0
+
+1. 功能实现：设置工作模式。新增实时预览模式与自定义预览模式。这两种模式受 [b站封面替换右侧广告 bilibili 哔哩哔哩 `v1.5.5`](https://greasyfork.org/zh-CN/scripts/390792?version=958799) 启发而来。
+2. 功能实现：初始化脚本。
+3. 功能移除：在直播间获取关键帧。
+4. 直播间：支持通过 `<iframe>` 嵌套的特殊直播间。
+5. 直播间：改进封面获取方式。
+6. 脚本：改进初始化流程。
+7. API：升级至 V1.4。详见 [UserscriptAPI 更新日志](https://gitee.com/liangjiancang/userscript/blob/master/lib/UserscriptAPI/changelog.md)。
+
+> 多说两句，一开始写这个脚本就是因为在 Greasy Fork 上找遍了B站封面脚本都没有能用的。
+>
+> 如果没记错的话，我当时应该是装过 [b站封面替换右侧广告 bilibili 哔哩哔哩](https://greasyfork.org/zh-CN/scripts/390792) 的。
+>
+> 现在我知道了，那个脚本不行是因为作为广告被广告拦截器干掉了……如果没有这个意外，那就没我什么事了。
+>
+> 而且怎么都 V5.0 了，搞得好像大版本更新不值钱一样，都怪当初乱升大版本，悔不当初啊。
+
 ## V4.12
 
 1. 功能实现：「番剧：获取系列总封面」。启用后，获取整个系列的封面而非分集封面。

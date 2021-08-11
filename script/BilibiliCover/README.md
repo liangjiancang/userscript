@@ -4,9 +4,11 @@
 
 其他脚本：**[[DEBUG] 信息显式化](https://greasyfork.org/zh-CN/scripts/429521)**、**[S1战斗力屏蔽](https://greasyfork.org/zh-CN/scripts/394407)**，以及 **[杂项](https://greasyfork.org/zh-CN/scripts?language=all&set=470770)**
 
-在视频播放页（包括普通模式和稍后再看模式）、番剧播放页和直播间添加一个获取封面的按钮，支持封面预览（可关闭）。左键点击下载或在新标签页中打开封面（点击行为可选），右键点击可基于图片链接作进一步的处理，如通过「另存为」直接保存图片。点击查看 [更新日志](https://gitee.com/liangjiancang/userscript/blob/master/script/BilibiliCover/changelog.md)。
+获取B站各播放页面及直播间封面，支持手动及实时预览等多种工作模式，支持封面预览及点击下载，可高度自定义。一图胜千言，无须多言。求好评，求收藏💔。点击查看 [更新日志](https://gitee.com/liangjiancang/userscript/blob/master/script/BilibiliCover/changelog.md)。
 
-在 Greasy Fork 找了几个脚本都是不能用的，真 NM 离谱，只好自己上了。还是得吐槽下B站新版的稍后再看模式播放页，真尼玛离谱兼反人类，本身还 BUG 一堆，服了。
+![脚本说明](https://gitee.com/liangjiancang/userscript/raw/master/script/BilibiliCover/screenshot/脚本说明.png)
+
+> 在 Greasy Fork 找了几个脚本都是不能用的，真 NM 离谱，只好自己上了。
 
 ## 补充说明
 
@@ -17,14 +19,6 @@
 * 脚本设置
 
     ![脚本设置](https://gitee.com/liangjiancang/userscript/raw/master/script/BilibiliCover/screenshot/脚本设置.png)
-
-* 视频播放页
-
-    ![视频播放页](https://gitee.com/liangjiancang/userscript/raw/master/script/BilibiliCover/screenshot/视频播放页.png)
-
-* 番剧播放页
-
-    ![番剧播放页](https://gitee.com/liangjiancang/userscript/raw/master/script/BilibiliCover/screenshot/番剧播放页.png)
 
 * 直播间
 
