@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站封面获取
-// @version         5.0.2.20210812
+// @version         5.0.3.20210812
 // @namespace       laster2800
 // @author          Laster2800
 // @description     获取B站各播放页面及直播间封面，支持手动及实时预览等多种工作模式，支持封面预览及点击下载，可高度自定义
@@ -84,7 +84,7 @@
       page_live: /live\.bilibili\.com\/\d+([/?#]|$)/, // 只含具体的直播间页面
     },
     const: {
-      title: '点击保存封面或在新标签页中打开图片（可在脚本菜单中设置）。\n此外，可在脚本菜单中开启或关闭封面预览功能。\n右键点击可基于图片链接作进一步的处理，如通过「另存为」直接保存图片。',
+      hintText: '左键：下载或在新标签页中打开封面。\n中键：在新标签页中打开封面。\n右键：可通过「另存为」直接保存图片。',
       errorMsg: '获取失败，若非网络问题请提供反馈',
       fadeTime: 200,
       noticeTimeout: 5600,
@@ -455,7 +455,7 @@
          */
         setCover(target, preview, url) {
           if (url) {
-            target.title = gm.const.title
+            target.title = gm.const.hintText
             target.href = url
             target.target = '_blank'
             target.loaded = true
