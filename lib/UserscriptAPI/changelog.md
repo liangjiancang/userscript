@@ -2,6 +2,11 @@
 
 本日志只记录用户友好的更新说明，影响不大的问题修复与修改不作记录，具体修改见 [提交记录](https://gitee.com/liangjiancang/userscript/commits/master/lib/UserscriptAPI)。
 
+## V1.4
+
+1. `dom`：增加 `addStyle()` 方法，支持向 `<iframe>` 中添加样式。
+2. `message`：`create()` 与 `close()` 增加回调函数。
+
 ## V1.3
 
 1. 库：修复在网速极慢的情况下，在 `document-start` 时期运行出错的问题。
