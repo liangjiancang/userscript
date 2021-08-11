@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站封面获取
-// @version         5.0.3.20210812
+// @version         5.0.4.20210812
 // @namespace       laster2800
 // @author          Laster2800
 // @description     获取B站各播放页面及直播间封面，支持手动及实时预览等多种工作模式，支持封面预览及点击下载，可高度自定义
@@ -644,7 +644,7 @@
               _self.method.setCover(cover, preview, false)
               api.logger.error(e)
             }
-  
+
             // 需全面接管一切用户交互引起的行为，默认链接点击行为除外
             removeEventListeners()
             if (event.type == 'mousedown') {
@@ -666,7 +666,7 @@
             }
             addEventListeners()
           }
-  
+
           // lazy loading；捕获期执行，确保优先于其他处理器
           const addEventListeners = () => {
             cover.addEventListener('mousedown', main, true)
@@ -756,7 +756,7 @@
               event.preventDefault()
               event.stopPropagation()
             }
-  
+
             // 需全面接管一切用户交互引起的行为，默认链接点击行为除外
             removeEventListeners()
             if (event.type == 'mousedown') {
@@ -778,7 +778,7 @@
             }
             addEventListeners()
           }
-  
+
           // lazy loading；use capture，确保优先于其他监听器执行
           const addEventListeners = () => {
             cover.addEventListener('mousedown', main, true)
