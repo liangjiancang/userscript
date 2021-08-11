@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站封面获取
-// @version         5.0.0.20210811
+// @version         5.0.1.20210811
 // @namespace       laster2800
 // @author          Laster2800
 // @description     获取B站各播放页面及直播间封面，支持手动及实时预览等多种工作模式，支持封面预览及点击下载，可高度自定义
@@ -87,7 +87,7 @@
       title: '点击保存封面或在新标签页中打开图片（可在脚本菜单中设置）。\n此外，可在脚本菜单中开启或关闭封面预览功能。\n右键点击可基于图片链接作进一步的处理，如通过「另存为」直接保存图片。',
       errorMsg: '获取失败，若非网络问题请提供反馈',
       fadeTime: 200,
-      notificationTimeout: 5600,
+      noticeTimeout: 5600,
     },
   }
 
@@ -171,7 +171,7 @@
           GM_setValue(id, config[id])
           GM_notification({
             text: `已${config[id] ? '开启' : '关闭'}「${configMap[id].name}」功能${configMap[id].needNotReload ? '' : '，刷新页面以生效（点击通知以刷新）'}。`,
-            timeout: gm.const.notificationTimeout,
+            timeout: gm.const.noticeTimeout,
             onclick: configMap[id].needNotReload ? null : () => location.reload(),
           })
           clearMenu()
@@ -211,7 +211,6 @@
         if (gm.configVersion < 20210811) {
           GM_notification({
             text: '功能性更新完毕，您可能需要重新设置脚本。点击查看更新日志。',
-            timeout: gm.const.notificationTimeout,
             onclick: () => window.open(gm.url.gm_changelog),
           })
         }
@@ -377,14 +376,14 @@
             } else {
               GM_notification({
                 text: '下载错误',
-                timeout: gm.const.notificationTimeout,
+                timeout: gm.const.noticeTimeout,
               })
             }
           }
           const ontimeout = function() {
             GM_notification({
               text: '下载超时',
-              timeout: gm.const.notificationTimeout,
+              timeout: gm.const.noticeTimeout,
             })
             window.open(url)
           }
