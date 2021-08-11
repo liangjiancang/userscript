@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站共同关注快速查看
-// @version         1.4.32.20210811
+// @version         1.4.33.20210812
 // @namespace       laster2800
 // @author          Laster2800
 // @description     快速查看与特定用户的共同关注（视频播放页、动态页、用户空间、直播间）
@@ -318,32 +318,30 @@
      * 处理点击弹幕弹出的信息卡片。
      */
     async initLive() {
+      let frame = null
       let container = await api.wait.waitQuerySelector('.danmaku-menu, #player-ctnr')
       if (container.id == 'player-ctnr') {
-        const frame = await api.wait.waitQuerySelector('iframe', container)
+        frame = await api.wait.waitQuerySelector('iframe', container)
         container = await api.wait.waitQuerySelector('.danmaku-menu', frame.contentDocument)
         webpage.addStyle(frame.contentDocument)
       }
       const userLink = await api.wait.waitQuerySelector('.go-space a', container)
-      container.style.maxWidth = '300px'
+      container.style.maxWidth = frame ? '264px' : '300px'
 
       const ob = new MutationObserver(async records => {
         const uid = webpage.method.getUid(records[0].target.href)
         if (uid) {
-          if (container.sameFollowings) {
-            container.sameFollowings.innerHTML = ''
-          }
-          const originalWidth = container.getBoundingClientRect().width
-          await webpage.generalLogic({
+          webpage.generalLogic({
             uid: uid,
             target: container,
             className: `${gm.id} live-same-followings`,
           })
-          // 若在 frame 中，container 右边会被 frame 边界挡住使得宽度受限，即使用 transform 左移也无法突破
-          // 动态计算 left 可突破隐形的墙，且可根据情况控制偏移距离
-          const left = parseFloat(getComputedStyle(container).left)
-          const width = container.getBoundingClientRect().width
-          container.style.left = `${left - (width - originalWidth)}px`
+
+          // 若在 frame 中，container 右边会被 frame 边界挡住使得宽度受限，用 transform 左移也无法突破
+          // 故不能直接用一个 transform 来解决，须动态计算
+          // 说是动态计算，也不要根据宽度增量来算偏移了，一是官方自己的位置就不科学；二是想精确计算，必须得等到卡片
+          // 注入文字之后，那么偏移的时间点就晚了，会造成视觉上非常强烈的不适感，综合显示效果还不如现在这样
+          container.style.left = frame ? '76vw' : '72vw'
         }
       })
       ob.observe(userLink, { attributeFilter: ['href'] })
