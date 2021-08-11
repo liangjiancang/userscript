@@ -6,11 +6,13 @@
 
 1. 功能实现：在直播间中快速查看。
 2. 脚本：主要逻辑推迟至 `load` 事件执行。
-3. 脚本：优化错误处理流程。
-4. 脚本：优化 URL 匹配。
-5. API：升级至 V1.4，进一步优化条件等待和元素等待逻辑。详见 [UserscriptAPI 更新日志](https://gitee.com/liangjiancang/userscript/blob/master/lib/UserscriptAPI/changelog.md)。
-6. 代码：优化异常处理。
-7. 代码：优先使用函数声明而非函数表达式来定义内部函数。
+3. 脚本：支持通过 `<iframe>` 嵌套的特殊直播间。
+4. 脚本：优化错误处理流程。
+5. 脚本：优化 URL 匹配。
+6. API：升级至 V1.4，进一步优化条件等待和元素等待逻辑。详见 [UserscriptAPI 更新日志](https://gitee.com/liangjiancang/userscript/blob/master/lib/UserscriptAPI/changelog.md)。
+7. UI：优化直播间中的共同关注显示。
+8. 代码：优化异常处理。
+9. 代码：优先使用函数声明而非函数表达式来定义内部函数。
 
 ## V1.3
 
