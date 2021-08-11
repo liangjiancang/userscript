@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站防剧透进度条
-// @version         2.0.8.20210810
+// @version         2.0.9.20210811
 // @namespace       laster2800
 // @author          Laster2800
 // @description     看比赛、看番总是被进度条剧透？装上这个脚本再也不用担心这些问题了
@@ -13,8 +13,7 @@
 // @include         *://www.bilibili.com/medialist/play/watchlater
 // @include         *://www.bilibili.com/medialist/play/watchlater/*
 // @include         *://www.bilibili.com/bangumi/play/*
-// @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=958947
-// @grant           GM_addStyle
+// @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=959256
 // @grant           GM_registerMenuCommand
 // @grant           GM_xmlhttpRequest
 // @grant           GM_setValue
@@ -1939,7 +1938,7 @@
      * 添加脚本样式
      */
     addStyle() {
-      GM_addStyle(`
+      api.dom.addStyle(`
         :root {
           --progress-track-color: hsla(0, 0%, 100%, .3);
           --progress-played-color: rgba(35, 173, 229, 1);

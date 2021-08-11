@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name            S1战斗力屏蔽
 // @namespace       laster2800
-// @version         3.4.6.20210810
+// @version         3.5.0.20210811
 // @author          Laster2800
 // @description     屏蔽 S1 的战斗力系统，眼不见为净
 // @author          Laster2800
@@ -10,10 +10,10 @@
 // @homepage        https://greasyfork.org/zh-CN/scripts/394407
 // @supportURL      https://greasyfork.org/zh-CN/scripts/394407/feedback
 // @license         LGPL-3.0
-// @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=958947
+// @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=959256
 // @include         *.saraba1st.com/*
 // @exclude         *.saraba1st.com/2b/search*
-// @grant           GM_addStyle
+// @grant           none
 // @run-at          document-start
 // ==/UserScript==
 
@@ -66,7 +66,7 @@
 
     // 系统提醒
     // 在正式处理之前，通过样式将该隐藏的隐藏住，避免被用户观察到
-    GM_addStyle(`
+    api.dom.addStyle(`
       #myprompt.new {
         background: url(https://static.saraba1st.com/image/s1/arrwd.gif) no-repeat 100% 50%;
         background-position: 3px 50%;
@@ -120,7 +120,7 @@
     })
 
     // 右上角「积分」的弹出菜单移除
-    GM_addStyle(`
+    api.dom.addStyle(`
       #extcreditmenu {
         background: none;
         padding-right: 1em;
@@ -132,7 +132,7 @@
     })
 
     if (/thread-|mod=viewthread/.test(location.href)) {
-      GM_addStyle(`
+      api.dom.addStyle(`
         /* 层主头像下方的战斗力显示 */
         ${enabledSelector} .favatar > div.tns.xg2 > table > tbody > tr > th:nth-child(2) {
           display: none;
@@ -145,7 +145,7 @@
       `)
     } else if (/ac=credit/.test(location.href)) {
       // [设置 > 积分] 页面中的相关项屏蔽
-      GM_addStyle(`
+      api.dom.addStyle(`
         /* [我的积分] 页中战斗力显示 */
         ${enabledSelector} #ct .creditl > li:nth-child(2),
         /* [我的积分] 页中的 [积分显示] */
@@ -158,7 +158,7 @@
     } else if (/mod=space(&|$)/.test(location.href)) { // 「个人主页」或「通知」页面
       // 屏蔽个人资料中的战斗力显示
       if (/do=profile/.test(location.href)) {
-        GM_addStyle(`
+        api.dom.addStyle(`
           ${enabledSelector} #psts > ul > li:nth-child(3) {
             display: none;
           }
@@ -170,14 +170,14 @@
         location.replace('https://bbs.saraba1st.com/2b/home.php?mod=space&do=pm')
       }
       // [通知 > 系统提醒] 整项屏蔽
-      GM_addStyle(`
+      api.dom.addStyle(`
         ${enabledSelector} #ct > .appl > .tbn > ul > li:nth-child(4) {
           display: none;
         }
       `)
     } else if (/space-uid-/.test(location.href)) {
       // 屏蔽用户主页中的战斗力显示
-      GM_addStyle(`
+      api.dom.addStyle(`
         ${enabledSelector} #psts > ul > li:nth-child(3) {
           display: none;
         }

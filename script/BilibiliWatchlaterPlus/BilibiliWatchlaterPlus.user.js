@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.17.5.20210810
+// @version         4.17.6.20210811
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -17,8 +17,7 @@
 // @exclude         *://message.bilibili.com/*/*
 // @exclude         *://t.bilibili.com/h5/*
 // @exclude         *://www.bilibili.com/page-proxy/*
-// @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=958947
-// @grant           GM_addStyle
+// @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=959256
 // @grant           GM_registerMenuCommand
 // @grant           GM_xmlhttpRequest
 // @grant           GM_setValue
@@ -1673,7 +1672,7 @@
               }
               linear = linear.slice(2)
 
-              GM_addStyle(`
+              api.dom.addStyle(`
                 #${gm.id} [setting-type=updated] .gm-items::-webkit-scrollbar {
                   background: linear-gradient(${linear})
                 }
@@ -2607,7 +2606,7 @@
           })
           ob.observe(el, { attributes: true })
         })
-        GM_addStyle(`
+        api.dom.addStyle(`
           #${gm.id} .gm-entrypopup[gm-compatible] .gm-popup-arrow {
             display: none;
           }
@@ -4046,7 +4045,7 @@
 
       // 增加搜索框
       if (gm.config.listSearch) {
-        GM_addStyle(`
+        api.dom.addStyle(`
           #gm-list-search.gm-search {
             display: inline-block;
             font-size: 1.6em;
@@ -4142,7 +4141,7 @@
            * 不管是标准还是浏览器的的锅：凭什么鼠标移动到 option 上 select「不一定」是 hover 状态——哪怕设计成「一定不」
            * 都是合理的。
            */
-          GM_addStyle(`
+          api.dom.addStyle(`
             .gm-list-sort-control-container {
               display: inline-block;
               padding-bottom: 5px;
@@ -4176,7 +4175,7 @@
 
       // 增加自动移除控制器
       if (gm.config.autoRemove != Enums.autoRemove.absoluteNever) {
-        GM_addStyle(`
+        api.dom.addStyle(`
           #gm-list-auto-remove-control {
             background: #fff;
             color: #00a1d6;
@@ -4235,7 +4234,7 @@
       switch (gm.config.menuScrollbarSetting) {
         case Enums.menuScrollbarSetting.beautify:
           // 目前在不借助 JavaScript 的情况下，无法完美实现类似于移动端滚动条浮动在内容上的效果。
-          GM_addStyle(`
+          api.dom.addStyle(`
             :root {
               --scrollbar-background-color: transparent;
               --scrollbar-thumb-color: #0000002b;
@@ -4271,7 +4270,7 @@
           `)
           return
         case Enums.menuScrollbarSetting.hidden:
-          GM_addStyle(`
+          api.dom.addStyle(`
             ${popup}::-webkit-scrollbar,
             ${tooltip} ::-webkit-scrollbar,
             ${dynamic}::-webkit-scrollbar {
@@ -4292,7 +4291,7 @@
       if (self == top) {
         this.addMenuScrollbarStyle()
         // 通用样式
-        GM_addStyle(`
+        api.dom.addStyle(`
           :root {
             --text-color: #0d0d0d;
             --text-bold-color: #3a3a3a;
