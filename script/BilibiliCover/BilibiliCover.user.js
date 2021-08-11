@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站封面获取
-// @version         5.0.1.20210811
+// @version         5.0.2.20210812
 // @namespace       laster2800
 // @author          Laster2800
 // @description     获取B站各播放页面及直播间封面，支持手动及实时预览等多种工作模式，支持封面预览及点击下载，可高度自定义
@@ -117,7 +117,7 @@
         this.initRuntime()
 
         if (gm.config.mode == gm.configMap.mode.default) {
-          this.configureMode()
+          this.configureMode(true)
         }
       } catch (e) {
         api.logger.error(e)
@@ -238,8 +238,9 @@
     /**
      * 设置工作模式
      * @async
+     * @param {boolean} [reload] 强制刷新
      */
-    async configureMode() {
+    async configureMode(reload) {
       let result = null
       let msg = null
       let val = null
@@ -353,7 +354,7 @@
         GM_setValue('customModeStyle', result)
       }
 
-      if (api.message.confirm('配置工作模式完成，需刷新页面方可生效。是否立即刷新页面？')) {
+      if (reload || api.message.confirm('配置工作模式完成，需刷新页面方可生效。是否立即刷新页面？')) {
         location.reload()
       }
     }
