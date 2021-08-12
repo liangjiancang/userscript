@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站共同关注快速查看
-// @version         1.4.34.20210812
+// @version         1.4.35.20210812
 // @namespace       laster2800
 // @author          Laster2800
 // @description     快速查看与特定用户的共同关注（视频播放页、动态页、用户空间、直播间）
@@ -16,7 +16,7 @@
 // @exclude         *://live.bilibili.com/
 // @exclude         *://live.bilibili.com/?*
 // @exclude         *://www.bilibili.com/watchlater/
-// @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=959256
+// @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=959604
 // @grant           GM_notification
 // @grant           GM_xmlhttpRequest
 // @grant           GM_setValue
@@ -208,7 +208,7 @@
      * @param {string} config.user 用户元素选择器
      * @param {string} config.info 信息元素选择器
      * @param {boolean} [config.lazy=true] 卡片内容是否为懒加载
-     * @param {boolean} [config.ancestor] 将 `container` 视为祖先节点而非父节点
+     * @param {boolean} [config.ancestor] 将 `container` 视为祖先元素而非父元素
      */
     async cardLogic(config) {
       config = { lazy: true, ancestor: false, ...config }
@@ -228,7 +228,7 @@
           if (config.lazy) {
             userLink = await api.wait.waitQuerySelector(config.user, card)
           } else {
-            // 此时并不是在「正在加载」状态的 user-card 中添加新节点以转向「已完成」状态
+            // 此时并不是在「正在加载」状态的 user-card 中添加新元素以转向「已完成」状态
             // 而是将「正在加载」的 user-card 彻底移除，然后直接将「已完成」的 user-card 添加到 DOM 中
             userLink = card.querySelector(config.user)
           }
@@ -250,7 +250,7 @@
      * @param {Object} config 配置
      * @param {string | number} config.uid 用户 ID
      * @param {HTMLElement} config.target 指定信息显示元素的父元素
-     * @param {string} [config.className=''] 显示元素的类名；若 `target` 的子孙节点中有对应元素则直接使用，否则创建之
+     * @param {string} [config.className=''] 显示元素的类名；若 `target` 的子孙元素中有对应元素则直接使用，否则创建之
      */
     async generalLogic(config) {
       let sf = config.target.sameFollowings ?? (config.className ? config.target.querySelector(config.className.replace(/(^|\s+)(?=\w)/g, '.')) : null)

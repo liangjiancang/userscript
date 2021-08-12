@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站防剧透进度条
-// @version         2.0.9.20210811
+// @version         2.0.10.20210812
 // @namespace       laster2800
 // @author          Laster2800
 // @description     看比赛、看番总是被进度条剧透？装上这个脚本再也不用担心这些问题了
@@ -13,7 +13,7 @@
 // @include         *://www.bilibili.com/medialist/play/watchlater
 // @include         *://www.bilibili.com/medialist/play/watchlater/*
 // @include         *://www.bilibili.com/bangumi/play/*
-// @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=959256
+// @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=959604
 // @grant           GM_registerMenuCommand
 // @grant           GM_xmlhttpRequest
 // @grant           GM_setValue
@@ -80,7 +80,7 @@
    * @typedef GMObject_configMap_item
    * @property {*} default 默认值
    * @property {'string' | 'boolean' | 'int' | 'float'} [type] 数据类型
-   * @property {'checked' | 'value'} attr 对应 `DOM` 节点上的属性
+   * @property {'checked' | 'value'} attr 对应 `DOM` 元素上的属性
    * @property {boolean} [manual] 配置保存时是否需要手动处理
    * @property {boolean} [needNotReload] 配置改变后是否不需要重新加载就能生效
    * @property {number} [min] 最小值
@@ -637,13 +637,13 @@
                   for (const name in map) {
                     const configVersion = map[name].configVersion
                     if (configVersion && configVersion > gm.configVersion) {
-                      let node = el[name]
-                      while (node.nodeName != 'TD') {
-                        node = node.parentNode
-                        if (!node) break
+                      let element = el[name]
+                      while (element.nodeName != 'TD') {
+                        element = element.parentElement
+                        if (!element) break
                       }
-                      if (node?.firstElementChild) {
-                        api.dom.addClass(node.firstElementChild, 'gm-updated')
+                      if (element?.firstElementChild) {
+                        api.dom.addClass(element.firstElementChild, 'gm-updated')
                       }
                     }
                   }
@@ -838,7 +838,7 @@
             // 关闭特殊状态
             setTimeout(() => {
               el.settingPage.removeAttribute('setting-type')
-              el.maintitle.innerText = GM_info.script.name
+              el.maintitle.textContent = GM_info.script.name
               el.cancel.disabled = false
               el.shadow.removeAttribute('disabled')
             }, gm.const.fadeTime)
@@ -862,7 +862,7 @@
             // 需要等所有配置读取完成后再进行选项初始化
             el[name].init?.()
           }
-          el.settingPage.parentNode.style.display = 'block'
+          el.settingPage.parentElement.style.display = 'block'
           api.dom.setAbsoluteCenter(el.settingPage)
         }
 
@@ -1245,7 +1245,7 @@
         getTimeFromElement(el) {
           let result = 0
           const factors = [24 * 3600, 3600, 60, 1]
-          const parts = el.innerText.split(':')
+          const parts = el.textContent.split(':')
           while (parts.length > 0) {
             result += parts.pop() * factors.pop()
           }
@@ -1412,7 +1412,7 @@
           if (_self.enabled && gm.config.disableCurrentPoint) {
             if (!currentPoint._fake) {
               currentPoint._fake = currentPoint.insertAdjacentElement('afterend', currentPoint.cloneNode(true))
-              currentPoint._fake.innerText = '???'
+              currentPoint._fake.textContent = '???'
               api.dom.addClass(currentPoint._fake, 'fake')
             }
             currentPoint.style.display = 'none'
@@ -1438,7 +1438,7 @@
           if (_self.enabled && gm.config.disableDuration) {
             if (!duration._fake) {
               duration._fake = duration.insertAdjacentElement('afterend', duration.cloneNode(true))
-              duration._fake.innerText = '???'
+              duration._fake.textContent = '???'
               api.dom.addClass(duration._fake, 'fake')
             }
             duration.style.display = 'none'
@@ -1477,7 +1477,7 @@
               /** @type HTMLElement[] */
               const items = menu.querySelectorAll('.bilibili-player-video-btn-menu-list')
               for (let i = 0; i < items.length; i++) {
-                items[i].innerText = 'P' + (i + 1)
+                items[i].textContent = 'P' + (i + 1)
               }
             })
           }
@@ -1508,9 +1508,9 @@
                   /** @type HTMLElement[] */
                   const items = list.querySelectorAll('.player-auxiliary-playlist-item-p-item')
                   for (const item of items) {
-                    const m = /^(P\d+)\D/i.exec(item.innerText)
+                    const m = /^(P\d+)\D/i.exec(item.textContent)
                     if (m) {
-                      item.innerText = m[1]
+                      item.textContent = m[1]
                     }
                   }
                   // 如果 list 中发生修改，则重新处理
@@ -1654,7 +1654,7 @@
               el.style.visibility = 'hidden'
             })
             if (_self.method.isV3Player()) {
-              _self.progress.thumb.parentNode.style.backgroundColor = 'unset'
+              _self.progress.thumb.parentElement.style.backgroundColor = 'unset'
             }
             _self.fakeProgress.root.style.visibility = 'visible'
 
@@ -1673,7 +1673,7 @@
               el.style.visibility = ''
             })
             if (_self.method.isV3Player()) {
-              _self.progress.thumb.parentNode.style.backgroundColor = ''
+              _self.progress.thumb.parentElement.style.backgroundColor = ''
             }
             _self.fakeProgress.root.style.visibility = ''
             handler()

@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.17.6.20210811
+// @version         4.17.7.20210812
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -17,7 +17,7 @@
 // @exclude         *://message.bilibili.com/*/*
 // @exclude         *://t.bilibili.com/h5/*
 // @exclude         *://www.bilibili.com/page-proxy/*
-// @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=959256
+// @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=959604
 // @grant           GM_registerMenuCommand
 // @grant           GM_xmlhttpRequest
 // @grant           GM_setValue
@@ -234,7 +234,7 @@
    * @typedef GMObject_configMap_item
    * @property {*} default 默认值
    * @property {'string' | 'boolean' | 'int' | 'float'} [type] 数据类型
-   * @property {'checked' | 'value'} attr 对应 `DOM` 节点上的属性
+   * @property {'checked' | 'value'} attr 对应 `DOM` 元素上的属性
    * @property {boolean} [manual] 配置保存时是否需要手动处理
    * @property {boolean} [needNotReload] 配置改变后是否不需要重新加载就能生效
    * @property {number} [min] 最小值
@@ -1238,13 +1238,13 @@
                   for (const name in map) {
                     const configVersion = map[name].configVersion
                     if (configVersion && configVersion > gm.configVersion) {
-                      let node = el[name]
-                      while (node.nodeName != 'TD') {
-                        node = node.parentNode
-                        if (!node) break
+                      let element = el[name]
+                      while (element.nodeName != 'TD') {
+                        element = element.parentElement
+                        if (!element) break
                       }
-                      if (node?.firstElementChild) {
-                        api.dom.addClass(node.firstElementChild, 'gm-updated')
+                      if (element?.firstElementChild) {
+                        api.dom.addClass(element.firstElementChild, 'gm-updated')
                       }
                     }
                   }
@@ -1264,27 +1264,27 @@
               <p>选择更多保存时间点能提高移除历史的准确度，但可能会伴随大量无意义的数据比较。无论选择哪一种方式，在同一个 URL 对应的页面下至多保存一次。</p>
               <p>若习惯于从稍后再看列表页面点击视频观看，建议选择第一项或第二项。若习惯于直接在顶栏弹出菜单中点击视频观看，请选择第二项。第三项性价比低，不推荐选择。</p>
             </div>
-          `, '💬', { width: '36em', flagSize: '2em', disabled: () => el.rhspInformation.parentNode.hasAttribute('disabled') })
+          `, '💬', { width: '36em', flagSize: '2em', disabled: () => el.rhspInformation.parentElement.hasAttribute('disabled') })
           el.rhfcInformation = gm.el.setting.querySelector('#gm-rhfcInformation')
           api.message.advanced(el.rhfcInformation, `
             <div style="text-indent:2em;line-height:1.6em">
               <p>模糊比对模式：设当前时间点获取到的稍后再看列表数据为 A，上一次获取到的数据为 B。若 A 与 B 的前 <b>N</b> 项均一致就认为这段时间没有往稍后再看中添加新视频，直接跳过后续处理。</p>
               <p>其中，<b>N</b> 即为模糊比对深度。注意，<b>深度设置过大反而会降低比对效率</b>，建议先设置较小的值，若后续观察到有记录被误丢弃，再增加该项的值。最佳参数与个人使用习惯相关，请根据自身情况微调。你也可以选择设置 <b>0</b> 以关闭模糊比对模式（不推荐）。</p>
             </div>
-          `, '💬', { width: '36em', flagSize: '2em', disabled: () => el.rhfcInformation.parentNode.hasAttribute('disabled') })
+          `, '💬', { width: '36em', flagSize: '2em', disabled: () => el.rhfcInformation.parentElement.hasAttribute('disabled') })
           el.rhsInformation = gm.el.setting.querySelector('#gm-rhsInformation')
           api.message.advanced(el.rhsInformation, `
             <div style="text-indent:2em;line-height:1.6em">
               <p>在脚本限制的取值范围内，稍后再看历史数据的保存与读取对页面加载的影响几乎可以忽略不计（小于 1ms，不含脚本管理器对数据进行预加载的时间）。</p>
               <p>但是打开移除记录时，根据大量数据生成历史的过程较为耗时。不过，只要将「默认历史回溯深度」设置在 100 以下就不会有明显的生成延迟。</p>
             </div>
-          `, '💬', { width: '36em', flagSize: '2em', disabled: () => el.rhsInformation.parentNode.hasAttribute('disabled') })
+          `, '💬', { width: '36em', flagSize: '2em', disabled: () => el.rhsInformation.parentElement.hasAttribute('disabled') })
           el.rhtInformation = gm.el.setting.querySelector('#gm-rhtInformation')
           api.message.advanced(el.rhtInformation, `
             <div style="line-height:1.6em">
               在历史数据记录中添加时间戳，用于改善移除记录中的数据排序，使得排序以「视频『最后一次』被观察到处于稍后再看的时间点」为基准，而非以「视频『第一次』被观察到处于稍后再看的时间点」为基准；同时也利于数据展示与查看。注意，此功能在数据存读及处理上都有额外开销。
             </div>
-          `, '💬', { width: '36em', flagSize: '2em', disabled: () => el.rhtInformation.parentNode.hasAttribute('disabled') })
+          `, '💬', { width: '36em', flagSize: '2em', disabled: () => el.rhtInformation.parentElement.hasAttribute('disabled') })
           el.fwsInformation = gm.el.setting.querySelector('#gm-fwsInformation')
           api.message.advanced(el.fwsInformation, `
             <div style="text-indent:2em;line-height:1.6em">
@@ -1343,7 +1343,7 @@
             const subitems = el.items.querySelectorAll(`[sup="${sup}"]`)
             for (const subitem of subitems) {
               subitem.querySelectorAll('[id|=gm]').forEach(option => {
-                const parent = option.parentNode
+                const parent = option.parentElement
                 if (item.checked) {
                   parent.removeAttribute('disabled')
                 } else {
@@ -1353,7 +1353,7 @@
               })
             }
           }
-          el.headerMenuFn = el.headerMenuFnSetting.parentNode.parentNode
+          el.headerMenuFn = el.headerMenuFnSetting.parentElement.parentElement
           el.headerButton.init = function() {
             subitemChange(this, 'headerButton')
             if (this.checked) {
@@ -1579,7 +1579,7 @@
             // 关闭特殊状态
             setTimeout(() => {
               el.settingPage.removeAttribute('setting-type')
-              el.maintitle.innerText = GM_info.script.name
+              el.maintitle.textContent = GM_info.script.name
               el.cancel.disabled = false
               el.shadow.removeAttribute('disabled')
             }, gm.const.fadeTime)
@@ -1604,11 +1604,11 @@
             el[name].init?.()
           }
           if (gm.config.removeHistory) {
-            el.cleanRemoveHistoryData.innerText = `清空数据(${gm.data.removeHistoryData().size}条)`
+            el.cleanRemoveHistoryData.textContent = `清空数据(${gm.data.removeHistoryData().size}条)`
           } else {
-            el.cleanRemoveHistoryData.innerText = '清空数据(0条)'
+            el.cleanRemoveHistoryData.textContent = '清空数据(0条)'
           }
-          el.settingPage.parentNode.style.display = 'block'
+          el.settingPage.parentElement.style.display = 'block'
           api.dom.setAbsoluteCenter(el.settingPage)
           el.items.scrollTop = 0
         }
@@ -1627,13 +1627,13 @@
             const totalLength = el.items.firstElementChild.offsetHeight
             const items = el.items.querySelectorAll('.gm-updated')
             for (const item of items) {
-              const tr = item.parentNode.parentNode
+              const tr = item.parentElement.parentElement
               points.push(tr.offsetTop / totalLength * 100)
             }
 
             if (points.length > 0) {
               let range = 5 // 显示宽度
-              const actualRange = items[0].parentNode.parentNode.offsetHeight / totalLength * 100 // 实际宽度
+              const actualRange = items[0].parentElement.parentElement.offsetHeight / totalLength * 100 // 实际宽度
               let realRange = actualRange // 校正后原点到真实末尾的宽度
               if (actualRange > range) {
                 range = actualRange
@@ -1898,7 +1898,7 @@
           el.historySort.title = '点击切换升序'
           el.historySort.setType = function(type) {
             this.type = type
-            this.innerText = this.typeText[type]
+            this.textContent = this.typeText[type]
             this.title = `点击切换${this.typeText[(type + 1) % this.typeText.length]}`
           }
           el.historySort.onclick = function() {
@@ -1923,8 +1923,8 @@
           }
           el.content = el.historyPage.appendChild(document.createElement('div'))
           el.content.className = 'gm-content'
-          el.timePoint.innerText = gm.config.removeHistoryTimestamp ? '最后一次' : '第一次'
-          el.historyPage.parentNode.style.display = 'block'
+          el.timePoint.textContent = gm.config.removeHistoryTimestamp ? '最后一次' : '第一次'
+          el.historyPage.parentElement.style.display = 'block'
           api.dom.setAbsoluteCenter(el.historyPage)
 
           try {
@@ -1937,7 +1937,7 @@
               const rhd = gm.data.removeHistoryData()
               data = rhd.toArray(depth, rhd.size - depth)
             }
-            el.saveTimes.innerText = data.length
+            el.saveTimes.textContent = data.length
             let history = []
             const result = []
             for (const record of data) {
@@ -1995,7 +1995,7 @@
                 `)
               }
             }
-            el.removedNum.innerText = result.length
+            el.removedNum.textContent = result.length
 
             setContentTop() // 在设置内容前设置好 top，这样看不出修改的痕迹
             if (result.length > 0) {
@@ -2034,7 +2034,7 @@
         }
 
         const setEmptyContent = text => {
-          el.content.innerText = text
+          el.content.textContent = text
           el.content.style.color = 'gray'
           el.content.style.fontSize = '1.5em'
           el.content.style.paddingTop = '2em'
@@ -2586,7 +2586,7 @@
       const _self = this
       if (gm.config.headerCompatible == Enums.headerCompatible.bilibiliEvolved) {
         api.wait.waitQuerySelector('.custom-navbar [data-name=watchlaterList]').then(el => {
-          const watchlater = el.parentNode.appendChild(el.cloneNode(true))
+          const watchlater = el.parentElement.appendChild(el.cloneNode(true))
           el.style.display = 'none'
           const link = watchlater.querySelector('a.main-content')
           link.href = gm.url.noop
@@ -2763,7 +2763,7 @@
           // 误触率与弹出速度正相关，与数据加载时间无关
           setTimeout(() => {
             if (this.mouseOver) {
-              popup.style.position = api.dom.isFixed(watchlater.parentNode) ? 'fixed' : ''
+              popup.style.position = api.dom.isFixed(watchlater.offsetParent) ? 'fixed' : ''
               const rect = watchlater.getBoundingClientRect()
               popup.style.top = `${rect.bottom}px`
               popup.style.left = `calc(${(rect.left + rect.right) / 2}px - 16em)`
@@ -2943,7 +2943,7 @@
                     list.scrollTop = 0
                   }
                 }
-                el.popupTotal.innerText = `${cnt[0]}${cnt[1] > 0 ? `/${cnt[0] + cnt[1]}` : ''}`
+                el.popupTotal.textContent = `${cnt[0]}${cnt[1] > 0 ? `/${cnt[0] + cnt[1]}` : ''}`
                 if (cnt[0]) {
                   el.entryListEmpty.style.display = 'none'
                 } else {
@@ -3114,7 +3114,7 @@
               }
             }
             gm.menu.entryPopup.sortType = Enums.sortType.default
-            el.popupTotal.innerText = '0'
+            el.popupTotal.textContent = '0'
             el.entryList.innerHTML = ''
             el.entryList.total = 0
             el.entryRemovedList.innerHTML = ''
@@ -3146,7 +3146,7 @@
                 }
                 if (simplePopup) {
                   if (valid) {
-                    card.innerText = card.vTitle
+                    card.textContent = card.vTitle
                   } else {
                     card.innerHTML = `<b>[已失效]</b> ${card.vTitle}`
                   }
@@ -3303,7 +3303,7 @@
               el.entryRemovedList.style.display = ''
             }
 
-            el.popupTotal.innerText = `${el.entryList.total}${el.entryRemovedList.total > 0 ? `/${el.entryList.total + el.entryRemovedList.total}` : ''}`
+            el.popupTotal.textContent = `${el.entryList.total}${el.entryRemovedList.total > 0 ? `/${el.entryList.total + el.entryRemovedList.total}` : ''}`
             if (gm.config.removeHistory && gm.config.removeHistorySavePoint == Enums.removeHistorySavePoint.listAndMenu) {
               _self.method.updateRemoveHistoryData()
             }
@@ -3552,7 +3552,7 @@
         const cb = btn.appendChild(document.createElement('input'))
         cb.type = 'checkbox'
         const text = btn.appendChild(document.createElement('span'))
-        text.innerText = '稍后再看'
+        text.textContent = '稍后再看'
         btn.className = 'appeal-text'
         cb.onclick = function() { // 不要附加到 btn 上，否则点击时会执行两次
           processSwitch()
@@ -3562,7 +3562,7 @@
         const aid = await _self.method.getAid()
         bus = { btn, cb, aid }
         initButtonStatus()
-        original.parentNode.style.display = 'none'
+        original.parentElement.style.display = 'none'
 
         bus.pathname = location.pathname
         window.addEventListener('urlchange', async function() {
@@ -3754,7 +3754,7 @@
                   // 添加移除样式并移动至列表末尾
                   api.dom.addClass(base, 'gm-watchlater-item-deleted')
                   setTimeout(() => {
-                    base.parentNode.appendChild(base)
+                    base.parentElement.appendChild(base)
                     if (sortable) {
                       _self.sortWatchlaterList(true)
                     }
@@ -3783,7 +3783,7 @@
           const cloned = base.cloneNode(true)
           api.dom.addClass(base, 'gm-watchlater-item-deleted-origin')
           api.dom.addClass(cloned, 'gm-watchlater-item-deleted')
-          base.parentNode.appendChild(cloned)
+          base.parentElement.appendChild(cloned)
           needInfo && extractInfo(cloned)
           sortable && _self.sortWatchlaterList(true)
         }, true)
@@ -3794,9 +3794,9 @@
        * @param {HTMLElement} item 列表项
        */
       function extractInfo(item) {
-        item.serial = parseInt(item.querySelector('.key').innerText)
-        item.vTitle = item.querySelector('.t').innerText
-        item.uploader = item.querySelector('.user').innerText
+        item.serial = parseInt(item.querySelector('.key').textContent)
+        item.vTitle = item.querySelector('.t').textContent
+        item.uploader = item.querySelector('.user').textContent
         item.duration = (function(text) {
           if (!text) return Infinity // 有分 P 直接拉到最高
           let result = 0
@@ -3806,7 +3806,7 @@
             result += parts.pop() * factors.pop()
           }
           return result
-        })(item.querySelector('.corner')?.innerText)
+        })(item.querySelector('.corner')?.textContent)
         item.progress = item.querySelector('.looked') ? 1 : 0
       }
     }
@@ -3865,7 +3865,7 @@
       const k = type.replace(/:R$/, '')
 
       const listBox = await api.wait.waitQuerySelector('.watch-later-list .list-box')
-      const container = listBox.querySelector('.av-item').parentNode
+      const container = listBox.querySelector('.av-item').parentElement
       const lists = []
       if (!onlyDeleted) {
         lists.push(Array.from(listBox.querySelectorAll('.av-item:not(.gm-watchlater-item-deleted, .gm-watchlater-item-deleted-origin)')))
@@ -3908,7 +3908,7 @@
       const elTotal = await api.wait.waitQuerySelector('header .t em')
       all = all ?? listBox.querySelectorAll('.av-item:not(.gm-watchlater-item-deleted-origin, .gm-search-hide)').length
       total = total ?? all - listBox.querySelectorAll('.gm-watchlater-item-deleted:not(.gm-watchlater-item-deleted-origin, .gm-search-hide)').length
-      elTotal.innerText = `（${total}/${all}）`
+      elTotal.textContent = `（${total}/${all}）`
 
       const emptyBlocks = container.querySelectorAll('.abnormal-item') // 脚本加进来的，及B站加进来的，可能有两个
       if (all > 0) {
@@ -4025,13 +4025,13 @@
       // 在列表页面加入「移除记录」
       if (gm.config.removeHistory) {
         const removeHistoryButton = r_con.appendChild(document.createElement('div'))
-        removeHistoryButton.innerText = '移除记录'
+        removeHistoryButton.textContent = '移除记录'
         removeHistoryButton.className = 's-btn'
         removeHistoryButton.onclick = () => script.openRemoveHistory() // 要避免 MouseEvent 的传递
       }
       // 在列表页面加如「增强设置」
       const plusButton = r_con.appendChild(document.createElement('div'))
-      plusButton.innerText = '增强设置'
+      plusButton.textContent = '增强设置'
       plusButton.className = 's-btn'
       plusButton.onclick = () => script.openUserSetting() // 要避免 MouseEvent 的传递
       // 移除「一键清空」按钮
@@ -4188,7 +4188,7 @@
         const autoRemove = gm.config.autoRemove == Enums.autoRemove.always || gm.config.autoRemove == Enums.autoRemove.openFromList
         const autoRemoveControl = r_con.insertAdjacentElement('afterbegin', document.createElement('div'))
         autoRemoveControl.id = 'gm-list-auto-remove-control'
-        autoRemoveControl.innerText = '自动移除'
+        autoRemoveControl.textContent = '自动移除'
         autoRemoveControl.title = '临时切换在当前页面打开视频后是否将其自动移除出「稍后再看」。若要默认开启/关闭自动移除功能，请在「用户设置」中配置。'
         autoRemoveControl.className = 's-btn gm-s-btn'
         autoRemoveControl.autoRemove = autoRemove
@@ -4213,10 +4213,10 @@
      */
     async hideWatchlaterInCollect() {
       api.wait.waitQuerySelector('.user-con .mini-favorite').then(fav => {
-        const collect = fav.parentNode
+        const collect = fav.parentElement
         const process = function() {
-          api.wait.waitQuerySelector('[role=tooltip] .tab-item [title=稍后再看]', document, true).then(node => {
-            node.parentNode.style.display = 'none'
+          api.wait.waitQuerySelector('[role=tooltip] .tab-item [title=稍后再看]', document, true).then(el => {
+            el.parentElement.style.display = 'none'
             collect.removeEventListener('mouseover', process) // 确保移除后再解绑
           }).catch(() => {}) // 有时候鼠标经过收藏也没弹出来，不知道什么原因，就不报错了
         }

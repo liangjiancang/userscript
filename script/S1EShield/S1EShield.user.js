@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name            S1战斗力屏蔽
 // @namespace       laster2800
-// @version         3.5.0.20210811
+// @version         3.5.1.20210812
 // @author          Laster2800
 // @description     屏蔽 S1 的战斗力系统，眼不见为净
 // @author          Laster2800
@@ -10,7 +10,7 @@
 // @homepage        https://greasyfork.org/zh-CN/scripts/394407
 // @supportURL      https://greasyfork.org/zh-CN/scripts/394407/feedback
 // @license         LGPL-3.0
-// @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=959256
+// @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=959604
 // @include         *.saraba1st.com/*
 // @exclude         *.saraba1st.com/2b/search*
 // @grant           none
@@ -94,7 +94,7 @@
         const menu_mypost = menu.querySelector('.notice_mypost') // 右上角菜单「我的帖子」
         const menu_system = menu.querySelector('.notice_system') // 右上角菜单「系统提醒」
         if (menu_mypost || menu_system) {
-          menu_button.innerText = '提醒'
+          menu_button.textContent = '提醒'
           menu_button.className = 'a showmenu'
           api.wait.waitQuerySelector('title', document.head).then(title => {
             // 常规情况下，此时 title 仍未被改变，添加一个 ob 来跟踪变化
@@ -110,7 +110,7 @@
             replaceTitle()
           })
         }
-        menu_system?.parentNode.parentNode.remove()
+        menu_system?.parentElement.parentElement.remove()
       })
 
       // 无意关心 p1 和 p2 死活，只要都处理完就还原为可见状态（要留点缓冲时间）
