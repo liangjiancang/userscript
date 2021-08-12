@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站共同关注快速查看
-// @version         1.4.33.20210812
+// @version         1.4.34.20210812
 // @namespace       laster2800
 // @author          Laster2800
 // @description     快速查看与特定用户的共同关注（视频播放页、动态页、用户空间、直播间）
@@ -319,9 +319,9 @@
      */
     async initLive() {
       let frame = null
-      let container = await api.wait.waitQuerySelector('.danmaku-menu, #player-ctnr')
-      if (container.id == 'player-ctnr') {
-        frame = await api.wait.waitQuerySelector('iframe', container)
+      let container = await api.wait.waitQuerySelector('.danmaku-menu, #player-ctnr iframe')
+      if (container.tagName == 'IFRAME') {
+        frame = container
         container = await api.wait.waitQuerySelector('.danmaku-menu', frame.contentDocument)
         webpage.addStyle(frame.contentDocument)
       }

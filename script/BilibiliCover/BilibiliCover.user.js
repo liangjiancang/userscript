@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站封面获取
-// @version         5.1.2.20210812
+// @version         5.1.3.20210812
 // @namespace       laster2800
 // @author          Laster2800
 // @description     获取B站各播放页面及直播间封面，支持手动及实时预览等多种工作模式，支持封面预览及点击下载，可高度自定义
@@ -883,22 +883,24 @@
     async initLive() {
       const _self = this
       let win = unsafeWindow
-      let hiVm = await api.wait.waitQuerySelector('#head-info-vm, #player-ctnr')
-      if (hiVm.id == 'player-ctnr') {
-        const frame = await api.wait.waitQuerySelector('iframe', hiVm)
+      let doc = document
+      let hiVm = await api.wait.waitQuerySelector('#head-info-vm, #player-ctnr iframe')
+      if (hiVm.tagName == 'IFRAME') {
+        const frame = hiVm
         win = frame.contentWindow
-        hiVm = await api.wait.waitQuerySelector('#head-info-vm', frame.contentDocument)
-        _self.addStyle(frame.contentDocument)
+        doc = frame.contentDocument
+        hiVm = await api.wait.waitQuerySelector('#head-info-vm', doc)
+        _self.addStyle(doc)
       }
       const rc = await api.wait.waitQuerySelector('.right-ctnr, .upper-right-ctnr', hiVm) // 无论如何都卡一下时间
       await api.wait.waitForConditionPassed({
         condition: () => hiVm.__vue__,
       })
 
-      const cover = document.createElement('a')
+      const cover = doc.createElement('a')
       cover.innerText = '获取封面'
       cover.className = `${gm.id}-live-cover-btn`
-      rc.insertBefore(cover, rc.firstChild)
+      rc.insertAdjacentElement('afterbegin', cover)
       const preview = gm.config.preview && _self.method.createPreview(cover)
       const url = getCover(win)
       _self.method.setCover(cover, preview, url)
