@@ -5,7 +5,8 @@
 ## V1.4
 
 1. `dom`：增加 `addStyle()` 方法，支持向 `<iframe>` 中添加样式。
-2. `message`：`create()` 与 `close()` 增加回调函数。
+2. `dom`：优化 `isFixed()` 方法。
+3. `message`：`create()` 与 `close()` 增加回调函数。
 
 ## V1.3
 
