@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站封面获取
-// @version         5.0.4.20210812
+// @version         5.1.0.20210812
 // @namespace       laster2800
 // @author          Laster2800
 // @description     获取B站各播放页面及直播间封面，支持手动及实时预览等多种工作模式，支持封面预览及点击下载，可高度自定义
@@ -46,31 +46,32 @@
       display: block;
       width: 100%;
     }
-  `
+  `.trim().replace(/\s+/g, ' ')
 
   const gm = {
     id: gmId,
     configVersion: GM_getValue('configVersion'),
-    configUpdate: 20210811,
+    configUpdate: 20210812,
     config: {},
     configMap: {
-      mode: { default: -1, name: '设置工作模式' },
+      mode: { default: -1, name: '工作模式' },
       customModeSelector: { default: '#danmukuBox' },
       customModePosition: { default: 'beforebegin' },
       customModeQuality: { default: '320w' },
-      customModeStyle: { default: defaultRealtimeStyle.replace(/\s+/g, ' ').slice(1, -1) },
+      customModeStyle: { default: defaultRealtimeStyle },
       preview: { default: true, name: '封面预览', checkItem: true },
       download: { default: true, name: '点击下载', checkItem: true, needNotReload: true },
       bangumiSeries: { default: false, name: '番剧：获取系列总封面', checkItem: true },
     },
     runtime: {
       /** @type {'legacy' | 'realtime'} */
-      mode: null,
+      layer: null,
       realtimeSelector: null,
       /** @type {'beforebegin' | 'afterbegin' | 'beforeend' | 'afterend'} */
       realtimePosition: null,
       realtimeQuality: null,
       realtimeStyle: null,
+      modeName: null,
     },
     url: {
       api_videoInfo: (id, type) => `https://api.bilibili.com/x/web-interface/view?${type}=${id}`,
@@ -86,6 +87,7 @@
     const: {
       hintText: '左键：下载或在新标签页中打开封面。\n中键：在新标签页中打开封面。\n右键：可通过「另存为」直接保存图片。',
       errorMsg: '获取失败，若非网络问题请提供反馈',
+      customMode: 32767,
       fadeTime: 200,
       noticeTimeout: 5600,
     },
@@ -138,13 +140,14 @@
     initRuntime() {
       const rt = gm.runtime
       const mode = gm.config.mode
-      rt.mode = mode > 1 ? 'realtime' : 'legacy'
-      if (rt.mode == 'realtime') {
+      rt.layer = mode > 1 ? 'realtime' : 'legacy'
+      if (rt.layer == 'realtime') {
         for (const s of ['Selector', 'Position', 'Style']) {
           rt['realtime' + s] = mode == 2 ? gm.configMap['customMode' + s].default : gm.config['customMode' + s]
         }
         rt.realtimeQuality = mode == 2 ? gm.configMap.customModeQuality.default : gm.config.customModeQuality
       }
+      rt.modeName = { '-1': '初始化', '1': '传统', '2': '实时预览' }[mode] ?? (mode == gm.const.customMode ? '自定义' : '未知')
     }
 
     /**
@@ -157,7 +160,7 @@
       const configMap = gm.configMap
       const menuId = {}
 
-      menuId.mode = GM_registerMenuCommand(gm.configMap.mode.name, () => _self.configureMode())
+      menuId.mode = GM_registerMenuCommand(`${gm.configMap.mode.name} [ ${gm.runtime.modeName} ]`, () => _self.configureMode())
       for (const id in config) {
         if (configMap[id].checkItem) {
           menuId[id] = createMenuItem(id)
@@ -207,8 +210,14 @@
           GM_deleteValue('liveKeyFrame')
         }
 
+        // 5.0.5.20210812
+        if (gm.configVersion < 20210812) {
+          GM_deleteValue('mode')
+          GM_deleteValue('customModeStyle')
+        }
+
         // 功能性更新后更新此处配置版本
-        if (gm.configVersion < 20210811) {
+        if (gm.configVersion < 20210812) {
           GM_notification({
             text: '功能性更新完毕，您可能需要重新设置脚本。点击查看更新日志。',
             onclick: () => window.open(gm.url.gm_changelog),
@@ -245,6 +254,7 @@
       let msg = null
       let val = null
       let msgbox = null
+      const info = '请查看页面正中的说明'
       const display = msg => new Promise(resolve => {
         api.message.create(msg, {
           onOpened: function() { resolve(this) },
@@ -264,15 +274,15 @@
           <p style="margin-bottom:0.5em">该项仅对视频播放页和番剧播放页有效，直播间总是使用传统模式。</p>
           <p>[ 1 ] - 传统模式。在视频播放器下方添加一个「获取封面」按钮，与该按钮交互以获得封面。</p>
           <p>[ 2 ] - 实时预览模式。直接在视频播放器右方显示封面，与其交互可进行更多操作。</p>
-          <p>[ Max Signed Int16 ] - 自定义预览模式。与预览模式相同，但封面位置及显示效果由用户自定义。输入正确的值解锁，随后请认真阅读后面的说明。</p>
+          <p>[ 32767 ] - 自定义模式。底层机制与预览模式相同，但封面位置及显示效果由用户自定义，运行效果仅限于想象力。</p>
         </div>
       `
       msgbox = await display(msg)
-      result = api.message.prompt('请查看页面正中的说明。', val)
+      result = api.message.prompt(info, val)
       await close(msgbox)
       if (result === null) return
       result = parseInt(result)
-      if ([1, 2, 32767].indexOf(result) >= 0) {
+      if ([1, 2, gm.const.customMode].indexOf(result) >= 0) {
         gm.config.mode = result
         GM_setValue('mode', result)
       } else {
@@ -281,28 +291,32 @@
         return this.configureMode()
       }
 
-      if (gm.config.mode == 32767) {
+      if (gm.config.mode == gm.const.customMode) {
         val = gm.config.customModeSelector
-        val = val || gm.configMap.customModeSelector.default
         msg = `
           <div style="line-height:1.6em">
             <p style="margin-bottom:0.5em">请认真阅读以下说明：</p>
-            <p>1. 应填入 CSS 选择器，脚本会以此选择定位元素，将封面元素插入到其附近（相对位置稍后设置）。</p>
+            <p>1. 应填入 CSS 选择器，脚本会以此选择定位元素，将封面元素「#${gm.id}-realtime-cover」插入到其附近（相对位置稍后设置）。</p>
             <p>2. 确保该选择器在「普通播放页」「稍后再看播放页」「番剧播放页」中均有对应元素，否则脚本在对应页面无法工作。PS：逗号「,」以 OR 规则拼接多个选择器。</p>
             <p>3. 不要选择广告为定位元素，否则封面元素可能会插入失败或被误杀。</p>
             <p>4. 不要选择时有时无的元素，或第三方插入的元素作为定位元素，否则封面元素可能会插入失败。</p>
             <p>5. 在 A 时间点插入的图片元素，有可能被 B 时间点插入的新元素 C 挤到目标以外的位置。只要将定位元素选择为 C 再更改相对位置即可解决问题。</p>
-            <p>6. 置空或取消时使用脚本默认设置。</p>
+            <p>6. 置空时使用默认设置。</p>
           </div>
         `
         msgbox = await display(msg)
-        result = api.message.prompt('请查看页面正中的说明。', val) || gm.configMap.customModeSelector.default
-        gm.config.customModeSelector = result
-        GM_setValue('customModeSelector', result)
+        result = api.message.prompt(info, val)
+        if (result !== null) {
+          result = result.trim()
+          if (result === '') {
+            result = gm.configMap.customModeSelector.default
+          }
+          gm.config.customModeSelector = result
+          GM_setValue('customModeSelector', result)
+        }
         await close(msgbox)
 
         val = gm.config.customModePosition
-        val = val || gm.configMap.customModePosition.default
         msg = `
           <div style="line-height:1.6em">
             <p style="margin-bottom:0.5em">设置封面元素相对于定位元素的位置。</p>
@@ -316,21 +330,24 @@
         result = null
         const loop = () => ['beforebegin', 'afterbegin', 'beforeend', 'afterend'].indexOf(result) < 0
         while (loop()) {
-          result = api.message.prompt('请查看页面正中的说明。', val)
+          result = api.message.prompt(info, val)
+          if (result == null) break
+          result = result.trim()
           if (loop()) {
             api.message.alert('设置失败，请填入正确的参数。')
           }
         }
-        gm.config.customModePosition = result
-        GM_setValue('customModePosition', result)
+        if (result !== null) {
+          gm.config.customModePosition = result
+          GM_setValue('customModePosition', result)
+        }
         await close(msgbox)
 
         val = gm.config.customModeQuality
-        val = val || gm.configMap.customModeQuality.default
         msg = `
           <div style="line-height:1.6em">
-            <p>设置实时图片预览的质量，该项会明显影响页面加载的视觉体验。</p>
-            <p>设置为 [ best ] 加载原图（不推荐），置空或取消使用脚本默认设置。</p>
+            <p>设置实时预览图片的质量，该项会明显影响页面加载的视觉体验。</p>
+            <p>设置为 [ best ] 加载原图（不推荐），置空时使用默认设置。</p>
             <p style="margin-bottom:0.5em">PS：B站推荐的视频封面长宽比为 16:9（非强制性标准）。</p>
             <p>格式：[ ${'${width}w_${height}h_${clip}c_${quality}q'} ]</p>
             <p>可省略部分参数，如 [ 320w_1q ] 表示「宽度 320 像素，高度自动，拉伸，压缩质量 1」</p>
@@ -341,17 +358,42 @@
           </div>
         `
         msgbox = await display(msg)
-        result = api.message.prompt('请查看页面正中的说明。', val) || gm.configMap.customModeQuality.default
-        gm.config.customModeQuality = result
-        GM_setValue('customModeQuality', result)
+        result = api.message.prompt(info, val)
+        if (result !== null) {
+          result = result.trim()
+          if (result === '') {
+            result = gm.configMap.customModeQuality.default
+          }
+          gm.config.customModeQuality = result
+          GM_setValue('customModeQuality', result)
+        }
         await close(msgbox)
 
         val = gm.config.customModeStyle
-        val = val || gm.configMap.customModeStyle.default
-        msg = '请设置封面元素的样式，建议编写好后再粘贴进来。\nPS：不同页面可能需要设置不同样式。'
-        result = api.message.prompt(msg, val) || gm.configMap.customModeStyle.default
-        gm.config.customModeStyle = result
-        GM_setValue('customModeStyle', result)
+        msg = `
+          <div style="line-height:1.6em">
+            <p style="margin-bottom:0.5em">设置封面元素的样式。设置为 [disable] 禁用样式，置空时使用默认设置。</p>
+            <p>这里提供几种目标效果以便拓宽思路：</p>
+            <p>* 鼠标悬浮至封面元素上方时放大封面实现预览效果（图片质量应与放大后的尺寸匹配）。</p>
+            <p>* 将内部 &lt;img&gt; 隐藏，使用 Base64 图片将封面元素改成任何样子。</p>
+            <p>* 将封面元素做成透明层覆盖在视频投稿时间上，实现点击投稿时间下载封面的效果。</p>
+            <p>* 将页面背景替换为视频封面，再加个滤镜也许还会有不错的设计感？</p>
+            <p>* ......</p>
+          </div>
+        `
+        msgbox = await display(msg)
+        result = api.message.prompt(info, val)
+        if (result !== null) {
+          result = result.trim()
+          if (result === '') {
+            result = gm.configMap.customModeStyle.default
+          } else {
+            result = result.replace(/\s+/g, ' ')
+          }
+          gm.config.customModeStyle = result
+          GM_setValue('customModeStyle', result)
+        }
+        await close(msgbox)
       }
 
       if (reload || api.message.confirm('配置工作模式完成，需刷新页面方可生效。是否立即刷新页面？')) {
@@ -469,7 +511,8 @@
               }
             }
             if (preview) {
-              preview.src = url
+              preview._needUpdate = true
+              preview._src = url
             }
           } else {
             target.title = gm.const.errorMsg
@@ -478,11 +521,11 @@
             target.loaded = false
             this.addErrorEvent(target)
             if (target.img) {
-              target.img.src = ''
+              target.img.removeAttribute('src')
               target.img.lossless = ''
             }
             if (preview) {
-              preview.src = ''
+              preview.removeAttribute('src')
             }
           }
         },
@@ -495,13 +538,21 @@
         createPreview(target) {
           const _self = this
           const preview = document.body.appendChild(document.createElement('img'))
-          preview.className = `${gm.id}_preview`
+          preview.className = `${gm.id}-preview`
           preview.fadeOutNoInteractive = true
           const fade = inOut => api.dom.fade(inOut, preview)
 
-          target.addEventListener('mouseenter', api.tool.debounce(function() {
+          target.addEventListener('mouseenter', api.tool.debounce(async function() {
             this.mouseOver = true
             if (gm.config.preview) {
+              if (preview._needUpdate) {
+                await new Promise(resolve => {
+                  preview.addEventListener('load', function() { resolve() }, { once: true })
+                  preview.src = preview._src
+                  preview._needUpdate = false
+                })
+                if (!this.mouseOver) return
+              }
               preview.src && fade(true)
             }
           }, 200))
@@ -577,11 +628,19 @@
           cover.id = `${gm.id}-realtime-cover`
           cover.img = cover.appendChild(document.createElement('img'))
           cover.img.addEventListener('error', function() {
-            if (this.lossless && this.src != this.lossless) {
+            if (gm.runtime.realtimeQuality != 'best' && this.src != this.lossless) {
+              if (gm.config.mode == gm.const.customMode) {
+                api.message.create(`缩略图获取失败，使用原图进行替换！请检查「${gm.runtime.realtimeQuality}」是否为有效的图片质量参数。可能是正常现象，因为年代久远的视频封面有可能不支持缩略图。`, { ms: 4000 })
+              } else {
+                api.message.create('缩略图获取失败，使用原图进行替换！可能是正常现象，因为年代久远的视频封面有可能不支持缩略图。', { ms: 3000 })
+              }
+              api.logger.warn(['缩略图获取失败，使用原图进行替换！', this.src, this.lossless])
               this.src = this.lossless
             }
           })
-          api.dom.addStyle(gm.runtime.realtimeStyle)
+          if (gm.runtime.realtimeStyle != 'disable') {
+            api.dom.addStyle(gm.runtime.realtimeStyle)
+          }
           return cover
         }
       }
@@ -596,7 +655,7 @@
       })
 
       let cover = null
-      if (gm.runtime.mode == 'legacy') {
+      if (gm.runtime.layer == 'legacy') {
         cover = document.createElement('a')
         cover.innerText = '获取封面'
         cover.className = 'appeal-text'
@@ -628,7 +687,7 @@
           },
         })
       } else {
-        if (gm.runtime.mode == 'legacy') {
+        if (gm.runtime.layer == 'legacy') {
           const main = async function(event) {
             try {
               const vid = _self.method.getVid()
@@ -721,10 +780,10 @@
       })
 
       let cover = null
-      if (gm.runtime.mode == 'legacy') {
+      if (gm.runtime.layer == 'legacy') {
         cover = document.createElement('a')
         cover.innerText = '获取封面'
-        cover.className = `${gm.id}_bangumi_cover_btn`
+        cover.className = `${gm.id}-bangumi-cover-btn`
         tm.appendChild(cover)
       } else {
         cover = await _self.method.createRealtimeCover()
@@ -742,7 +801,7 @@
           api.logger.error(e)
         })
       } else {
-        if (gm.runtime.mode == 'legacy') {
+        if (gm.runtime.layer == 'legacy') {
           const main = async function(event) {
             try {
               const params = getParams()
@@ -838,7 +897,7 @@
 
       const cover = document.createElement('a')
       cover.innerText = '获取封面'
-      cover.className = `${gm.id}_live_cover_btn`
+      cover.className = `${gm.id}-live-cover-btn`
       rc.insertBefore(cover, rc.firstChild)
       const preview = gm.config.preview && _self.method.createPreview(cover)
       const url = getCover(win)
@@ -851,7 +910,7 @@
 
     addStyle(doc = document) {
       api.dom.addStyle(`
-        .${gm.id}_bangumi_cover_btn {
+        .${gm.id}-bangumi-cover-btn {
           float: right;
           cursor: pointer;
           font-size: 12px;
@@ -859,19 +918,19 @@
           line-height: 36px;
           color: #505050;
         }
-        .${gm.id}_bangumi_cover_btn:hover {
+        .${gm.id}-bangumi-cover-btn:hover {
           color: #0075ff;
         }
 
-        .${gm.id}_live_cover_btn {
+        .${gm.id}-live-cover-btn {
           cursor: pointer;
           color: #999999;
         }
-        .${gm.id}_live_cover_btn:hover {
+        .${gm.id}-live-cover-btn:hover {
           color: #23ADE5;
         }
 
-        .${gm.id}_preview {
+        .${gm.id}-preview {
           position: fixed;
           top: 50%;
           left: 50%;
