@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.17.7.20210812
+// @version         4.17.8.20210813
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -17,7 +17,7 @@
 // @exclude         *://message.bilibili.com/*/*
 // @exclude         *://t.bilibili.com/h5/*
 // @exclude         *://www.bilibili.com/page-proxy/*
-// @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=959604
+// @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=959818
 // @grant           GM_registerMenuCommand
 // @grant           GM_xmlhttpRequest
 // @grant           GM_setValue
@@ -254,7 +254,6 @@
    * @returns {PushQueue<GMObject_data_item>} `removeHistoryData`
    */
   /**
-   * @async
    * @callback watchlaterListData 通过懒加载方式获取稍后再看列表数据
    * @param {boolean} [reload] 是否重新加载稍后再看列表数据
    * @param {boolean} [cache=true] 是否使用本地缓存
@@ -1913,7 +1912,6 @@
 
         /**
          * 移除记录打开时执行
-         * @async
          */
         const onOpen = async () => {
           if (el.content) {
@@ -2082,9 +2080,8 @@
 
     /**
      * 对「打开菜单项」这一操作进行处理，包括显示菜单项、设置当前菜单项的状态、关闭其他菜单项
-     * @async
      * @param {string} name 菜单项的名称
-     * @param {() => void} [callback] 打开菜单项后的回调函数
+     * @param {() => (void | Promise<void>)} [callback] 打开菜单项后的回调函数
      * @param {boolean} [keepOthers] 打开时保留其他菜单项
      * @returns {Promise<boolean>} 操作是否成功
      */
@@ -2151,9 +2148,8 @@
 
     /**
      * 对「关闭菜单项」这一操作进行处理，包括隐藏菜单项、设置当前菜单项的状态
-     * @async
      * @param {string} name 菜单项的名称
-     * @param {() => void} [callback] 关闭菜单项后的回调函数
+     * @param {() => (void | Promise<void>)} [callback] 关闭菜单项后的回调函数
      * @returns {Promise<boolean>} 操作是否成功
      */
     async closeMenuItem(name, callback) {
@@ -2241,7 +2237,6 @@
 
         /**
          * 获取视频信息
-         * @async
          * @param {string} id `aid` 或 `bvid`
          * @param {'aid' | 'bvid'} [type='bvid'] `id` 类型
          * @returns {Promise<JSON>} 视频信息
@@ -2256,7 +2251,6 @@
 
         /**
          * 获取 `aid`
-         * @async
          * @returns {Promise<string>} `aid`
          */
         async getAid() {
@@ -2282,7 +2276,6 @@
 
         /**
          * 根据 `aid` 获取视频的稍后再看状态
-         * @async
          * @param {string} aid 视频 `aid`
          * @param {boolean} [reload] 是否重新加载
          * @param {boolean} [localCache=true] 是否使用本地缓存
@@ -2303,7 +2296,6 @@
 
         /**
          * 将视频加入稍后再看，或从稍后再看移除
-         * @async
          * @param {string} id 视频 `aid` 或 `bvid`（执行移除时优先选择 `aid`）
          * @param {boolean} [status=true] 添加 `true` / 移除 `false`
          * @returns {Promise<boolean>} 操作是否成功（视频不在稍后在看中不被判定为失败）
@@ -2339,7 +2331,6 @@
 
         /**
          * 清空稍后再看
-         * @async
          * @returns {Promise<boolean>} 操作是否成功
          */
         async clearWatchlater() {
@@ -2369,7 +2360,6 @@
 
         /**
          * 移除稍后再看已观看视频
-         * @async
          * @returns {Promise<boolean>} 操作是否成功
          */
         async clearWatchedInWatchlater() {
@@ -2398,7 +2388,6 @@
 
         /**
          * 使用稍后再看列表数据更新稍后再看历史数据
-         * @async
          * @param {boolean} [reload] 是否重新加载稍后再看列表数据
          */
         updateRemoveHistoryData(reload) {
@@ -2494,7 +2483,6 @@
 
         /**
          * 获取稍后再看列表数据以指定值为键的映射
-         * @async
          * @param {(GMObject_data_item0) => *} key 计算键值的方法
          * @param {string} [cacheId] 缓存 ID，保留空值时不缓存
          * @param {boolean} [reload] 是否重新加载稍后再看列表数据
@@ -2630,8 +2618,7 @@
 
       /**
        * 处理清空稍后再看
-       * @async
-       * @returns {boolean} 是否清空成功
+       * @returns {Promise<boolean>} 是否清空成功
        */
       async function clearWatchlater() {
         let success = false
@@ -2648,8 +2635,7 @@
 
       /**
        * 移除稍后再看已观看视频
-       * @async
-       * @returns {boolean} 是否移除成功
+       * @returns {Promise<boolean>} 是否移除成功
        */
       async function clearWatchedInWatchlater() {
         let success = false
@@ -3101,7 +3087,6 @@
 
           /**
            * 打开时弹出菜单时执行
-           * @async
            */
           const onOpen = async () => {
             // 上半区被移除卡片先于下半区被查询到，恰巧使得后移除视频最后生成在被移除列表前方，无须额外排序
@@ -3353,6 +3338,7 @@
               for (const card of cards) {
                 list.appendChild(card)
               }
+              list.scrollTop = 0
             }
           }
         }
@@ -3401,7 +3387,6 @@
 
     /**
      * 填充稍后再看状态
-     * @async
      */
     async fillWatchlaterStatus() {
       const _self = this
@@ -3463,7 +3448,6 @@
 
       /**
        * 填充动态页稍后再看状态
-       * @async
        */
       async function fillWatchlaterStatus_dynamic() {
         api.wait.executeAfterElementLoaded({
@@ -3489,7 +3473,6 @@
 
       /**
        * 填充动态入口菜单稍后再看状态
-       * @async
        */
       async function fillWatchlaterStatus_dynamicMenu() {
         api.wait.executeAfterElementLoaded({
@@ -3535,7 +3518,6 @@
 
     /**
      * 在播放页加入快速切换稍后再看状态的按钮
-     * @async
      */
     async addVideoButton() {
       const _self = this
@@ -3592,7 +3574,6 @@
 
       /**
        * 初始化按钮的稍后再看状态
-       * @async
        */
       async function initButtonStatus() {
         const setStatus = async () => {
@@ -3613,7 +3594,6 @@
 
       /**
        * 处理视频状态的切换
-       * @async
        */
       async function processSwitch() {
         const btn = bus.btn
@@ -3633,7 +3613,6 @@
 
     /**
      * 稍后再看模式重定向至正常模式播放
-     * @async
      */
     async redirect() {
       window.stop() // 停止原页面的加载
@@ -3672,7 +3651,6 @@
 
     /**
      * 对稍后再看列表页面进行处理
-     * @async
      */
     async processWatchlaterList() {
       const _self = this
@@ -3813,7 +3791,6 @@
 
     /**
      * 对稍后再看列表进行搜索
-     * @async
      */
     async searchWatchlaterList() {
       const search = await api.wait.waitQuerySelector('#gm-list-search input')
@@ -3854,7 +3831,6 @@
 
     /**
      * 对稍后再看列表页面进行排序
-     * @async
      * @param {boolean} [onlyDeleted] 是否只对移除列表排序
      */
     async sortWatchlaterList(onlyDeleted) {
@@ -3898,7 +3874,6 @@
 
     /**
      * 更新列表页面上方的视频总数统计
-     * @async
      * @param {number} [total] 列表非移除视频总数，默认为自动获取
      * @param {number} [all] 列表视频总数，默认为自动获取
      */
@@ -3927,7 +3902,6 @@
 
     /**
      * 根据 URL 上的查询参数作进一步处理
-     * @async
      */
     async processSearchParams() {
       const _self = this
@@ -3943,7 +3917,6 @@
 
     /**
      * 根据用户配置或 URL 上的查询参数，将视频从稍后再看移除
-     * @async
      * @param {number} [delay=0] 延迟执行（单位：ms）
      * @returns {Promise<boolean>} 执行后视频是否已经不在稍后再看中（可能是在本方法内被移除，也可能是本身就不在）
      */
@@ -4001,7 +3974,6 @@
 
     /**
      * 调整列表页面的 UI
-     * @async
      */
     async adjustWatchlaterListUI() {
       const _self = this
