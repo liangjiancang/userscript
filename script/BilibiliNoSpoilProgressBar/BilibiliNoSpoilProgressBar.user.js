@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站防剧透进度条
-// @version         2.0.10.20210812
+// @version         2.0.11.20210813
 // @namespace       laster2800
 // @author          Laster2800
 // @description     看比赛、看番总是被进度条剧透？装上这个脚本再也不用担心这些问题了
@@ -13,7 +13,7 @@
 // @include         *://www.bilibili.com/medialist/play/watchlater
 // @include         *://www.bilibili.com/medialist/play/watchlater/*
 // @include         *://www.bilibili.com/bangumi/play/*
-// @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=959604
+// @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=959818
 // @grant           GM_registerMenuCommand
 // @grant           GM_xmlhttpRequest
 // @grant           GM_setValue
@@ -991,9 +991,8 @@
 
     /**
      * 对「打开菜单项」这一操作进行处理，包括显示菜单项、设置当前菜单项的状态、关闭其他菜单项
-     * @async
      * @param {string} name 菜单项的名称
-     * @param {() => void} [callback] 打开菜单项后的回调函数
+     * @param {() => (void | Promise<void>)} [callback] 打开菜单项后的回调函数
      * @param {boolean} [keepOthers] 打开时保留其他菜单项
      * @returns {Promise<boolean>} 操作是否成功
      */
@@ -1060,9 +1059,8 @@
 
     /**
      * 对「关闭菜单项」这一操作进行处理，包括隐藏菜单项、设置当前菜单项的状态
-     * @async
      * @param {string} name 菜单项的名称
-     * @param {() => void} [callback] 关闭菜单项后的回调函数
+     * @param {() => (void | Promise<void>)} [callback] 关闭菜单项后的回调函数
      * @returns {Promise<boolean>} 操作是否成功
      */
     async closeMenuItem(name, callback) {
@@ -1206,7 +1204,6 @@
 
         /**
          * 获取视频信息
-         * @async
          * @param {string} id `aid` 或 `bvid`
          * @param {'aid' | 'bvid'} [type='bvid'] `id` 类型
          * @returns {Promise<JSON>} 视频信息
@@ -1256,7 +1253,6 @@
 
     /**
      * 初始化页面内容
-     * @async
      */
     async initWebpage() {
       const _self = this
@@ -1273,7 +1269,6 @@
 
     /**
      * 初始化进度条
-     * @async
      */
     async initProgress() {
       const _self = this
@@ -1348,8 +1343,7 @@
 
     /**
      * 判断当前页面时是否自动启用功能
-     * @async
-     * @returns {boolean} 当前页面时是否自动启用功能
+     * @returns {Promise<boolean>} 当前页面时是否自动启用功能
      */
     async detectEnabled() {
       const _self = this
@@ -1377,7 +1371,6 @@
 
     /**
      * 防剧透功能处理流程
-     * @async
      */
     async processNoSpoil() {
       const _self = this
@@ -1726,7 +1719,6 @@
 
     /**
      * 初始化防剧透功能
-     * @async
      */
     async initNoSpoil() {
       const _self = this
@@ -1752,7 +1744,6 @@
 
     /**
      * 初始化页面切换处理
-     * @async
      */
     async initLocationChangeProcess() {
       const _self = this
@@ -1772,7 +1763,6 @@
 
     /**
      * 初始化稍后再看模式播放页切换分 P 的处理
-     * @async
      */
     async initSwitchingPartProcess() {
       const _self = this

@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站共同关注快速查看
-// @version         1.4.35.20210812
+// @version         1.4.36.20210813
 // @namespace       laster2800
 // @author          Laster2800
 // @description     快速查看与特定用户的共同关注（视频播放页、动态页、用户空间、直播间）
@@ -16,7 +16,7 @@
 // @exclude         *://live.bilibili.com/
 // @exclude         *://live.bilibili.com/?*
 // @exclude         *://www.bilibili.com/watchlater/
-// @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=959604
+// @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=959818
 // @grant           GM_notification
 // @grant           GM_xmlhttpRequest
 // @grant           GM_setValue
@@ -201,7 +201,6 @@
 
     /**
      * 卡片处理逻辑
-     * @async
      * @param {Object} config 配置
      * @param {string} [config.container='body'] 卡片父元素选择器
      * @param {string} config.card 卡片元素选择器
@@ -246,7 +245,6 @@
 
     /**
      * 通用处理逻辑
-     * @async
      * @param {Object} config 配置
      * @param {string | number} config.uid 用户 ID
      * @param {HTMLElement} config.target 指定信息显示元素的父元素
