@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站共同关注快速查看
-// @version         1.4.36.20210813
+// @version         1.4.37.20210813
 // @namespace       laster2800
 // @author          Laster2800
 // @description     快速查看与特定用户的共同关注（视频播放页、动态页、用户空间、直播间）
@@ -320,8 +320,22 @@
       let container = await api.wait.waitQuerySelector('.danmaku-menu, #player-ctnr iframe')
       if (container.tagName == 'IFRAME') {
         frame = container
-        container = await api.wait.waitQuerySelector('.danmaku-menu', frame.contentDocument)
-        webpage.addStyle(frame.contentDocument)
+        let doc = frame.contentDocument
+        // 依执行至此的页面加载进度（与网络正相关、与 CPU 负相关），这里 doc 有以下三种情况：
+        // 1. frame 未初始化，获取到其默认 document：`<html><head></head><body></body></html>`，且 `readyState == 'complete'`
+        // 2. frame 正在初始化，默认 document 被移除，获取到 null
+        // 3. 获取到正确的 frame document
+        if (!doc?.documentElement.textContent) { // 可应对以上状态的条件
+          api.logger.info('Waiting for live room iframe document...')
+          await new Promise(resolve => {
+            frame.addEventListener('load', function() {
+              doc = frame.contentDocument
+              resolve()
+            })
+          })
+        }
+        container = await api.wait.waitQuerySelector('.danmaku-menu', doc)
+        webpage.addStyle(doc)
       }
       const userLink = await api.wait.waitQuerySelector('.go-space a', container)
       container.style.maxWidth = frame ? '264px' : '300px'

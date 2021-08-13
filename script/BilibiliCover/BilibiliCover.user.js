@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站封面获取
-// @version         5.2.0.20210813
+// @version         5.2.1.20210813
 // @namespace       laster2800
 // @author          Laster2800
 // @description     获取B站各播放页面及直播间封面，支持手动及实时预览等多种工作模式，支持封面预览及点击下载，可高度自定义
@@ -900,6 +900,20 @@
         const frame = container
         win = frame.contentWindow
         doc = frame.contentDocument
+        // 依执行至此的页面加载进度（与网络正相关、与 CPU 负相关），这里 doc 有以下三种情况：
+        // 1. frame 未初始化，获取到其默认 document：`<html><head></head><body></body></html>`，且 `readyState == 'complete'`
+        // 2. frame 正在初始化，默认 document 被移除，获取到 null
+        // 3. 获取到正确的 frame document
+        if (!doc?.documentElement.textContent) { // 可应对以上状态的条件
+          api.logger.info('Waiting for live room iframe document...')
+          await new Promise(resolve => {
+            frame.addEventListener('load', function() {
+              win = frame.contentWindow
+              doc = frame.contentDocument
+              resolve()
+            })
+          })
+        }
         container = await api.wait.waitQuerySelector('#head-info-vm .right-ctnr, #head-info-vm .upper-right-ctnr', doc)
         _self.addStyle(doc)
       }
