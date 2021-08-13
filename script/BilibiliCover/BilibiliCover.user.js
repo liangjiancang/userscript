@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站封面获取
-// @version         5.1.3.20210812
+// @version         5.2.0.20210813
 // @namespace       laster2800
 // @author          Laster2800
 // @description     获取B站各播放页面及直播间封面，支持手动及实时预览等多种工作模式，支持封面预览及点击下载，可高度自定义
@@ -16,7 +16,7 @@
 // @include         *://live.bilibili.com/*
 // @exclude         *://live.bilibili.com/
 // @exclude         *://live.bilibili.com/?*
-// @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=959256
+// @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=959818
 // @grant           GM_download
 // @grant           GM_notification
 // @grant           GM_xmlhttpRequest
@@ -51,27 +51,29 @@
   const gm = {
     id: gmId,
     configVersion: GM_getValue('configVersion'),
-    configUpdate: 20210812,
+    configUpdate: 20210813,
     config: {},
     configMap: {
-      mode: { default: -1, name: '工作模式' },
+      mode: { default: -1, name: '视频/番剧：工作模式' },
       customModeSelector: { default: '#danmukuBox' },
       customModePosition: { default: 'beforebegin' },
       customModeQuality: { default: '320w' },
       customModeStyle: { default: defaultRealtimeStyle },
-      preview: { default: true, name: '封面预览', checkItem: true },
-      download: { default: true, name: '点击下载', checkItem: true, needNotReload: true },
-      bangumiSeries: { default: false, name: '番剧：获取系列总封面', checkItem: true },
+      download: { default: true, name: '全局：点击下载', checkItem: true, needNotReload: true },
+      preview: { default: true, name: '视频/番剧：封面预览', checkItem: true },
+      previewLive: { default: true, name: '直播间：封面预览', checkItem: true },
+      bangumiSeries: { default: false, name: '番剧：获取系列封面而非分集封面', checkItem: true },
     },
     runtime: {
       /** @type {'legacy' | 'realtime'} */
       layer: null,
+      modeName: null,
+      preview: null,
       realtimeSelector: null,
       /** @type {'beforebegin' | 'afterbegin' | 'beforeend' | 'afterend'} */
       realtimePosition: null,
       realtimeQuality: null,
       realtimeStyle: null,
-      modeName: null,
     },
     url: {
       api_videoInfo: (id, type) => `https://api.bilibili.com/x/web-interface/view?${type}=${id}`,
@@ -86,7 +88,7 @@
     },
     const: {
       hintText: '左键：下载或在新标签页中打开封面。\n中键：在新标签页中打开封面。\n右键：可通过「另存为」直接保存图片。',
-      errorMsg: '获取失败，若非网络问题请提供反馈',
+      errorMsg: '获取失败，请尝试在页面加载完成后获取',
       customMode: 32767,
       fadeTime: 200,
       noticeTimeout: 5600,
@@ -141,13 +143,14 @@
       const rt = gm.runtime
       const mode = gm.config.mode
       rt.layer = mode > 1 ? 'realtime' : 'legacy'
+      rt.preview = api.web.urlMatch(gm.regex.page_live) ? gm.config.previewLive : gm.config.preview
+      rt.modeName = { '-1': '初始化', '1': '传统', '2': '实时预览' }[mode] ?? (mode == gm.const.customMode ? '自定义' : '未知')
       if (rt.layer == 'realtime') {
         for (const s of ['Selector', 'Position', 'Style']) {
           rt['realtime' + s] = mode == 2 ? gm.configMap['customMode' + s].default : gm.config['customMode' + s]
         }
         rt.realtimeQuality = mode == 2 ? gm.configMap.customModeQuality.default : gm.config.customModeQuality
       }
-      rt.modeName = { '-1': '初始化', '1': '传统', '2': '实时预览' }[mode] ?? (mode == gm.const.customMode ? '自定义' : '未知')
     }
 
     /**
@@ -200,11 +203,6 @@
         // 必须按从旧到新的顺序写
         // 内部不能使用 gm.configUpdate，必须手写更新后的配置版本号！
 
-        // 4.10.0.20210711
-        if (gm.configVersion < 20210711) {
-          GM_deleteValue('preview')
-        }
-
         // 5.0.0.20210811
         if (gm.configVersion < 20210811) {
           GM_deleteValue('liveKeyFrame')
@@ -216,8 +214,13 @@
           GM_deleteValue('customModeStyle')
         }
 
+        // 5.2.0.20210813
+        if (gm.configVersion < 20210813) {
+          GM_deleteValue('preview')
+        }
+
         // 功能性更新后更新此处配置版本
-        if (gm.configVersion < 20210812) {
+        if (gm.configVersion < 20210813) {
           GM_notification({
             text: '功能性更新完毕，您可能需要重新设置脚本。点击查看更新日志。',
             onclick: () => window.open(gm.url.gm_changelog),
@@ -246,7 +249,6 @@
 
     /**
      * 设置工作模式
-     * @async
      * @param {boolean} [reload] 强制刷新
      */
     async configureMode(reload) {
@@ -270,8 +272,7 @@
       val = val == -1 ? 1 : val
       msg = `
         <div style="line-height:1.6em">
-          <p>输入对应序号选择脚本工作模式。输入值应该是一个数字。</p>
-          <p style="margin-bottom:0.5em">该项仅对视频播放页和番剧播放页有效，直播间总是使用传统模式。</p>
+          <p style="margin-bottom:0.5em">输入对应序号选择脚本工作模式。输入值应该是一个数字。</p>
           <p>[ 1 ] - 传统模式。在视频播放器下方添加一个「获取封面」按钮，与该按钮交互以获得封面。</p>
           <p>[ 2 ] - 实时预览模式。直接在视频播放器右方显示封面，与其交互可进行更多操作。</p>
           <p>[ ${gm.const.customMode} ] - 自定义模式。底层机制与预览模式相同，但封面位置及显示效果由用户自定义，运行效果仅局限于想象力。</p>
@@ -320,10 +321,10 @@
         msg = `
           <div style="line-height:1.6em">
             <p style="margin-bottom:0.5em">设置封面元素相对于定位元素的位置。</p>
-            <p>[ beforebegin ] - 作为兄弟节点插入到定位元素前方</p>
-            <p>[ afterbegin ] - 作为第一个子节点插入到定位元素内</p>
-            <p>[ beforeend ] - 作为最后一个子节点插入到定位元素内</p>
-            <p>[ afterend ] - 作为兄弟节点插入到定位元素后方</p>
+            <p>[ beforebegin ] - 作为兄弟元素插入到定位元素前方</p>
+            <p>[ afterbegin ] - 作为第一个子元素插入到定位元素内</p>
+            <p>[ beforeend ] - 作为最后一个子元素插入到定位元素内</p>
+            <p>[ afterend ] - 作为兄弟元素插入到定位元素后方</p>
           </div>
         `
         msgbox = await display(msg)
@@ -448,6 +449,20 @@
         },
 
         /**
+         * 从 URL 获取番剧 ID
+         * @param {string} [url=location.pathname] 提取视频 ID 的源字符串
+         * @returns {{id: string, type: 'ssid' | 'epid'}} `{id, type}`
+         */
+        getBgmid(url = location.pathname) {
+          let m = null
+          if ((m = /\/(ss\d+)([/?#]|$)/i.exec(url))) {
+            return { id: m[1], type: 'ssid' }
+          } else if ((m = /\/(ep\d+)([/?#]|$)/i.exec(url))) {
+            return { id: m[1], type: 'epid' }
+          }
+        },
+
+        /**
          * 下载图片
          * @param {HTMLElement} target 触发元素
          */
@@ -544,10 +559,10 @@
 
           target.addEventListener('mouseenter', api.tool.debounce(async function() {
             this.mouseOver = true
-            if (gm.config.preview) {
+            if (gm.runtime.preview) {
               if (preview._needUpdate) {
                 await new Promise(resolve => {
-                  preview.addEventListener('load', function() { resolve() }, { once: true })
+                  preview.addEventListener('load', resolve, { once: true })
                   preview.src = preview._src
                   preview._needUpdate = false
                 })
@@ -558,7 +573,7 @@
           }, 200))
           target.addEventListener('mouseleave', api.tool.debounce(function() {
             this.mouseOver = false
-            if (gm.config.preview) {
+            if (gm.runtime.preview) {
               !preview.mouseOver && fade(false)
             }
           }, 200))
@@ -614,13 +629,22 @@
           preview.addEventListener('wheel', api.tool.throttle(function() {
             fade(false)
           }, 200))
+          // 根据宽高比设置不同样式
+          preview.addEventListener('load', function() {
+            if (this.width > this.height) {
+              this.style.width = '100%'
+              this.style.height = ''
+            } else {
+              this.style.width = ''
+              this.style.height = '100%'
+            }
+          })
           return preview
         },
 
         /**
          * 创建实时封面元素
-         * @async
-         * @returns {HTMLElement}
+         * @returns {Promise<HTMLElement>} 实时封面元素
          */
         async createRealtimeCover() {
           const ref = await api.wait.waitQuerySelector(gm.runtime.realtimeSelector)
@@ -642,7 +666,60 @@
             api.dom.addStyle(gm.runtime.realtimeStyle)
           }
           return cover
-        }
+        },
+
+        /**
+         * @callback coverInteractionProxy 封面交互代理前置回调
+         * @param {Event} 事件
+         * @returns {boolean | Promise<boolean>} 本次是否启用代理
+         */
+        /**
+         * 封面交互代理
+         *
+         * 全面接管一切用户交互引起的行为，默认链接点击行为除外
+         * @param {HTMLElement} target 目标元素
+         * @param {coverInteractionProxy} pre 前置回调
+         */
+        async coverInteractionProxy(target, pre) {
+          addEventListeners()
+
+          async function main(event) {
+            if (!await pre(event)) return
+            removeEventListeners()
+            if (event.type == 'mousedown') {
+              if (event.button == 0) {
+                if (gm.config.download || !target.loaded) {
+                  const evt = new Event('mousedown') // 新建一个事件而不是复用 event，以避免意外情况
+                  evt.button = 0
+                  target.dispatchEvent(evt) // 无法触发链接点击跳转
+                } else {
+                  window.open(target.href)
+                }
+              } else if (event.button == 1) {
+                if (target.loaded) {
+                  window.open(target.href)
+                }
+              }
+            } else if (event.type == 'mouseenter') {
+              target.dispatchEvent(new Event('mouseenter'))
+            }
+            addEventListeners()
+          }
+
+          function addEventListeners() {
+            target.addEventListener('mousedown', main, true)
+            if (gm.runtime.preview) {
+              target.addEventListener('mouseenter', main, true)
+            }
+          }
+
+          function removeEventListeners() {
+            target.removeEventListener('mousedown', main, true)
+            if (gm.runtime.preview) {
+              target.removeEventListener('mouseenter', main, true)
+            }
+          }
+        },
       }
     }
 
@@ -657,7 +734,7 @@
       let cover = null
       if (gm.runtime.layer == 'legacy') {
         cover = document.createElement('a')
-        cover.innerText = '获取封面'
+        cover.textContent = '获取封面'
         cover.className = 'appeal-text'
         // 确保与其他脚本配合时相关 UI 排列顺序不会乱
         const gm395456 = atr.querySelector('[id|=gm395456]')
@@ -669,7 +746,7 @@
       } else {
         cover = await _self.method.createRealtimeCover()
       }
-      const preview = gm.config.preview && _self.method.createPreview(cover)
+      const preview = gm.runtime.preview && _self.method.createPreview(cover)
 
       if (api.web.urlMatch(gm.regex.page_videoNormalMode)) {
         api.wait.executeAfterElementLoaded({
@@ -688,10 +765,10 @@
         })
       } else {
         if (gm.runtime.layer == 'legacy') {
-          const main = async function(event) {
+          _self.method.coverInteractionProxy(cover, async event => {
             try {
               const vid = _self.method.getVid()
-              if (cover._cover_id == vid.id) return
+              if (cover._cover_id == vid.id) return false
               // 在异步等待前拦截，避免逻辑倒置
               event.preventDefault()
               event.stopPropagation()
@@ -703,43 +780,8 @@
               _self.method.setCover(cover, preview, false)
               api.logger.error(e)
             }
-
-            // 需全面接管一切用户交互引起的行为，默认链接点击行为除外
-            removeEventListeners()
-            if (event.type == 'mousedown') {
-              if (event.button == 0) {
-                if (gm.config.download || !cover.loaded) {
-                  const evt = new Event('mousedown') // 新建一个事件而不是复用 event，以避免意外情况
-                  evt.button = 0
-                  cover.dispatchEvent(evt) // 无法触发链接点击跳转
-                } else {
-                  window.open(cover.href)
-                }
-              } else if (event.button == 1) {
-                if (cover.loaded) {
-                  window.open(cover.href)
-                }
-              }
-            } else if (event.type == 'mouseenter') {
-              cover.dispatchEvent(new Event('mouseenter'))
-            }
-            addEventListeners()
-          }
-
-          // lazy loading；捕获期执行，确保优先于其他处理器
-          const addEventListeners = () => {
-            cover.addEventListener('mousedown', main, true)
-            if (gm.config.preview) {
-              cover.addEventListener('mouseenter', main, true)
-            }
-          }
-          const removeEventListeners = () => {
-            cover.removeEventListener('mousedown', main, true)
-            if (gm.config.preview) {
-              cover.removeEventListener('mouseenter', main, true)
-            }
-          }
-          addEventListeners()
+            return true
+          })
         } else {
           const main = async function() {
             try {
@@ -782,13 +824,13 @@
       let cover = null
       if (gm.runtime.layer == 'legacy') {
         cover = document.createElement('a')
-        cover.innerText = '获取封面'
+        cover.textContent = '获取封面'
         cover.className = `${gm.id}-bangumi-cover-btn`
         tm.appendChild(cover)
       } else {
         cover = await _self.method.createRealtimeCover()
       }
-      const preview = gm.config.preview && _self.method.createPreview(cover)
+      const preview = gm.runtime.preview && _self.method.createPreview(cover)
 
       if (gm.config.bangumiSeries) {
         const setCover = img => _self.method.setCover(cover, preview, img.src.replace(/@[^@]*$/, ''))
@@ -802,62 +844,26 @@
         })
       } else {
         if (gm.runtime.layer == 'legacy') {
-          const main = async function(event) {
+          _self.method.coverInteractionProxy(cover, event => {
             try {
-              const params = getParams()
-              if (cover._cover_id == params.paster.aid) return
-              const url = getCover(params)
+              const bgmid = _self.method.getBgmid()
+              if (cover._cover_id == bgmid.id) return false
+              const url = getCover(bgmid)
               _self.method.setCover(cover, preview, url)
             } catch (e) {
               _self.method.setCover(cover, preview, false)
               api.logger.error(e)
-            } finally {
-              event.preventDefault()
-              event.stopPropagation()
             }
-
-            // 需全面接管一切用户交互引起的行为，默认链接点击行为除外
-            removeEventListeners()
-            if (event.type == 'mousedown') {
-              if (event.button == 0) {
-                if (gm.config.download || !cover.loaded) {
-                  const evt = new Event('mousedown') // 新建一个事件而不是复用 event，以避免意外情况
-                  evt.button = 0
-                  cover.dispatchEvent(evt) // 无法触发链接点击跳转
-                } else {
-                  window.open(cover.href)
-                }
-              } else if (event.button == 1) {
-                if (cover.loaded) {
-                  window.open(cover.href)
-                }
-              }
-            } else if (event.type == 'mouseenter') {
-              cover.dispatchEvent(new Event('mouseenter'))
-            }
-            addEventListeners()
-          }
-
-          // lazy loading；use capture，确保优先于其他监听器执行
-          const addEventListeners = () => {
-            cover.addEventListener('mousedown', main, true)
-            if (gm.config.preview) {
-              cover.addEventListener('mouseenter', main, true)
-            }
-          }
-          const removeEventListeners = () => {
-            cover.removeEventListener('mousedown', main, true)
-            if (gm.config.preview) {
-              cover.removeEventListener('mouseenter', main, true)
-            }
-          }
-          addEventListeners()
+            event.preventDefault()
+            event.stopPropagation()
+            return true
+          })
         } else {
           const main = async function() {
             try {
-              const params = getParams()
-              if (cover._cover_id == params.paster.aid) return
-              const url = getCover(params)
+              const bgmid = _self.method.getBgmid()
+              if (cover._cover_id == bgmid.id) return
+              const url = getCover(bgmid)
               _self.method.setCover(cover, preview, url)
             } catch (e) {
               _self.method.setCover(cover, preview, false)
@@ -870,10 +876,11 @@
         }
 
         const getParams = () => unsafeWindow.getPlayerExtraParams?.()
-        const getCover = (params = getParams()) => {
-          if (cover._cover_id != params.paster?.aid) {
+        const getCover = (bgmid = _self.method.getBgmid()) => {
+          if (cover._cover_id != bgmid.id) {
+            const params = getParams()
             cover._cover_url = params.epCover
-            cover._cover_id = params.id
+            cover._cover_id = bgmid.id
           }
           return cover._cover_url
         }
@@ -884,29 +891,55 @@
       const _self = this
       let win = unsafeWindow
       let doc = document
-      let hiVm = await api.wait.waitQuerySelector('#head-info-vm, #player-ctnr iframe')
-      if (hiVm.tagName == 'IFRAME') {
-        const frame = hiVm
+      let container = await api.wait.waitQuerySelector(`
+        #head-info-vm .right-ctnr,
+        #head-info-vm .upper-right-ctnr,
+        #player-ctnr iframe
+      `)
+      if (container.tagName == 'IFRAME') {
+        const frame = container
         win = frame.contentWindow
         doc = frame.contentDocument
-        hiVm = await api.wait.waitQuerySelector('#head-info-vm', doc)
+        container = await api.wait.waitQuerySelector('#head-info-vm .right-ctnr, #head-info-vm .upper-right-ctnr', doc)
         _self.addStyle(doc)
       }
-      const rc = await api.wait.waitQuerySelector('.right-ctnr, .upper-right-ctnr', hiVm) // 无论如何都卡一下时间
+      // 这里再获取 hiVm，提前获取到的 hiVm 有可能会被替换成新的
+      const hiVm = await api.wait.waitQuerySelector('#head-info-vm', doc)
       await api.wait.waitForConditionPassed({
-        condition: () => hiVm.__vue__,
+        condition: async () => hiVm.__vue__,
       })
 
       const cover = doc.createElement('a')
-      cover.innerText = '获取封面'
+      cover.textContent = '获取封面'
       cover.className = `${gm.id}-live-cover-btn`
-      rc.insertAdjacentElement('afterbegin', cover)
-      const preview = gm.config.preview && _self.method.createPreview(cover)
-      const url = getCover(win)
-      _self.method.setCover(cover, preview, url)
+      container.insertAdjacentElement('afterbegin', cover)
+      const preview = gm.runtime.preview && _self.method.createPreview(cover)
 
-      function getCover(win) {
-        return win.__NEPTUNE_IS_MY_WAIFU__?.roomInfoRes?.data?.room_info?.cover ?? win.__STORE__?.baseInfoRoom?.coverUrl
+      _self.method.coverInteractionProxy(cover, async event => {
+        try {
+          if (cover.loaded) return false
+          // 在异步等待前拦截，避免逻辑倒置
+          event.preventDefault()
+          event.stopPropagation()
+          const url = await getCover(win)
+          _self.method.setCover(cover, preview, url)
+        } catch (e) {
+          event.preventDefault()
+          event.stopPropagation()
+          _self.method.setCover(cover, preview, false)
+          api.logger.error(e)
+        }
+        return true
+      })
+
+      async function getCover(win) {
+        if (!cover.loaded) {
+          cover._cover_url = await api.wait.waitForConditionPassed({
+            condition: () => win.__NEPTUNE_IS_MY_WAIFU__?.roomInfoRes?.data?.room_info?.cover ?? win.__STORE__?.baseInfoRoom?.coverUrl,
+            timeout: 2000,
+          })
+        }
+        return cover._cover_url
       }
     }
 
