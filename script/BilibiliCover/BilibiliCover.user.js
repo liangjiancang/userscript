@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站封面获取
-// @version         5.2.1.20210813
+// @version         5.2.2.20210814
 // @namespace       laster2800
 // @author          Laster2800
 // @description     获取B站各播放页面及直播间封面，支持手动及实时预览等多种工作模式，支持封面预览及点击下载，可高度自定义
@@ -87,7 +87,7 @@
       page_live: /live\.bilibili\.com\/\d+([/?#]|$)/, // 只含具体的直播间页面
     },
     const: {
-      hintText: '左键：下载或在新标签页中打开封面。\n中键：在新标签页中打开封面。\n右键：可通过「另存为」直接保存图片。',
+      hintText: '左键：下载或在新标签页中打开封面。\n中键：在新标签页中打开封面。\n右键：对封面链接进行复制/保存等操作。',
       errorMsg: '获取失败，请尝试在页面加载完成后获取',
       customMode: 32767,
       fadeTime: 200,
@@ -991,6 +991,12 @@
           opacity: 0;
           transition: opacity ${gm.const.fadeTime}ms ease-in-out;
           cursor: pointer;
+        }
+
+        /* 禁止交互，避免用户使用右键获取到 <img> 上的预览图 */
+        /* 不写进 defaultRealtimeStyle 中，而是作为全局样式减少自定义模式工作量 */
+        #${gmId}-realtime-cover img {
+          pointer-events: none;
         }
       `, doc)
     }
