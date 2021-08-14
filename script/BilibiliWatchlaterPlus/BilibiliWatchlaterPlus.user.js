@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.17.9.20210814
+// @version         4.17.10.20210815
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -758,7 +758,7 @@
       GM_registerMenuCommand('用户设置', () => _self.openUserSetting())
       if (gm.config.removeHistory) {
         // 稍后再看移除记录
-        GM_registerMenuCommand('稍后再看移除记录', () => _self.openRemoveHistory()) // 注意不要直接传函数对象，否则 this 不对
+        GM_registerMenuCommand('稍后再看移除记录', () => _self.openRemoveHistory())
         // 清空稍后再看历史数据
         GM_registerMenuCommand('清空稍后再看历史数据', () => _self.cleanRemoveHistoryData())
       }
@@ -4294,6 +4294,7 @@
   
           #${gm.id} {
             color: var(--${gm.id}-text-color);
+            font-family: Arial, Microsoft Yahei, Hiragino Sans GB, sans-serif;
           }
           #${gm.id} * {
             box-sizing: content-box;
@@ -4403,7 +4404,7 @@
             cursor: default;
           }
           #${gm.id} .gm-entrypopup .gm-entry-list .gm-entry-list-item .gm-card-cover {
-            width: 7.82em;
+            width: 7.82em; /* 16:9 */
             height: 4.40em;
             border-radius: 2px;
           }
@@ -4411,10 +4412,11 @@
             position: absolute;
             background-image: url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADgAAAA4CAYAAACohjseAAAACXBIWXMAAAsSAAALEgHS3X78AAAA/ElEQVRoge3bsQ3CMBSE4bOBAmZIzSLUrMECjMACtLBGKgq2yQ4uHzJKgaIghHHAZ+6rQfKvnCIRBWdmiJxzWwAbAEtwCwCuZtbeuwCsAOwBNORhQ52ZHXx/1WqLi5q4yngFjxXM8pngK46Llr6AQ0xKgewUyE6B7BTIbj7F+c1sl/I959w591k0UXbx18Tp3YbUCX4qZcKaKLukiY55nO3YlIazfvWZXHdUTZSdAtkpkJ0C2SmQnQLZKZCdAtkpkN3PHvx+68mcJsou21O1Ummi7BTIToHsFMjuLwJDAeeYSpgBWABY19mHi+/fTu8KOExu8aX0tu6/FQC4AVY1Ql6j10UHAAAAAElFTkSuQmCC);
             background-size: contain;
-            width: 34px;
-            height: 34px;
-            top: calc(2.2em - 17px);
-            left: calc(3.9em - 17px);
+            background-repeat: no-repeat;
+            width: 30px;
+            height: 30px;
+            top: calc(2.20em - 15px); /* 与缩略图显示尺寸匹配 */
+            left: calc(3.91em - 15px);
             z-index: 2;
             display: none;
             cursor: pointer;
@@ -4425,17 +4427,18 @@
           #${gm.id} .gm-entrypopup .gm-entry-list .gm-entry-list-item:hover .gm-card-switcher {
             display: unset;
           }
-          #${gm.id} .gm-entrypopup .gm-entry-list .gm-entry-list-item .gm-card-duration,
+          #${gm.id} .gm-entrypopup .gm-entry-list .gm-entry-list-item:not(.gm-card-multiP) .gm-card-duration,
           #${gm.id} .gm-entrypopup .gm-entry-list .gm-card-multiP .gm-card-duration > * {
             position: absolute;
             bottom: 0;
             right: 0;
             background: var(--${gm.id}-text-shadow-color);
             color: var(--${gm.id}-light-text-color);
-            border-radius: 2px;
-            padding: 2px 3px;
+            border-radius: 2px 0 2px 0; /* 需与缩略图圆角匹配 */
+            padding: 1.5px 2px 0 3px;
             font-size: 0.8em;
             z-index: 1;
+            word-break: keep-all;
           }
           #${gm.id} .gm-entrypopup .gm-entry-list .gm-card-multiP .gm-card-duration > * {
             transition: var(--${gm.id}-opacity-fade-quick-transition);
