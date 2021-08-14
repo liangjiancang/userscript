@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站封面获取
-// @version         5.2.4.20210814
+// @version         5.2.5.20210814
 // @namespace       laster2800
 // @author          Laster2800
 // @description     获取B站各播放页面及直播间封面，支持手动及实时预览等多种工作模式，支持封面预览及点击下载，可高度自定义
@@ -16,7 +16,7 @@
 // @include         *://live.bilibili.com/*
 // @exclude         *://live.bilibili.com/
 // @exclude         *://live.bilibili.com/?*
-// @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=959818
+// @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=960119
 // @grant           GM_download
 // @grant           GM_notification
 // @grant           GM_xmlhttpRequest
@@ -40,6 +40,8 @@
     #${gmId}-realtime-cover {
       display: block;
       margin-bottom: 10px;
+      border-radius: 3px;
+      overflow: hidden;
       box-shadow: #00000033 0px 3px 6px;
     }
     #${gmId}-realtime-cover img {
@@ -985,17 +987,19 @@
           left: 50%;
           transform: translate(-50%, -50%);
           z-index: 142857;
-          max-width: 60vw; /* 自适应宽度和高度 */
+          max-width: 65vw; /* 自适应宽度和高度 */
           max-height: 100vh;
+          border-radius: 8px;
           display: none;
           opacity: 0;
           transition: opacity ${gm.const.fadeTime}ms ease-in-out;
           cursor: pointer;
+          box-shadow: #000000AA 0px 3px 6px;
         }
 
         /* 禁止交互，避免用户使用右键获取到 <img> 上的预览图 */
         /* 不写进 defaultRealtimeStyle 中，而是作为全局样式减少自定义模式工作量 */
-        #${gmId}-realtime-cover img {
+        #${gm.id}-realtime-cover img {
           pointer-events: none;
         }
       `, doc)

@@ -26,7 +26,7 @@
 
 * 封面预览
 
-    ![封面预览](https://gitee.com/liangjiancang/userscript/raw/master/script/BilibiliCover/screenshot/封面预览.jpg)
+    ![封面预览](https://gitee.com/liangjiancang/userscript/raw/master/script/BilibiliCover/screenshot/封面预览.png)
 
 *gitee: [BilibiliCover](https://gitee.com/liangjiancang/userscript/tree/master/script/BilibiliCover)*
 
