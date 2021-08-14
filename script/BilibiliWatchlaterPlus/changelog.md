@@ -24,7 +24,8 @@
 18. UI：优化脚本菜单页面间的层叠显示。
 19. UI：优化位置计算。
 20. UI：优化文本。
-21. API：升级至 V1.4。详见 [UserscriptAPI 更新日志](https://gitee.com/liangjiancang/userscript/blob/master/lib/UserscriptAPI/changelog.md)。
+21. 代码：`no-useless-call`。
+22. API：升级至 V1.4。详见 [UserscriptAPI 更新日志](https://gitee.com/liangjiancang/userscript/blob/master/lib/UserscriptAPI/changelog.md)。
 
 > 其实 V4.17.0 并没有更新什么功能，只是 V4.16 累积更新内容太多了，还是升个小版本吧。
 

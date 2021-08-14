@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站防剧透进度条
-// @version         2.0.12.20210814
+// @version         2.0.13.20210815
 // @namespace       laster2800
 // @author          Laster2800
 // @description     看比赛、看番总是被进度条剧透？装上这个脚本再也不用担心这些问题了
@@ -13,7 +13,7 @@
 // @include         *://www.bilibili.com/medialist/play/watchlater
 // @include         *://www.bilibili.com/medialist/play/watchlater/*
 // @include         *://www.bilibili.com/bangumi/play/*
-// @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=960119
+// @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=960339
 // @grant           GM_registerMenuCommand
 // @grant           GM_xmlhttpRequest
 // @grant           GM_setValue
@@ -138,9 +138,9 @@
    * @property {0 | 1 | 2 | 3 | -1} state 打开状态（关闭 | 开启中 | 打开 | 关闭中 | 错误）
    * @property {0 | 1 | 2} wait 等待阻塞状态（无等待阻塞 | 等待开启 | 等待关闭）
    * @property {HTMLElement} el 菜单元素
-   * @property {() => void} [openHandler] 打开菜单的回调函数
+   * @property {() => (void | Promise<void>)} [openHandler] 打开菜单的回调函数
    * @property {() => void} [closeHandler] 关闭菜单的回调函数
-   * @property {() => void} [openedHandler] 彻底打开菜单后的回调函数
+   * @property {() => (void | Promise<void>)} [openedHandler] 彻底打开菜单后的回调函数
    * @property {() => void} [closedHandler] 彻底关闭菜单后的回调函数
    */
   /**
@@ -992,7 +992,7 @@
     /**
      * 对「打开菜单项」这一操作进行处理，包括显示菜单项、设置当前菜单项的状态、关闭其他菜单项
      * @param {string} name 菜单项的名称
-     * @param {() => (void | Promise<void>)} [callback] 打开菜单项后的回调函数
+     * @param {() => void} [callback] 打开菜单项后的回调函数
      * @param {boolean} [keepOthers] 打开时保留其他菜单项
      * @returns {Promise<boolean>} 操作是否成功
      */
@@ -1029,11 +1029,11 @@
             const menu = gm.menu[key]
             if (key == name) {
               menu.state = 1
-              await menu.openHandler?.call(menu)
+              await menu.openHandler?.()
               await new Promise(resolve => {
                 api.dom.fade(true, menu.el, () => {
                   resolve()
-                  menu.openedHandler?.call(menu)
+                  menu.openedHandler?.()
                   callback?.call(menu)
                 })
               })
@@ -1060,7 +1060,7 @@
     /**
      * 对「关闭菜单项」这一操作进行处理，包括隐藏菜单项、设置当前菜单项的状态
      * @param {string} name 菜单项的名称
-     * @param {() => (void | Promise<void>)} [callback] 关闭菜单项后的回调函数
+     * @param {() => void} [callback] 关闭菜单项后的回调函数
      * @returns {Promise<boolean>} 操作是否成功
      */
     async closeMenuItem(name, callback) {
@@ -1091,11 +1091,11 @@
         }
         if (menu.state == 2 || menu.state == -1) {
           menu.state = 3
-          await menu.closeHandler?.call(menu)
+          await menu.closeHandler?.()
           await new Promise(resolve => {
             api.dom.fade(false, menu.el, () => {
               resolve()
-              menu.closedHandler?.call(menu)
+              menu.closedHandler?.()
               callback?.call(menu)
             })
           })

@@ -11,7 +11,8 @@
 5. 功能移除：隐藏「热度」曲线。现在总是隐藏。
 6. 用户设置：优化内部处理逻辑。
 7. 代码：优先使用函数声明而非函数表达式来定义内部函数。
-8. API：升级至 V1.4。详见 [UserscriptAPI 更新日志](https://gitee.com/liangjiancang/userscript/blob/master/lib/UserscriptAPI/changelog.md)。
+8. 代码：`no-useless-call`。
+9. API：升级至 V1.4。详见 [UserscriptAPI 更新日志](https://gitee.com/liangjiancang/userscript/blob/master/lib/UserscriptAPI/changelog.md)。
 
 ## V1.9
 
