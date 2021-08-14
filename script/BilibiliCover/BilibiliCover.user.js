@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站封面获取
-// @version         5.2.3.20210814
+// @version         5.2.4.20210814
 // @namespace       laster2800
 // @author          Laster2800
 // @description     获取B站各播放页面及直播间封面，支持手动及实时预览等多种工作模式，支持封面预览及点击下载，可高度自定义
@@ -57,7 +57,7 @@
       mode: { default: -1, name: '视频/番剧：工作模式' },
       customModeSelector: { default: '#danmukuBox' },
       customModePosition: { default: 'beforebegin' },
-      customModeQuality: { default: '320w' },
+      customModeQuality: { default: '480w_90p' }, // 320w 会有肉眼可见的质量损失
       customModeStyle: { default: defaultRealtimeStyle },
       download: { default: true, name: '全局：点击下载', checkItem: true, needNotReload: true },
       preview: { default: true, name: '视频/番剧：封面预览', checkItem: true },
