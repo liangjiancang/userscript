@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站封面获取
-// @version         5.2.6.20210814
+// @version         5.2.7.20210814
 // @namespace       laster2800
 // @author          Laster2800
 // @description     获取B站各播放页面及直播间封面，支持手动及实时预览等多种工作模式，支持封面预览及点击下载，可高度自定义
@@ -671,36 +671,42 @@
         },
 
         /**
-         * @callback coverInteractionProxy 封面交互代理前置回调
+         * @callback coverInteractionPre 封面交互前置处理
          * @param {Event} 事件
          * @returns {boolean | Promise<boolean>} 本次是否启用代理
          */
         /**
-         * 封面交互代理
+         * 代理封面交互
          *
          * 全面接管一切用户交互引起的行为，默认链接点击行为除外
          * @param {HTMLElement} target 目标元素
-         * @param {coverInteractionProxy} pre 前置回调
+         * @param {coverInteractionPre} pre 封面交互前置处理
          */
-        async coverInteractionProxy(target, pre) {
+        async proxyCoverInteraction(target, pre) {
           addEventListeners()
 
           async function main(event) {
             if (!await pre(event)) return
             removeEventListeners()
             if (event.type == 'mousedown') {
+              let needDispatch = false
               if (event.button == 0) {
                 if (gm.config.download || !target.loaded) {
-                  const evt = new Event('mousedown') // 新建一个事件而不是复用 event，以避免意外情况
-                  evt.button = 0
-                  target.dispatchEvent(evt) // 无法触发链接点击跳转
+                  needDispatch = true
                 } else {
                   window.open(target.href)
                 }
               } else if (event.button == 1) {
                 if (target.loaded) {
                   window.open(target.href)
+                } else {
+                  needDispatch = true
                 }
+              }
+              if (needDispatch) {
+                const evt = new Event('mousedown') // 新建一个事件而不是复用 event，以避免意外情况
+                evt.button = 0
+                target.dispatchEvent(evt) // 无法触发链接点击跳转
               }
             } else if (event.type == 'mouseenter') {
               target.dispatchEvent(new Event('mouseenter'))
@@ -767,7 +773,7 @@
         })
       } else {
         if (gm.runtime.layer == 'legacy') {
-          _self.method.coverInteractionProxy(cover, async event => {
+          _self.method.proxyCoverInteraction(cover, async event => {
             try {
               const vid = _self.method.getVid()
               if (cover._cover_id == vid.id) return false
@@ -846,7 +852,7 @@
         })
       } else {
         if (gm.runtime.layer == 'legacy') {
-          _self.method.coverInteractionProxy(cover, event => {
+          _self.method.proxyCoverInteraction(cover, event => {
             try {
               const bgmid = _self.method.getBgmid()
               if (cover._cover_id == bgmid.id) return false
@@ -931,7 +937,7 @@
       container.insertAdjacentElement('afterbegin', cover)
       const preview = gm.runtime.preview && _self.method.createPreview(cover)
 
-      _self.method.coverInteractionProxy(cover, async event => {
+      _self.method.proxyCoverInteraction(cover, async event => {
         try {
           if (cover.loaded) return false
           // 在异步等待前拦截，避免逻辑倒置
