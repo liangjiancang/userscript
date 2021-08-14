@@ -6,7 +6,7 @@
 
 获取B站各播放页面及直播间封面，支持手动及实时预览等多种工作模式，支持封面预览及点击下载，可高度自定义。一图胜千言，无须多言。求好评，求收藏💔。点击查看 [更新日志](https://gitee.com/liangjiancang/userscript/blob/master/script/BilibiliCover/changelog.md)。
 
-![脚本说明](https://gitee.com/liangjiancang/userscript/raw/master/script/BilibiliCover/screenshot/脚本说明.png)
+![脚本说明](https://gitee.com/liangjiancang/userscript/raw/master/script/BilibiliCover/screenshot/脚本说明.jpg)
 
 > 在 Greasy Fork 找了几个脚本都是不能用的，真 NM 离谱，只好自己上了。
 
@@ -26,7 +26,7 @@
 
 * 封面预览
 
-    ![封面预览](https://gitee.com/liangjiancang/userscript/raw/master/script/BilibiliCover/screenshot/封面预览.png)
+    ![封面预览](https://gitee.com/liangjiancang/userscript/raw/master/script/BilibiliCover/screenshot/封面预览.jpg)
 
 *gitee: [BilibiliCover](https://gitee.com/liangjiancang/userscript/tree/master/script/BilibiliCover)*
 
