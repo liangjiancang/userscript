@@ -33,6 +33,7 @@ module.exports = {
     'quotes': ['warn', 'single'],
     'comma-dangle': ['warn', 'only-multiline'],
     'no-unused-vars': 'warn',
+    'no-useless-call': 'error',
     'no-debugger': 'warn',
   },
 }
