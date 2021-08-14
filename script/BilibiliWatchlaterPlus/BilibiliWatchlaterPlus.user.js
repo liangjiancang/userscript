@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.17.8.20210813
+// @version         4.17.9.20210814
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -17,7 +17,7 @@
 // @exclude         *://message.bilibili.com/*/*
 // @exclude         *://t.bilibili.com/h5/*
 // @exclude         *://www.bilibili.com/page-proxy/*
-// @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=959818
+// @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=960119
 // @grant           GM_registerMenuCommand
 // @grant           GM_xmlhttpRequest
 // @grant           GM_setValue
@@ -4029,7 +4029,7 @@
           }
           #gm-list-search.gm-search:hover,
           #gm-list-search.gm-search.gm-active {
-            box-shadow: var(--box-shadow-color) 0px 3px 6px;
+            box-shadow: var(--${gm.id}-box-shadow);
           }
           #gm-list-search.gm-search input[type=text] {
             border: none;
@@ -4128,8 +4128,8 @@
               line-height: 16.6px;
             }
             .gm-list-sort-control-container option {
-              background: var(--background-color);
-              color: var(--text-color);
+              background: var(--${gm.id}-background-color);
+              color: var(--${gm.id}-text-color);
             }
           `)
           control.className = 's-btn gm-s-btn'
@@ -4208,8 +4208,8 @@
           // 目前在不借助 JavaScript 的情况下，无法完美实现类似于移动端滚动条浮动在内容上的效果。
           api.dom.addStyle(`
             :root {
-              --scrollbar-background-color: transparent;
-              --scrollbar-thumb-color: #0000002b;
+              --${gm.id}-scrollbar-background-color: transparent;
+              --${gm.id}-scrollbar-thumb-color: #0000002b;
             }
 
             ${popup}::-webkit-scrollbar,
@@ -4217,27 +4217,27 @@
             ${dynamic}::-webkit-scrollbar {
               width: 6px;
               height: 6px;
-              background-color: var(--scrollbar-background-color);
+              background-color: var(--${gm.id}-scrollbar-background-color);
             }
 
             ${popup}::-webkit-scrollbar-thumb,
             ${tooltip} ::-webkit-scrollbar-thumb,
             ${dynamic}::-webkit-scrollbar-thumb {
               border-radius: 3px;
-              background-color: var(--scrollbar-background-color);
+              background-color: var(--${gm.id}-scrollbar-background-color);
             }
 
             ${popup}:hover::-webkit-scrollbar-thumb,
             ${tooltip} :hover::-webkit-scrollbar-thumb,
             ${dynamic}:hover::-webkit-scrollbar-thumb {
               border-radius: 3px;
-              background-color: var(--scrollbar-thumb-color);
+              background-color: var(--${gm.id}-scrollbar-thumb-color);
             }
 
             ${popup}::-webkit-scrollbar-corner,
             ${tooltip} ::-webkit-scrollbar-corner,
             ${dynamic}::-webkit-scrollbar-corner {
-              background-color: var(--scrollbar-background-color);
+              background-color: var(--${gm.id}-scrollbar-background-color);
             }
           `)
           return
@@ -4265,35 +4265,35 @@
         // 通用样式
         api.dom.addStyle(`
           :root {
-            --text-color: #0d0d0d;
-            --text-bold-color: #3a3a3a;
-            --light-text-color: white;
-            --hint-text-color: gray;
-            --light-hint-text-color: #909090;
-            --hint-text-emphasis-color: #666666;
-            --hint-text-hightlight-color: #555555;
-            --background-color: white;
-            --background-hightlight-color: #ebebeb;
-            --update-hightlight-color: ${gm.const.updateHighlightColor};
-            --update-hightlight-hover-color: red;
-            --border-color: black;
-            --light-border-color: #e7e7e7;
-            --shadow-color: #000000bf;
-            --text-shadow-color: #00000080;
-            --box-shadow-color: #00000033;
-            --hightlight-color: #0075ff;
-            --important-color: red;
-            --warn-color: #e37100;
-            --disabled-color: gray;
-            --link-visited-color: #551a8b;
-            --scrollbar-background-color: transparent;
-            --scrollbar-thumb-color: #0000002b;
-            --opacity-fade-transition: opacity ${gm.const.fadeTime}ms ease-in-out;
-            --opacity-fade-quick-transition: opacity ${gm.const.fadeTime}ms cubic-bezier(0.68, -0.55, 0.27, 1.55);
+            --${gm.id}-text-color: #0d0d0d;
+            --${gm.id}-text-bold-color: #3a3a3a;
+            --${gm.id}-light-text-color: white;
+            --${gm.id}-hint-text-color: gray;
+            --${gm.id}-light-hint-text-color: #909090;
+            --${gm.id}-hint-text-emphasis-color: #666666;
+            --${gm.id}-hint-text-hightlight-color: #555555;
+            --${gm.id}-background-color: white;
+            --${gm.id}-background-hightlight-color: #ebebeb;
+            --${gm.id}-update-hightlight-color: ${gm.const.updateHighlightColor};
+            --${gm.id}-update-hightlight-hover-color: red;
+            --${gm.id}-border-color: black;
+            --${gm.id}-light-border-color: #e7e7e7;
+            --${gm.id}-shadow-color: #000000bf;
+            --${gm.id}-text-shadow-color: #00000080;
+            --${gm.id}-hightlight-color: #0075ff;
+            --${gm.id}-important-color: red;
+            --${gm.id}-warn-color: #e37100;
+            --${gm.id}-disabled-color: gray;
+            --${gm.id}-link-visited-color: #551a8b;
+            --${gm.id}-scrollbar-background-color: transparent;
+            --${gm.id}-scrollbar-thumb-color: #0000002b;
+            --${gm.id}-box-shadow: #00000033 0px 3px 6px;
+            --${gm.id}-opacity-fade-transition: opacity ${gm.const.fadeTime}ms ease-in-out;
+            --${gm.id}-opacity-fade-quick-transition: opacity ${gm.const.fadeTime}ms cubic-bezier(0.68, -0.55, 0.27, 1.55);
           }
   
           #${gm.id} {
-            color: var(--text-color);
+            color: var(--${gm.id}-text-color);
           }
           #${gm.id} * {
             box-sizing: content-box;
@@ -4302,7 +4302,7 @@
           #${gm.id} .gm-entrypopup {
             font-size: 12px;
             line-height: normal;
-            transition: var(--opacity-fade-transition);
+            transition: var(--${gm.id}-opacity-fade-transition);
             opacity: 0;
             display: none;
             position: absolute;
@@ -4335,20 +4335,20 @@
             border-top-width: 0;
             border-style: solid;
             border-color: transparent;
-            border-bottom-color: var(--background-color); /* 必须在 border-color 后 */
+            border-bottom-color: var(--${gm.id}-background-color); /* 必须在 border-color 后 */
           }
           #${gm.id} .gm-entrypopup .gm-entrypopup-page {
             position: relative;
             border-radius: 4px;
             border: none;
-            box-shadow: var(--box-shadow-color) 0px 3px 6px;
-            background-color: var(--background-color);
+            box-shadow: var(--${gm.id}-box-shadow);
+            background-color: var(--${gm.id}-background-color);
             overflow: hidden;
           }
           #${gm.id} .gm-entrypopup .gm-popup-header {
             position: relative;
             height: 2.8em;
-            border-bottom: 1px solid var(--light-border-color);
+            border-bottom: 1px solid var(--${gm.id}-light-border-color);
           }
           #${gm.id} .gm-entrypopup .gm-popup-total {
             position: absolute;
@@ -4356,7 +4356,7 @@
             right: 1.3em;
             top: 0;
             font-size: 1.2em;
-            color: var(--hint-text-color);
+            color: var(--${gm.id}-hint-text-color);
           }
   
           #${gm.id} .gm-entrypopup .gm-entry-list {
@@ -4366,7 +4366,7 @@
             padding: 0.2em 0;
           }
           #${gm.id} .gm-entrypopup .gm-entry-list.gm-entry-removed-list {
-            border-top: 3px solid var(--light-border-color);
+            border-top: 3px solid var(--${gm.id}-light-border-color);
             display: none;
           }
           #${gm.id} .gm-entrypopup .gm-entry-list-empty {
@@ -4378,14 +4378,14 @@
             width: 14em;
             font-size: 1.4em;
             text-align: center;
-            color: var(--hint-text-color);
+            color: var(--${gm.id}-hint-text-color);
           }
   
           #${gm.id} .gm-entrypopup .gm-entry-list .gm-entry-list-item {
             display: flex;
             height: 4.4em;
             padding: 0.5em 1em;
-            color: var(--text-color);
+            color: var(--${gm.id}-text-color);
             font-size: 1.15em;
             cursor: pointer;
           }
@@ -4395,7 +4395,7 @@
           #${gm.id} .gm-entrypopup .gm-entry-list .gm-entry-list-item.gm-invalid,
           #${gm.id} .gm-entrypopup .gm-entry-list .gm-entry-list-item.gm-removed {
             filter: grayscale(1);
-            color: var(--hint-text-color);
+            color: var(--${gm.id}-hint-text-color);
           }
           #${gm.id} .gm-entrypopup .gm-entry-list .gm-entry-list-item .gm-card-left {
             position: relative;
@@ -4430,15 +4430,15 @@
             position: absolute;
             bottom: 0;
             right: 0;
-            background: var(--text-shadow-color);
-            color: var(--light-text-color);
+            background: var(--${gm.id}-text-shadow-color);
+            color: var(--${gm.id}-light-text-color);
             border-radius: 2px;
             padding: 2px 3px;
             font-size: 0.8em;
             z-index: 1;
           }
           #${gm.id} .gm-entrypopup .gm-entry-list .gm-card-multiP .gm-card-duration > * {
-            transition: var(--opacity-fade-quick-transition);
+            transition: var(--${gm.id}-opacity-fade-quick-transition);
           }
           #${gm.id} .gm-entrypopup .gm-entry-list .gm-card-multiP .gm-card-duration :first-child,
           #${gm.id} .gm-entrypopup .gm-entry-list .gm-card-multiP:hover .gm-card-duration :last-child {
@@ -4476,24 +4476,24 @@
             overflow: hidden;
             width: fit-content;
             max-width: 21em;
-            color: var(--hint-text-color);
+            color: var(--${gm.id}-hint-text-color);
             cursor: pointer;
           }
           #${gm.id} .gm-entrypopup .gm-entry-list .gm-entry-list-item .gm-card-uploader:hover {
             text-decoration: underline;
             font-weight: bold;
-            color: var(--text-bold-color);
+            color: var(--${gm.id}-text-bold-color);
           }
           #${gm.id} .gm-entrypopup .gm-entry-list .gm-entry-list-item .gm-card-progress {
             position: absolute;
             bottom: 0;
             right: 0;
             font-size: 0.8em;
-            color: var(--hint-text-color);
+            color: var(--${gm.id}-hint-text-color);
             display: none;
           }
           #${gm.id} .gm-entrypopup .gm-entry-list .gm-entry-list-item:hover .gm-card-progress {
-            color: var(--hightlight-color);
+            color: var(--${gm.id}-hightlight-color);
           }
           #${gm.id} .gm-entrypopup .gm-entry-list .gm-entry-list-item .gm-card-progress::before {
             content: "▶";
@@ -4502,27 +4502,27 @@
   
           #${gm.id} .gm-entrypopup .gm-entry-list .gm-entry-list-simple-item {
             display: block;
-            color: var(--text-color);
+            color: var(--${gm.id}-text-color);
             font-size: 1.2em;
             padding: 0.5em 1em;
             cursor: pointer;
           }
           #${gm.id} .gm-entrypopup .gm-entry-list .gm-entry-list-simple-item:not(:last-child) {
-            border-bottom: 1px solid var(--light-border-color);
+            border-bottom: 1px solid var(--${gm.id}-light-border-color);
           }
           #${gm.id} .gm-entrypopup .gm-entry-list .gm-entry-list-simple-item.gm-invalid,
           #${gm.id} .gm-entrypopup .gm-entry-list .gm-entry-list-simple-item.gm-invalid:hover {
             cursor: not-allowed;
-            color: var(--hint-text-color);
+            color: var(--${gm.id}-hint-text-color);
           }
           #${gm.id} .gm-entrypopup .gm-entry-list .gm-entry-list-simple-item.gm-removed {
             text-decoration: line-through;
-            color: var(--hint-text-color);
+            color: var(--${gm.id}-hint-text-color);
           }
   
           #${gm.id} .gm-entrypopup .gm-entry-bottom {
             display: flex;
-            border-top: 1px solid var(--light-border-color);
+            border-top: 1px solid var(--${gm.id}-light-border-color);
             height: 3em;
           }
           #${gm.id} .gm-entrypopup .gm-entry-bottom .gm-entry-button {
@@ -4531,14 +4531,14 @@
             padding: 0.6em 0;
             font-size: 1.2em;
             cursor: pointer;
-            color: var(--text-color);
+            color: var(--${gm.id}-text-color);
           }
           #${gm.id} .gm-entrypopup .gm-entry-bottom .gm-entry-button:not([enabled]) {
             display: none;
           }
           #${gm.id} .gm-entrypopup .gm-entry-bottom .gm-entry-button[disabled],
           #${gm.id} .gm-entrypopup .gm-entry-bottom .gm-entry-button[disabled]:hover {
-            color: var(--disabled-color);
+            color: var(--${gm.id}-disabled-color);
             cursor: not-allowed;
           }
 
@@ -4551,21 +4551,21 @@
             left: calc(50% - 2.5em);
             width: 5em;
             border-radius: 4px;
-            box-shadow: var(--box-shadow-color) 0px 3px 6px;
-            background-color: var(--background-color);
-            color: var(--text-color);
+            box-shadow: var(--${gm.id}-box-shadow);
+            background-color: var(--${gm.id}-background-color);
+            color: var(--${gm.id}-text-color);
             padding: 0.15em 0;
             display: none;
             opacity: 0;
-            transition: var(--opacity-fade-quick-transition);
+            transition: var(--${gm.id}-opacity-fade-quick-transition);
             z-index: 10;
           }
           #${gm.id} .gm-entrypopup .gm-entry-bottom .gm-entry-button .gm-option {
             padding: 0.15em 0.6em;
           }
           #${gm.id} .gm-entrypopup .gm-entry-bottom .gm-entry-button .gm-option:hover {
-            color: var(--hightlight-color);
-            background-color: var(--background-hightlight-color);
+            color: var(--${gm.id}-hightlight-color);
+            background-color: var(--${gm.id}-background-hightlight-color);
           }
           #${gm.id} .gm-entrypopup .gm-entry-bottom .gm-entry-button .gm-option.gm-option-selected {
             font-weight: bold;
@@ -4573,23 +4573,23 @@
 
           #${gm.id} .gm-entrypopup .gm-entry-bottom .gm-entry-button[fn=autoRemoveControl]:not([disabled]),
           #${gm.id} .gm-entrypopup .gm-entry-bottom .gm-entry-button[fn=autoRemoveControl]:not([disabled]):hover {
-            color: var(--text-color);
+            color: var(--${gm.id}-text-color);
           }
           #${gm.id} .gm-entrypopup .gm-entry-bottom .gm-entry-button.gm-popup-auto-remove[fn=autoRemoveControl]:not([disabled]) {
-            color: var(--hightlight-color);
+            color: var(--${gm.id}-hightlight-color);
           }
   
           #${gm.id} .gm-entrypopup .gm-entry-list .gm-entry-list-item:hover,
           #${gm.id} .gm-entrypopup .gm-entry-list .gm-entry-list-simple-item:hover,
           #${gm.id} .gm-entrypopup .gm-entry-bottom .gm-entry-button:hover {
-            color: var(--hightlight-color);
-            background-color: var(--background-hightlight-color);
+            color: var(--${gm.id}-hightlight-color);
+            background-color: var(--${gm.id}-background-hightlight-color);
           }
   
           #${gm.id} .gm-setting {
             font-size: 12px;
             line-height: normal;
-            transition: var(--opacity-fade-transition);
+            transition: var(--${gm.id}-opacity-fade-transition);
             opacity: 0;
             display: none;
             position: fixed;
@@ -4598,7 +4598,7 @@
           }
   
           #${gm.id} .gm-setting #gm-setting-page {
-            background-color: var(--background-color);
+            background-color: var(--${gm.id}-background-color);
             border-radius: 10px;
             z-index: 65535;
             min-width: 53em;
@@ -4608,10 +4608,10 @@
   
           #${gm.id} .gm-setting #gm-maintitle * {
             cursor: pointer;
-            color: var(--text-color);
+            color: var(--${gm.id}-text-color);
           }
           #${gm.id} .gm-setting #gm-maintitle:hover * {
-            color: var(--hightlight-color);
+            color: var(--${gm.id}-hightlight-color);
           }
   
           #${gm.id} .gm-setting .gm-items {
@@ -4634,7 +4634,7 @@
             vertical-align: top;
             padding-right: 0.6em;
             font-weight: bold;
-            color: var(--text-bold-color);
+            color: var(--${gm.id}-text-bold-color);
           }
           #${gm.id} .gm-setting .gm-item:not(:first-child) td {
             padding-top: 0.5em;
@@ -4645,31 +4645,31 @@
           }
   
           #${gm.id} .gm-setting .gm-item:hover {
-            color: var(--hightlight-color);
+            color: var(--${gm.id}-hightlight-color);
           }
   
           #${gm.id} .gm-setting .gm-subitem[disabled] {
-            color: var(--disabled-color);
+            color: var(--${gm.id}-disabled-color);
           }
           #${gm.id} .gm-setting .gm-subitem:hover:not([disabled]) {
-            color: var(--hightlight-color);
+            color: var(--${gm.id}-hightlight-color);
           }
   
           #${gm.id} .gm-setting .gm-subitem .gm-lineitems[disabled] {
-            color: var(--disabled-color);
+            color: var(--${gm.id}-disabled-color);
           }
           #${gm.id} .gm-setting .gm-subitem .gm-lineitems {
-            color: var(--text-color);
+            color: var(--${gm.id}-text-color);
           }
           #${gm.id} .gm-setting .gm-subitem .gm-lineitem {
             display: inline-block;
             padding-right: 8px;
           }
           #${gm.id} .gm-setting .gm-subitem .gm-lineitem:hover {
-            color: var(--hightlight-color);
+            color: var(--${gm.id}-hightlight-color);
           }
           #${gm.id} .gm-setting .gm-subitem .gm-lineitems[disabled] .gm-lineitem {
-            color: var(--disabled-color);
+            color: var(--${gm.id}-disabled-color);
           }
           #${gm.id} .gm-setting .gm-subitem .gm-lineitem input[type=checkbox] {
             margin-left: 2px;
@@ -4705,10 +4705,10 @@
   
           #${gm.id} .gm-setting .gm-warning {
             position: absolute;
-            color: var(--warn-color);
+            color: var(--${gm.id}-warn-color);
             font-size: 1.4em;
             line-height: 1em;
-            transition: var(--opacity-fade-transition);
+            transition: var(--${gm.id}-opacity-fade-transition);
             opacity: 0;
             display: none;
             cursor: pointer;
@@ -4728,7 +4728,7 @@
           #${gm.id} .gm-history {
             font-size: 12px;
             line-height: normal;
-            transition: var(--opacity-fade-transition);
+            transition: var(--${gm.id}-opacity-fade-transition);
             opacity: 0;
             display: none;
             position: fixed;
@@ -4737,7 +4737,7 @@
           }
   
           #${gm.id} .gm-history .gm-history-page {
-            background-color: var(--background-color);
+            background-color: var(--${gm.id}-background-color);
             border-radius: 10px;
             z-index: 65535;
             height: 75vh;
@@ -4749,14 +4749,14 @@
   
           #${gm.id} .gm-history .gm-comment {
             margin: 0 2em;
-            color: var(--hint-text-color);
+            color: var(--${gm.id}-hint-text-color);
             text-indent: 2em;
           }
           #${gm.id} .gm-history .gm-comment span,
           #${gm.id} .gm-history .gm-comment input {
             padding: 0 0.2em;
             font-weight: bold;
-            color: var(--hint-text-emphasis-color);
+            color: var(--${gm.id}-hint-text-emphasis-color);
           }
           #${gm.id} .gm-history .gm-comment input{
             text-align: center;
@@ -4784,7 +4784,7 @@
             margin: 1.6em 2em;
           }
           #${gm.id} .gm-history .gm-content a {
-            color: var(--text-color);
+            color: var(--${gm.id}-text-color);
           }
           #${gm.id} .gm-history .gm-content input[type=checkbox] {
             position: absolute;
@@ -4795,14 +4795,14 @@
           }
           #${gm.id} .gm-history .gm-content .gm-history-date {
             font-size: 0.5em;
-            color: var(--hint-text-color);
+            color: var(--${gm.id}-hint-text-color);
           }
           #${gm.id} .gm-history .gm-content > *:hover input[type=checkbox] {
             filter: brightness(0.9);
           }
           #${gm.id} .gm-history .gm-content > *:hover a {
             font-weight: bold;
-            color: var(--hightlight-color);
+            color: var(--${gm.id}-hightlight-color);
           }
   
           #${gm.id} .gm-bottom {
@@ -4815,34 +4815,34 @@
             padding: 0.3em 1em;
             margin: 0 0.8em;
             cursor: pointer;
-            background-color: var(--background-color);
-            border: 1px solid var(--border-color);
+            background-color: var(--${gm.id}-background-color);
+            border: 1px solid var(--${gm.id}-border-color);
             border-radius: 2px;
           }
           #${gm.id} .gm-bottom button:hover {
-            background-color: var(--background-hightlight-color);
+            background-color: var(--${gm.id}-background-hightlight-color);
           }
           #${gm.id} .gm-bottom button[disabled] {
             cursor: not-allowed;
-            border-color: var(--disabled-color);
-            background-color: var(--background-color);
+            border-color: var(--${gm.id}-disabled-color);
+            background-color: var(--${gm.id}-background-color);
           }
 
           #${gm.id} .gm-info {
             font-size: 0.8em;
-            color: var(--hint-text-color);
+            color: var(--${gm.id}-hint-text-color);
             text-decoration: underline;
             padding: 0 0.2em;
             cursor: pointer;
           }
           #${gm.id} .gm-info:visited {
-            color: var(--hint-text-color);
+            color: var(--${gm.id}-hint-text-color);
           }
           #${gm.id} .gm-info:hover {
-            color: var(--important-color);
+            color: var(--${gm.id}-important-color);
           }
           #${gm.id} [disabled] .gm-info {
-            color: var(--disabled-color);
+            color: var(--${gm.id}-disabled-color);
             cursor: not-allowed;
           }
   
@@ -4851,7 +4851,7 @@
             right: 0;
             bottom: 0;
             margin: 1em 1.6em;
-            color: var(--hint-text-color);
+            color: var(--${gm.id}-hint-text-color);
             cursor: pointer;
           }
   
@@ -4860,33 +4860,33 @@
             right: 0;
             bottom: 1.8em;
             margin: 1em 1.6em;
-            color: var(--hint-text-color);
+            color: var(--${gm.id}-hint-text-color);
             cursor: pointer;
           }
           #${gm.id} [setting-type=updated] #gm-changelog {
             font-weight: bold;
-            color: var(--update-hightlight-hover-color);
+            color: var(--${gm.id}-update-hightlight-hover-color);
           }
           #${gm.id} [setting-type=updated] #gm-changelog:hover {
-            color: var(--update-hightlight-hover-color);
+            color: var(--${gm.id}-update-hightlight-hover-color);
           }
           #${gm.id} [setting-type=updated] .gm-updated,
           #${gm.id} [setting-type=updated] .gm-updated input,
           #${gm.id} [setting-type=updated] .gm-updated select {
-            background-color: var(--update-hightlight-color);
+            background-color: var(--${gm.id}-update-hightlight-color);
           }
           #${gm.id} [setting-type=updated] .gm-updated option {
-            background-color: var(--background-color);
+            background-color: var(--${gm.id}-background-color);
           }
           #${gm.id} [setting-type=updated] tr:hover .gm-updated,
           #${gm.id} [setting-type=updated] tr:hover .gm-updated .gm-lineitem {
-            color: var(--update-hightlight-hover-color);
+            color: var(--${gm.id}-update-hightlight-hover-color);
             font-weight: bold;
           }
   
           #${gm.id} #gm-reset:hover,
           #${gm.id} #gm-changelog:hover {
-            color: var(--hint-text-hightlight-color);
+            color: var(--${gm.id}-hint-text-hightlight-color);
             text-decoration: underline;
           }
   
@@ -4902,7 +4902,7 @@
           }
   
           #${gm.id} .gm-shadow {
-            background-color: var(--shadow-color);
+            background-color: var(--${gm.id}-shadow-color);
             position: fixed;
             top: 0%;
             left: 0%;
@@ -4924,24 +4924,24 @@
             font-size: 100%;
             appearance: auto;
             outline: none;
-            border: 1px solid var(--border-color);
+            border: 1px solid var(--${gm.id}-border-color);
             border-radius: 0;
-            color: var(--text-color);
-            background-color: var(--background-color);
+            color: var(--${gm.id}-text-color);
+            background-color: var(--${gm.id}-background-color);
           }
   
           #${gm.id} a {
-          color: var(--hightlight-color)
+          color: var(--${gm.id}-hightlight-color)
           }
           #${gm.id} a:visited {
-          color: var(--link-visited-color)
+          color: var(--${gm.id}-link-visited-color)
           }
   
           #${gm.id} [disabled],
           #${gm.id} [disabled] input,
           #${gm.id} [disabled] select {
             cursor: not-allowed;
-            color: var(--disabled-color);
+            color: var(--${gm.id}-disabled-color);
           }
   
           #${gm.id}-video-btn {
@@ -4959,20 +4959,20 @@
           #${gm.id} .gm-history .gm-content::-webkit-scrollbar {
             width: 6px;
             height: 6px;
-            background-color: var(--scrollbar-background-color);
+            background-color: var(--${gm.id}-scrollbar-background-color);
           }
           #${gm.id} .gm-history .gm-content::-webkit-scrollbar-thumb {
             border-radius: 3px;
-            background-color: var(--scrollbar-background-color);
+            background-color: var(--${gm.id}-scrollbar-background-color);
           }
           #${gm.id} .gm-setting .gm-items::-webkit-scrollbar-thumb,
           #${gm.id} .gm-history .gm-content:hover::-webkit-scrollbar-thumb {
             border-radius: 3px;
-            background-color: var(--scrollbar-thumb-color);
+            background-color: var(--${gm.id}-scrollbar-thumb-color);
           }
           #${gm.id} .gm-setting .gm-items::-webkit-scrollbar-corner,
           #${gm.id} .gm-history .gm-content::-webkit-scrollbar-corner {
-            background-color: var(--scrollbar-background-color);
+            background-color: var(--${gm.id}-scrollbar-background-color);
           }
 
           #${gm.id} .gm-entrypopup .gm-search {
@@ -4989,15 +4989,15 @@
             line-height: normal;
             outline: none;
             padding-right: 6px;
-            color: var(--text-color);
+            color: var(--${gm.id}-text-color);
           }
           .gm-search input[type=text]::placeholder {
             font-size: 0.9em;
-            color: var(--light-hint-text-color);
+            color: var(--${gm.id}-light-hint-text-color);
           }
           .gm-search-clear {
             display: inline-block;
-            color: var(--hint-text-color);
+            color: var(--${gm.id}-hint-text-color);
             cursor: pointer;
             visibility: hidden;
           }

@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站防剧透进度条
-// @version         2.0.11.20210813
+// @version         2.0.12.20210814
 // @namespace       laster2800
 // @author          Laster2800
 // @description     看比赛、看番总是被进度条剧透？装上这个脚本再也不用担心这些问题了
@@ -13,7 +13,7 @@
 // @include         *://www.bilibili.com/medialist/play/watchlater
 // @include         *://www.bilibili.com/medialist/play/watchlater/*
 // @include         *://www.bilibili.com/bangumi/play/*
-// @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=959818
+// @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=960119
 // @grant           GM_registerMenuCommand
 // @grant           GM_xmlhttpRequest
 // @grant           GM_setValue
@@ -1930,34 +1930,34 @@
     addStyle() {
       api.dom.addStyle(`
         :root {
-          --progress-track-color: hsla(0, 0%, 100%, .3);
-          --progress-played-color: rgba(35, 173, 229, 1);
-          --control-item-selected-color: #00c7ff;
-          --control-item-shadow-color: #00000080;
-          --text-color: black;
-          --text-bold-color: #3a3a3a;
-          --light-text-color: white;
-          --hint-text-color: gray;
-          --hint-text-hightlight-color: #555555;
-          --background-color: white;
-          --background-hightlight-color: #ebebeb;
-          --update-hightlight-color: #4cff9c;
-          --update-hightlight-hover-color: red;
-          --border-color: black;
-          --shadow-color: #000000bf;
-          --hightlight-color: #0075FF;
-          --important-color: red;
-          --warn-color: #e37100;
-          --disabled-color: gray;
-          --link-visited-color: #551a8b;
-          --opacity-fade-transition: opacity ${gm.const.fadeTime}ms ease-in-out;
+          --${gm.id}-progress-track-color: hsla(0, 0%, 100%, .3);
+          --${gm.id}-progress-played-color: rgba(35, 173, 229, 1);
+          --${gm.id}-control-item-selected-color: #00c7ff;
+          --${gm.id}-control-item-shadow-color: #00000080;
+          --${gm.id}-text-color: black;
+          --${gm.id}-text-bold-color: #3a3a3a;
+          --${gm.id}-light-text-color: white;
+          --${gm.id}-hint-text-color: gray;
+          --${gm.id}-hint-text-hightlight-color: #555555;
+          --${gm.id}-background-color: white;
+          --${gm.id}-background-hightlight-color: #ebebeb;
+          --${gm.id}-update-hightlight-color: #4cff9c;
+          --${gm.id}-update-hightlight-hover-color: red;
+          --${gm.id}-border-color: black;
+          --${gm.id}-shadow-color: #000000bf;
+          --${gm.id}-hightlight-color: #0075FF;
+          --${gm.id}-important-color: red;
+          --${gm.id}-warn-color: #e37100;
+          --${gm.id}-disabled-color: gray;
+          --${gm.id}-link-visited-color: #551a8b;
+          --${gm.id}-opacity-fade-transition: opacity ${gm.const.fadeTime}ms ease-in-out;
         }
 
         .${gm.id}-scriptControl {
           position: absolute;
           left: 0;
           bottom: 100%;
-          color: var(--light-text-color);
+          color: var(--${gm.id}-light-text-color);
           margin-bottom: 1em;
           font-size: 13px;
           z-index: 10000;
@@ -1975,7 +1975,7 @@
           border-radius: 4px;
           padding: 0.3em;
           margin: 0 0.12em;
-          background-color: var(--control-item-shadow-color);
+          background-color: var(--${gm.id}-control-item-shadow-color);
           line-height: 1em;
           opacity: 0.7;
           transition: opacity ease-in-out ${gm.const.fadeTime}ms;
@@ -1984,11 +1984,11 @@
           opacity: 1;
         }
         .${gm.id}-scriptControl > *[enabled] {
-          color: var(--control-item-selected-color);
+          color: var(--${gm.id}-control-item-selected-color);
         }
 
         #${gm.id} {
-          color: var(--text-color);
+          color: var(--${gm.id}-text-color);
         }
         #${gm.id} * {
           box-sizing: content-box;
@@ -1997,7 +1997,7 @@
         #${gm.id} .gm-setting {
           font-size: 12px;
           line-height: normal;
-          transition: var(--opacity-fade-transition);
+          transition: var(--${gm.id}-opacity-fade-transition);
           opacity: 0;
           display: none;
           position: fixed;
@@ -2006,7 +2006,7 @@
         }
 
         #${gm.id} .gm-setting #gm-setting-page {
-          background-color: var(--background-color);
+          background-color: var(--${gm.id}-background-color);
           border-radius: 10px;
           z-index: 65535;
           min-width: 42em;
@@ -2016,10 +2016,10 @@
 
         #${gm.id} .gm-setting #gm-maintitle * {
           cursor: pointer;
-          color: var(--text-color);
+          color: var(--${gm.id}-text-color);
         }
         #${gm.id} .gm-setting #gm-maintitle:hover * {
-          color: var(--hightlight-color);
+          color: var(--${gm.id}-hightlight-color);
         }
 
         #${gm.id} .gm-setting .gm-items {
@@ -2041,7 +2041,7 @@
           vertical-align: top;
           padding-right: 0.6em;
           font-weight: bold;
-          color: var(--text-bold-color);
+          color: var(--${gm.id}-text-bold-color);
         }
         #${gm.id} .gm-setting .gm-item:not(:first-child) td {
           padding-top: 0.5em;
@@ -2052,14 +2052,14 @@
         }
 
         #${gm.id} .gm-setting .gm-item:hover {
-          color: var(--hightlight-color);
+          color: var(--${gm.id}-hightlight-color);
         }
 
         #${gm.id} .gm-setting .gm-subitem[disabled] {
-          color: var(--disabled-color);
+          color: var(--${gm.id}-disabled-color);
         }
         #${gm.id} .gm-setting .gm-subitem:hover:not([disabled]) {
-          color: var(--hightlight-color);
+          color: var(--${gm.id}-hightlight-color);
         }
 
         #${gm.id} .gm-setting td > * {
@@ -2088,10 +2088,10 @@
         #${gm.id} .gm-setting .gm-warning {
           position: absolute;
           right: -1.1em;
-          color: var(--warn-color);
+          color: var(--${gm.id}-warn-color);
           font-size: 1.4em;
           line-height: 1em;
-          transition: var(--opacity-fade-transition);
+          transition: var(--${gm.id}-opacity-fade-transition);
           opacity: 0;
           display: none;
           cursor: pointer;
@@ -2100,7 +2100,7 @@
         #${gm.id} .gm-uploaderList {
           font-size: 12px;
           line-height: normal;
-          transition: var(--opacity-fade-transition);
+          transition: var(--${gm.id}-opacity-fade-transition);
           opacity: 0;
           display: none;
           position: fixed;
@@ -2109,7 +2109,7 @@
         }
 
         #${gm.id} .gm-uploaderList .gm-uploaderList-page {
-          background-color: var(--background-color);
+          background-color: var(--${gm.id}-background-color);
           border-radius: 10px;
           z-index: 65535;
           width: 36em;
@@ -2119,7 +2119,7 @@
 
         #${gm.id} .gm-uploaderList .gm-comment {
           margin: 0 2em;
-          color: var(--hint-text-color);
+          color: var(--${gm.id}-hint-text-color);
           text-indent: 2em;
         }
 
@@ -2146,34 +2146,34 @@
           padding: 0.3em 1em;
           margin: 0 0.8em;
           cursor: pointer;
-          background-color: var(--background-color);
-          border: 1px solid var(--border-color);
+          background-color: var(--${gm.id}-background-color);
+          border: 1px solid var(--${gm.id}-border-color);
           border-radius: 2px;
         }
         #${gm.id} .gm-bottom button:hover {
-          background-color: var(--background-hightlight-color);
+          background-color: var(--${gm.id}-background-hightlight-color);
         }
         #${gm.id} .gm-bottom button[disabled] {
           cursor: not-allowed;
-          border-color: var(--disabled-color);
-          background-color: var(--background-color);
+          border-color: var(--${gm.id}-disabled-color);
+          background-color: var(--${gm.id}-background-color);
         }
 
         #${gm.id} .gm-info {
           font-size: 0.8em;
-          color: var(--hint-text-color);
+          color: var(--${gm.id}-hint-text-color);
           text-decoration: underline;
           padding: 0 0.2em;
           cursor: pointer;
         }
         #${gm.id} .gm-info:visited {
-          color: var(--hint-text-color);
+          color: var(--${gm.id}-hint-text-color);
         }
         #${gm.id} .gm-info:hover {
-          color: var(--important-color);
+          color: var(--${gm.id}-important-color);
         }
         #${gm.id} [disabled] .gm-info {
-          color: var(--disabled-color);
+          color: var(--${gm.id}-disabled-color);
           cursor: not-allowed;
         }
 
@@ -2182,7 +2182,7 @@
           right: 0;
           bottom: 0;
           margin: 1em 1.6em;
-          color: var(--hint-text-color);
+          color: var(--${gm.id}-hint-text-color);
           cursor: pointer;
         }
 
@@ -2191,32 +2191,32 @@
           right: 0;
           bottom: 1.8em;
           margin: 1em 1.6em;
-          color: var(--hint-text-color);
+          color: var(--${gm.id}-hint-text-color);
           cursor: pointer;
         }
         #${gm.id} [setting-type=updated] #gm-changelog {
           font-weight: bold;
-          color: var(--update-hightlight-hover-color);
+          color: var(--${gm.id}-update-hightlight-hover-color);
         }
         #${gm.id} [setting-type=updated] #gm-changelog:hover {
-          color: var(--update-hightlight-hover-color);
+          color: var(--${gm.id}-update-hightlight-hover-color);
         }
         #${gm.id} [setting-type=updated] .gm-updated,
         #${gm.id} [setting-type=updated] .gm-updated input,
         #${gm.id} [setting-type=updated] .gm-updated select {
-          background-color: var(--update-hightlight-color);
+          background-color: var(--${gm.id}-update-hightlight-color);
         }
         #${gm.id} [setting-type=updated] .gm-updated option {
-          background-color: var(--background-color);
+          background-color: var(--${gm.id}-background-color);
         }
         #${gm.id} [setting-type=updated] tr:hover .gm-updated {
-          color: var(--update-hightlight-hover-color);
+          color: var(--${gm.id}-update-hightlight-hover-color);
           font-weight: bold;
         }
 
         #${gm.id} #gm-reset:hover,
         #${gm.id} #gm-changelog:hover {
-          color: var(--hint-text-hightlight-color);
+          color: var(--${gm.id}-hint-text-hightlight-color);
           text-decoration: underline;
         }
 
@@ -2232,7 +2232,7 @@
         }
 
         #${gm.id} .gm-shadow {
-          background-color: var(--shadow-color);
+          background-color: var(--${gm.id}-shadow-color);
           position: fixed;
           top: 0%;
           left: 0%;
@@ -2251,40 +2251,40 @@
         #${gm.id} input,
         #${gm.id} select,
         #${gm.id} button {
-          color: var(--text-color);
+          color: var(--${gm.id}-text-color);
           outline: none;
           border-radius: 0;
           appearance: auto; /* 番剧播放页该项被覆盖 */
         }
 
         #${gm.id} a {
-        color: var(--hightlight-color)
+        color: var(--${gm.id}-hightlight-color)
         }
         #${gm.id} a:visited {
-        color: var(--link-visited-color)
+        color: var(--${gm.id}-link-visited-color)
         }
 
         #${gm.id} [disabled],
         #${gm.id} [disabled] input,
         #${gm.id} [disabled] select {
           cursor: not-allowed;
-          color: var(--disabled-color);
+          color: var(--${gm.id}-disabled-color);
         }
 
         #${gm.id} .gm-setting .gm-items::-webkit-scrollbar,
         #${gm.id} .gm-uploaderList .gm-list-editor textarea::-webkit-scrollbar {
           width: 6px;
           height: 6px;
-          background-color: var(--scrollbar-background-color);
+          background-color: var(--${gm.id}-scrollbar-background-color);
         }
         #${gm.id} .gm-setting .gm-items::-webkit-scrollbar-thumb,
         #${gm.id} .gm-uploaderList .gm-list-editor textarea::-webkit-scrollbar-thumb {
           border-radius: 3px;
-          background-color: var(--scrollbar-thumb-color);
+          background-color: var(--${gm.id}-scrollbar-thumb-color);
         }
         #${gm.id} .gm-setting .gm-items::-webkit-scrollbar-corner,
         #${gm.id} .gm-uploaderList .gm-list-editor textarea::-webkit-scrollbar-corner {
-          background-color: var(--scrollbar-background-color);
+          background-color: var(--${gm.id}-scrollbar-background-color);
         }
 
         #${gm.id}-fake-progress {
@@ -2309,10 +2309,10 @@
           width: 100%
         }
         #${gm.id}-fake-progress .fake-track {
-          background-color: var(--progress-track-color);
+          background-color: var(--${gm.id}-progress-track-color);
         }
         #${gm.id}-fake-progress .fake-played {
-          background-color: var(--progress-played-color);
+          background-color: var(--${gm.id}-progress-played-color);
           transform-origin: left;
           transform: scaleX(0);
         }
