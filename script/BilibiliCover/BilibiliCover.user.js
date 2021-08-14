@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站封面获取
-// @version         5.2.5.20210814
+// @version         5.2.6.20210814
 // @namespace       laster2800
 // @author          Laster2800
 // @description     获取B站各播放页面及直播间封面，支持手动及实时预览等多种工作模式，支持封面预览及点击下载，可高度自定义
@@ -351,7 +351,7 @@
           <div style="line-height:1.6em">
             <p>设置实时预览图片的质量，该项会明显影响页面加载的视觉体验。</p>
             <p>设置为 [ best ] 加载原图（不推荐），置空时使用默认设置。</p>
-            <p style="margin-bottom:0.5em">PS：B站推荐的视频封面长宽比为 16:9（非强制性标准）。</p>
+            <p style="margin-bottom:0.5em">PS：B站推荐的视频封面长宽比为 16:10（非强制性标准）。</p>
             <p>格式：[ ${'${width}w_${height}h_${clip}c_${quality}q'} ]</p>
             <p>可省略部分参数，如 [ 320w_1q ] 表示「宽度 320 像素，高度自动，拉伸，压缩质量 1」</p>
             <p>- width - 图片宽度</p>
