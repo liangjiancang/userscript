@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站封面获取
-// @version         5.3.0.20210815
+// @version         5.3.1.20210815
 // @namespace       laster2800
 // @author          Laster2800
 // @description     获取B站各播放页及直播间封面，支持手动及实时预览等多种模式，支持点击下载、封面预览、快速复制，可高度自定义
@@ -42,7 +42,7 @@
       margin-bottom: 10px;
       border-radius: 3px;
       overflow: hidden;
-      box-shadow: #00000033 0px 3px 6px;
+      box-shadow: #00000038 0px 3px 6px;
     }
     #${gmId}-realtime-cover img {
       display: block;
@@ -785,7 +785,6 @@
         async proxyCoverInteraction(target, pre) {
           const _self = this
           addEventListeners()
-          this.disableContextMenu(target)
 
           async function main(event) {
             if (!await pre(event)) return
@@ -851,6 +850,7 @@
         } else {
           atr.appendChild(cover)
         }
+        _self.method.disableContextMenu(cover)
       } else {
         cover = await _self.method.createRealtimeCover()
       }
@@ -936,6 +936,7 @@
         cover.textContent = '获取封面'
         cover.className = `${gm.id}-bangumi-cover-btn`
         tm.appendChild(cover)
+        _self.method.disableContextMenu(cover)
       } else {
         cover = await _self.method.createRealtimeCover()
       }
@@ -1037,6 +1038,7 @@
       cover.textContent = '获取封面'
       cover.className = `${gm.id}-live-cover-btn`
       container.insertAdjacentElement('afterbegin', cover)
+      _self.method.disableContextMenu(cover)
       const preview = gm.runtime.preview && _self.method.createPreview(cover)
       cover.title = gm.const.hintText
 
