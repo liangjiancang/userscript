@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            [DEBUG] 信息显式化
-// @version         2.3.2.20210725
+// @version         2.4.0.20210815
 // @namespace       laster2800
 // @author          Laster2800
 // @description     用 alert() 提示符合匹配规则的日志或未捕获异常，帮助开发者在日常使用网页时发现潜藏问题
@@ -94,9 +94,9 @@
                   if (regex.test(value.toString())) {
                     return true
                   } else if (depth > 1) {
-                    if (!objSet.has(value)) {
+                    if (!(value instanceof Node) && !objSet.has(value)) {
                       objSet.add(value)
-                      if (_inner(value, depth - 1)) {
+                      if (_inner(value, depth - 1, objSet)) {
                         return true
                       }
                     }

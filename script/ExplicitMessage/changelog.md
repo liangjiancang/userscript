@@ -2,6 +2,11 @@
 
 本日志只记录用户友好的更新说明，影响不大的问题修复与修改不作记录，具体修改见 [提交记录](https://gitee.com/liangjiancang/userscript/commits/master/script/ExplicitMessage)。
 
+## V2.4
+
+1. 过滤器：修复无法检查深层属性的严重 BUG！
+2. 过滤器：跳过对 `Node` 类型对象的检查。
+
 ## V2.3
 
 1. 注入版 `V1.2`：增加脚本更新检查机制。注入版本与主版本不匹配时，提示更新并拒绝工作。
