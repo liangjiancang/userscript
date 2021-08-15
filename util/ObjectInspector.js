@@ -2,8 +2,9 @@
 /**
  * 对象观察器
  * 
- * 根据 `regex` 在 `depth` 层深度内找到匹配 `regex` 的属性
- * @version 1.2.1.20210720
+ * 根据 `regex` 在 `depth` 层深度内找到匹配 `regex` 的属性。
+ * @version 1.3.0.20210815
+ * @author Laster2800
  */
 class ObjectInspector {
   /**
@@ -14,7 +15,8 @@ class ObjectInspector {
    * @param {boolean} [config.inspectKey=true] 观察时是否匹配键名
    * @param {boolean} [config.inspectValue=true] 观察时是否匹配键值
    * @param {RegExp} [config.exRegex=null] 用于排除匹配键名的正则表达式
-   * @param {number} [config.exLongStrLen=128] 超过此长度的字符串移除
+   * @param {Object[]} [config.exType=[Node]] 用于排除匹配这些类型的对象
+   * @param {number} [config.exLongStrLen] 超过此长度的字符串移除，设为假值表示无限制
 
    */
   constructor(obj, regex, config) {
@@ -25,6 +27,8 @@ class ObjectInspector {
       inspectKey: true,
       inspectValue: true,
       exRegex: null,
+      exType: [Node],
+      exLongStrLen: null,
       ...config,
     }
   }
@@ -38,6 +42,7 @@ class ObjectInspector {
    * @param {boolean} [config.inspectKey] 观察时是否匹配键名
    * @param {boolean} [config.inspectValue] 观察时是否匹配键值
    * @param {RegExp} [config.exRegex] 用于排除匹配键名的正则表达式
+   * @param {Object[]} [config.exType] 用于排除匹配这些类型的对象
    * @param {number} [config.exLongStrLen] 超过此长度的字符串移除，设为假值表示无限制
    * @returns {Object} 封装匹配 `regex` 属性的对象
    */
@@ -62,13 +67,14 @@ class ObjectInspector {
    * @param {boolean} config.inspectKey 观察时是否匹配键名
    * @param {boolean} config.inspectValue 观察时是否匹配键值
    * @param {RegExp} [config.exRegex] 用于排除匹配键名的正则表达式
-   * @param {number} [config.exLongStrLen] 超过此长度的字符串移除
+   * @param {Object[]} [config.exType] 用于排除匹配这些类型的对象
+   * @param {number} [config.exLongStrLen] 超过此长度的字符串移除，设为假值表示无限制
    * @param {number} depth 当前深度
    * @param {Object} result 处理结果的存储对象
    * @param {string} prevKey 描述当前观察对象 `obj` 与根观察对象 `root` 的关系：`obj = _.at(root, [prevKey])`
    * @param {Set} objSet 集合，包含之前已经观察过的对象，避免重复遍历
    */
-  _inspectInner({ obj, regex, inspectKey, inspectValue, exRegex, exLongStrLen }, depth, result, prevKey, objSet) {
+  _inspectInner({ obj, regex, inspectKey, inspectValue, exRegex, exType, exLongStrLen }, depth, result, prevKey, objSet) {
     if (!obj || depth == 0) return
     for (const key in obj) {
       if (exRegex?.test(key)) continue
@@ -81,9 +87,18 @@ class ObjectInspector {
             if (inspectValue && regex.test(value.toString())) {
               result[prevKey + key] = value
             } else if (depth > 1) {
-              if (!objSet.has(value)) {
+              let isExType = false
+              if (exType) {
+                for (const type of exType) {
+                  if (value instanceof type) {
+                    isExType = true
+                    break
+                  }
+                }
+              }
+              if (!isExType && !objSet.has(value)) {
                 objSet.add(value)
-                this._inspectInner({ obj: value, regex, inspectKey, inspectValue, exRegex, exLongStrLen }, depth - 1, result, `${prevKey + key}.`, objSet)
+                this._inspectInner({ obj: value, regex, inspectKey, inspectValue, exRegex, exType, exLongStrLen }, depth - 1, result, `${prevKey + key}.`, objSet)
               }
             }
           } else {
@@ -93,7 +108,7 @@ class ObjectInspector {
                 try {
                   const json = JSON.parse(value)
                   if (json) { // exclude 'null' and 'undefined'
-                    this._inspectInner({ obj: json, regex, inspectKey, inspectValue, exRegex, exLongStrLen }, depth - 1, result, `${prevKey + key}{JSON-PARSE}:`, objSet)
+                    this._inspectInner({ obj: json, regex, inspectKey, inspectValue, exRegex, exType, exLongStrLen }, depth - 1, result, `${prevKey + key}{JSON-PARSE}:`, objSet)
                     continue
                   }
                 } catch (e) { /* nothing to do */ }
