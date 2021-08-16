@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.17.12.20210816
+// @version         4.17.13.20210816
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -4393,7 +4393,7 @@
           }
           #${gm.id} .gm-entrypopup .gm-entry-list .gm-entry-list-item .gm-card-left {
             position: relative;
-            flex: 0;
+            flex: none;
             cursor: default;
           }
           #${gm.id} .gm-entrypopup .gm-entry-list .gm-entry-list-item .gm-card-cover {
@@ -4449,7 +4449,7 @@
             display: flex;
             flex-direction: column;
             justify-content: space-between;
-            flex: 1;
+            flex: auto;
             margin-left: 0.8em;
           }
           #${gm.id} .gm-entrypopup .gm-entry-list .gm-entry-list-item .gm-card-title {
@@ -4522,7 +4522,7 @@
             height: 3em;
           }
           #${gm.id} .gm-entrypopup .gm-entry-bottom .gm-entry-button {
-            flex: 1;
+            flex: 1 0 auto;
             text-align: center;
             padding: 0.6em 0;
             font-size: 1.2em;
