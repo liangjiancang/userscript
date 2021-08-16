@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站防剧透进度条
-// @version         2.0.13.20210815
+// @version         2.1.0.20210816
 // @namespace       laster2800
 // @author          Laster2800
 // @description     看比赛、看番总是被进度条剧透？装上这个脚本再也不用担心这些问题了
@@ -410,7 +410,7 @@
 
     /**
      * 打开用户设置
-     * @param {number} [type=0] 普通 `0` | 初始化 `1` | 功能性更新 `2`
+     * @param {number} [type=0] 常规 `0` | 初始化 `1` | 功能性更新 `2`
      */
     openUserSetting(type = 0) {
       const _self = this
@@ -1370,6 +1370,144 @@
     }
 
     /**
+     * 隐藏必要元素（相关设置修改后需刷新页面）
+     */
+    hideElementStatic() {
+      const _self = this
+      // 隐藏进度条预览
+      if (_self.enabled) {
+        _self.progress.preview.style.visibility = gm.config.disablePreview ? 'hidden' : 'visible'
+      } else {
+        _self.progress.preview.style.visibility = 'visible'
+      }
+
+      // 隐藏当前播放时间
+      api.wait.waitQuerySelector('.bilibili-player-video-time-now:not(.fake), .squirtle-video-time-now:not(.fake)').then(currentPoint => {
+        if (_self.enabled && gm.config.disableCurrentPoint) {
+          if (!currentPoint._fake) {
+            currentPoint._fake = currentPoint.insertAdjacentElement('afterend', currentPoint.cloneNode(true))
+            currentPoint._fake.textContent = '???'
+            api.dom.addClass(currentPoint._fake, 'fake')
+          }
+          currentPoint.style.display = 'none'
+          currentPoint._fake.style.display = 'unset'
+        } else {
+          currentPoint.style.display = 'unset'
+          if (currentPoint._fake) {
+            currentPoint._fake.style.display = 'none'
+          }
+        }
+      })
+      // 隐藏视频预览上的当前播放时间（鼠标移至进度条上显示）
+      api.wait.waitQuerySelector('.bilibili-player-video-progress-detail-time, .squirtle-progress-time').then(currentPoint => {
+        if (_self.enabled && gm.config.disableCurrentPoint) {
+          currentPoint.style.visibility = 'hidden'
+        } else {
+          currentPoint.style.visibility = 'visible'
+        }
+      })
+
+      // 隐藏视频时长
+      api.wait.waitQuerySelector('.bilibili-player-video-time-total:not(.fake), .squirtle-video-time-total:not(.fake)').then(duration => {
+        if (_self.enabled && gm.config.disableDuration) {
+          if (!duration._fake) {
+            duration._fake = duration.insertAdjacentElement('afterend', duration.cloneNode(true))
+            duration._fake.textContent = '???'
+            api.dom.addClass(duration._fake, 'fake')
+          }
+          duration.style.display = 'none'
+          duration._fake.style.display = 'unset'
+        } else {
+          duration.style.display = 'unset'
+          if (duration._fake) {
+            duration._fake.style.display = 'none'
+          }
+        }
+      })
+      // 隐藏进度条自动跳转提示（可能存在）
+      api.wait.waitQuerySelector('.bilibili-player-video-toast-wrp, .bpx-player-toast-wrap', document, true).then(tip => {
+        if (_self.enabled) {
+          tip.style.display = 'none'
+        } else {
+          tip.style.display = 'unset'
+        }
+      }).catch(() => {})
+
+      // 隐藏高能进度条的「热度」曲线（可能存在）
+      api.wait.waitQuerySelector('#bilibili_pbp', _self.control, true).then(pbp => {
+        pbp.style.visibility = _self.enabled ? 'hidden' : ''
+      }).catch(() => {})
+
+      // 隐藏 pakku 扩展引入的弹幕密度显示（可能存在）
+      api.wait.waitQuerySelector('.pakku-fluctlight', _self.control, true).then(pakku => {
+        pakku.style.visibility = _self.enabled ? 'hidden' : ''
+      }).catch(() => {})
+
+      // 隐藏分 P 信息（番剧没有必要隐藏）
+      if (gm.config.disablePartInformation && !api.web.urlMatch(gm.regex.page_bangumi)) {
+        // 全屏播放时的分 P 选择（即使没有分 P 也存在）
+        if (_self.enabled) {
+          api.wait.waitQuerySelector('.bilibili-player-video-btn-menu').then(menu => {
+            menu.querySelectorAll('.bilibili-player-video-btn-menu-list').forEach((item, idx) => {
+              item.textContent = `P${idx + 1}`
+            })
+          })
+        }
+        // 全屏播放时显示的分 P 标题
+        api.wait.waitQuerySelector('.bilibili-player-video-top-title').then(el => {
+          el.style.visibility = _self.enabled ? 'hidden' : 'visible'
+        })
+        // 播放页右侧分 P 选择（可能存在）
+        if (api.web.urlMatch(gm.regex.page_videoNormalMode)) {
+          api.wait.waitQuerySelector('#multi_page', document, true).then(multiPage => {
+            multiPage.querySelectorAll('.clickitem .part, .clickitem .duration').forEach(el => {
+              el.style.visibility = _self.enabled ? 'hidden' : 'visible'
+            })
+            if (_self.enabled) {
+              multiPage.querySelectorAll('[title]').forEach(el => el.title = '') // 隐藏提示信息
+            }
+          }).catch(() => {})
+        } else if (api.web.urlMatch(gm.regex.page_videoWatchlaterMode)) {
+          api.wait.waitQuerySelector('.player-auxiliary-playlist-list').then(list => {
+            const exec = () => {
+              if (_self.enabled) {
+                list.querySelectorAll('.player-auxiliary-playlist-item-p-item').forEach(item => {
+                  const m = /^(P\d+)\D/i.exec(item.textContent)
+                  if (m) {
+                    item.textContent = m[1]
+                  }
+                })
+              }
+            }
+            exec()
+            if (!list._obHidePart) { // 如果 list 中发生修改，则重新处理
+              list._obHidePart = new MutationObserver(exec)
+              list._obHidePart.observe(list, { childList: true })
+            }
+          })
+        }
+      }
+
+      // 隐藏分段信息
+      if (gm.config.disableSegmentInformation && _self.method.isSegmentedProgress()) {
+        if (!_self.method.isV3Player()) {
+          // 分段按钮
+          api.wait.waitQuerySelector('.bilibili-player-video-btn-viewpointlist', _self.control).then(btn => {
+            btn.style.visibility = _self.enabled ? 'hidden' : ''
+          })
+          // 分段列表
+          api.wait.waitQuerySelector('.player-auxiliary-collapse-viewpointlist').then(list => {
+            list.style.display = 'none' // 一律隐藏即可，用户要看就再点一次分段按钮
+          })
+          // 进度条预览上的分段标题（必定存在）
+          api.wait.waitQuerySelector('.bilibili-player-video-progress-detail-content').then(content => {
+            content.style.display = _self.enabled ? 'none' : ''
+          })
+        }
+      }
+    }
+
+    /**
      * 防剧透功能处理流程
      */
     async processNoSpoil() {
@@ -1380,162 +1518,13 @@
         })
       }
       await _self.initProgress()
-      hideElementStatic()
+      _self.hideElementStatic()
       processControlShow()
       core()
       if (_self.enabled) {
         _self.scriptControl.enabled.setAttribute('enabled', '')
       } else {
         _self.scriptControl.enabled.removeAttribute('enabled')
-      }
-
-      /**
-       * 隐藏必要元素（相关设置修改后需刷新页面）
-       */
-      function hideElementStatic() {
-        // 隐藏进度条预览
-        if (_self.enabled) {
-          _self.progress.preview.style.visibility = gm.config.disablePreview ? 'hidden' : 'visible'
-        } else {
-          _self.progress.preview.style.visibility = 'visible'
-        }
-
-        // 隐藏当前播放时间
-        api.wait.waitQuerySelector('.bilibili-player-video-time-now:not(.fake), .squirtle-video-time-now:not(.fake)').then(currentPoint => {
-          if (_self.enabled && gm.config.disableCurrentPoint) {
-            if (!currentPoint._fake) {
-              currentPoint._fake = currentPoint.insertAdjacentElement('afterend', currentPoint.cloneNode(true))
-              currentPoint._fake.textContent = '???'
-              api.dom.addClass(currentPoint._fake, 'fake')
-            }
-            currentPoint.style.display = 'none'
-            currentPoint._fake.style.display = 'unset'
-          } else {
-            currentPoint.style.display = 'unset'
-            if (currentPoint._fake) {
-              currentPoint._fake.style.display = 'none'
-            }
-          }
-        })
-        // 隐藏视频预览上的当前播放时间（鼠标移至进度条上显示）
-        api.wait.waitQuerySelector('.bilibili-player-video-progress-detail-time, .squirtle-progress-time').then(currentPoint => {
-          if (_self.enabled && gm.config.disableCurrentPoint) {
-            currentPoint.style.visibility = 'hidden'
-          } else {
-            currentPoint.style.visibility = 'visible'
-          }
-        })
-
-        // 隐藏视频时长
-        api.wait.waitQuerySelector('.bilibili-player-video-time-total:not(.fake), .squirtle-video-time-total:not(.fake)').then(duration => {
-          if (_self.enabled && gm.config.disableDuration) {
-            if (!duration._fake) {
-              duration._fake = duration.insertAdjacentElement('afterend', duration.cloneNode(true))
-              duration._fake.textContent = '???'
-              api.dom.addClass(duration._fake, 'fake')
-            }
-            duration.style.display = 'none'
-            duration._fake.style.display = 'unset'
-          } else {
-            duration.style.display = 'unset'
-            if (duration._fake) {
-              duration._fake.style.display = 'none'
-            }
-          }
-        })
-        // 隐藏进度条自动跳转提示（可能存在）
-        api.wait.waitQuerySelector('.bilibili-player-video-toast-wrp, .bpx-player-toast-wrap', document, true).then(tip => {
-          if (_self.enabled) {
-            tip.style.display = 'none'
-          } else {
-            tip.style.display = 'unset'
-          }
-        }).catch(() => {})
-
-        // 隐藏高能进度条的「热度」曲线（可能存在）
-        api.wait.waitQuerySelector('#bilibili_pbp', _self.control, document, true).then(pbp => {
-          pbp.style.visibility = _self.enabled ? 'hidden' : ''
-        }).catch(() => {})
-
-        // 隐藏 pakku 扩展引入的弹幕密度显示（可能存在）
-        api.wait.waitQuerySelector('.pakku-fluctlight', _self.control, document, true).then(pakku => {
-          pakku.style.visibility = _self.enabled ? 'hidden' : ''
-        }).catch(() => {})
-
-        // 隐藏分 P 信息（番剧没有必要隐藏）
-        if (gm.config.disablePartInformation && !api.web.urlMatch(gm.regex.page_bangumi)) {
-          // 全屏播放时的分 P 选择（即使没有分 P 也存在）
-          if (_self.enabled) {
-            api.wait.waitQuerySelector('.bilibili-player-video-btn-menu').then(menu => {
-              /** @type HTMLElement[] */
-              const items = menu.querySelectorAll('.bilibili-player-video-btn-menu-list')
-              for (let i = 0; i < items.length; i++) {
-                items[i].textContent = 'P' + (i + 1)
-              }
-            })
-          }
-          // 全屏播放时显示的分 P 标题
-          api.wait.waitQuerySelector('.bilibili-player-video-top-title').then(el => {
-            el.style.visibility = _self.enabled ? 'hidden' : 'visible'
-          })
-          // 播放页右侧分 P 选择（可能存在）
-          if (api.web.urlMatch(gm.regex.page_videoNormalMode)) {
-            api.wait.waitQuerySelector('#multi_page', document, true).then(multiPage => {
-              const hideTypes = [multiPage.querySelectorAll('.clickitem .part'), multiPage.querySelectorAll('.clickitem .duration')]
-              for (const hideType of hideTypes) {
-                for (const hideElement of hideType) {
-                  hideElement.style.visibility = _self.enabled ? 'hidden' : 'visible'
-                }
-              }
-              if (_self.enabled) {
-                const links = multiPage.querySelectorAll('a')
-                for (const link of links) {
-                  link.title = '' // 隐藏提示信息
-                }
-              }
-            }).catch(() => {})
-          } else if (api.web.urlMatch(gm.regex.page_videoWatchlaterMode)) {
-            if (_self.enabled) {
-              api.wait.waitQuerySelector('.player-auxiliary-playlist-list').then(list => {
-                const exec = () => {
-                  /** @type HTMLElement[] */
-                  const items = list.querySelectorAll('.player-auxiliary-playlist-item-p-item')
-                  for (const item of items) {
-                    const m = /^(P\d+)\D/i.exec(item.textContent)
-                    if (m) {
-                      item.textContent = m[1]
-                    }
-                  }
-                  // 如果 list 中发生修改，则重新处理
-                  const obList = new MutationObserver((records, observer) => {
-                    observer.disconnect()
-                    exec()
-                  })
-                  obList.observe(list, { childList: true })
-                }
-                exec()
-              })
-            }
-          }
-        }
-
-        // 隐藏分段信息
-        if (gm.config.disableSegmentInformation && _self.method.isSegmentedProgress()) {
-          if (!_self.method.isV3Player()) {
-            // 分段按钮
-            api.wait.waitQuerySelector('.bilibili-player-video-btn-viewpointlist', _self.control).then(btn => {
-              btn.style.visibility = _self.enabled ? 'hidden' : ''
-            })
-            // 分段列表
-            api.wait.waitQuerySelector('.player-auxiliary-collapse-viewpointlist').then(list => {
-              list.style.display = 'none' // 一律隐藏即可，用户要看就再点一次分段按钮
-            })
-            // 进度条预览上的分段标题（必定存在）
-            api.wait.waitQuerySelector('.bilibili-player-video-progress-detail-content').then(content => {
-              content.style.display = _self.enabled ? 'none' : ''
-            })
-          }
-        }
       }
 
       /**
@@ -1728,75 +1717,35 @@
       if (_self.enabled) {
         await _self.processNoSpoil()
       }
-
-      // 加载完页面后，有时候视频会莫名其妙地重新刷新，原因不明
-      // 总之，先等一下看注入的内容还在，如果不在则重新初始化
-      // 若打开稍后再看模式播放页后，在以下条件等待超时之前切换到其他视频，这部分代码也会响应导致重新初始化
-      // 不过，这种情况本来就应该重初始化，也就是相当于多处理一次，从结果上来看并不要紧
-      api.wait.executeAfterConditionPassed({
-        condition: () => !document.body.contains(_self.scriptControl),
-        callback: () => _self.initNoSpoil(),
-        interval: 250,
-        onTimeout: null,
-        timePadding: 1000,
-      })
     }
 
     /**
-     * 初始化页面切换处理
+     * 切换分 P、页面内切换视频、播放器刷新等各种情况下，重新初始化
      */
-    async initLocationChangeProcess() {
+    initSwitch() {
       const _self = this
-      let currentPathname = location.pathname
-      window.addEventListener('urlchange', function() {
-        if (location.pathname != currentPathname) {
-          currentPathname = location.pathname
-          setTimeout(() => {
+      if (_self.method.isV3Player()) {
+        // V3 会使用原来的大部分组件，刷一下 static 就行
+        let currentPathname = location.pathname
+        window.addEventListener('urlchange', function() {
+          if (location.pathname != currentPathname) {
+            currentPathname = location.pathname
+            // 其实只有 pbp 需要重刷，但是 pbp 来得很晚且不好检测，而且影响也不是很大，稍微延迟一下得了
+            setTimeout(() => _self.hideElementStatic(), 5000)
+          }
+        })
+      } else {
+        // V2 在这些情况下会自动刷新
+        api.wait.executeAfterElementLoaded({
+          selector: '.bilibili-player-video-control',
+          exclude: [_self.control],
+          timeout: 0,
+          callback: () => {
             _self.initNoSpoil()
-            if (api.web.urlMatch(gm.regex.page_videoWatchlaterMode)) {
-              _self.initSwitchingPartProcess()
-            }
-          }, 200)
-        }
-      })
-    }
-
-    /**
-     * 初始化稍后再看模式播放页切换分 P 的处理
-     */
-    async initSwitchingPartProcess() {
-      const _self = this
-      let obActiveP, obList
-      const list = await api.wait.waitQuerySelector('.player-auxiliary-playlist-list')
-      const activeVideo = await api.wait.waitQuerySelector('.player-auxiliary-playlist-item-active', list)
-      const stopWait = api.wait.executeAfterElementLoaded({
-        selector: '.player-auxiliary-playlist-item-p-list',
-        base: activeVideo,
-        timeout: 2000,
-        onTimeout: null, // 有分 P 的才能找到 pList
-        stopOnTimeout: true,
-        callback: async pList => {
-          const activeP = await api.wait.waitQuerySelector('.player-auxiliary-playlist-item-p-item-active', pList)
-          obActiveP = new MutationObserver(async (records, observer) => {
-            observer.disconnect()
-            obList?.disconnect()
-            const currentActive = await api.wait.waitQuerySelector('.player-auxiliary-playlist-item-active')
-            if (currentActive === activeVideo) {
-              _self.initNoSpoil()
-              _self.initSwitchingPartProcess()
-            }
-          })
-          obActiveP.observe(activeP, { attributeFilter: ['class'] })
-        },
-      })
-      // 将右侧列表往下拉，动态加载后面的视频时会重新生成 list，此时前面的监听无效，应当重新处理
-      obList = new MutationObserver((records, observer) => {
-        stopWait()
-        observer.disconnect()
-        obActiveP?.disconnect()
-        _self.initSwitchingPartProcess(true)
-      })
-      obList.observe(list, { childList: true })
+            _self.initSwitch() // 这里用重新调用代替 repeat，否则会禁用元素等待 throttle
+          },
+        })
+      }
     }
 
     /**
@@ -2337,10 +2286,7 @@
     webpage.addStyle()
 
     webpage.initNoSpoil().then(() => {
-      webpage.initLocationChangeProcess()
-      if (api.web.urlMatch(gm.regex.page_videoWatchlaterMode)) {
-        webpage.initSwitchingPartProcess()
-      }
+      webpage.initSwitch()
     })
   })
 })()

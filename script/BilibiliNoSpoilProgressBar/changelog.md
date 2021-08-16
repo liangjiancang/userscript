@@ -2,6 +2,11 @@
 
 本日志只记录用户友好的更新说明，影响不大的问题修复与修改不作记录，具体修改见 [提交记录](https://gitee.com/liangjiancang/userscript/commits/master/script/BilibiliNoSpoilProgressBar)。
 
+## V2.1
+
+1. 脚本：优化切换分 P、页面内切换视频、播放器刷新等各种情况下重新初始化的处理。
+2. 隐藏分 P 信息：优化处理流程。
+
 ## V2.0
 
 1. 脚本：更改伪进度条的实现方式，自给自足，不再借用B站原生的进度条组件。
