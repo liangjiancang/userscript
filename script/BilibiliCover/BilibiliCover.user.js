@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站封面获取
-// @version         5.3.1.20210815
+// @version         5.3.2.20210816
 // @namespace       laster2800
 // @author          Laster2800
 // @description     获取B站各播放页及直播间封面，支持手动及实时预览等多种模式，支持点击下载、封面预览、快速复制，可高度自定义
@@ -61,7 +61,7 @@
       customModePosition: { default: 'beforebegin' },
       customModeQuality: { default: '480w_90p' }, // 320w 会有肉眼可见的质量损失
       customModeStyle: { default: defaultRealtimeStyle },
-      download: { default: true, name: '全局：点击下载', checkItem: true, needNotReload: true },
+      download: { default: true, name: '全局：点击下载', checkItem: true },
       preview: { default: true, name: '视频/番剧：封面预览', checkItem: true },
       previewLive: { default: true, name: '直播间：封面预览', checkItem: true },
       bangumiSeries: { default: false, name: '番剧：获取系列封面而非分集封面', checkItem: true },
@@ -302,7 +302,7 @@
           <div style="line-height:1.6em">
             <p style="margin-bottom:0.5em">请认真阅读以下说明：</p>
             <p>1. 应填入 CSS 选择器，脚本会以此选择定位元素，将封面元素「#${gm.id}-realtime-cover」插入到其附近（相对位置稍后设置）。</p>
-            <p>2. 确保该选择器在「普通播放页」「稍后再看播放页」「番剧播放页」中均有对应元素，否则脚本在对应页面无法工作。PS：逗号「,」以 OR 规则拼接多个选择器。</p>
+            <p>2. 确保该选择器在「常规播放页」「稍后再看播放页」「番剧播放页」中均有对应元素，否则脚本在对应页面无法工作。PS：逗号「,」以 OR 规则拼接多个选择器。</p>
             <p>3. 不要选择广告为定位元素，否则封面元素可能会插入失败或被误杀。</p>
             <p>4. 不要选择时有时无的元素，或第三方插入的元素作为定位元素，否则封面元素可能会插入失败。</p>
             <p>5. 在 A 时间点插入的图片元素，有可能被 B 时间点插入的新元素 C 挤到目标以外的位置。只要将定位元素选择为 C 再更改相对位置即可解决问题。</p>
@@ -476,7 +476,6 @@
             // 此处必须用 mousedown，否则无法与动态获取封面的代码达成正确的联动
             target.addEventListener('mousedown', function(e) {
               if (target.loaded && gm.config.download && e.button == 0) {
-                e.preventDefault()
                 _self.download(this.href, document.title)
               }
             })
@@ -498,7 +497,6 @@
           if (!target._copyLinkEvent) {
             target.addEventListener('mousedown', async function(e) {
               if (target.loaded && e.button == 2) {
-                e.preventDefault()
                 let ctrl = e.ctrlKey
                 if (gm.config.switchQuickCopy) {
                   ctrl = !ctrl
@@ -546,10 +544,8 @@
          */
         addErrorEvent(target) {
           if (!target._errorEvent) {
-            target.addEventListener('mousedown', function(e) {
-              if (target.loaded) return
-              if (e.button == 0 || e.button == 1) {
-                e.preventDefault()
+            target.addEventListener('mousedown', function() {
+              if (!target.loaded) {
                 api.message.create(gm.const.errorMsg)
               }
             })
@@ -560,7 +556,7 @@
         /**
          * 设置封面
          * @param {HTMLElement} target 封面元素
-         * @param {HTMLElement} preview 预览元素
+         * @param {HTMLElement} preview 预览元素，无预览元素时传空值即可
          * @param {string} url 封面 URL
          */
         setCover(target, preview, url) {
@@ -580,7 +576,6 @@
               }
             }
             if (preview) {
-              preview._needUpdate = true
               preview._src = url
             }
           } else {
@@ -614,12 +609,19 @@
           target.addEventListener('mouseenter', api.tool.debounce(async function() {
             this.mouseOver = true
             if (gm.runtime.preview) {
-              if (preview._needUpdate) {
-                await new Promise(resolve => {
-                  preview.addEventListener('load', resolve, { once: true })
-                  preview.src = preview._src
-                  preview._needUpdate = false
-                })
+              if (preview._src) {
+                try {
+                  await new Promise((resolve, reject) => {
+                    preview.addEventListener('load', resolve, { once: true })
+                    preview.addEventListener('error', reject, { once: true })
+                    preview.src = preview._src
+                    preview._src = null
+                  })
+                } catch (e) {
+                  _self.setCover(target, preview, false)
+                  api.logger.error(e)
+                  return
+                }
                 if (!this.mouseOver) return
               }
               preview.src && fade(true)
@@ -631,6 +633,18 @@
               !preview.mouseOver && fade(false)
             }
           }, 200))
+
+          // 在链接上左键打开链接，和中键在新标签页打开链接，都要求：
+          // 鼠标点击与松开时都在链接元素上，也就是说链接元素上不能有覆盖物，需让 preview 回避一下
+          // 不做这个处理，将鼠标快速移动至按钮/实时预览上点击时，操作有概率会被吞掉
+          target.addEventListener('mousedown', function() {
+            preview.style.pointerEvents = 'none'
+          })
+          target.addEventListener('mouseup', function() {
+            setTimeout(() => {
+              preview.style.pointerEvents = ''
+            }, 10)
+          })
 
           let startPos = null // 鼠标进入预览时的初始坐标
           preview.onmouseenter = function() {
@@ -711,11 +725,17 @@
          * @returns {Promise<HTMLElement>} 实时封面元素
          */
         async createRealtimeCover() {
+          const _self = this
           const ref = await api.wait.waitQuerySelector(gm.runtime.realtimeSelector)
           const cover = ref.insertAdjacentElement(gm.runtime.realtimePosition, document.createElement('a'))
           cover.id = `${gm.id}-realtime-cover`
           cover.img = cover.appendChild(document.createElement('img'))
-          cover.img.addEventListener('error', function() {
+          cover.error = cover.appendChild(document.createElement('div'))
+          cover.error.textContent = '封面获取失败'
+          cover.img.addEventListener('load', function() {
+            cover.error.style.display = ''
+          })
+          cover.img.addEventListener('error', function(e) {
             if (this.lossless && this.src != this.lossless) {
               if (gm.config.mode == gm.const.customMode) {
                 api.message.create(`缩略图获取失败，使用原图进行替换！请检查「${gm.runtime.realtimeQuality}」是否为有效的图片质量参数。可能是正常现象，因为年代久远的视频封面有可能不支持缩略图。`, { ms: 4000 })
@@ -725,6 +745,10 @@
               api.logger.warn(['缩略图获取失败，使用原图进行替换！', this.src, this.lossless])
               this.src = this.lossless
               this.lossless = null
+            } else {
+              _self.setCover(cover, null, false) // preview 会自动处理 error，不必理会
+              cover.error.style.display = 'block'
+              api.logger.error(e)
             }
           })
           if (gm.runtime.realtimeStyle != 'disable') {
@@ -879,12 +903,10 @@
               const vid = _self.method.getVid()
               if (cover._cover_id == vid.id) return false
               // 在异步等待前拦截，避免逻辑倒置
-              event.preventDefault()
               event.stopPropagation()
               const url = await getCover(vid)
               _self.method.setCover(cover, preview, url)
             } catch (e) {
-              event.preventDefault()
               event.stopPropagation()
               _self.method.setCover(cover, preview, false)
               api.logger.error(e)
@@ -965,7 +987,6 @@
               _self.method.setCover(cover, preview, false)
               api.logger.error(e)
             }
-            event.preventDefault()
             event.stopPropagation()
             return true
           })
@@ -1046,12 +1067,10 @@
         try {
           if (cover.loaded) return false
           // 在异步等待前拦截，避免逻辑倒置
-          event.preventDefault()
           event.stopPropagation()
           const url = await getCover(win)
           _self.method.setCover(cover, preview, url)
         } catch (e) {
-          event.preventDefault()
           event.stopPropagation()
           _self.method.setCover(cover, preview, false)
           api.logger.error(e)
@@ -1106,6 +1125,14 @@
           transition: opacity ${gm.const.fadeTime}ms ease-in-out;
           cursor: pointer;
           box-shadow: #000000AA 0px 3px 6px;
+        }
+
+        #${gmId}-realtime-cover div {
+          color: gray;
+          padding: 5px;
+          font-size: 18px;
+          text-align: center;
+          display: none;
         }
       `, doc)
     }
