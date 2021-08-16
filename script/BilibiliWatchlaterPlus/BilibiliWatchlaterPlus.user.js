@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.17.11.20210815
+// @version         4.17.12.20210816
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -213,7 +213,7 @@
    * @property {autoSort} autoSort 自动排序
    * @property {boolean} videoButton 视频播放页稍后再看状态快速切换
    * @property {autoRemove} autoRemove 自动将视频从播放列表移除
-   * @property {boolean} redirect 稍后再看模式重定向至普通模式播放
+   * @property {boolean} redirect 稍后再看模式重定向至常规模式播放
    * @property {boolean} listSearch 列表页面搜索框
    * @property {boolean} listSortControl 列表页面排序控制器
    * @property {openListVideo} openListVideo 列表页面视频点击行为
@@ -768,7 +768,7 @@
 
     /**
      * 打开用户设置
-     * @param {number} [type=0] 普通 `0` | 初始化 `1` | 功能性更新 `2`
+     * @param {number} [type=0] 常规 `0` | 初始化 `1` | 功能性更新 `2`
      */
     openUserSetting(type = 0) {
       const _self = this
@@ -1026,7 +1026,7 @@
                     </td>
                   </tr>
 
-                  <tr class="gm-item" title="在播放页面（包括普通模式和稍后再看模式）中加入能将视频快速切换添加或移除出稍后再看列表的按钮。">
+                  <tr class="gm-item" title="在播放页面中加入能将视频快速切换添加或移除出稍后再看列表的按钮。">
                     <td><div>播放页面</div></td>
                     <td>
                       <label>
@@ -1055,7 +1055,7 @@
                     <td><div>播放页面</div></td>
                     <td>
                       <label>
-                        <span>从稍后再看模式强制切换到普通模式播放（重定向）</span>
+                        <span>从稍后再看模式强制切换到常规模式播放（重定向）</span>
                         <input id="gm-redirect" type="checkbox">
                       </label>
                     </td>
@@ -1339,18 +1339,15 @@
         const processConfigItem = () => {
           // 子项与父项相关联
           const subitemChange = (item, sup) => {
-            const subitems = el.items.querySelectorAll(`[sup="${sup}"]`)
-            for (const subitem of subitems) {
-              subitem.querySelectorAll('[id|=gm]').forEach(option => {
-                const parent = option.parentElement
-                if (item.checked) {
-                  parent.removeAttribute('disabled')
-                } else {
-                  parent.setAttribute('disabled', '')
-                }
-                option.disabled = !item.checked
-              })
-            }
+            el.items.querySelectorAll(`[sup="${sup}"] [id|=gm]`).forEach(option => {
+              const parent = option.parentElement
+              if (item.checked) {
+                parent.removeAttribute('disabled')
+              } else {
+                parent.setAttribute('disabled', '')
+              }
+              option.disabled = !item.checked
+            })
           }
           el.headerMenuFn = el.headerMenuFnSetting.parentElement.parentElement
           el.headerButton.init = function() {
@@ -1998,8 +1995,7 @@
             setContentTop() // 在设置内容前设置好 top，这样看不出修改的痕迹
             if (result.length > 0) {
               el.content.innerHTML = result.join('')
-              const boxes = el.content.querySelectorAll('input[bvid]')
-              for (const box of boxes) {
+              el.content.querySelectorAll('input[bvid]').forEach(box => {
                 box.addEventListener('click', async function() {
                   const status = this.checked
                   const bvid = this.getAttribute('bvid')
@@ -2012,7 +2008,7 @@
                     api.message.create(`${note}失败${status ? '，可能视频不可用，或为不支持的稿件类型（如互动视频）' : ''}`)
                   }
                 })
-              }
+              })
             } else {
               setEmptyContent('没有找到移除记录，请尝试增大历史回溯深度')
             }
@@ -2945,13 +2941,12 @@
             }
 
             el.entryFn = {}
-            const buttons = el.entryBottom.querySelectorAll('.gm-entry-button')
-            for (const button of buttons) {
+            el.entryBottom.querySelectorAll('.gm-entry-button').forEach(button => {
               const fn = button.getAttribute('fn')
               if (fn) {
                 el.entryFn[fn] = button
               }
-            }
+            })
 
             // 排序控制器
             {
@@ -3404,8 +3399,7 @@
                 tab.addEventListener('click', async function() {
                   map = await _self.method.getWatchlaterDataMap(item => String(item.aid), 'aid', true)
                   // map 更新期间，ob 偷跑可能会将错误的数据写入，重新遍历并修正之
-                  const videos = feed.querySelectorAll('.video-container')
-                  for (const video of videos) {
+                  feed.querySelectorAll('.video-container').forEach(video => {
                     const vue = video.__vue__
                     if (vue) {
                       const aid = String(vue.aid)
@@ -3415,7 +3409,7 @@
                         vue.seeLaterStatus = 0
                       }
                     }
-                  }
+                  })
                 })
               },
             })
@@ -3809,8 +3803,7 @@
       }
 
       const listBox = await api.wait.waitQuerySelector('.watch-later-list .list-box')
-      const items = listBox.querySelectorAll('.av-item')
-      for (const item of items) {
+      listBox.querySelectorAll('.av-item').forEach(item => {
         let valid = false
         if (val) {
           if (match(item.vTitle)) {
@@ -3826,7 +3819,7 @@
         } else {
           api.dom.addClass(item, 'gm-search-hide')
         }
-      }
+      })
     }
 
     /**
