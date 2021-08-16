@@ -8,7 +8,7 @@
 
 | <div style="min-width:2em">类型</div> | <div style="min-width:10em">名称</div>                          | 描述                                                                                                                               |
 | ------------------------------------- | --------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
-| 脚本                                  | [B站SEO页面重定向](https://greasyfork.org/zh-CN/scripts/430227) | 从形如 <https://www.bilibili.com/s/video/BV1xx411c7mD> 的B站 SEO 页面重定向至普通页面。<br>Google 搜索结果中经常会包含这样的页面。 |
+| 脚本                                  | [B站SEO页面重定向](https://greasyfork.org/zh-CN/scripts/430227) | 从形如 <https://www.bilibili.com/s/video/BV1xx411c7mD> 的B站 SEO 页面重定向至常规页面。<br>Google 搜索结果中经常会包含这样的页面。 |
 | 样式                                  | [滚动条美化](https://greasyfork.org/zh-CN/scripts/430290)       | 美化滚动条                                                                                                                         |
 | 样式                                  | [B站顶栏固顶](https://greasyfork.org/zh-CN/scripts/430292)      | 固顶B站顶栏                                                                                                                        |
 
