@@ -2,9 +2,11 @@
 
 此目录下涵括各种不必单独建立目录的小脚本或用户样式，详见下表。点击查看 **[杂项](https://greasyfork.org/zh-CN/scripts?language=all&set=470770)** 以及 **[其他脚本](https://greasyfork.org/zh-CN/scripts?language=all&set=470686)**。
 
-其中，用户样式建议使用 Stylus 安装。
-
+1. 用户样式建议使用 Stylus 安装。
 ![userstyle](https://gitee.com/liangjiancang/userscript/raw/master/misc/screenshot/userstyle.png)
+
+2. 建议如下配置脚本管理器的上下文菜单，以便更好地使用运行在 `context-menu` 的脚本。
+![右键菜单设置](https://gitee.com/liangjiancang/userscript/raw/master/misc/screenshot/右键菜单设置.png)
 
 | <div style="min-width:2em">类型</div> | <div style="min-width:10em">名称</div>                          | 描述                                                                                                                               |
 | ------------------------------------- | --------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
