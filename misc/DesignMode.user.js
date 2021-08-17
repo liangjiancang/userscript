@@ -1,9 +1,9 @@
 // ==UserScript==
-// @name            [DEBUG] DesignMode
-// @version         1.0.1.20210817
+// @name            [DEBUG] 网页内容编辑模式 (DesignMode)
+// @version         1.0.2.20210817
 // @namespace       laster2800
 // @author          Laster2800
-// @description     通过右键菜单快速切换 designMode (https://developer.mozilla.org/zh-CN/docs/Web/API/Document/designMode)
+// @description     通过右键菜单快速切换 designMode 状态 - https://developer.mozilla.org/zh-CN/docs/Web/API/Document/designMode
 // @license         LGPL-3.0
 // @include         *
 // @grant           none
