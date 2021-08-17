@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            [DEBUG] 信息显式化
-// @version         2.4.0.20210815
+// @version         2.4.1.20210817
 // @namespace       laster2800
 // @author          Laster2800
 // @description     用 alert() 提示符合匹配规则的日志或未捕获异常，帮助开发者在日常使用网页时发现潜藏问题
@@ -72,7 +72,7 @@
       /**
        * @param {*} obj 匹配对象
        * @param {RegExp} regex 匹配正则表达式
-       * @param {number} [depth=5] 匹配查找深度
+       * @param {number} [depth=6] 匹配查找深度
        * @returns {boolean} 是否匹配成功
        */
       match(obj, regex, depth = 5) {
@@ -90,11 +90,20 @@
             } else {
               try {
                 const value = obj[key]
+                if (value == obj) continue
                 if (value && (typeof value == 'object' || typeof value == 'function')) {
+                  if (value && value == value.window && value != top) continue // exclude frame window
                   if (regex.test(value.toString())) {
                     return true
                   } else if (depth > 1) {
-                    if (!(value instanceof Node) && !objSet.has(value)) {
+                    let isExType = false
+                    for (const type of [Node, StyleSheet]) {
+                      if (value instanceof type) {
+                        isExType = true
+                        break
+                      }
+                    }
+                    if (!isExType && !objSet.has(value)) {
                       objSet.add(value)
                       if (_inner(value, depth - 1, objSet)) {
                         return true
