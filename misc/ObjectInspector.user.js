@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            [DEBUG] 对象观察器
-// @version         2.1.0.20210817
+// @version         2.1.1.20210817
 // @namespace       laster2800
 // @author          Laster2800
 // @description     右键菜单激活，向 window 中注入 ObjectInspector 工具类，用于查找特定对象上符合条件的属性
@@ -22,9 +22,10 @@
      * 又如，可用 `new ObjectInspector(window, /id$/i, { inspectValue: false }).inspect()` 列出存储在页面上的各种可能为 ID 的信息。
      *
      * 使用须知：
-     * 1. 若不使用 `noWindows` 或 `exType` 对观察加以限制，应将 `depth` 降低，否则一次执行将耗费费数倍于原来的时间。
-     * 2. 脚本激活时会向顶层 `window` 及 frame `window` 均注入 `ObjectInspector`。
-     * 3. 尽可能使用当前上下文的 `window.ObjectInspector` 来观察同一上下文中的对象，否则默认 `exType` 将无法生效，以至于观察到不必要的属性，且使执行时间大大增加。错误示范：`new top.ObjectInspector(iframe.contentWindow, /wrong/).inspect()`。
+     * 1. `inspectValue = false`、`noWindows = false`、`exType = (过滤大量常见对象的数组)` 能大幅降低观察时间，若它们均不提供约束，观察时间将会是原来数倍乃数十倍。相反，只要三者之中有一个提供了约束，就能起到相当好的效果。一般不需要考虑这点，因为默认设置的 `noWindows` 和 `exType` 具备相当高的过滤强度。只需在手动设置 `noWindows` 及 `exType` 时多加注意即可。
+     * 2. 承上，有些特殊情况需要 `inspectValue = noWindows = true`、`exType = null`，此时可以降低 `depth`，或是做好观察时间长达数分钟的心理准备。
+     * 3. 脚本激活时会向顶层 `window` 及 frame `window` 均注入 `ObjectInspector`。
+     * 4. 尽可能使用当前上下文的 `window.ObjectInspector` 来观察同一上下文中的对象，否则默认 `exType` 将无法生效，以至于观察到不必要的属性，且使观察时间大大增加。错误示范：`new top.ObjectInspector(iframe.contentWindow, /wrong/).inspect()`。
      */
     return class ObjectInspector {
       /**
