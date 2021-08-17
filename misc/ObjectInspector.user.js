@@ -1,9 +1,8 @@
 // ==UserScript==
 // @name            [DEBUG] 对象观察器
-// @version         2.0.0.20210817
+// @version         2.0.1.20210817
 // @namespace       laster2800
 // @author          Laster2800
-// @icon            https://www.bilibili.com/favicon.ico
 // @description     右键菜单激活，向 window 中注入 ObjectInspector 工具类
 // @license         LGPL-3.0
 // @include         *
