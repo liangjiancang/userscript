@@ -1,11 +1,11 @@
 // ==UserScript==
 // @name            B站共同关注快速查看
-// @version         1.4.40.20210816
+// @version         1.4.41.20210817
 // @namespace       laster2800
 // @author          Laster2800
 // @description     快速查看与特定用户的共同关注（视频播放页、动态页、用户空间、直播间）
 // @icon            https://www.bilibili.com/favicon.ico
-// @homepage        https://greasyfork.org/zh-CN/scripts/428453
+// @homepageURL     https://greasyfork.org/zh-CN/scripts/428453
 // @supportURL      https://greasyfork.org/zh-CN/scripts/428453/feedback
 // @license         LGPL-3.0
 // @noframes

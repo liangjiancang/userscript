@@ -1,11 +1,11 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.17.13.20210816
+// @version         4.17.14.20210817
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
 // @icon            https://www.bilibili.com/favicon.ico
-// @homepage        https://greasyfork.org/zh-CN/scripts/395456
+// @homepageURL     https://greasyfork.org/zh-CN/scripts/395456
 // @supportURL      https://greasyfork.org/zh-CN/scripts/395456/feedback
 // @license         LGPL-3.0
 // @include         *://www.bilibili.com/*

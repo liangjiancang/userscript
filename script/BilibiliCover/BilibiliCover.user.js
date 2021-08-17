@@ -1,11 +1,11 @@
 // ==UserScript==
 // @name            B站封面获取
-// @version         5.3.2.20210816
+// @version         5.3.3.20210817
 // @namespace       laster2800
 // @author          Laster2800
 // @description     获取B站各播放页及直播间封面，支持手动及实时预览等多种模式，支持点击下载、封面预览、快速复制，可高度自定义
 // @icon            https://www.bilibili.com/favicon.ico
-// @homepage        https://greasyfork.org/zh-CN/scripts/395575
+// @homepageURL     https://greasyfork.org/zh-CN/scripts/395575
 // @supportURL      https://greasyfork.org/zh-CN/scripts/395575/feedback
 // @license         LGPL-3.0
 // @noframes

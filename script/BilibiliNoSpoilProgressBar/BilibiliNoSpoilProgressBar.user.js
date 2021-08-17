@@ -1,11 +1,11 @@
 // ==UserScript==
 // @name            B站防剧透进度条
-// @version         2.1.0.20210816
+// @version         2.1.1.20210817
 // @namespace       laster2800
 // @author          Laster2800
 // @description     看比赛、看番总是被进度条剧透？装上这个脚本再也不用担心这些问题了
 // @icon            https://www.bilibili.com/favicon.ico
-// @homepage        https://greasyfork.org/zh-CN/scripts/411092
+// @homepageURL     https://greasyfork.org/zh-CN/scripts/411092
 // @supportURL      https://greasyfork.org/zh-CN/scripts/411092/feedback
 // @license         LGPL-3.0
 // @noframes

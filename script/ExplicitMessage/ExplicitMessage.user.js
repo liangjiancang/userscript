@@ -1,10 +1,10 @@
 // ==UserScript==
 // @name            [DEBUG] 信息显式化
-// @version         2.4.2.20210817
+// @version         2.4.3.20210817
 // @namespace       laster2800
 // @author          Laster2800
 // @description     用 alert() 提示符合匹配规则的日志或未捕获异常，帮助开发者在日常使用网页时发现潜藏问题
-// @homepage        https://greasyfork.org/zh-CN/scripts/429521
+// @homepageURL     https://greasyfork.org/zh-CN/scripts/429521
 // @supportURL      https://greasyfork.org/zh-CN/scripts/429521/feedback
 // @license         LGPL-3.0
 // @include         *
