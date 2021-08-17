@@ -1,8 +1,10 @@
 // ==UserScript==
 // @name            [DEBUG] 网页内容编辑模式 (DesignMode)
-// @version         1.0.2.20210817
+// @version         1.0.3.20210817
 // @namespace       laster2800
 // @author          Laster2800
+// @homepage        https://greasyfork.org/zh-CN/scripts/430949
+// @supportURL      https://greasyfork.org/zh-CN/scripts/430949/feedback
 // @description     通过右键菜单快速切换 designMode 状态 - https://developer.mozilla.org/zh-CN/docs/Web/API/Document/designMode
 // @license         LGPL-3.0
 // @include         *
