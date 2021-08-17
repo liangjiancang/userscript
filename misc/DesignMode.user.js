@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            [DEBUG] DesignMode
-// @version         1.0.0.20210817
+// @version         1.0.1.20210817
 // @namespace       laster2800
 // @author          Laster2800
 // @description     通过右键菜单快速切换 designMode (https://developer.mozilla.org/zh-CN/docs/Web/API/Document/designMode)
@@ -11,7 +11,7 @@
 // ==/UserScript==
 
 (function() {
-  const target = document.designMode == 'on' ? 'off' : 'on'
+  const target = top.document.designMode == 'on' ? 'off' : 'on'
   const executed = []
   const exec = win => {
     if (executed.indexOf(win) >= 0) return
