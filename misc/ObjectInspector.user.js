@@ -1,9 +1,9 @@
 // ==UserScript==
 // @name            [DEBUG] 对象观察器
-// @version         2.0.1.20210817
+// @version         2.0.2.20210817
 // @namespace       laster2800
 // @author          Laster2800
-// @description     右键菜单激活，向 window 中注入 ObjectInspector 工具类
+// @description     右键菜单激活，向 window 中注入 ObjectInspector 工具类，用于查找特定对象上符合条件的属性
 // @license         LGPL-3.0
 // @include         *
 // @grant           none
