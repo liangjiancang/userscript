@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站防剧透进度条
-// @version         2.1.1.20210817
+// @version         2.1.2.20210818
 // @namespace       laster2800
 // @author          Laster2800
 // @description     看比赛、看番总是被进度条剧透？装上这个脚本再也不用担心这些问题了
@@ -1851,7 +1851,7 @@
       const playRate = _self.method.getCurrentTime() / _self.method.getDuration()
       let offset = _self.progress.root._offset ?? 0
       // 若处于播放进度小于左侧预留区的特殊情况，不要进行处理
-      // 注意，一旦离开这种特殊状态，就再也不可能进度该特殊状态了，因为这样反而会暴露信息
+      // 注意，一旦离开这种特殊状态，就再也不可能进入该特殊状态了，因为这样反而会暴露信息
       if (offset !== 0) {
         let reservedZone = false
         let offsetPlayRate = offset + playRate * 100
