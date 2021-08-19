@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.18.0.20210819
+// @version         4.18.1.20210819
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -4096,17 +4096,16 @@
       total = total ?? all - listBox.querySelectorAll('.gm-removed:not(.gm-search-hide)').length
       elTotal.textContent = `（${total}/${all}）`
 
-      const emptyBlocks = container.querySelectorAll('.abnormal-item') // 脚本加进来的，及B站加进来的，可能有两个
+      const empty = container.querySelector('.abnormal-item')
       if (all > 0) {
-        for (const empty of emptyBlocks) {
+        if (empty) {
           empty.style.display = 'none'
         }
       } else {
-        if (emptyBlocks.length > 0) {
-          emptyBlocks[0].style.display = ''
+        if (empty) {
+          empty.style.display = ''
         } else {
-          const empty = container.appendChild(document.createElement('div'))
-          empty.outerHTML = '<div class="abnormal-item"><img src="//s1.hdslb.com/bfs/static/jinkela/watchlater/asserts/emptylist.png" class="pic"><div class="txt"><p>稍后再看列表还是空的哦，你可以通过以上方式添加~</p></div></div>'
+          container.insertAdjacentHTML('beforeend', '<div class="abnormal-item"><img src="//s1.hdslb.com/bfs/static/jinkela/watchlater/asserts/emptylist.png" class="pic"><div class="txt"><p>稍后再看列表还是空的哦，你可以通过以上方式添加~</p></div></div>')
         }
       }
     }
