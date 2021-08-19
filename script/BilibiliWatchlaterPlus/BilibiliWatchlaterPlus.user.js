@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.17.14.20210817
+// @version         4.18.0.20210819
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -17,7 +17,7 @@
 // @exclude         *://message.bilibili.com/*/*
 // @exclude         *://t.bilibili.com/h5/*
 // @exclude         *://www.bilibili.com/page-proxy/*
-// @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=960339
+// @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=961673
 // @grant           GM_registerMenuCommand
 // @grant           GM_xmlhttpRequest
 // @grant           GM_setValue
@@ -49,6 +49,7 @@
     progress: 'progress',
     uploader: 'uploader',
     title: 'vTitle',
+    fixed: 'fixed',
   }
   /**
    * 脚本内用到的枚举定义
@@ -285,15 +286,16 @@
    * `[lastModified]` 时间戳：最后被观察到的时间点
    */
   /**
+   * @callback fixedItem 访问固定列表项
+   * @param {string} id 项目标识
+   * @param {boolean} [op] 不设置 - 只读；`true` - 添加；`false` - 移除
+   * @returns {boolean} 访问后项目是否在固定列表项中
+   */
+  /**
    * @typedef GMObject_data
    * @property {removeHistoryData} removeHistoryData 为生成移除记录而保存的稍后再看历史数据
    * @property {watchlaterListData} watchlaterListData 当前稍后再看列表数据
-   */
-  /**
-   * @callback api_videoInfo
-   * @param {string} id `aid` 或 `bvid`
-   * @param {'aid' | 'bvid'} type `id` 类型
-   * @returns {string} 查询视频信息的 URL
+   * @property {fixedItem} fixedItem 固定列表项
    */
   /**
    * @callback page_userSpace
@@ -303,10 +305,11 @@
   /**
    * @typedef GMObject_url
    * @property {string} api_queryWatchlaterList 稍后再看列表数据
-   * @property {api_videoInfo} api_videoInfo 视频信息
-   * @property {string} api_addToWatchlater 将视频添加至稍后再看，要求 POST 一个含 `aid` / 'bvid' 和 `csrf` 的表单
-   * @property {string} api_removeFromWatchlater 将视频从稍后再看移除，移除一个视频要求 POST 一个含 `aid` 和 `csrf` 的表单，移除已观看要求 POST 一个含 `viewed=true` 和 `csrf` 的表单
+   * @property {string} api_addToWatchlater 将视频添加至稍后再看
+   * @property {string} api_removeFromWatchlater 将视频从稍后再看移除
    * @property {string} api_clearWatchlater 清空稍后再看，要求 POST 一个含 `csrf` 的表单
+   * @property {string} api_listFav 列出所有收藏夹
+   * @property {string} api_dealFav 将视频添加/移除至收藏夹
    * @property {string} page_watchlaterList 列表页面
    * @property {string} page_videoNormalMode 正常模式播放页
    * @property {string} page_videoWatchlaterMode 稍后再看模式播放页
@@ -347,7 +350,7 @@
   const gm = {
     id: gmId,
     configVersion: GM_getValue('configVersion'),
-    configUpdate: 20210810.1,
+    configUpdate: 20210819,
     searchParams: new URL(location.href).searchParams,
     config: {},
     configMap: {
@@ -355,7 +358,7 @@
       headerButtonOpL: { default: Enums.headerButtonOp.openListInCurrent, attr: 'value', configVersion: 20210323 },
       headerButtonOpR: { default: Enums.headerButtonOp.openUserSetting, attr: 'value', configVersion: 20210323 },
       headerButtonOpM: { default: Enums.headerButtonOp.openListInNew, attr: 'value', configVersion: 20210323 },
-      headerMenu: { default: Enums.headerMenu.enable, attr: 'value', manual: true, configVersion: 20210706 },
+      headerMenu: { default: Enums.headerMenu.enable, attr: 'value', configVersion: 20210706 },
       openHeaderMenuLink: { default: Enums.openHeaderMenuLink.openInCurrent, attr: 'value', configVersion: 20200717 },
       headerMenuKeepRemoved: { default: true, attr: 'checked', needNotReload: true, configVersion: 20210724 },
       headerMenuSearch: { default: true, attr: 'checked', configVersion: 20210323.1 },
@@ -373,9 +376,9 @@
       removeHistoryFuzzyCompare: { default: 1, type: 'int', attr: 'value', max: 5, needNotReload: true, configVersion: 20210722 },
       removeHistorySaves: { default: 100, type: 'int', attr: 'value', manual: true, needNotReload: true, min: 10, max: 500, configVersion: 20210808 },
       removeHistoryTimestamp: { default: true, attr: 'checked', needNotReload: true, configVersion: 20210703 },
-      removeHistorySearchTimes: { default: 50, type: 'int', attr: 'value', manual: true, needNotReload: true, min: 1, max: 500, configVersion: 20210808 },
+      removeHistorySearchTimes: { default: 100, type: 'int', attr: 'value', manual: true, needNotReload: true, min: 1, max: 500, configVersion: 20210819 },
       fillWatchlaterStatus: { default: Enums.fillWatchlaterStatus.dynamic, attr: 'value', configVersion: 20200819 },
-      autoSort: { default: Enums.autoSort.default, attr: 'value', configVersion: 20210810.1 },
+      autoSort: { default: Enums.autoSort.default, attr: 'value', configVersion: 20210819 },
       videoButton: { default: true, attr: 'checked' },
       autoRemove: { default: Enums.autoRemove.openFromList, attr: 'value', configVersion: 20210612 },
       redirect: { default: false, attr: 'checked', configVersion: 20210322.1 },
@@ -400,13 +403,15 @@
     data: {
       removeHistoryData: null,
       watchlaterListData: null,
+      fixedItem: null,
     },
     url: {
-      api_queryWatchlaterList: 'https://api.bilibili.com/x/v2/history/toview/web?jsonp=jsonp',
-      api_videoInfo: (id, type) => `https://api.bilibili.com/x/web-interface/view?${type}=${id}`,
+      api_queryWatchlaterList: 'https://api.bilibili.com/x/v2/history/toview/web',
       api_addToWatchlater: 'https://api.bilibili.com/x/v2/history/toview/add',
       api_removeFromWatchlater: 'https://api.bilibili.com/x/v2/history/toview/del',
       api_clearWatchlater: 'http://api.bilibili.com/x/v2/history/toview/clear',
+      api_listFav: 'http://api.bilibili.com/x/v3/fav/folder/created/list-all',
+      api_dealFav: 'http://api.bilibili.com/x/v3/fav/resource/deal',
       page_watchlaterList: 'https://www.bilibili.com/watchlater/#/list',
       page_videoNormalMode: 'https://www.bilibili.com/video',
       page_videoWatchlaterMode: 'https://www.bilibili.com/medialist/play/watchlater',
@@ -607,38 +612,28 @@
             _.watchlaterListData_loading = true
             try {
               const resp = await api.web.request({
-                method: 'GET',
                 url: gm.url.api_queryWatchlaterList,
               })
               const json = JSON.parse(resp.responseText)
               const current = json.data.list ?? []
               if (gm.config.watchlaterListCacheValidPeriod > 0) {
-                const base = item => {
+                GM_setValue('watchlaterListCacheTime', new Date().getTime())
+                GM_setValue('watchlaterListCache', current.map(item => {
                   return {
                     aid: item.aid,
                     bvid: item.bvid,
                     title: item.title,
                     state: item.state,
+                    pic: item.pic,
+                    owner: {
+                      mid: item.owner.mid,
+                      name: item.owner.name,
+                    },
+                    progress: item.progress,
+                    duration: item.duration,
+                    videos: item.videos,
                   }
-                }
-                GM_setValue('watchlaterListCacheTime', new Date().getTime())
-                if (gm.config.headerButton && gm.config.headerMenu == Enums.headerMenu.enable) {
-                  GM_setValue('watchlaterListCache', current.map(item => {
-                    return {
-                      ...base(item),
-                      pic: item.pic,
-                      owner: {
-                        mid: item.owner.mid,
-                        name: item.owner.name,
-                      },
-                      progress: item.progress,
-                      duration: item.duration,
-                      videos: item.videos,
-                    }
-                  }))
-                } else {
-                  GM_setValue('watchlaterListCache', current.map(item => base(item)))
-                }
+                }))
               }
               _.watchlaterListData = current
               return current
@@ -650,6 +645,26 @@
             }
           } else {
             return _.watchlaterListData
+          }
+        },
+        fixedItem: (id, op) => {
+          const items = GM_getValue('fixedItems') ?? []
+          const idx = items.indexOf(id)
+          const fixed = idx >= 0
+          if (typeof op == 'undefined') {
+            return fixed
+          } else if (op) {
+            if (!fixed) {
+              items.push(id)
+              GM_setValue('fixedItems', items)
+            }
+            return true
+          } else {
+            if (fixed) {
+              items.splice(idx, 1)
+              GM_setValue('fixedItems', items)
+            }
+            return false
           }
         },
         _: {}, // 用于存储内部数据，不公开访问
@@ -699,9 +714,6 @@
             GM_deleteValue('removeHistoryData')
             GM_deleteValue('removeHistoryFuzzyCompareReference')
             GM_deleteValue('removeHistorySaves')
-            GM_deleteValue('removeHistorySearchTimes')
-            GM_deleteValue('watchlaterListCacheTime')
-            GM_deleteValue('watchlaterListCache')
           }
 
           // 4.17.0.20210808
@@ -714,8 +726,15 @@
             GM_deleteValue('fixHeader')
           }
 
+          // 4.18.0.20210819
+          if (gm.configVersion < 20210819) {
+            GM_deleteValue('removeHistorySearchTimes')
+            GM_deleteValue('watchlaterListCacheTime')
+            GM_deleteValue('watchlaterListCache')
+          }
+
           // 功能性更新后更新此处配置版本
-          if (gm.configVersion < 20210810.1) {
+          if (gm.configVersion < 20210819) {
             _self.openUserSetting(2)
           } else {
             gm.configVersion = gm.configUpdate
@@ -1015,12 +1034,13 @@
                         <select id="gm-autoSort">
                           <option value="${Enums.autoSort.auto}">使用上一次排序控制器的选择</option>
                           <option value="${Enums.autoSort.default}">禁用功能</option>
-                          <option value="${Enums.autoSort.defaultR}">固定使用 [ 默认↓ ] 排序</option>
-                          <option value="${Enums.autoSort.duration}">固定使用 [ 时长 ] 排序</option>
-                          <option value="${Enums.autoSort.durationR}">固定使用 [ 时长↓ ] 排序</option>
-                          <option value="${Enums.autoSort.progress}">固定使用 [ 进度 ] 排序</option>
-                          <option value="${Enums.autoSort.uploader}">固定使用 [ UP 主 ] 排序</option>
-                          <option value="${Enums.autoSort.title}">固定使用 [ 标题 ] 排序</option>
+                          <option value="${Enums.autoSort.defaultR}">使用 [ 默认↓ ] 排序</option>
+                          <option value="${Enums.autoSort.duration}">使用 [ 时长 ] 排序</option>
+                          <option value="${Enums.autoSort.durationR}">使用 [ 时长↓ ] 排序</option>
+                          <option value="${Enums.autoSort.progress}">使用 [ 进度 ] 排序</option>
+                          <option value="${Enums.autoSort.uploader}">使用 [ UP 主 ] 排序</option>
+                          <option value="${Enums.autoSort.title}">使用 [ 标题 ] 排序</option>
+                          <option value="${Enums.autoSort.fixed}">使用 [ 固定 ] 排序</option>
                         </select>
                       </div>
                     </td>
@@ -1501,13 +1521,6 @@
          * 设置保存时执行
          */
         const onSave = () => {
-          // 预处理
-          if (gm.config.headerButton != el.headerButton.checked) {
-            // 会引起 headerMenu 生效或失效
-            GM_deleteValue('watchlaterListCacheTime')
-            GM_deleteValue('watchlaterListCache')
-          }
-
           // 通用处理
           for (const name in gm.configMap) {
             const cfg = gm.configMap[name]
@@ -1519,14 +1532,6 @@
             }
           }
 
-          // 特殊处理
-          if (gm.config.headerMenu != el.headerMenu.value) {
-            gm.config.headerMenu = el.headerMenu.value
-            GM_setValue('headerMenu', gm.config.headerMenu)
-            GM_deleteValue('watchlaterListCacheTime')
-            GM_deleteValue('watchlaterListCache')
-            needReload = true
-          }
           let shutDownRemoveHistory = false
           // removeHistory
           if (gm.config.removeHistory != el.removeHistory.checked) {
@@ -1686,6 +1691,7 @@
                   }
                 }, 200)
                 el.items.addEventListener('scroll', onScroll)
+                el.items.dispatchEvent(new Event('scroll'))
               }
             } else {
               resetSave()
@@ -2232,29 +2238,43 @@
         },
 
         /**
-         * 获取视频信息
-         * @param {string} id `aid` 或 `bvid`
-         * @param {'aid' | 'bvid'} [type='bvid'] `id` 类型
-         * @returns {Promise<JSON>} 视频信息
+         * av/bv 互转
+         *
+         * 保证 av < 2 ** 27 时正确，同时应该在 av < 2 ** 30 时正确
+         * @see {@link https://www.zhihu.com/question/381784377/answer/1099438784 如何看待 2020 年 3 月 23 日哔哩哔哩将稿件的「av 号」变更为「BV 号」？ - 知乎 - mcfx 的回答}
          */
-        async getVideoInfo(id, type = 'bvid') {
-          const resp = await api.web.request({
-            method: 'GET',
-            url: gm.url.api_videoInfo(id, type),
-          })
-          return JSON.parse(resp.responseText).data
-        },
+        bvTool: new class bvTool {
+          constructor() {
+            const table = 'fZodR9XQDSUm21yCkr6zBqiveYah8bt4xsWpHnJE7jL5VG3guMTKNPAwcF'
+            const tr = {}
+            for (let i = 0; i < 58; i++) {
+              tr[table[i]] = i
+            }
+            const s = [11, 10, 3, 8, 4, 6]
+            const xor = 177451812
+            const add = 8728348608
+            this.bv2av = dec
+            this.av2bv = enc
 
-        /**
-         * 获取 `aid`
-         * @returns {Promise<string>} `aid`
-         */
-        async getAid() {
-          const aid = unsafeWindow.aid || await api.wait.waitForConditionPassed({
-            condition: () => unsafeWindow.player?.getVideoMessage?.()?.aid,
-          })
-          return String(aid ?? '')
-        },
+            function dec(x) {
+              let r = 0
+              for (let i = 0; i < 6; i++) {
+                r += tr[x[s[i]]] * 58 ** i
+              }
+              return String((r - add) ^ xor)
+            }
+
+            function enc(x) {
+              x = parseInt(x)
+              x = (x ^ xor) + add
+              let r = 'BV1  4 1 7  '.split('')
+              for (let i = 0; i < 6; i++) {
+                r[s[i]] = table[Math.floor(x / 58 ** i) % 58]
+              }
+              return r.join('')
+            }
+          }
+        }(),
 
         /**
          * 从 URL 获取视频 ID
@@ -2268,6 +2288,40 @@
           } else if ((m = /\/(av)?(\d+)([/?#]|$)/i.exec(url))) { // 兼容 URL 中 BV 号被第三方修改为 AV 号的情况
             return { id: m[2], type: 'aid' }
           }
+        },
+
+        /**
+         * 从 URL 获取视频 `aid`
+         * @param {string} [url=location.pathname] 提取视频 `aid` 的源字符串
+         * @returns {string} `aid`
+         */
+        getAid(url = location.pathname) {
+          const _self = this
+          const vid = _self.getVid(url)
+          if (vid) {
+            if (vid.type == 'bvid') {
+              return _self.bvTool.bv2av(vid.id)
+            }
+            return vid.id
+          }
+          return null
+        },
+
+        /**
+         * 从 URL 获取视频 `bvid`
+         * @param {string} [url=location.pathname] 提取视频 `bvid` 的源字符串
+         * @returns {string} `bvid`
+         */
+        getBvid(url = location.pathname) {
+          const _self = this
+          const vid = _self.getVid(url)
+          if (vid) {
+            if (vid.type == 'aid') {
+              return _self.bvTool.av2bv(vid.id)
+            }
+            return vid.id
+          }
+          return null
         },
 
         /**
@@ -2301,12 +2355,10 @@
           try {
             let typeA = !isNaN(id)
             if (!typeA && !status) { // 移除 API 只支持 aid，先作转换
-              // 知乎上的算法似乎在某些情况下并不正确，保险起见发请求查询好了
-              const info = await _self.getVideoInfo(id, 'bvid')
-              id = String(info.aid)
+              id = _self.bvTool.bv2av(id)
               typeA = true
             }
-            const data = new FormData()
+            const data = new URLSearchParams()
             if (typeA) {
               data.append('aid', id)
             } else {
@@ -2318,7 +2370,7 @@
               url: status ? gm.url.api_addToWatchlater : gm.url.api_removeFromWatchlater,
               data: data,
             })
-            return JSON.parse(resp.response).code == 0
+            return JSON.parse(resp.response).code === 0
           } catch (e) {
             api.logger.error(e)
             return false
@@ -2331,14 +2383,14 @@
          */
         async clearWatchlater() {
           try {
-            const data = new FormData()
+            const data = new URLSearchParams()
             data.append('csrf', this.getCSRF())
             const resp = await api.web.request({
               method: 'POST',
               url: gm.url.api_clearWatchlater,
               data: data,
             })
-            const success = JSON.parse(resp.response).code == 0
+            const success = JSON.parse(resp.response).code === 0
             if (success) {
               const empty = []
               gm.data._.watchlaterListData = empty
@@ -2360,7 +2412,7 @@
          */
         async clearWatchedInWatchlater() {
           try {
-            const data = new FormData()
+            const data = new URLSearchParams()
             data.append('viewed', true)
             data.append('csrf', this.getCSRF())
             const resp = await api.web.request({
@@ -2368,7 +2420,7 @@
               url: gm.url.api_removeFromWatchlater,
               data: data,
             })
-            const success = JSON.parse(resp.response).code == 0
+            const success = JSON.parse(resp.response).code === 0
             if (success) {
               gm.data._.watchlaterListData = null
               if (gm.config.watchlaterListCacheValidPeriod > 0) {
@@ -2559,7 +2611,39 @@
             sS = '0' + sS
           }
           return `${sH ? sH + ':' : ''}${sM}:${sS}`
-        }
+        },
+
+        /**
+         * 将视频添加到收藏夹
+         * @param {string} aid `aid`
+         * @returns {Promise<boolean>} 操作是否成功
+         */
+        async addToFav(aid) {
+          const _self = this
+          try {
+            let data = new URLSearchParams()
+            data.append('up_mid', _self.cookie('DedeUserID'))
+            data.append('type', 2)
+            let resp = await api.web.request({
+              url: `${gm.url.api_listFav}?${data.toString()}`,
+            })
+            const defaultId = JSON.parse(resp.response).data.list[0].id
+            data = new URLSearchParams()
+            data.append('rid', aid)
+            data.append('type', 2)
+            data.append('add_media_ids', defaultId)
+            data.append('csrf', _self.getCSRF())
+            resp = await api.web.request({
+              method: 'POST',
+              url: gm.url.api_dealFav,
+              data: data,
+            })
+            return JSON.parse(resp.response).code === 0
+          } catch (e) {
+            api.logger.error(e)
+            return false
+          }
+        },
       }
     }
 
@@ -2840,13 +2924,14 @@
                     <div class="gm-select">
                       <div class="gm-selected" value="">排序</div>
                       <div class="gm-options">
+                        <div class="gm-option" value="${Enums.sortType.fixed}">固定</div>
                         <div class="gm-option" value="${Enums.sortType.title}">标题</div>
                         ${gm.config.headerMenu == Enums.headerMenu.enable ? `
                           <div class="gm-option" value="${Enums.sortType.uploader}">UP 主</div>
                           <div class="gm-option" value="${Enums.sortType.progress}">进度</div>
-                          <div class="gm-option" value="${Enums.sortType.durationR}">时长↓</div>
-                          <div class="gm-option" value="${Enums.sortType.duration}">时长</div>
                         ` : ''}
+                        <div class="gm-option" value="${Enums.sortType.durationR}">时长↓</div>
+                        <div class="gm-option" value="${Enums.sortType.duration}">时长</div>
                         <div class="gm-option" value="${Enums.sortType.defaultR}">默认↓</div>
                         <div class="gm-option gm-option-selected" value="${Enums.sortType.default}">默认</div>
                       </div>
@@ -3093,6 +3178,7 @@
                 rmBvid.add(rmCard.bvid)
               }
             }
+            const fixedItems = GM_getValue('fixedItems') ?? []
             gm.menu.entryPopup.sortType = Enums.sortType.default
             el.popupTotal.textContent = '0'
             el.entryList.innerHTML = ''
@@ -3119,6 +3205,7 @@
                 const valid = item.state >= 0
                 card.vTitle = item.title
                 card.bvid = item.bvid
+                card.duration = item.duration
                 if (rmBvid?.size > 0) {
                   if (rmBvid.has(card.bvid)) {
                     rmBvid.delete(card.bvid)
@@ -3133,10 +3220,12 @@
                   card.className = 'gm-entry-list-simple-item'
                 } else {
                   card.uploader = item.owner.name
-                  card.duration = item.duration
                   const multiP = item.videos > 1
                   const duration = _self.method.getSTimeString(item.duration)
                   const durationP = multiP ? `${item.videos}P` : duration
+                  if (item.progress < 0) {
+                    item.progress = card.duration
+                  }
                   const played = item.progress > 0
                   card.progress = (multiP && played) ? card.duration : item.progress
                   let progress = ''
@@ -3153,62 +3242,98 @@
                       <img class="gm-card-cover" src="${item.pic}@156w_88h_1c_100q.webp">
                       <div class="gm-card-switcher"></div>
                       <div class="gm-card-duration">
-                        <div>${duration}</div>
+                        <div${multiP ? ' class="gm-hover"' : ''}>${duration}</div>
                         ${multiP ? `<div>${durationP}</div>` : ''}
                       </div>
                     </div>
                     <div class="gm-card-right">
                       <div class="gm-card-title">${valid ? card.vTitle : `<b>[已失效]</b> ${card.vTitle}`}</div>
                       <a class="gm-card-uploader" target="_blank" href="${gm.url.page_userSpace(item.owner.mid)}">${card.uploader}</a>
-                      <div class="gm-card-progress">${progress}</div>
+                      <div class="gm-card-corner">
+                        <span class="gm-card-progress">${progress}</span>
+                        <span class="gm-card-fixer gm-hover" title="将视频固定在列表最后，并对其禁用自动移除及排序功能">固定</span>
+                        <span class="gm-card-collector gm-hover" title="将视频移动至默认收藏夹">收藏</span>
+                      </div>
                     </div>
                   `
                   if (played) {
                     card.querySelector('.gm-card-progress').style.display = 'unset'
-                    card.querySelector('.gm-card-uploader').style.maxWidth = '15em'
+                  }
+
+                  const switchStatus = async (status, dispInfo = true) => {
+                    if (status) { // 先改了 UI 再说，不要给用户等待感
+                      api.dom.removeClass(card, 'gm-removed')
+                    } else {
+                      api.dom.addClass(card, 'gm-removed')
+                    }
+                    const note = status ? '添加到稍后再看' : '从稍后再看移除'
+                    const success = await _self.method.switchVideoWatchlaterStatus(item.aid, status)
+                    if (success) {
+                      card.added = status
+                      dispInfo && api.message.create(`${note}成功`)
+                      // 此时不要清 fixed，因为实际上 fixed 的清理并不发生在该时间点
+                    } else {
+                      if (card.added) {
+                        api.dom.removeClass(card, 'gm-removed')
+                      } else {
+                        api.dom.addClass(card, 'gm-removed')
+                      }
+                      dispInfo && api.message.create(`${note}失败`)
+                    }
                   }
 
                   card.added = true
-                  const switcher = card.querySelector('.gm-card-switcher')
-                  switcher.addEventListener('click', function(e) {
+                  card.querySelector('.gm-card-switcher').addEventListener('click', function(e) {
+                    gm.menu.entryPopup.needReload = true
+                    e.preventDefault()
+                    switchStatus(!card.added)
+                  })
+                  card.querySelector('.gm-card-collector').addEventListener('click', function(e) {
                     gm.menu.entryPopup.needReload = true
                     e.preventDefault() // 不能放到 async 中
                     setTimeout(async () => {
-                      const added = card.added
-                      // 先改了 UI 再说，不要给用户等待感
-                      if (added) {
-                        api.dom.addClass(card, 'gm-removed')
-                      } else {
-                        api.dom.removeClass(card, 'gm-removed')
-                      }
-                      const note = added ? '从稍后再看移除' : '添加到稍后再看'
-                      const success = await _self.method.switchVideoWatchlaterStatus(item.aid, !added)
+                      const success = await _self.method.addToFav(item.aid)
                       if (success) {
-                        card.added = !added
-                        api.message.create(`${note}成功`)
-                      } else {
-                        if (added) {
-                          api.dom.removeClass(card, 'gm-removed')
-                        } else {
-                          api.dom.addClass(card, 'gm-removed')
+                        api.message.create('移动至默认收藏夹成功')
+                        if (card.added) {
+                          switchStatus(false, false)
                         }
-                        api.message.create(`${note}失败`)
+                      } else {
+                        api.message.create('移动至默认收藏夹失败')
                       }
-                    }, 10)
+                    })
                   })
+                  card.querySelector('.gm-card-fixer').addEventListener('click', function(e) {
+                    e.preventDefault()
+                    if (card.fixed) {
+                      api.dom.removeClass(card, 'gm-fixed')
+                    } else {
+                      api.dom.addClass(card, 'gm-fixed')
+                    }
+                    card.fixed = !card.fixed
+                    gm.data.fixedItem(card.bvid, card.fixed)
+                  })
+                }
+                const fixedIdx = fixedItems.indexOf(card.bvid)
+                if (fixedIdx >= 0) {
+                  fixedItems.splice(fixedIdx, 1)
+                  card.fixed = true
+                  api.dom.addClass(card, 'gm-fixed')
                 }
                 if (valid) {
                   card.target = openLinkInCurrent ? '_self' : '_blank'
                   if (redirect) {
-                    card.href = `${gm.url.page_videoNormalMode}/${item.bvid}`
+                    card.href = `${gm.url.page_videoNormalMode}/${card.bvid}`
                   } else {
-                    card.href = `${gm.url.page_videoWatchlaterMode}/${item.bvid}`
+                    card.href = `${gm.url.page_videoWatchlaterMode}/${card.bvid}`
                   }
                   if (gm.config.autoRemove != Enums.autoRemove.absoluteNever) {
+                    const excludes = ['gm-card-switcher', 'gm-card-uploader', 'gm-card-fixer', 'gm-card-collector']
                     card._originalHref = card.href
                     card.addEventListener('mousedown', function(e) {
                       if (e.button == 0 || e.button == 1) { // 左键或中键
-                        if (!simplePopup && api.dom.containsClass(e.target, ['gm-card-switcher', 'gm-card-uploader'])) return
+                        if (card.fixed) return
+                        if (!simplePopup && api.dom.containsClass(e.target, excludes)) return
                         if (autoRemoveControl.autoRemove) {
                           if (gm.config.autoRemove != Enums.autoRemove.always) {
                             const url = new URL(this.href)
@@ -3230,9 +3355,10 @@
                     })
                     card.addEventListener('mouseup', function(e) {
                       if (e.button == 0 || e.button == 1) { // 左键或中键
+                        if (card.fixed) return
                         if (!simplePopup) {
                           if (!card.added) return
-                          if (api.dom.containsClass(e.target, ['gm-card-switcher', 'gm-card-uploader'])) return
+                          if (api.dom.containsClass(e.target, excludes)) return
                         }
                         if (autoRemoveControl.autoRemove) {
                           gm.menu.entryPopup.needReload = true
@@ -3251,6 +3377,11 @@
               el.entryList.total = data.length
             } else {
               el.entryListEmpty.style.display = 'unset'
+            }
+
+            // 移除无效固定项
+            for (const item of fixedItems) {
+              gm.data.fixedItem(item, false)
             }
 
             // 添加已移除视频
@@ -3276,8 +3407,12 @@
               const h = simplePopup ? (only1 ? 6 : 9) : (only1 ? 6.4 : 11)
               el.entryList.style.height = `${42 - h}em`
               el.entryRemovedList.style.height = `${h}em`
-              el.entryRemovedList.style.display = 'block'
+              el.entryRemovedList.style.display = 'flex'
               el.entryRemovedList.total = rmBvid.size
+              el.entryRemovedList.querySelectorAll('.gm-fixed').forEach(el => {
+                api.dom.removeClass(el, 'gm-fixed')
+                el.fixed = false
+              })
             } else {
               el.entryList.style.height = ''
               el.entryRemovedList.style.display = ''
@@ -3305,8 +3440,14 @@
            */
           const sort = type => {
             if (type == gm.menu.entryPopup.sortType) return
+            const prevBase = gm.menu.entryPopup.sortType.replace(/:R$/, '')
             gm.menu.entryPopup.sortType = type
-            if (el.entryList.total < 2 && el.entryRemovedList.total < 2) return
+            if (type == Enums.sortType.fixed) {
+              type = Enums.sortType.default
+              el.entryList.setAttribute('sort-type-fixed', '')
+            } else {
+              el.entryList.removeAttribute('sort-type-fixed')
+            }
             let reverse = type.endsWith(':R')
             const k = type.replace(/:R$/, '')
 
@@ -3318,22 +3459,30 @@
               lists.push(el.entryRemovedList)
             }
             for (const list of lists) {
-              const cards = Array.from(list.children)
-              cards.sort((a, b) => {
-                let result = 0
-                const va = a[k]
-                const vb = b[k]
-                if (typeof va == 'string') {
-                  result = va.localeCompare(vb)
-                } else if (!isNaN(va)) {
-                  result = va - vb
-                }
-                return reverse ? -result : result
-              })
-              for (const card of cards) {
-                list.appendChild(card)
+              if (k != prevBase) {
+                const cards = Array.from(list.children)
+                cards.sort((a, b) => {
+                  let result = 0
+                  const va = a[k]
+                  const vb = b[k]
+                  if (typeof va == 'string') {
+                    result = va.localeCompare(vb)
+                  } else if (!isNaN(va)) {
+                    result = va - vb
+                  }
+                  return result
+                })
+                cards.forEach((card, idx) => {
+                  card.style.order = idx
+                })
               }
-              list.scrollTop = 0
+              if (reverse) {
+                list.setAttribute('gm-list-reverse', '')
+                list.scrollTop = -list.scrollHeight
+              } else {
+                list.removeAttribute('gm-list-reverse')
+                list.scrollTop = 0
+              }
             }
           }
         }
@@ -3530,12 +3679,12 @@
         const text = btn.appendChild(document.createElement('span'))
         text.textContent = '稍后再看'
         btn.className = 'appeal-text'
-        cb.onclick = function() { // 不要附加到 btn 上，否则点击时会执行两次
+        cb.addEventListener('click', function() {
           processSwitch()
-        }
+        })
         atr.appendChild(btn)
 
-        const aid = await _self.method.getAid()
+        const aid = _self.method.getAid()
         bus = { btn, cb, aid }
         initButtonStatus()
         original.parentElement.style.display = 'none'
@@ -3544,15 +3693,7 @@
         window.addEventListener('urlchange', async function() {
           if (location.pathname == bus.pathname) return // 并非切换视频（如切分 P）
           bus.pathname = location.pathname
-          bus.aid = await api.wait.waitForConditionPassed({
-            condition: async () => {
-              // 要等 aid 跟之前存的不一样，才能说明是切换成功后获取到的 aid
-              const aid = await _self.method.getAid()
-              if (aid && aid != bus.aid) {
-                return aid
-              }
-            },
-          })
+          bus.aid = _self.method.getAid()
           let reloaded = false
           gm.searchParams = new URL(location.href).searchParams
           const removed = await _self.processAutoRemove()
@@ -3578,7 +3719,7 @@
         const alwaysAutoRemove = gm.config.autoRemove == Enums.autoRemove.always
         const spRemove = gm.searchParams.get(`${gm.id}_remove`) == 'true'
         const spDisableRemove = gm.searchParams.get(`${gm.id}_disable_remove`) == 'true'
-        if ((!alwaysAutoRemove && !spRemove) || spDisableRemove) {
+        if ((!alwaysAutoRemove && !spRemove) || spDisableRemove || gm.data.fixedItem(_self.method.getBvid())) {
           setStatus()
         }
         // 如果当前视频应当被移除，那就不必读取状态了
@@ -3622,7 +3763,6 @@
           }
         } else { // 如果为空就是以 watchlater/ 直接结尾，等同于稍后再看中的第一个视频
           const resp = await api.web.request({
-            method: 'GET',
             url: gm.url.api_queryWatchlaterList,
           })
           const json = JSON.parse(resp.responseText)
@@ -3648,41 +3788,138 @@
      */
     async processWatchlaterList() {
       const _self = this
+      const data = await gm.data.watchlaterListData(true)
+      const fixedItems = GM_getValue('fixedItems') ?? []
       const sortable = gm.config.autoSort != Enums.autoSort.default || gm.config.listSortControl
-      const needInfo = gm.config.listSearch || sortable
       let autoRemoveControl = null
       if (gm.config.autoRemove != Enums.autoRemove.absoluteNever) {
         autoRemoveControl = await api.wait.waitQuerySelector('#gm-list-auto-remove-control')
       }
       const listContainer = await api.wait.waitQuerySelector('.watch-later-list')
       const listBox = await api.wait.waitQuerySelector('.list-box', listContainer)
-      listBox.querySelectorAll('.av-item').forEach(item => {
-        needInfo && extractInfo(item)
+      listBox.querySelectorAll('.av-item').forEach((item, idx) => {
+        // info
+        const d = data[idx]
+        item.serial = idx
+        item.aid = String(d.aid)
+        item.bvid = d.bvid
+        item.vTitle = d.title
+        item.uploader = d.owner.name
+        item.duration = d.duration
+        item.multiP = d.videos > 1
+        if (d.progress < 0) {
+          d.progress = d.duration
+        }
+        item.progress = (d.videos > 1 && d.progress > 0) ? d.duration : d.progress
+
+        initItem(item)
         item.querySelectorAll('a:not([class=user])').forEach(link => processLink(item, link, autoRemoveControl))
-        processDelBtn(item, item.querySelector('.btn-del'))
       })
       _self.updateWatchlaterListTotal()
 
-      const obItemChange = new MutationObserver(api.tool.debounce(() => {
-        _self.updateWatchlaterListTotal()
-        _self.triggerWatchlaterListContentLoad()
-      }, 500))
-      obItemChange.observe(listBox.firstElementChild, { childList: true })
-      const obListBoxRemove = new MutationObserver((mutations, observer) => {
-        // 不能检测 listBox 是否在 listContainer 中
-        // 因为有可能删除 listBox，然后添加进 empty 块
-        // 也有可能是将 listBox 变成 empty 块
-        if (!listContainer.querySelector('.list-box')) {
-          _self.updateWatchlaterListTotal(0, 0)
-          observer.disconnect()
-        }
-      })
-      obListBoxRemove.observe(listContainer, { childList: true })
+      // 移除无效固定项
+      for (const item of fixedItems) {
+        gm.data.fixedItem(item, false)
+      }
 
       if (sortable) {
         const sortControl = await api.wait.waitQuerySelector('#gm-list-sort-control')
         if (sortControl.value != sortControl.prevVal) {
           _self.sortWatchlaterList()
+        }
+      }
+
+      /**
+       * 初始化项目
+       * @param {HTMLElement} item 目标项元素
+       */
+      function initItem(item) {
+        const state = item.querySelector('.info .state')
+        state.insertAdjacentHTML('beforeend', `
+          <span class="gm-list-item-tools">
+            <span class="gm-list-item-fixer" title="将视频固定在列表最后，并对其禁用自动移除及排序功能">固定</span>
+            <span class="gm-list-item-collector" title="将视频移动至默认收藏夹">收藏</span>
+            <input class="gm-list-item-switcher" type="checkbox" checked>
+          </span>
+        `)
+        const tools = state.querySelector('.gm-list-item-tools')
+        const fixer = tools.children[0]
+        const collector = tools.children[1]
+        const switcher = tools.children[2]
+        item.switcher = switcher
+
+        const fixedIdx = fixedItems.indexOf(item.bvid)
+        if (fixedIdx >= 0) {
+          fixedItems.splice(fixedIdx, 1)
+          item.fixed = true
+          api.dom.addClass(item, 'gm-fixed')
+        }
+
+        item.added = true
+        const switchStatus = async (status, dispInfo = true) => {
+          if (status) { // 先改了 UI 再说，不要给用户等待感
+            api.dom.removeClass(item, 'gm-removed')
+          } else {
+            api.dom.addClass(item, 'gm-removed')
+          }
+          const note = status ? '添加到稍后再看' : '从稍后再看移除'
+          const success = await _self.method.switchVideoWatchlaterStatus(item.aid, status)
+          if (success) {
+            item.added = status
+            dispInfo && api.message.create(`${note}成功`)
+            setTimeout(() => {
+              if (sortable) {
+                _self.sortWatchlaterList(true)
+              }
+              _self.updateWatchlaterListTotal()
+            }, 100)
+            // 此时不要清 fixed，因为实际上 fixed 的清理并不发生在该时间点
+          } else {
+            if (item.added) {
+              api.dom.removeClass(item, 'gm-removed')
+            } else {
+              api.dom.addClass(item, 'gm-removed')
+            }
+            dispInfo && api.message.create(`${note}失败`)
+          }
+          switcher.checked = item.added
+        }
+
+        switcher.addEventListener('click', function() {
+          switchStatus(!item.added)
+        })
+
+        collector.addEventListener('click', async function() {
+          const success = await _self.method.addToFav(item.aid)
+          if (success) {
+            api.message.create('移动至默认收藏夹成功')
+            if (item.added) {
+              switchStatus(false, false)
+            }
+          } else {
+            api.message.create('移动至默认收藏夹失败')
+          }
+        })
+
+        fixer.addEventListener('click', function() {
+          if (item.fixed) {
+            api.dom.removeClass(item, 'gm-fixed')
+          } else {
+            api.dom.addClass(item, 'gm-fixed')
+          }
+          item.fixed = !item.fixed
+          gm.data.fixedItem(item.bvid, item.fixed)
+        })
+
+        if (item.progress > 0) {
+          let progress = state.querySelector('.looked')
+          if (progress) {
+            if (item.multiP) return
+          } else {
+            progress = state.insertAdjacentElement('afterbegin', document.createElement('span'))
+            progress.className = 'looked'
+          }
+          progress.textContent = item.multiP ? '已观看' : _self.method.getSTimeString(item.progress)
         }
       }
 
@@ -3698,6 +3935,7 @@
           if (link.href && gm.regex.page_videoWatchlaterMode.test(link.href)) { // 视频被和谐或其他特殊情况
             link.addEventListener('mousedown', function(e) {
               if (e.button == 0 || e.button == 1) { // 左键或中键
+                if (base.fixed) return
                 if (!this._originalHref) {
                   this._originalHref = this.href
                 }
@@ -3722,14 +3960,17 @@
             })
             link.addEventListener('mouseup', function(e) {
               if (e.button == 0 || e.button == 1) { // 左键或中键
+                if (base.fixed) return
                 if (arc.autoRemove) {
                   // 添加移除样式并移动至列表末尾
-                  api.dom.addClass(base, 'gm-watchlater-item-deleted')
+                  api.dom.addClass(base, 'gm-removed')
+                  base.added = false
+                  base.switcher.checked = false
                   setTimeout(() => {
-                    base.parentElement.appendChild(base)
                     if (sortable) {
                       _self.sortWatchlaterList(true)
                     }
+                    _self.updateWatchlaterListTotal()
                   }, 100)
                 }
               }
@@ -3740,46 +3981,6 @@
             link.style.cursor = 'not-allowed'
           }
         }
-      }
-
-      /**
-       * 处理原生的移除按钮
-       * @param {HTMLElement} base 基元素
-       * @param {HTMLElement} del 移除按钮元素
-       */
-      function processDelBtn(base, del) {
-        // 捕获拦截，将其克隆节点添加移除样式后添加至列表末尾
-        del.addEventListener('click', function() {
-          // 在排序之后点击移除按钮，click 事件会神奇地触发两次
-          if (api.dom.containsClass(base, 'gm-watchlater-item-deleted-origin')) return
-          const cloned = base.cloneNode(true)
-          api.dom.addClass(base, 'gm-watchlater-item-deleted-origin')
-          api.dom.addClass(cloned, 'gm-watchlater-item-deleted')
-          base.parentElement.appendChild(cloned)
-          needInfo && extractInfo(cloned)
-          sortable && _self.sortWatchlaterList(true)
-        }, true)
-      }
-
-      /**
-       * 提取列表项信息
-       * @param {HTMLElement} item 列表项
-       */
-      function extractInfo(item) {
-        item.serial = parseInt(item.querySelector('.key').textContent)
-        item.vTitle = item.querySelector('.t').textContent
-        item.uploader = item.querySelector('.user').textContent
-        item.duration = (function(text) {
-          if (!text) return Infinity // 有分 P 直接拉到最高
-          let result = 0
-          const factors = [24 * 3600, 3600, 60, 1]
-          const parts = text.split(':')
-          while (parts.length > 0) {
-            result += parts.pop() * factors.pop()
-          }
-          return result
-        })(item.querySelector('.corner')?.textContent)
-        item.progress = item.querySelector('.looked') ? 1 : 0
       }
     }
 
@@ -3824,38 +4025,55 @@
 
     /**
      * 对稍后再看列表页面进行排序
-     * @param {boolean} [onlyDeleted] 是否只对移除列表排序
+     * @param {boolean} [force] 即使目标排序类型与当前类型一致也强制执行
      */
-    async sortWatchlaterList(onlyDeleted) {
+    async sortWatchlaterList(force) {
       const sortControl = await api.wait.waitQuerySelector('#gm-list-sort-control')
-      const type = sortControl.value
+      const listBox = await api.wait.waitQuerySelector('.watch-later-list .list-box')
+      let type = sortControl.value
+      const prevBase = force ? null : sortControl.prevVal.replace(/:R$/, '')
       sortControl.prevVal = type
+      if (type == Enums.sortType.fixed) {
+        type = Enums.sortType.default
+        listBox.firstElementChild.setAttribute('sort-type-fixed', '')
+      } else {
+        listBox.firstElementChild.removeAttribute('sort-type-fixed')
+      }
       let reverse = type.endsWith(':R')
       const k = type.replace(/:R$/, '')
 
-      const listBox = await api.wait.waitQuerySelector('.watch-later-list .list-box')
-      const container = listBox.querySelector('.av-item').parentElement
-      const lists = []
-      if (!onlyDeleted) {
-        lists.push(Array.from(listBox.querySelectorAll('.av-item:not(.gm-watchlater-item-deleted, .gm-watchlater-item-deleted-origin)')))
+      const lists = [
+        Array.from(listBox.querySelectorAll('.av-item:not(.gm-removed)')),
+        Array.from(listBox.querySelectorAll('.av-item.gm-removed')),
+      ]
+      if (reverse) {
+        lists.reverse()
       }
-      lists.push(Array.from(listBox.querySelectorAll('.av-item.gm-watchlater-item-deleted:not(.gm-watchlater-item-deleted-origin)')))
+      let order = 0
       for (const items of lists) {
-        items.sort((a, b) => {
-          let result = 0
-          const va = a[k]
-          const vb = b[k]
-          if (typeof va == 'string') {
-            result = va.localeCompare(vb)
-          } else if (!isNaN(va)) {
-            result = va - vb
+        if (k != prevBase) {
+          items.sort((a, b) => {
+            let result = 0
+            const va = a[k]
+            const vb = b[k]
+            if (typeof va == 'string') {
+              result = va.localeCompare(vb)
+            } else if (!isNaN(va)) {
+              result = va - vb
+            }
+            return result
+          })
+          for (const item of items) {
+            item.style.order = order++
           }
-          return reverse ? -result : result
-        })
-        for (const item of items) {
-          container.appendChild(item)
         }
       }
+      if (reverse) {
+        listBox.firstElementChild.setAttribute('gm-list-reverse', '')
+      } else {
+        listBox.firstElementChild.removeAttribute('gm-list-reverse')
+      }
+      this.triggerWatchlaterListContentLoad()
     }
 
     /**
@@ -3874,8 +4092,8 @@
       const container = await api.wait.waitQuerySelector('.watch-later-list')
       const listBox = (typeof total == 'undefined' && typeof all == 'undefined') && await api.wait.waitQuerySelector('.list-box', container)
       const elTotal = await api.wait.waitQuerySelector('header .t em')
-      all = all ?? listBox.querySelectorAll('.av-item:not(.gm-watchlater-item-deleted-origin, .gm-search-hide)').length
-      total = total ?? all - listBox.querySelectorAll('.gm-watchlater-item-deleted:not(.gm-watchlater-item-deleted-origin, .gm-search-hide)').length
+      all = all ?? listBox.querySelectorAll('.av-item:not(.gm-search-hide)').length
+      total = total ?? all - listBox.querySelectorAll('.gm-removed:not(.gm-search-hide)').length
       elTotal.textContent = `（${total}/${all}）`
 
       const emptyBlocks = container.querySelectorAll('.abnormal-item') // 脚本加进来的，及B站加进来的，可能有两个
@@ -3920,7 +4138,8 @@
         const spDisableRemove = gm.searchParams.get(`${gm.id}_disable_remove`) == 'true'
         if ((alwaysAutoRemove || spRemove) && !spDisableRemove) {
           const _self = this
-          const aid = await _self.method.getAid()
+          if (gm.data.fixedItem(_self.method.getBvid())) return
+          const aid = _self.method.getAid()
           if (delay > 0) {
             await new Promise(resolve => setTimeout(resolve, delay))
           }
@@ -4083,6 +4302,7 @@
           <option value="${Enums.sortType.progress}">排序：进度</option>
           <option value="${Enums.sortType.uploader}">排序：UP 主</option>
           <option value="${Enums.sortType.title}">排序：标题</option>
+          <option value="${Enums.sortType.fixed}">排序：固定</option>
         `
         control.prevVal = control.value
 
@@ -4354,6 +4574,8 @@
           }
   
           #${gm.id} .gm-entrypopup .gm-entry-list {
+            display: flex;
+            flex-direction: column;
             position: relative;
             height: 42em;
             overflow-y: auto;
@@ -4403,9 +4625,11 @@
           }
           #${gm.id} .gm-entrypopup .gm-entry-list .gm-entry-list-item .gm-card-switcher {
             position: absolute;
-            background-image: url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADgAAAA4CAYAAACohjseAAAACXBIWXMAAAsSAAALEgHS3X78AAAA/ElEQVRoge3bsQ3CMBSE4bOBAmZIzSLUrMECjMACtLBGKgq2yQ4uHzJKgaIghHHAZ+6rQfKvnCIRBWdmiJxzWwAbAEtwCwCuZtbeuwCsAOwBNORhQ52ZHXx/1WqLi5q4yngFjxXM8pngK46Llr6AQ0xKgewUyE6B7BTIbj7F+c1sl/I959w591k0UXbx18Tp3YbUCX4qZcKaKLukiY55nO3YlIazfvWZXHdUTZSdAtkpkJ0C2SmQnQLZKZCdAtkpkN3PHvx+68mcJsou21O1Ummi7BTIToHsFMjuLwJDAeeYSpgBWABY19mHi+/fTu8KOExu8aX0tu6/FQC4AVY1Ql6j10UHAAAAAElFTkSuQmCC);
+            background-image: url(data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA1NiA1NiI+PHBhdGggZmlsbD0iI2ZmZiIgZmlsbC1ydWxlPSJldmVub2RkIiBkPSJNMzUgMTd2LTNIMjF2M2gtOHYzaDV2MjJoMjBWMjBoNXYtM2gtOHptLTkgMjJoLTVWMjBoNXYxOXptOSAwaC01VjIwaDV2MTl6IiBjbGlwLXJ1bGU9ImV2ZW5vZGQiLz48L3N2Zz4=);
             background-size: contain;
             background-repeat: no-repeat;
+            background-color: #00000099;
+            border-radius: 2px;
             width: 30px;
             height: 30px;
             top: calc(2.20em - 15px); /* 与缩略图显示尺寸匹配 */
@@ -4415,7 +4639,8 @@
             cursor: pointer;
           }
           #${gm.id} .gm-entrypopup .gm-entry-list .gm-entry-list-item.gm-removed .gm-card-switcher {
-            background-image: url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADgAAAA4CAMAAACfWMssAAAAwFBMVEUAAAAGBgavr69EREQUFBQ1NTUODg7t7e3FxcV0dHRbW1sAAAAAAAAAAAD+/v77+/v4+Pj09PTj4+P8/PzV1dWpqamSkpIhISH19fXX19fLy8ulpaWdnZ1kZGRVVVUsLCz6+vrm5uba2tq9vb20tLSsrKyXl5eMjIx+fn54eHhsbGxpaWk+Pj4AAAAAAADv7+/e3t7AwMC3t7ehoaFLS0vo6OjR0dHOzs7CwsKCgoKCgoJiYmLp6enMzMywsLD////DVMIGAAAAP3RSTlOZmtOrnqec8927sopkEf38+ffu/eXPxqH45+DOyrWwpPvv6NnV0cjEv724t6qPAPTr2tbNru/j4tvAv7Tw4dTgAD9iAAABpElEQVRIx+ST13KCUBiEDyCCBRBQsaHGHrvp/Xv/twpDTBgRonjr3u0w38zu8h+xNsolkVGlsrEWxkpcoJUhyuISBVjpIi7Arli9bmE6mb0rUhZI6tZu2KuxK+TO5RYOB2pM8udgShWASlOXa8MnDYDN7DRX6AOVkf/bTemEqe9OdW0DluwdNH7VgKZ3knNUEVN+CGz/K3oLtJJGrJugp3MPFrSSy7wBnVRwAE7aTxuDq6YNCpaaehRN2KV8eoRaNMh8GesBKIlgEewoaAtTPoytw0gIXz4KJYMcORfQ5n/Wy4kuaMKHzzioQTFyhNJ7P27ZMNuSDb4Noxingi3FQSpTab8bWx0+YOMdV6yKIxAGSuCkZ6Dv9sEsJlzNSxKIex/ejgUkXkEdxokgLMJn4gBUpcygyH+BHYyVMWo4w/eMwXFIfOCgAVKiAxMQTgCYAH+S44MkOXRAOJGbYyRyHXU24rIVWgjqCNgbkZWRRYA+JrfoYKaksKK8eKS8QCZcBVBe6VBezRGuWGlalSMaD2KQxsMooCMgu6FLdtOa7MY82d0HAP3jZ1lFdjimAAAAAElFTkSuQmCC);
+            background-image: url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADgAAAA4CAMAAACfWMssAAAAeFBMVEUAAAARERFFRUX8/Pz19fXu7u6vr6/7+/s1NTXZ2dnFxcV0dHSAgIBqampbW1v4+Pjn5+fj4+O2trZjY2PV1dXLy8upqamSkpIhISHBwcGlpaWdnZ1VVVUsLCzQ0NC9vb2srKyXl5eMjIx4eHg+Pj7e3t6hoaH///82qrMqAAAAJ3RSTlOZnaz9+PTT/Kfo3bvAuLL58O7WteXhz8ah287KsKTj2dHIxL2q682k+3EPAAABZElEQVRIx+yS2ZKCMBREg9kAEUVcQHEdnfP/fzhVqRkpIIC8TtlvN5WT6ttp8dG/1qma329JPptGVbsVv1LlPHgXW2Q0pG5vobMNAMsoNrvLWQOgk3FuboHlOn+9c3Su12PcAbCmaJwlGoiKUS4L26fBBXgOLfoFbH0X9hLigVwsbIVXCXDsBSPI+gxdQYZ9gYINh14thV8r2NWBLB6tPQB/AVNQtdEt0jRtx+43c9MxZcDUkwT04jUWgahAi9wTn4a0nnCKT8LpoeRBKMhVt0QhKNEGWd7/cuMZwwp00V1x0wUhcomcASstyNTTmtIHIr9ddyzgbcEerl4QXEazDJypqaAIDCgX1hSrTunP1MBxSFLgYALC0YEBiE8AmIBwkkMHhBO5HEYiV1FiJC5boYWgCr+6EFkZWQToY3KLDiZKCivKi0fKC2TCVQDllQ7l1RzhipWmVTmi8SAObjyMglFAXQAAc94+R+j06ZAAAAAASUVORK5CYII=);
+            background-color: unset;
           }
           #${gm.id} .gm-entrypopup .gm-entry-list .gm-entry-list-item:hover .gm-card-switcher {
             display: unset;
@@ -4436,13 +4661,9 @@
           #${gm.id} .gm-entrypopup .gm-entry-list .gm-card-multiP .gm-card-duration > * {
             transition: var(--${gm.id}-opacity-fade-quick-transition);
           }
-          #${gm.id} .gm-entrypopup .gm-entry-list .gm-card-multiP .gm-card-duration :first-child,
-          #${gm.id} .gm-entrypopup .gm-entry-list .gm-card-multiP:hover .gm-card-duration :last-child {
+          #${gm.id} .gm-entrypopup .gm-entry-list .gm-card-multiP:not(:hover) .gm-card-duration > .gm-hover,
+          #${gm.id} .gm-entrypopup .gm-entry-list .gm-card-multiP:hover .gm-card-duration > :not(.gm-hover) {
             opacity: 0;
-          }
-          #${gm.id} .gm-entrypopup .gm-entry-list .gm-card-multiP:hover .gm-card-duration :first-child,
-          #${gm.id} .gm-entrypopup .gm-entry-list .gm-card-multiP .gm-card-duration :last-child {
-            opacity: 1;
           }
           #${gm.id} .gm-entrypopup .gm-entry-list .gm-entry-list-item .gm-card-right {
             position: relative;
@@ -4471,29 +4692,39 @@
             white-space: nowrap;
             overflow: hidden;
             width: fit-content;
-            max-width: 21em;
+            max-width: 15em;
             color: var(--${gm.id}-hint-text-color);
             cursor: pointer;
           }
-          #${gm.id} .gm-entrypopup .gm-entry-list .gm-entry-list-item .gm-card-uploader:hover {
-            text-decoration: underline;
-            font-weight: bold;
-            color: var(--${gm.id}-text-bold-color);
-          }
-          #${gm.id} .gm-entrypopup .gm-entry-list .gm-entry-list-item .gm-card-progress {
+          #${gm.id} .gm-entrypopup .gm-entry-list .gm-entry-list-item .gm-card-corner {
             position: absolute;
             bottom: 0;
             right: 0;
             font-size: 0.8em;
             color: var(--${gm.id}-hint-text-color);
-            display: none;
           }
-          #${gm.id} .gm-entrypopup .gm-entry-list .gm-entry-list-item:hover .gm-card-progress {
-            color: var(--${gm.id}-hightlight-color);
+          #${gm.id} .gm-entrypopup .gm-entry-list .gm-entry-list-item .gm-card-corner > span {
+            margin-left: 2px;
+          }
+          #${gm.id} .gm-entrypopup .gm-entry-list .gm-entry-list-item:hover .gm-card-corner > :not(.gm-hover),
+          #${gm.id} .gm-entrypopup .gm-entry-list .gm-entry-list-item:not(:hover) .gm-card-corner > .gm-hover {
+            display: none !important;
+          }
+          #${gm.id} .gm-entrypopup .gm-entry-list .gm-entry-list-item .gm-card-progress {
+            display: none;
           }
           #${gm.id} .gm-entrypopup .gm-entry-list .gm-entry-list-item .gm-card-progress::before {
             content: "▶";
             padding-right: 1px;
+          }
+          #${gm.id} .gm-entrypopup .gm-entry-list .gm-entry-list-item.gm-removed .gm-card-fixer {
+            display: none;
+          }
+          #${gm.id} .gm-entrypopup .gm-entry-list .gm-entry-list-item .gm-card-uploader:hover,
+          #${gm.id} .gm-entrypopup .gm-entry-list .gm-entry-list-item .gm-card-corner > span:hover {
+            text-decoration: underline;
+            font-weight: bold;
+            color: var(--${gm.id}-text-bold-color);
           }
   
           #${gm.id} .gm-entrypopup .gm-entry-list .gm-entry-list-simple-item {
@@ -4503,7 +4734,7 @@
             padding: 0.5em 1em;
             cursor: pointer;
           }
-          #${gm.id} .gm-entrypopup .gm-entry-list .gm-entry-list-simple-item:not(:last-child) {
+          #${gm.id} .gm-entrypopup .gm-entry-list .gm-entry-list-simple-item:not(:last-child, .gm-fixed) {
             border-bottom: 1px solid var(--${gm.id}-light-border-color);
           }
           #${gm.id} .gm-entrypopup .gm-entry-list .gm-entry-list-simple-item.gm-invalid,
@@ -5001,20 +5232,63 @@
             display: none !important;
           }
 
-          .gm-watchlater-item-deleted-origin {
+          .watch-later-list .list-box > span {
+            display: flex;
+            flex-direction: column;
+          }
+          .watch-later-list .btn-del {
             display: none;
           }
-          .gm-watchlater-item-deleted {
+          .watch-later-list .gm-list-item-tools {
+            color: #999;
+          }
+          .watch-later-list .gm-list-item-tools > * {
+            margin: 0 5px;
+            cursor: pointer;
+          }
+          .watch-later-list .gm-list-item-tools span:hover {
+            text-decoration: underline;
+            font-weight: bold;
+          }
+          .watch-later-list .gm-list-item-tools input {
+            vertical-align: -3px;
+          }
+          .watch-later-list .gm-removed .gm-list-item-fixer {
+            display: none;
+          }
+          .watch-later-list .gm-removed {
             filter: grayscale(1);
             border-radius: 5px;
           }
-          .gm-watchlater-item-deleted .key,
-          .gm-watchlater-item-deleted .btn-del {
+          .watch-later-list .gm-fixed .key,
+          .watch-later-list .gm-removed .key {
             visibility: hidden;
           }
-          .gm-watchlater-item-deleted .t,
-          .gm-watchlater-item-deleted .t:hover {
+          .watch-later-list .gm-removed .t,
+          .watch-later-list .gm-removed .t:hover {
             text-decoration: line-through;
+          }
+
+          .gm-fixed {
+            order: 1000 !important;
+          }
+          .gm-fixed .gm-list-item-fixer,
+          .gm-fixed .gm-card-fixer {
+            font-weight: bold;
+          }
+          .watch-later-list .list-box > span[gm-list-reverse] .gm-fixed,
+          .watch-later-list .list-box > span[sort-type-fixed] .gm-fixed,
+          #${gm.id} .gm-entrypopup .gm-entry-list[gm-list-reverse] .gm-fixed,
+          #${gm.id} .gm-entrypopup .gm-entry-list[sort-type-fixed] .gm-fixed {
+            order: -1000 !important;
+          }
+
+          [gm-list-reverse] {
+            flex-direction: column-reverse !important;
+          }
+
+          .gm-fixed:not(.gm-removed) {
+            border: 2px dashed var(--${gm.id}-light-hint-text-color);
           }
         `)
       } else {

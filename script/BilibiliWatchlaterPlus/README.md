@@ -35,7 +35,7 @@
 
 * 列表页UI
 
-    ![列表页 UI](https://gitee.com/liangjiancang/userscript/raw/master/script/BilibiliWatchlaterPlus/screenshot/列表页%20UI.png)
+    ![列表页](https://gitee.com/liangjiancang/userscript/raw/master/script/BilibiliWatchlaterPlus/screenshot/列表页.png)
 
 *gitee: [BilibiliWatchlaterPlus](https://gitee.com/liangjiancang/userscript/tree/master/script/BilibiliWatchlaterPlus)*
 
