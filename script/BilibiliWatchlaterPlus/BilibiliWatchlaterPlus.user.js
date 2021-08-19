@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.18.1.20210819
+// @version         4.18.2.20210819
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -3869,7 +3869,7 @@
             dispInfo && api.message.create(`${note}成功`)
             setTimeout(() => {
               if (sortable) {
-                _self.sortWatchlaterList(true)
+                _self.sortWatchlaterList()
               }
               _self.updateWatchlaterListTotal()
             }, 100)
@@ -3968,7 +3968,7 @@
                   base.switcher.checked = false
                   setTimeout(() => {
                     if (sortable) {
-                      _self.sortWatchlaterList(true)
+                      _self.sortWatchlaterList()
                     }
                     _self.updateWatchlaterListTotal()
                   }, 100)
@@ -4025,13 +4025,11 @@
 
     /**
      * 对稍后再看列表页面进行排序
-     * @param {boolean} [force] 即使目标排序类型与当前类型一致也强制执行
      */
-    async sortWatchlaterList(force) {
+    async sortWatchlaterList() {
       const sortControl = await api.wait.waitQuerySelector('#gm-list-sort-control')
       const listBox = await api.wait.waitQuerySelector('.watch-later-list .list-box')
       let type = sortControl.value
-      const prevBase = force ? null : sortControl.prevVal.replace(/:R$/, '')
       sortControl.prevVal = type
       if (type == Enums.sortType.fixed) {
         type = Enums.sortType.default
@@ -4046,32 +4044,23 @@
         Array.from(listBox.querySelectorAll('.av-item:not(.gm-removed)')),
         Array.from(listBox.querySelectorAll('.av-item.gm-removed')),
       ]
-      if (reverse) {
-        lists.reverse()
-      }
-      let order = 0
+      let order = -1000
       for (const items of lists) {
-        if (k != prevBase) {
-          items.sort((a, b) => {
-            let result = 0
-            const va = a[k]
-            const vb = b[k]
-            if (typeof va == 'string') {
-              result = va.localeCompare(vb)
-            } else if (!isNaN(va)) {
-              result = va - vb
-            }
-            return result
-          })
-          for (const item of items) {
-            item.style.order = order++
+        order += 1000
+        items.sort((a, b) => {
+          let result = 0
+          const va = a[k]
+          const vb = b[k]
+          if (typeof va == 'string') {
+            result = va.localeCompare(vb)
+          } else if (!isNaN(va)) {
+            result = va - vb
           }
+          return reverse ? -result : result
+        })
+        for (const item of items) {
+          item.style.order = order++
         }
-      }
-      if (reverse) {
-        listBox.firstElementChild.setAttribute('gm-list-reverse', '')
-      } else {
-        listBox.firstElementChild.removeAttribute('gm-list-reverse')
       }
       this.triggerWatchlaterListContentLoad()
     }
@@ -5275,7 +5264,6 @@
           .gm-fixed .gm-card-fixer {
             font-weight: bold;
           }
-          .watch-later-list .list-box > span[gm-list-reverse] .gm-fixed,
           .watch-later-list .list-box > span[sort-type-fixed] .gm-fixed,
           #${gm.id} .gm-entrypopup .gm-entry-list[gm-list-reverse] .gm-fixed,
           #${gm.id} .gm-entrypopup .gm-entry-list[sort-type-fixed] .gm-fixed {
