@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.18.2.20210819
+// @version         4.18.3.20210820
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -3270,8 +3270,12 @@
                     const success = await _self.method.switchVideoWatchlaterStatus(item.aid, status)
                     if (success) {
                       card.added = status
+                      if (card.fixed) {
+                        card.fixed = false
+                        gm.data.fixedItem(card.bvid, false)
+                        api.dom.removeClass(card, 'gm-fixed')
+                      }
                       dispInfo && api.message.create(`${note}成功`)
-                      // 此时不要清 fixed，因为实际上 fixed 的清理并不发生在该时间点
                     } else {
                       if (card.added) {
                         api.dom.removeClass(card, 'gm-removed')
@@ -3866,6 +3870,11 @@
           const success = await _self.method.switchVideoWatchlaterStatus(item.aid, status)
           if (success) {
             item.added = status
+            if (item.fixed) {
+              item.fixed = false
+              gm.data.fixedItem(item.bvid, false)
+              api.dom.removeClass(item, 'gm-fixed')
+            }
             dispInfo && api.message.create(`${note}成功`)
             setTimeout(() => {
               if (sortable) {
@@ -3873,7 +3882,6 @@
               }
               _self.updateWatchlaterListTotal()
             }, 100)
-            // 此时不要清 fixed，因为实际上 fixed 的清理并不发生在该时间点
           } else {
             if (item.added) {
               api.dom.removeClass(item, 'gm-removed')
