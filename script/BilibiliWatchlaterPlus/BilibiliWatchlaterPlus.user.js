@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.18.5.20210822
+// @version         4.18.6.20210822
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -350,7 +350,7 @@
   const gm = {
     id: gmId,
     configVersion: GM_getValue('configVersion'),
-    configUpdate: 20210819,
+    configUpdate: 20210822,
     searchParams: new URL(location.href).searchParams,
     config: {},
     configMap: {
@@ -397,6 +397,7 @@
     },
     infoMap: {
       cleanRemoveHistoryData: {},
+      watchlaterMediaList: { configVersion: 20210822 },
       fixHeader: { configVersion: 20210810.1 },
     },
     configDocumentStart: ['redirect', 'menuScrollbarSetting', 'mainRunAt'],
@@ -734,7 +735,7 @@
           }
 
           // 功能性更新后更新此处配置版本
-          if (gm.configVersion < 20210819) {
+          if (gm.configVersion < 20210822) {
             _self.openUserSetting(2)
           } else {
             gm.configVersion = gm.configUpdate
@@ -1046,6 +1047,16 @@
                     </td>
                   </tr>
 
+                  <tr class="gm-item" title="指定使用收藏功能时，将视频从稍后再看移动至哪个收藏夹。">
+                    <td><div>全局功能</div></td>
+                    <td>
+                      <div>
+                        <span>稍后再看收藏夹</span>
+                        <span id="gm-watchlaterMediaList" class="gm-info">设置</span>
+                      </div>
+                    </td>
+                  </tr>
+
                   <tr class="gm-item" title="在播放页面中加入能将视频快速切换添加或移除出稍后再看列表的按钮。">
                     <td><div>播放页面</div></td>
                     <td>
@@ -1139,7 +1150,7 @@
                     <td>
                       <div>
                         <span>将顶栏固定在页面顶部</span>
-                        <a id="gm-fixHeader" class="gm-info" href="${gm.url.external_fixHeader}" target="_blank"">安装功能</a>
+                        <a id="gm-fixHeader" class="gm-info" href="${gm.url.external_fixHeader}" target="_blank">安装功能</a>
                       </div>
                     </td>
                   </tr>
@@ -1505,6 +1516,14 @@
           el.reset.onclick = () => _self.resetScript()
           el.cleanRemoveHistoryData.onclick = function() {
             el.removeHistory.checked && _self.cleanRemoveHistoryData()
+          }
+          el.watchlaterMediaList.onclick = function() {
+            const uid = webpage.method.getDedeUserID()
+            const mlid = api.message.prompt('指定使用收藏功能时，将视频从稍后再看移动至哪个收藏夹。\n下方应填入目标收藏夹 ID，置空时使用默认收藏夹。\n获取方式：打开目标收藏夹页面，网址为「space.bilibili.com/${uid}/favlist?fid=${mlid}」。其中 ${mlid} 为收藏夹 ID。', GM_getValue(`watchlaterMediaList_${uid}`) ?? undefined)
+            if (mlid !== null) {
+              GM_setValue(`watchlaterMediaList_${uid}`, mlid)
+              api.message.create('已保存稍后再看收藏夹设置')
+            }
           }
           if (type > 0) {
             if (type == 2) {
@@ -2230,6 +2249,14 @@
         },
 
         /**
+         * 获取当前登录用户 ID
+         * @returns {string} `DedeUserID`
+         */
+        getDedeUserID() {
+          return this.cookie('DedeUserID')
+        },
+
+        /**
          * 获取 CSRF
          * @returns {string} `csrf`
          */
@@ -2614,26 +2641,39 @@
         },
 
         /**
-         * 将视频添加到收藏夹
-         * @param {string} aid `aid`
-         * @returns {Promise<boolean>} 操作是否成功
+         * 获取默认收藏夹 ID
+         * @param {string} [uid] 用户 ID，缺省时指定当前登录用户
+         * @returns {Promise<string>} `mlid`
          */
-        async addToFav(aid) {
-          const _self = this
-          try {
-            let data = new URLSearchParams()
-            data.append('up_mid', _self.cookie('DedeUserID'))
+        async getDefaultMediaListId(uid = this.getDedeUserID()) {
+          let mlid = GM_getValue(`defaultMediaList_${uid}`)
+          if (!mlid) {
+            const data = new URLSearchParams()
+            data.append('up_mid', uid)
             data.append('type', 2)
-            let resp = await api.web.request({
+            const resp = await api.web.request({
               url: `${gm.url.api_listFav}?${data.toString()}`,
             })
-            const defaultId = JSON.parse(resp.response).data.list[0].id
-            data = new URLSearchParams()
+            mlid = String(JSON.parse(resp.response).data.list[0].id)
+            GM_setValue(`defaultMediaList_${uid}`, mlid)
+          }
+          return mlid
+        },
+
+        /**
+         * 将视频添加到收藏夹
+         * @param {string} aid `aid`
+         * @param {string} mlid 收藏夹 ID
+         * @returns {Promise<boolean>} 操作是否成功
+         */
+        async addToFav(aid, mlid) {
+          try {
+            const data = new URLSearchParams()
             data.append('rid', aid)
             data.append('type', 2)
-            data.append('add_media_ids', defaultId)
-            data.append('csrf', _self.getCSRF())
-            resp = await api.web.request({
+            data.append('add_media_ids', mlid)
+            data.append('csrf', this.getCSRF())
+            const resp = await api.web.request({
               method: 'POST',
               url: gm.url.api_dealFav,
               data: data,
@@ -3252,7 +3292,7 @@
                       <div class="gm-card-corner">
                         <span class="gm-card-progress">${progress}</span>
                         <span class="gm-card-fixer gm-hover" title="将视频固定在列表最后，并对其禁用自动移除及排序功能">固定</span>
-                        <span class="gm-card-collector gm-hover" title="将视频移动至默认收藏夹">收藏</span>
+                        <span class="gm-card-collector gm-hover" title="将视频移动至指定收藏夹">收藏</span>
                       </div>
                     </div>
                   `
@@ -3296,14 +3336,21 @@
                     gm.menu.entryPopup.needReload = true
                     e.preventDefault() // 不能放到 async 中
                     setTimeout(async () => {
-                      const success = await _self.method.addToFav(item.aid)
+                      const uid = _self.method.getDedeUserID()
+                      let mlid = GM_getValue(`watchlaterMediaList_${uid}`)
+                      let dmlid = false
+                      if (!mlid) {
+                        mlid = await _self.method.getDefaultMediaListId(uid)
+                        dmlid = true
+                      }
+                      const success = await _self.method.addToFav(item.aid, mlid)
                       if (success) {
-                        api.message.create('移动至默认收藏夹成功')
+                        api.message.create(dmlid ? '移动至默认收藏夹成功' : '移动至指定收藏夹成功')
                         if (card.added) {
                           switchStatus(false, false)
                         }
                       } else {
-                        api.message.create('移动至默认收藏夹失败')
+                        api.message.create(dmlid ? '移动至默认收藏夹失败' : `移动至收藏夹 ${mlid} 失败，请确认该收藏夹是否存在`)
                       }
                     })
                   })
@@ -3842,7 +3889,7 @@
         state.insertAdjacentHTML('beforeend', `
           <span class="gm-list-item-tools">
             <span class="gm-list-item-fixer" title="将视频固定在列表最后，并对其禁用自动移除及排序功能">固定</span>
-            <span class="gm-list-item-collector" title="将视频移动至默认收藏夹">收藏</span>
+            <span class="gm-list-item-collector" title="将视频移动至指定收藏夹">收藏</span>
             <input class="gm-list-item-switcher" type="checkbox" checked>
           </span>
         `)
@@ -3898,14 +3945,21 @@
         })
 
         collector.addEventListener('click', async function() {
-          const success = await _self.method.addToFav(item.aid)
+          const uid = _self.method.getDedeUserID()
+          let mlid = GM_getValue(`watchlaterMediaList_${uid}`)
+          let dmlid = false
+          if (!mlid) {
+            mlid = await _self.method.getDefaultMediaListId(uid)
+            dmlid = true
+          }
+          const success = await _self.method.addToFav(item.aid, mlid)
           if (success) {
-            api.message.create('移动至默认收藏夹成功')
+            api.message.create(dmlid ? '移动至默认收藏夹成功' : '移动至指定收藏夹成功')
             if (item.added) {
               switchStatus(false, false)
             }
           } else {
-            api.message.create('移动至默认收藏夹失败')
+            api.message.create(dmlid ? '移动至默认收藏夹失败' : `移动至收藏夹 ${mlid} 失败，请确认该收藏夹是否存在`)
           }
         })
 
