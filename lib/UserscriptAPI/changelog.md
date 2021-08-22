@@ -6,7 +6,7 @@
 
 1. 库：优化文档注释。
 2. 库：`no-useless-call`。
-3. `web`：`request()` 方法 `details.data` 选项支持 `URLSearchParam` 类型对象，并在种情况下将 `content-type` 设为 `application/x-www-form-urlencoded`。
+3. `web`：`request()` 方法 `details.data` 选项支持 `URLSearchParam` 类型对象，并在这种情况下将 `content-type` 设为 `application/x-www-form-urlencoded`。
 4. `dom`：增加 `addStyle()` 方法，支持向 `<iframe>` 中添加样式。
 5. `dom`：优化 `isFixed()` 方法。
 6. `message`：`create()` 与 `close()` 增加回调函数。
