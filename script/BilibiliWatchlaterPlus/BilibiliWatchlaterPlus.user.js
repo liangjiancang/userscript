@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.18.3.20210820
+// @version         4.18.4.20210822
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -4621,10 +4621,7 @@
           }
           #${gm.id} .gm-entrypopup .gm-entry-list .gm-entry-list-item .gm-card-switcher {
             position: absolute;
-            background-image: url(data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA1NiA1NiI+PHBhdGggZmlsbD0iI2ZmZiIgZmlsbC1ydWxlPSJldmVub2RkIiBkPSJNMzUgMTd2LTNIMjF2M2gtOHYzaDV2MjJoMjBWMjBoNXYtM2gtOHptLTkgMjJoLTVWMjBoNXYxOXptOSAwaC01VjIwaDV2MTl6IiBjbGlwLXJ1bGU9ImV2ZW5vZGQiLz48L3N2Zz4=);
-            background-size: contain;
-            background-repeat: no-repeat;
-            background-color: #00000099;
+            background: center / contain no-repeat #00000099 url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 56 56'%3E%3Cpath fill='%23fff' fill-rule='evenodd' d='M35 17v-3H21v3h-8v3h5v22h20V20h5v-3h-8zm-9 22h-5V20h5v19zm9 0h-5V20h5v19z' clip-rule='evenodd'/%3E%3C/svg%3E");
             border-radius: 2px;
             width: 30px;
             height: 30px;
@@ -4635,8 +4632,7 @@
             cursor: pointer;
           }
           #${gm.id} .gm-entrypopup .gm-entry-list .gm-entry-list-item.gm-removed .gm-card-switcher {
-            background-image: url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADgAAAA4CAMAAACfWMssAAAAeFBMVEUAAAARERFFRUX8/Pz19fXu7u6vr6/7+/s1NTXZ2dnFxcV0dHSAgIBqampbW1v4+Pjn5+fj4+O2trZjY2PV1dXLy8upqamSkpIhISHBwcGlpaWdnZ1VVVUsLCzQ0NC9vb2srKyXl5eMjIx4eHg+Pj7e3t6hoaH///82qrMqAAAAJ3RSTlOZnaz9+PTT/Kfo3bvAuLL58O7WteXhz8ah287KsKTj2dHIxL2q682k+3EPAAABZElEQVRIx+yS2ZKCMBREg9kAEUVcQHEdnfP/fzhVqRkpIIC8TtlvN5WT6ttp8dG/1qma329JPptGVbsVv1LlPHgXW2Q0pG5vobMNAMsoNrvLWQOgk3FuboHlOn+9c3Su12PcAbCmaJwlGoiKUS4L26fBBXgOLfoFbH0X9hLigVwsbIVXCXDsBSPI+gxdQYZ9gYINh14thV8r2NWBLB6tPQB/AVNQtdEt0jRtx+43c9MxZcDUkwT04jUWgahAi9wTn4a0nnCKT8LpoeRBKMhVt0QhKNEGWd7/cuMZwwp00V1x0wUhcomcASstyNTTmtIHIr9ddyzgbcEerl4QXEazDJypqaAIDCgX1hSrTunP1MBxSFLgYALC0YEBiE8AmIBwkkMHhBO5HEYiV1FiJC5boYWgCr+6EFkZWQToY3KLDiZKCivKi0fKC2TCVQDllQ7l1RzhipWmVTmi8SAObjyMglFAXQAAc94+R+j06ZAAAAAASUVORK5CYII=);
-            background-color: unset;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 56 56'%3E%3Cpath d='M39.9 25.6h-9.5v-9.5c0-.9-.5-1.5-1.2-1.5h-2.4c-.7 0-1.2.6-1.2 1.5v9.5h-9.5c-.9 0-1.5.5-1.5 1.2v2.4c0 .7.6 1.2 1.5 1.2h9.5v9.5c0 .9.5 1.5 1.2 1.5h2.4c.7 0 1.2-.6 1.2-1.5v-9.5h9.5c.9 0 1.5-.5 1.5-1.2v-2.4c.1-.7-.6-1.2-1.5-1.2z' fill='%23fff'/%3E%3C/svg%3E");
           }
           #${gm.id} .gm-entrypopup .gm-entry-list .gm-entry-list-item:hover .gm-card-switcher {
             display: unset;
