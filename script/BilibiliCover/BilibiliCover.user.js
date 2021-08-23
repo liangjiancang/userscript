@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站封面获取
-// @version         5.3.6.20210823
+// @version         5.3.7.20210823
 // @namespace       laster2800
 // @author          Laster2800
 // @description     获取B站各播放页及直播间封面，支持手动及实时预览等多种模式，支持点击下载、封面预览、快速复制，可高度自定义
@@ -16,7 +16,7 @@
 // @include         *://live.bilibili.com/*
 // @exclude         *://live.bilibili.com/
 // @exclude         *://live.bilibili.com/?*
-// @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=962685
+// @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=963098
 // @grant           GM_download
 // @grant           GM_notification
 // @grant           GM_xmlhttpRequest
@@ -606,8 +606,7 @@
           preview.fadeOutNoInteractive = true
           const fade = inOut => api.dom.fade(inOut, preview)
 
-          target.addEventListener('mouseenter', api.tool.debounce(async function() {
-            this.mouseOver = true
+          const onMouseenter = api.tool.debounce(async function() {
             if (gm.runtime.preview) {
               if (preview._src) {
                 try {
@@ -622,17 +621,23 @@
                   api.logger.error(e)
                   return
                 }
-                if (!this.mouseOver) return
               }
-              preview.src && fade(true)
+              this.mouseOver && preview.src && fade(true)
             }
-          }, 200))
-          target.addEventListener('mouseleave', api.tool.debounce(function() {
-            this.mouseOver = false
+          }, 200)
+          const onMouseleave = api.tool.debounce(function() {
             if (gm.runtime.preview) {
               !preview.mouseOver && fade(false)
             }
-          }, 200))
+          }, 200)
+          target.addEventListener('mouseenter', function() {
+            this.mouseOver = true
+            onMouseenter.call(this)
+          })
+          target.addEventListener('mouseleave', function() {
+            this.mouseOver = false
+            onMouseleave.call(this)
+          })
 
           // 在链接上左键打开链接，和中键在新标签页打开链接，都要求：
           // 鼠标点击与松开时都在链接元素上，也就是说链接元素上不能有覆盖物，需让 preview 回避一下
@@ -647,11 +652,11 @@
           })
 
           let startPos = null // 鼠标进入预览时的初始坐标
-          preview.onmouseenter = function() {
+          preview.addEventListener('mouseenter', function() {
             this.mouseOver = true
             startPos = null
-          }
-          preview.onmouseleave = function() {
+          })
+          preview.addEventListener('mouseleave', function() {
             this.mouseOver = false
             setTimeout(() => {
               if (!target.mouseOver) {
@@ -659,7 +664,7 @@
                 fade(false)
               }
             }, 200)
-          }
+          })
           preview.addEventListener('mousedown', function(e) {
             if (this.src) {
               if (e.button == 0 || e.button == 1) {
@@ -1119,7 +1124,7 @@
           top: 50%;
           left: 50%;
           transform: translate(-50%, -50%);
-          z-index: 142857;
+          z-index: 1000000;
           max-width: 65vw; /* 自适应宽度和高度 */
           max-height: 95vh;
           border-radius: 8px;
