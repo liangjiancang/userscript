@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站防剧透进度条
-// @version         2.1.4.20210822
+// @version         2.1.5.20210823
 // @namespace       laster2800
 // @author          Laster2800
 // @description     看比赛、看番总是被进度条剧透？装上这个脚本再也不用担心这些问题了
@@ -13,7 +13,7 @@
 // @include         *://www.bilibili.com/medialist/play/watchlater
 // @include         *://www.bilibili.com/medialist/play/watchlater/*
 // @include         *://www.bilibili.com/bangumi/play/*
-// @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=962685
+// @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=963098
 // @grant           GM_registerMenuCommand
 // @grant           GM_xmlhttpRequest
 // @grant           GM_setValue
@@ -1908,7 +1908,7 @@
           color: var(--${gm.id}-light-text-color);
           margin-bottom: 1em;
           font-size: 13px;
-          z-index: 10000;
+          z-index: 1; /* 需保证不被 pbp 等元素遮盖 */
           display: flex;
           opacity: 0;
           transition: opacity ${gm.const.fadeTime}ms ease-in-out;
@@ -1949,14 +1949,14 @@
           opacity: 0;
           display: none;
           position: fixed;
-          z-index: 10000;
+          z-index: 1000000;
           user-select: none;
         }
 
         #${gm.id} .gm-setting #gm-setting-page {
           background-color: var(--${gm.id}-background-color);
           border-radius: 10px;
-          z-index: 65535;
+          z-index: 1;
           min-width: 42em;
           padding: 1em 1.4em;
           transition: top 100ms, left 100ms;
@@ -2052,14 +2052,14 @@
           opacity: 0;
           display: none;
           position: fixed;
-          z-index: 12000;
+          z-index: 1100000;
           user-select: none;
         }
 
         #${gm.id} .gm-uploaderList .gm-uploaderList-page {
           background-color: var(--${gm.id}-background-color);
           border-radius: 10px;
-          z-index: 65535;
+          z-index: 1;
           width: 36em;
           height: 40em;
           transition: top 100ms, left 100ms;
@@ -2184,7 +2184,6 @@
           position: fixed;
           top: 0%;
           left: 0%;
-          z-index: 10000;
           width: 100%;
           height: 100%;
         }

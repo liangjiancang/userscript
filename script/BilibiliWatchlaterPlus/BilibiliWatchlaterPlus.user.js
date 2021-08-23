@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.18.6.20210822
+// @version         4.18.7.20210823
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -17,7 +17,7 @@
 // @exclude         *://message.bilibili.com/*/*
 // @exclude         *://t.bilibili.com/h5/*
 // @exclude         *://www.bilibili.com/page-proxy/*
-// @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=962685
+// @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=963098
 // @grant           GM_registerMenuCommand
 // @grant           GM_xmlhttpRequest
 // @grant           GM_setValue
@@ -4570,7 +4570,7 @@
             opacity: 0;
             display: none;
             position: absolute;
-            z-index: 14000;
+            z-index: 1000000;
             user-select: none;
             width: 32em;
             padding-top: 1em;
@@ -4866,14 +4866,14 @@
             opacity: 0;
             display: none;
             position: fixed;
-            z-index: 15000;
+            z-index: 1100000;
             user-select: none;
           }
   
           #${gm.id} .gm-setting #gm-setting-page {
             background-color: var(--${gm.id}-background-color);
             border-radius: 10px;
-            z-index: 65535;
+            z-index: 1;
             min-width: 53em;
             padding: 1em 1.4em;
             transition: top 100ms, left 100ms;
@@ -5005,14 +5005,14 @@
             opacity: 0;
             display: none;
             position: fixed;
-            z-index: 15000;
+            z-index: 1100000;
             user-select: none;
           }
   
           #${gm.id} .gm-history .gm-history-page {
             background-color: var(--${gm.id}-background-color);
             border-radius: 10px;
-            z-index: 65535;
+            z-index: 1;
             height: 75vh;
             width: 60vw;
             min-width: 40em;
@@ -5179,7 +5179,6 @@
             position: fixed;
             top: 0%;
             left: 0%;
-            z-index: 15000;
             width: 100%;
             height: 100%;
           }
