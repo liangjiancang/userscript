@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站封面获取
-// @version         5.3.5.20210822
+// @version         5.3.6.20210823
 // @namespace       laster2800
 // @author          Laster2800
 // @description     获取B站各播放页及直播间封面，支持手动及实时预览等多种模式，支持点击下载、封面预览、快速复制，可高度自定义
@@ -700,11 +700,15 @@
           // 根据宽高比设置不同样式
           preview.addEventListener('load', function() {
             if (this.width > this.height) {
-              this.style.width = '100%'
+              if (this.naturalWidth < window.innerWidth) {
+                this.style.width = `${this.naturalWidth * 1.5}px`
+              }
               this.style.height = ''
             } else {
+              if (this.naturalHeight < window.innerHeight) {
+                this.style.height = `${this.naturalHeight * 1.5}px`
+              }
               this.style.width = ''
-              this.style.height = '100%'
             }
           })
 
@@ -1115,9 +1119,9 @@
           top: 50%;
           left: 50%;
           transform: translate(-50%, -50%);
-          z-index: 32767;
+          z-index: 142857;
           max-width: 65vw; /* 自适应宽度和高度 */
-          max-height: 100vh;
+          max-height: 95vh;
           border-radius: 8px;
           display: none;
           opacity: 0;
