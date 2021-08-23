@@ -2,6 +2,12 @@
 
 本日志只记录用户友好的更新说明，影响不大的问题修复与修改不作记录，具体修改见 [提交记录](https://gitee.com/liangjiancang/userscript/commits/master/lib/UserscriptAPI)。
 
+## V1.5
+
+1. `message`：鼠标在 `advanced()` 产生的信息框上移动一小段距离后，将关闭信息框。
+2. `message`：`advanced()` 方法 `flag` 参数变更为可选的，缺省时提供合理的显示效果。
+3. `message`：提高信息框 `z-index`，以确保信息框在绝大多数情况下不会被覆盖。
+
 ## V1.4
 
 1. 库：优化文档注释。
