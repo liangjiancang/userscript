@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.18.7.20210823
+// @version         4.18.8.20210824
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -2684,6 +2684,39 @@
             return false
           }
         },
+
+        /**
+         * 获取稿件 `state` 说明
+         * @param {number} state 稿件状态
+         * @returns {string} 说明
+         * @see {@link https://github.com/SocialSisterYi/bilibili-API-collect/blob/master/video/attribute_data.md#state字段值稿件状态 state字段值(稿件状态)}
+         */
+        getItemStateDesc(state) {
+          return ({
+            [1]: '橙色通过',
+            [0]: '开放浏览',
+            [-1]: '待审',
+            [-2]: '被打回',
+            [-3]: '网警锁定',
+            [-4]: '被锁定',
+            [-5]: '管理员锁定',
+            [-6]: '修复待审',
+            [-7]: '暂缓审核',
+            [-8]: '补档待审',
+            [-9]: '等待转码',
+            [-10]: '延迟审核',
+            [-11]: '视频源待修',
+            [-12]: '转储失败',
+            [-13]: '允许评论待审',
+            [-14]: '临时回收站',
+            [-15]: '分发中',
+            [-16]: '转码失败',
+            [-20]: '创建未提交',
+            [-30]: '创建已提交',
+            [-40]: '定时发布',
+            [-100]: '用户删除',
+          })[state] ?? '未知状态'
+        },
       }
     }
 
@@ -3255,7 +3288,7 @@
                   if (valid) {
                     card.textContent = card.vTitle
                   } else {
-                    card.innerHTML = `<b>[已失效]</b> ${card.vTitle}`
+                    card.innerHTML = `<b>[${_self.method.getItemStateDesc(item.state)}]</b> ${card.vTitle}`
                   }
                   card.className = 'gm-entry-list-simple-item'
                 } else {
@@ -3287,7 +3320,7 @@
                       </div>
                     </div>
                     <div class="gm-card-right">
-                      <div class="gm-card-title">${valid ? card.vTitle : `<b>[已失效]</b> ${card.vTitle}`}</div>
+                      <div class="gm-card-title">${valid ? card.vTitle : `<b>[${_self.method.getItemStateDesc(item.state)}]</b> ${card.vTitle}`}</div>
                       <a class="gm-card-uploader" target="_blank" href="${gm.url.page_userSpace(item.owner.mid)}">${card.uploader}</a>
                       <div class="gm-card-corner">
                         <span class="gm-card-progress">${progress}</span>
@@ -3332,38 +3365,40 @@
                     e.preventDefault()
                     switchStatus(!card.added)
                   })
-                  card.querySelector('.gm-card-collector').addEventListener('click', function(e) {
-                    gm.menu.entryPopup.needReload = true
-                    e.preventDefault() // 不能放到 async 中
-                    setTimeout(async () => {
-                      const uid = _self.method.getDedeUserID()
-                      let mlid = GM_getValue(`watchlaterMediaList_${uid}`)
-                      let dmlid = false
-                      if (!mlid) {
-                        mlid = await _self.method.getDefaultMediaListId(uid)
-                        dmlid = true
-                      }
-                      const success = await _self.method.addToFav(item.aid, mlid)
-                      if (success) {
-                        api.message.create(dmlid ? '移动至默认收藏夹成功' : '移动至指定收藏夹成功')
-                        if (card.added) {
-                          switchStatus(false, false)
+                  if (valid) {
+                    card.querySelector('.gm-card-collector').addEventListener('click', function(e) {
+                      gm.menu.entryPopup.needReload = true
+                      e.preventDefault() // 不能放到 async 中
+                      setTimeout(async () => {
+                        const uid = _self.method.getDedeUserID()
+                        let mlid = GM_getValue(`watchlaterMediaList_${uid}`)
+                        let dmlid = false
+                        if (!mlid) {
+                          mlid = await _self.method.getDefaultMediaListId(uid)
+                          dmlid = true
                         }
-                      } else {
-                        api.message.create(dmlid ? '移动至默认收藏夹失败' : `移动至收藏夹 ${mlid} 失败，请确认该收藏夹是否存在`)
-                      }
+                        const success = await _self.method.addToFav(item.aid, mlid)
+                        if (success) {
+                          api.message.create(dmlid ? '移动至默认收藏夹成功' : '移动至指定收藏夹成功')
+                          if (card.added) {
+                            switchStatus(false, false)
+                          }
+                        } else {
+                          api.message.create(dmlid ? '移动至默认收藏夹失败' : `移动至收藏夹 ${mlid} 失败，请确认该收藏夹是否存在`)
+                        }
+                      })
                     })
-                  })
-                  card.querySelector('.gm-card-fixer').addEventListener('click', function(e) {
-                    e.preventDefault()
-                    if (card.fixed) {
-                      api.dom.removeClass(card, 'gm-fixed')
-                    } else {
-                      api.dom.addClass(card, 'gm-fixed')
-                    }
-                    card.fixed = !card.fixed
-                    gm.data.fixedItem(card.bvid, card.fixed)
-                  })
+                    card.querySelector('.gm-card-fixer').addEventListener('click', function(e) {
+                      e.preventDefault()
+                      if (card.fixed) {
+                        api.dom.removeClass(card, 'gm-fixed')
+                      } else {
+                        api.dom.addClass(card, 'gm-fixed')
+                      }
+                      card.fixed = !card.fixed
+                      gm.data.fixedItem(card.bvid, card.fixed)
+                    })
+                  }
                 }
                 const fixedIdx = fixedItems.indexOf(card.bvid)
                 if (fixedIdx >= 0) {
@@ -3851,6 +3886,7 @@
       listBox.querySelectorAll('.av-item').forEach((item, idx) => {
         // info
         const d = data[idx]
+        item.state = d.state
         item.serial = idx
         item.aid = String(d.aid)
         item.bvid = d.bvid
@@ -3944,34 +3980,40 @@
           switchStatus(!item.added)
         })
 
-        collector.addEventListener('click', async function() {
-          const uid = _self.method.getDedeUserID()
-          let mlid = GM_getValue(`watchlaterMediaList_${uid}`)
-          let dmlid = false
-          if (!mlid) {
-            mlid = await _self.method.getDefaultMediaListId(uid)
-            dmlid = true
-          }
-          const success = await _self.method.addToFav(item.aid, mlid)
-          if (success) {
-            api.message.create(dmlid ? '移动至默认收藏夹成功' : '移动至指定收藏夹成功')
-            if (item.added) {
-              switchStatus(false, false)
+        if (item.state >= 0) {
+          collector.addEventListener('click', async function() {
+            const uid = _self.method.getDedeUserID()
+            let mlid = GM_getValue(`watchlaterMediaList_${uid}`)
+            let dmlid = false
+            if (!mlid) {
+              mlid = await _self.method.getDefaultMediaListId(uid)
+              dmlid = true
             }
-          } else {
-            api.message.create(dmlid ? '移动至默认收藏夹失败' : `移动至收藏夹 ${mlid} 失败，请确认该收藏夹是否存在`)
-          }
-        })
+            const success = await _self.method.addToFav(item.aid, mlid)
+            if (success) {
+              api.message.create(dmlid ? '移动至默认收藏夹成功' : '移动至指定收藏夹成功')
+              if (item.added) {
+                switchStatus(false, false)
+              }
+            } else {
+              api.message.create(dmlid ? '移动至默认收藏夹失败' : `移动至收藏夹 ${mlid} 失败，请确认该收藏夹是否存在`)
+            }
+          })
 
-        fixer.addEventListener('click', function() {
-          if (item.fixed) {
-            api.dom.removeClass(item, 'gm-fixed')
-          } else {
-            api.dom.addClass(item, 'gm-fixed')
-          }
-          item.fixed = !item.fixed
-          gm.data.fixedItem(item.bvid, item.fixed)
-        })
+          fixer.addEventListener('click', function() {
+            if (item.fixed) {
+              api.dom.removeClass(item, 'gm-fixed')
+            } else {
+              api.dom.addClass(item, 'gm-fixed')
+            }
+            item.fixed = !item.fixed
+            gm.data.fixedItem(item.bvid, item.fixed)
+          })
+        } else {
+          api.dom.addClass(item, 'gm-invalid')
+          const title = item.querySelector('.av-about .t')
+          title.innerHTML = `<b>[${_self.method.getItemStateDesc(item.state)}]</b> ${title.textContent}`
+        }
 
         if (item.progress > 0) {
           let progress = state.querySelector('.looked')
@@ -3994,7 +4036,7 @@
       function processLink(base, link, arc) {
         link.target = gm.config.openListVideo == Enums.openListVideo.openInCurrent ? '_self' : '_blank'
         if (arc) {
-          if (link.href && gm.regex.page_videoWatchlaterMode.test(link.href)) { // 视频被和谐或其他特殊情况
+          if (base.state >= 0) { // 视频被和谐或其他特殊情况
             link.addEventListener('mousedown', function(e) {
               if (e.button == 0 || e.button == 1) { // 左键或中键
                 if (base.fixed) return
@@ -4040,7 +4082,6 @@
           } else {
             link.href = gm.url.noop
             link.target = '_self'
-            link.style.cursor = 'not-allowed'
           }
         }
       }
@@ -4767,7 +4808,7 @@
             display: none;
           }
           #${gm.id} .gm-entrypopup .gm-entry-list .gm-entry-list-item .gm-card-uploader:hover,
-          #${gm.id} .gm-entrypopup .gm-entry-list .gm-entry-list-item .gm-card-corner > span:hover {
+          #${gm.id} .gm-entrypopup .gm-entry-list .gm-entry-list-item:not(.gm-invalid) .gm-card-corner > span:hover {
             text-decoration: underline;
             font-weight: bold;
             color: var(--${gm.id}-text-bold-color);
@@ -5291,7 +5332,7 @@
             margin: 0 5px;
             cursor: pointer;
           }
-          .watch-later-list .gm-list-item-tools span:hover {
+          .watch-later-list .av-item:not(.gm-invalid) .gm-list-item-tools span:hover {
             text-decoration: underline;
             font-weight: bold;
           }
@@ -5301,17 +5342,27 @@
           .watch-later-list .gm-removed .gm-list-item-fixer {
             display: none;
           }
-          .watch-later-list .gm-removed {
+          .watch-later-list .gm-removed,
+          .watch-later-list .gm-invalid {
             filter: grayscale(1);
-            border-radius: 5px;
           }
           .watch-later-list .gm-fixed .key,
           .watch-later-list .gm-removed .key {
             visibility: hidden;
           }
+          .watch-later-list .gm-removed .t {
+            text-decoration: line-through !important;
+          }
+          .watch-later-list .gm-invalid .t {
+            font-weight: unset !important;
+          }
           .watch-later-list .gm-removed .t,
-          .watch-later-list .gm-removed .t:hover {
-            text-decoration: line-through;
+          .watch-later-list .gm-invalid .t {
+            color: var(--${gm.id}-hint-text-color) !important;
+          }
+          .watch-later-list .gm-invalid a:not(.user),
+          .watch-later-list .gm-invalid .gm-list-item-tools span {
+            cursor: not-allowed !important;
           }
 
           .gm-fixed {
