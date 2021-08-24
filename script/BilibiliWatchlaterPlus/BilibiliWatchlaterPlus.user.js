@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.18.8.20210824
+// @version         4.18.9.20210824
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -3365,40 +3365,38 @@
                     e.preventDefault()
                     switchStatus(!card.added)
                   })
-                  if (valid) {
-                    card.querySelector('.gm-card-collector').addEventListener('click', function(e) {
-                      gm.menu.entryPopup.needReload = true
-                      e.preventDefault() // 不能放到 async 中
-                      setTimeout(async () => {
-                        const uid = _self.method.getDedeUserID()
-                        let mlid = GM_getValue(`watchlaterMediaList_${uid}`)
-                        let dmlid = false
-                        if (!mlid) {
-                          mlid = await _self.method.getDefaultMediaListId(uid)
-                          dmlid = true
-                        }
-                        const success = await _self.method.addToFav(item.aid, mlid)
-                        if (success) {
-                          api.message.create(dmlid ? '移动至默认收藏夹成功' : '移动至指定收藏夹成功')
-                          if (card.added) {
-                            switchStatus(false, false)
-                          }
-                        } else {
-                          api.message.create(dmlid ? '移动至默认收藏夹失败' : `移动至收藏夹 ${mlid} 失败，请确认该收藏夹是否存在`)
-                        }
-                      })
-                    })
-                    card.querySelector('.gm-card-fixer').addEventListener('click', function(e) {
-                      e.preventDefault()
-                      if (card.fixed) {
-                        api.dom.removeClass(card, 'gm-fixed')
-                      } else {
-                        api.dom.addClass(card, 'gm-fixed')
+                  card.querySelector('.gm-card-collector').addEventListener('click', function(e) {
+                    gm.menu.entryPopup.needReload = true
+                    e.preventDefault() // 不能放到 async 中
+                    setTimeout(async () => {
+                      const uid = _self.method.getDedeUserID()
+                      let mlid = GM_getValue(`watchlaterMediaList_${uid}`)
+                      let dmlid = false
+                      if (!mlid) {
+                        mlid = await _self.method.getDefaultMediaListId(uid)
+                        dmlid = true
                       }
-                      card.fixed = !card.fixed
-                      gm.data.fixedItem(card.bvid, card.fixed)
+                      const success = await _self.method.addToFav(item.aid, mlid)
+                      if (success) {
+                        api.message.create(dmlid ? '移动至默认收藏夹成功' : '移动至指定收藏夹成功')
+                        if (card.added) {
+                          switchStatus(false, false)
+                        }
+                      } else {
+                        api.message.create(dmlid ? '移动至默认收藏夹失败' : `移动至收藏夹 ${mlid} 失败，请确认该收藏夹是否存在`)
+                      }
                     })
-                  }
+                  })
+                  card.querySelector('.gm-card-fixer').addEventListener('click', function(e) {
+                    e.preventDefault()
+                    if (card.fixed) {
+                      api.dom.removeClass(card, 'gm-fixed')
+                    } else {
+                      api.dom.addClass(card, 'gm-fixed')
+                    }
+                    card.fixed = !card.fixed
+                    gm.data.fixedItem(card.bvid, card.fixed)
+                  })
                 }
                 const fixedIdx = fixedItems.indexOf(card.bvid)
                 if (fixedIdx >= 0) {
@@ -3980,36 +3978,36 @@
           switchStatus(!item.added)
         })
 
-        if (item.state >= 0) {
-          collector.addEventListener('click', async function() {
-            const uid = _self.method.getDedeUserID()
-            let mlid = GM_getValue(`watchlaterMediaList_${uid}`)
-            let dmlid = false
-            if (!mlid) {
-              mlid = await _self.method.getDefaultMediaListId(uid)
-              dmlid = true
+        collector.addEventListener('click', async function() {
+          const uid = _self.method.getDedeUserID()
+          let mlid = GM_getValue(`watchlaterMediaList_${uid}`)
+          let dmlid = false
+          if (!mlid) {
+            mlid = await _self.method.getDefaultMediaListId(uid)
+            dmlid = true
+          }
+          const success = await _self.method.addToFav(item.aid, mlid)
+          if (success) {
+            api.message.create(dmlid ? '移动至默认收藏夹成功' : '移动至指定收藏夹成功')
+            if (item.added) {
+              switchStatus(false, false)
             }
-            const success = await _self.method.addToFav(item.aid, mlid)
-            if (success) {
-              api.message.create(dmlid ? '移动至默认收藏夹成功' : '移动至指定收藏夹成功')
-              if (item.added) {
-                switchStatus(false, false)
-              }
-            } else {
-              api.message.create(dmlid ? '移动至默认收藏夹失败' : `移动至收藏夹 ${mlid} 失败，请确认该收藏夹是否存在`)
-            }
-          })
+          } else {
+            api.message.create(dmlid ? '移动至默认收藏夹失败' : `移动至收藏夹 ${mlid} 失败，请确认该收藏夹是否存在`)
+          }
+        })
 
-          fixer.addEventListener('click', function() {
-            if (item.fixed) {
-              api.dom.removeClass(item, 'gm-fixed')
-            } else {
-              api.dom.addClass(item, 'gm-fixed')
-            }
-            item.fixed = !item.fixed
-            gm.data.fixedItem(item.bvid, item.fixed)
-          })
-        } else {
+        fixer.addEventListener('click', function() {
+          if (item.fixed) {
+            api.dom.removeClass(item, 'gm-fixed')
+          } else {
+            api.dom.addClass(item, 'gm-fixed')
+          }
+          item.fixed = !item.fixed
+          gm.data.fixedItem(item.bvid, item.fixed)
+        })
+
+        if (item.state < 0) {
           api.dom.addClass(item, 'gm-invalid')
           const title = item.querySelector('.av-about .t')
           title.innerHTML = `<b>[${_self.method.getItemStateDesc(item.state)}]</b> ${title.textContent}`
@@ -4792,6 +4790,7 @@
           }
           #${gm.id} .gm-entrypopup .gm-entry-list .gm-entry-list-item .gm-card-corner > span {
             margin-left: 2px;
+            cursor: pointer;
           }
           #${gm.id} .gm-entrypopup .gm-entry-list .gm-entry-list-item:hover .gm-card-corner > :not(.gm-hover),
           #${gm.id} .gm-entrypopup .gm-entry-list .gm-entry-list-item:not(:hover) .gm-card-corner > .gm-hover {
@@ -4808,7 +4807,7 @@
             display: none;
           }
           #${gm.id} .gm-entrypopup .gm-entry-list .gm-entry-list-item .gm-card-uploader:hover,
-          #${gm.id} .gm-entrypopup .gm-entry-list .gm-entry-list-item:not(.gm-invalid) .gm-card-corner > span:hover {
+          #${gm.id} .gm-entrypopup .gm-entry-list .gm-entry-list-item .gm-card-corner > span:hover {
             text-decoration: underline;
             font-weight: bold;
             color: var(--${gm.id}-text-bold-color);
@@ -5332,7 +5331,7 @@
             margin: 0 5px;
             cursor: pointer;
           }
-          .watch-later-list .av-item:not(.gm-invalid) .gm-list-item-tools span:hover {
+          .watch-later-list .gm-list-item-tools span:hover {
             text-decoration: underline;
             font-weight: bold;
           }
@@ -5360,8 +5359,7 @@
           .watch-later-list .gm-invalid .t {
             color: var(--${gm.id}-hint-text-color) !important;
           }
-          .watch-later-list .gm-invalid a:not(.user),
-          .watch-later-list .gm-invalid .gm-list-item-tools span {
+          .watch-later-list .gm-invalid a:not(.user) {
             cursor: not-allowed !important;
           }
 
