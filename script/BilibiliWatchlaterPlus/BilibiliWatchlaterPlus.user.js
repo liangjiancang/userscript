@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.18.9.20210824
+// @version         4.18.10.20210824
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -4593,7 +4593,7 @@
             --${gm.id}-opacity-fade-transition: opacity ${gm.const.fadeTime}ms ease-in-out;
             --${gm.id}-opacity-fade-quick-transition: opacity ${gm.const.fadeTime}ms cubic-bezier(0.68, -0.55, 0.27, 1.55);
           }
-  
+
           #${gm.id} {
             color: var(--${gm.id}-text-color);
             font-family: Arial, Microsoft Yahei, Hiragino Sans GB, sans-serif;
@@ -4601,7 +4601,7 @@
           #${gm.id} * {
             box-sizing: content-box;
           }
-  
+
           #${gm.id} .gm-entrypopup {
             font-size: 12px;
             line-height: normal;
@@ -4661,7 +4661,7 @@
             font-size: 1.2em;
             color: var(--${gm.id}-hint-text-color);
           }
-  
+
           #${gm.id} .gm-entrypopup .gm-entry-list {
             display: flex;
             flex-direction: column;
@@ -4685,7 +4685,7 @@
             text-align: center;
             color: var(--${gm.id}-hint-text-color);
           }
-  
+
           #${gm.id} .gm-entrypopup .gm-entry-list .gm-entry-list-item {
             display: flex;
             height: 4.4em;
@@ -4812,7 +4812,7 @@
             font-weight: bold;
             color: var(--${gm.id}-text-bold-color);
           }
-  
+
           #${gm.id} .gm-entrypopup .gm-entry-list .gm-entry-list-simple-item {
             display: block;
             color: var(--${gm.id}-text-color);
@@ -4832,7 +4832,7 @@
             text-decoration: line-through;
             color: var(--${gm.id}-hint-text-color);
           }
-  
+
           #${gm.id} .gm-entrypopup .gm-entry-bottom {
             display: flex;
             border-top: 1px solid var(--${gm.id}-light-border-color);
@@ -4891,14 +4891,14 @@
           #${gm.id} .gm-entrypopup .gm-entry-bottom .gm-entry-button.gm-popup-auto-remove[fn=autoRemoveControl]:not([disabled]) {
             color: var(--${gm.id}-hightlight-color);
           }
-  
+
           #${gm.id} .gm-entrypopup .gm-entry-list .gm-entry-list-item:hover,
           #${gm.id} .gm-entrypopup .gm-entry-list .gm-entry-list-simple-item:hover,
           #${gm.id} .gm-entrypopup .gm-entry-bottom .gm-entry-button:hover {
             color: var(--${gm.id}-hightlight-color);
             background-color: var(--${gm.id}-background-hightlight-color);
           }
-  
+
           #${gm.id} .gm-setting {
             font-size: 12px;
             line-height: normal;
@@ -4909,7 +4909,7 @@
             z-index: 1100000;
             user-select: none;
           }
-  
+
           #${gm.id} .gm-setting #gm-setting-page {
             background-color: var(--${gm.id}-background-color);
             border-radius: 10px;
@@ -4918,7 +4918,7 @@
             padding: 1em 1.4em;
             transition: top 100ms, left 100ms;
           }
-  
+
           #${gm.id} .gm-setting #gm-maintitle * {
             cursor: pointer;
             color: var(--${gm.id}-text-color);
@@ -4926,7 +4926,7 @@
           #${gm.id} .gm-setting #gm-maintitle:hover * {
             color: var(--${gm.id}-hightlight-color);
           }
-  
+
           #${gm.id} .gm-setting .gm-items {
             margin: 0 0.2em;
             padding: 0 1.8em 0 2.2em;
@@ -4934,7 +4934,7 @@
             max-height: 66vh;
             overflow-y: auto;
           }
-  
+
           #${gm.id} .gm-setting table {
             width: 100%;
             border-collapse: separate;
@@ -4956,18 +4956,18 @@
             padding: 0.2em;
             border-radius: 0.2em;
           }
-  
+
           #${gm.id} .gm-setting .gm-item:hover {
             color: var(--${gm.id}-hightlight-color);
           }
-  
+
           #${gm.id} .gm-setting .gm-subitem[disabled] {
             color: var(--${gm.id}-disabled-color);
           }
           #${gm.id} .gm-setting .gm-subitem:hover:not([disabled]) {
             color: var(--${gm.id}-hightlight-color);
           }
-  
+
           #${gm.id} .gm-setting .gm-subitem .gm-lineitems[disabled] {
             color: var(--${gm.id}-disabled-color);
           }
@@ -4988,7 +4988,7 @@
             margin-left: 2px;
             vertical-align: -1px;
           }
-  
+
           #${gm.id} .gm-setting td > * {
             display: flex;
             align-items: flex-end;
@@ -5007,7 +5007,7 @@
             border-width: 0 0 1px 0;
             cursor: pointer;
           }
-  
+
           #${gm.id} .gm-setting .gm-information {
             margin: 0 0.4em;
             cursor: pointer;
@@ -5015,7 +5015,7 @@
           #${gm.id} .gm-setting [disabled] .gm-information {
             cursor: not-allowed;
           }
-  
+
           #${gm.id} .gm-setting .gm-warning {
             position: absolute;
             color: var(--${gm.id}-warn-color);
@@ -5033,11 +5033,11 @@
           #${gm.id} .gm-setting .gm-warning:not(.gm-trailing) {
             right: -1.1em;
           }
-  
+
           #${gm.id} .gm-setting.gm-hideDisabledSubitems #gm-setting-page:not([setting-type]) [disabled] {
             display: none;
           }
-  
+
           #${gm.id} .gm-history {
             font-size: 12px;
             line-height: normal;
@@ -5048,7 +5048,7 @@
             z-index: 1100000;
             user-select: none;
           }
-  
+
           #${gm.id} .gm-history .gm-history-page {
             background-color: var(--${gm.id}-background-color);
             border-radius: 10px;
@@ -5059,7 +5059,7 @@
             min-height: 50em;
             transition: top 100ms, left 100ms;
           }
-  
+
           #${gm.id} .gm-history .gm-comment {
             margin: 0 2em;
             color: var(--${gm.id}-hint-text-color);
@@ -5076,7 +5076,7 @@
             width: 3.5em;
             border-width: 0 0 1px 0;
           }
-  
+
           #${gm.id} .gm-history .gm-content {
             margin: 0.6em 0.2em 2em 0.2em;
             padding: 0 1.8em;
@@ -5117,12 +5117,12 @@
             font-weight: bold;
             color: var(--${gm.id}-hightlight-color);
           }
-  
+
           #${gm.id} .gm-bottom {
             margin: 1.4em 2em 1em 2em;
             text-align: center;
           }
-  
+
           #${gm.id} .gm-bottom button {
             font-size: 1em;
             padding: 0.3em 1em;
@@ -5158,7 +5158,7 @@
             color: var(--${gm.id}-disabled-color);
             cursor: not-allowed;
           }
-  
+
           #${gm.id} #gm-reset {
             position: absolute;
             right: 0;
@@ -5167,7 +5167,7 @@
             color: var(--${gm.id}-hint-text-color);
             cursor: pointer;
           }
-  
+
           #${gm.id} #gm-changelog {
             position: absolute;
             right: 0;
@@ -5196,24 +5196,24 @@
             color: var(--${gm.id}-update-hightlight-hover-color);
             font-weight: bold;
           }
-  
+
           #${gm.id} #gm-reset:hover,
           #${gm.id} #gm-changelog:hover {
             color: var(--${gm.id}-hint-text-hightlight-color);
             text-decoration: underline;
           }
-  
+
           #${gm.id} .gm-title {
             font-size: 1.6em;
             margin: 1.6em 0.8em 0.8em 0.8em;
             text-align: center;
           }
-  
+
           #${gm.id} .gm-subtitle {
             font-size: 0.4em;
             margin-top: 0.4em;
           }
-  
+
           #${gm.id} .gm-shadow {
             background-color: var(--${gm.id}-shadow-color);
             position: fixed;
@@ -5225,11 +5225,11 @@
           #${gm.id} .gm-shadow[disabled] {
             cursor: auto;
           }
-  
+
           #${gm.id} label {
             cursor: pointer;
           }
-  
+
           #${gm.id} input,
           #${gm.id} select,
           #${gm.id} button {
@@ -5241,21 +5241,21 @@
             color: var(--${gm.id}-text-color);
             background-color: var(--${gm.id}-background-color);
           }
-  
+
           #${gm.id} a {
           color: var(--${gm.id}-hightlight-color)
           }
           #${gm.id} a:visited {
           color: var(--${gm.id}-link-visited-color)
           }
-  
+
           #${gm.id} [disabled],
           #${gm.id} [disabled] input,
           #${gm.id} [disabled] select {
             cursor: not-allowed;
             color: var(--${gm.id}-disabled-color);
           }
-  
+
           #${gm.id}-video-btn {
             display: flex;
             align-items: center;
