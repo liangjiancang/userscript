@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站共同关注快速查看
-// @version         1.5.2.20210829
+// @version         1.5.3.20210829
 // @namespace       laster2800
 // @author          Laster2800
 // @description     快速查看与特定用户的共同关注（视频播放页、动态页、用户空间、直播间）
@@ -457,10 +457,11 @@
           position: absolute;
           margin-left: -5em;
           font-weight: bold;
+          line-height: unset;
         }
 
         .${gm.id}.space-same-followings {
-          margin: 0.5em 0;
+          margin-bottom: 0.5em;
           padding: 0.5em 1.6em;
           background: #fff;
           box-shadow: 0 0 0 1px #eee;
