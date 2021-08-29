@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.18.11.20210829
+// @version         4.18.12.20210829
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -3227,9 +3227,9 @@
             const fixedItems = GM_getValue('fixedItems') ?? []
             gm.menu.entryPopup.sortType = Enums.sortType.default
             el.popupTotal.textContent = '0'
-            el.entryList.innerHTML = ''
+            el.entryList.textContent = ''
             el.entryList.total = 0
-            el.entryRemovedList.innerHTML = ''
+            el.entryRemovedList.textContent = ''
             el.entryRemovedList.total = 0
             let data = []
             if (gm.menu.entryPopup.needReload) {
