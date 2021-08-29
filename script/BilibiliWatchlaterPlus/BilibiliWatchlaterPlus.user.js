@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.18.10.20210824
+// @version         4.18.11.20210829
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -433,7 +433,6 @@
       page_userSpace: /space\.bilibili\.com([/?#]|$)/,
     },
     const: {
-      rhsWarning: 10000,
       fadeTime: 400,
       textFadeTime: 100,
       updateHighlightColor: '#4cff9c',
@@ -989,7 +988,6 @@
                         <span id="gm-rhsInformation" class="gm-information" title>💬</span>
                         <span id="gm-cleanRemoveHistoryData" class="gm-info" title="清理已保存的稍后再看历史数据，不可恢复！">清空数据(0条)</span>
                         <input id="gm-removeHistorySaves" type="text">
-                        <span id="gm-rhsWarning" class="gm-warning" title>⚠</span>
                       </div>
                     </td>
                   </tr>
@@ -1348,8 +1346,6 @@
           api.message.advanced(el.hcWarning, '无须兼容第三方顶栏时务必选择「无」，否则脚本无法正常工作！', '⚠')
           el.rhWarning = gm.el.setting.querySelector('#gm-rhWarning')
           api.message.advanced(el.rhWarning, '关闭移除记录，或将稍后再看历史数据保存次数设置为比原来小的值，都会造成对内部过期历史数据的清理！', '⚠')
-          el.rhsWarning = gm.el.setting.querySelector('#gm-rhsWarning')
-          api.message.advanced(el.rhsWarning, `该项设置过大时，在极端情况下可能会造成明显的卡顿，一般不建议该项超过 ${gm.const.rhsWarning}（详见弹出说明）。当然，如果对机器性能自信，可以无视该警告。`, '⚠')
 
           el.headerButtonOpL.innerHTML = el.headerButtonOpR.innerHTML = el.headerButtonOpM.innerHTML = `
             <option value="${Enums.headerButtonOp.openListInCurrent}">在当前页面打开列表页面</option>
@@ -1440,7 +1436,6 @@
               this.value = value
             }
             setRhWaring()
-            setRhsWarning()
           }
           el.removeHistorySaves.onblur = function() {
             if (this.value === '') {
@@ -1453,7 +1448,6 @@
               this.value = value
             }
             setRhWaring()
-            setRhsWarning()
           }
 
           el.removeHistorySearchTimes.oninput = function() {
@@ -1788,27 +1782,6 @@
             if (warn) {
               api.dom.fade(true, el.rhWarning)
               el.rhWarning.show = true
-            }
-          }
-        }
-
-        /**
-         * 设置 removeHistorySaves 警告项
-         */
-        const setRhsWarning = () => {
-          let value = parseInt(el.removeHistorySaves.value)
-          if (isNaN(value)) {
-            value = 0
-          }
-          if (el.rhsWarning.show) {
-            if (value <= gm.const.rhsWarning) {
-              api.dom.fade(false, el.rhsWarning)
-              el.rhsWarning.show = false
-            }
-          } else {
-            if (value > gm.const.rhsWarning) {
-              api.dom.fade(true, el.rhsWarning)
-              el.rhsWarning.show = true
             }
           }
         }
