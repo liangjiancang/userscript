@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站共同关注快速查看
-// @version         1.5.0.20210829
+// @version         1.5.1.20210829
 // @namespace       laster2800
 // @author          Laster2800
 // @description     快速查看与特定用户的共同关注（视频播放页、动态页、用户空间、直播间）
@@ -50,7 +50,7 @@
       dispMessage: { name: '无共同关注或查询失败时提示信息', needNotReload: true },
       dispInReverse: { name: '以关注时间降序显示', needNotReload: true },
       dispInText: { name: '以纯文本形式显示', needNotReload: true },
-      dispRelation: { name: '显示与自己关系', needNotReload: true },
+      dispRelation: { name: '显示目标用户与自己的关系', needNotReload: true },
       userSpace: { name: '在用户空间中快速查看' },
       live: { name: '在直播间中快速查看' },
       commonCard: { name: '在常规用户卡片中快速查看' },
