@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站共同关注快速查看
-// @version         1.5.1.20210829
+// @version         1.5.2.20210829
 // @namespace       laster2800
 // @author          Laster2800
 // @description     快速查看与特定用户的共同关注（视频播放页、动态页、用户空间、直播间）
@@ -344,7 +344,7 @@
       if (gm.config.dispRelation) {
         try {
           const relation = await this.method.getRelation(config.uid)
-          let desc = (relation.special ? {
+          const desc = (relation.special ? {
             1: '对方悄悄关注并特别关注了你', // impossible
             2: '对方特别关注了你',
             6: '对方与你互粉并特别关注了你',
