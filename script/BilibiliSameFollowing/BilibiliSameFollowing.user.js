@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站共同关注快速查看
-// @version         1.4.45.20210824
+// @version         1.5.0.20210829
 // @namespace       laster2800
 // @author          Laster2800
 // @description     快速查看与特定用户的共同关注（视频播放页、动态页、用户空间、直播间）
@@ -35,28 +35,32 @@
   const gm = {
     id: 'gm428453',
     configVersion: GM_getValue('configVersion'),
-    configUpdate: 20210712,
+    configUpdate: 20210829,
     config: {
-      failMessage: true,
-      withoutSameMessage: true,
+      dispMessage: true,
+      dispInReverse: false,
       dispInText: false,
+      dispRelation: true,
       userSpace: true,
       live: true,
-      lv1Card: true,
-      lv2Card: true,
-      lv3Card: false,
+      commonCard: true,
+      rareCard: false,
     },
     configMap: {
-      failMessage: { name: '查询失败时提示信息', needNotReload: true },
-      withoutSameMessage: { name: '无共同关注时提示信息', needNotReload: true },
-      dispInText: { name: '以纯文本形式显示共同关注', needNotReload: true },
+      dispMessage: { name: '无共同关注或查询失败时提示信息', needNotReload: true },
+      dispInReverse: { name: '以关注时间降序显示', needNotReload: true },
+      dispInText: { name: '以纯文本形式显示', needNotReload: true },
+      dispRelation: { name: '显示与自己关系', needNotReload: true },
       userSpace: { name: '在用户空间中快速查看' },
       live: { name: '在直播间中快速查看' },
-      lv1Card: { name: '在常规用户卡片中快速查看' },
-      lv2Card: { name: '在扩展用户卡片中快速查看' },
-      lv3Card: { name: '在罕见用户卡片中快速查看' },
+      commonCard: { name: '在常规用户卡片中快速查看' },
+      rareCard: { name: '在罕见用户卡片中快速查看' },
     },
     url: {
+      api_sameFollowings: uid => `https://api.bilibili.com/x/relation/same/followings?vmid=${uid}`,
+      api_relation: uid => `http://api.bilibili.com/x/space/acc/relation?mid=${uid}`,
+      page_space: uid => `https://space.bilibili.com/${uid}`,
+      gm_help: 'https://gitee.com/liangjiancang/userscript/blob/master/script/BilibiliSameFollowing/README.md#配置说明',
       gm_changelog: 'https://gitee.com/liangjiancang/userscript/blob/master/script/BilibiliSameFollowing/changelog.md',
     },
     regex: {
@@ -120,9 +124,7 @@
       }
       // 其他菜单
       menuId.reset = GM_registerMenuCommand('初始化脚本', () => this.resetScript())
-      menuId.help = GM_registerMenuCommand('配置说明', () => {
-        window.open('https://gitee.com/liangjiancang/userscript/blob/master/script/BilibiliSameFollowing/README.md#配置说明')
-      })
+      menuId.help = GM_registerMenuCommand('配置说明', () => window.open(gm.url.gm_help))
 
       function createMenuItem(id) {
         return GM_registerMenuCommand(cfgName(id), () => {
@@ -156,8 +158,16 @@
         // 必须按从旧到新的顺序写
         // 内部不能使用 gm.configUpdate，必须手写更新后的配置版本号！
 
+        // 1.5.0.20210829
+        if (gm.configVersion < 20210829) {
+          const gmKeys = GM_listValues()
+          for (const gmKey of gmKeys) {
+            GM_deleteValue(gmKey)
+          }
+        }
+
         // 功能性更新后更新此处配置版本
-        if (gm.configVersion < 20210712) {
+        if (gm.configVersion < 20210829) {
           GM_notification({
             text: '功能性更新完毕，您可能需要重新设置脚本。点击查看更新日志。',
             onclick: () => window.open(gm.url.gm_changelog),
@@ -195,6 +205,20 @@
          */
         getUid(url = location.pathname) {
           return /\/(\d+)([/?#]|$)/.exec(url)?.[1]
+        },
+
+        /**
+         * 获取指定用户与你的关系
+         * @param {string} uid UID
+         * @returns {Promise<{code: number, special: boolean}>} `{code, special}`
+         * @see {@link https://github.com/SocialSisterYi/bilibili-API-collect/blob/master/user/relation.md#查询用户与自己关系_互相 查询用户与自己关系_互相}
+         */
+        async getRelation(uid) {
+          const resp = await api.web.request({
+            url: gm.url.api_relation(uid),
+          })
+          const relation = JSON.parse(resp.responseText).data.be_relation
+          return { code: relation.attribute, special: relation.special == 1 }
         },
       }
     }
@@ -251,62 +275,97 @@
      * @param {string} [config.className=''] 显示元素的类名；若 `target` 的子孙元素中有对应元素则直接使用，否则创建之
      */
     async generalLogic(config) {
-      let sf = config.target.sameFollowings ?? (config.className ? config.target.querySelector(config.className.replace(/(^|\s+)(?=\w)/g, '.')) : null)
-      if (sf) {
-        sf.innerHTML = ''
-      }
-      const resp = await api.web.request({
-        url: `https://api.bilibili.com/x/relation/same/followings?vmid=${config.uid}`,
-      })
-      const json = JSON.parse(resp.responseText)
-      if (json.code === 0) {
-        const data = json.data
-        const sameFollowings = []
-        if (gm.config.dispInText) {
-          for (const item of data.list) {
-            sameFollowings.push(item.uname)
-          }
-        } else {
-          for (const item of data.list) {
-            sameFollowings.push([item.uname, `https://space.bilibili.com/${item.mid}`])
-          }
-        }
-        if (sameFollowings.length > 0 || gm.config.withoutSameMessage) {
-          if (!sf) {
-            sf = config.target.appendChild(document.createElement('div'))
-            sf.className = config.className || ''
-          }
-          if (sameFollowings.length > 0) {
-            if (gm.config.dispInText) {
-              sf.innerHTML = `<div>共同关注</div><div class="same-following">${sameFollowings.join('，&nbsp;')}</div>`
-            } else {
-              let innerHTML = '<div>共同关注</div><div>'
-              for (const item of sameFollowings) {
-                innerHTML += `<a href="${item[1]}" target="_blank" class="same-following">${item[0]}</a><span>，&nbsp;</span>`
-              }
-              sf.innerHTML = innerHTML.slice(0, -'<span>，&nbsp;</span>'.length) + '</div>'
-            }
-          } else if (gm.config.withoutSameMessage) {
-            sf.innerHTML = '<div>共同关注</div><div class="same-following">[ 无 ]</div>'
-          }
-        }
+      let dispEl = config.target.sameFollowings ?? (config.className ? config.target.querySelector(config.className.replace(/(^|\s+)(?=\w)/g, '.')) : null)
+      if (dispEl) {
+        dispEl.textContent = ''
       } else {
-        if (gm.config.failMessage && json.message) {
-          if (!sf) {
-            sf = config.target.appendChild(document.createElement('div'))
-            sf.className = config.className || ''
+        dispEl = config.target.appendChild(document.createElement('div'))
+        dispEl.className = config.className || ''
+        config.target.sameFollowings = dispEl
+      }
+      dispEl.style.display = 'none'
+
+      try {
+        const resp = await api.web.request({
+          url: gm.url.api_sameFollowings(config.uid),
+        })
+        const json = JSON.parse(resp.responseText)
+        if (json.code === 0) {
+          const data = json.data
+          let sameFollowings = null
+          if (gm.config.dispInText) {
+            sameFollowings = data.list?.map(item => item.uname) ?? []
+          } else {
+            sameFollowings = data.list ?? []
           }
-          sf.innerHTML = `<div>共同关注</div><div>[ ${json.message} ]</div>`
-        }
-        const msg = [json.code, json.message]
-        if (json.code > 0) {
-          api.logger.info(msg)
+          if (sameFollowings.length > 0 || gm.config.dispMessage) {
+            if (sameFollowings.length > 0) {
+              if (!gm.config.dispInReverse) {
+                sameFollowings.reverse()
+              }
+              if (gm.config.dispInText) {
+                dispEl.innerHTML = `<div class="gm-pre">共同关注</div><div class="same-following">${sameFollowings.join('，&nbsp;')}</div>`
+              } else {
+                let innerHTML = '<div class="gm-pre" title="加粗：特别关注；下划线：互粉">共同关注</div><div>'
+                for (const item of sameFollowings) {
+                  let className = 'same-following'
+                  if (item.special == 1) { // 特别关注
+                    className += ' gm-special'
+                  }
+                  if (item.attribute == 6) { // 互粉
+                    className += ' gm-mutual'
+                  }
+                  innerHTML += `<a href="${gm.url.page_space(item.mid)}" target="_blank" class="${className}">${item.uname}</a><span>，&nbsp;</span>`
+                }
+                dispEl.innerHTML = innerHTML.slice(0, -'<span>，&nbsp;</span>'.length) + '</div>'
+              }
+            } else if (gm.config.dispMessage) {
+              dispEl.innerHTML = '<div class="gm-pre">共同关注</div><div class="same-following">[ 无 ]</div>'
+            }
+          }
         } else {
-          config.target.sameFollowings = sf
-          throw msg
+          if (gm.config.dispMessage && json.message) {
+            dispEl.innerHTML = `<div class="gm-pre">共同关注</div><div>[ ${json.message} ]</div>`
+          }
+          const msg = [json.code, json.message]
+          if (json.code > 0) {
+            api.logger.info(msg)
+          } else {
+            api.logger.error(msg)
+          }
+        }
+      } catch (e) {
+        if (gm.config.dispMessage) {
+          dispEl.innerHTML = '<div class="gm-pre">共同关注</div><div>[ 网络请求错误 ]</div>'
+        }
+        api.logger.error(e)
+      }
+
+      if (gm.config.dispRelation) {
+        try {
+          const relation = await this.method.getRelation(config.uid)
+          let desc = (relation.special ? {
+            1: '对方悄悄关注并特别关注了你', // impossible
+            2: '对方特别关注了你',
+            6: '对方与你互粉并特别关注了你',
+            128: '对方已将你拉黑，但特别关注了你', // impossible
+          } : {
+            1: '对方悄悄关注了你',
+            2: '对方关注了你',
+            6: '对方与你互粉',
+            128: '对方已将你拉黑',
+          })[relation.code]
+          if (desc) {
+            dispEl.insertAdjacentHTML('afterbegin', `<div class="gm-relation">${desc}</div>`)
+          }
+        } catch (e) {
+          api.logger.error(e)
         }
       }
-      config.target.sameFollowings = sf
+
+      if (dispEl.textContent) {
+        dispEl.style.display = ''
+      }
     }
 
     /**
@@ -366,7 +425,6 @@
         .${gm.id} > *,
         .${gm.id} .same-following {
           color: inherit;
-          font-weight: inherit;
           text-decoration: none;
           outline: none;
           margin: 0;
@@ -375,16 +433,27 @@
           vertical-align: baseline;
           white-space: pre-wrap;
           word-break: break-all;
+          line-height: 1.42em; /* 解决换行后仅剩英文时行高不一致的问题 */
         }
         .${gm.id} a.same-following:hover {
           color: #00a1d6;
+        }
+        .${gm.id} .gm-relation {
+          display: block;
+          font-weight: bold;
+        }
+        .${gm.id} .gm-special {
+          font-weight: bold;
+        }
+        .${gm.id} .gm-mutual {
+          text-decoration: underline;
         }
 
         .${gm.id}.card-same-followings {
           color: #99a2aa;
           padding: 1em 0 0;
         }
-        .${gm.id}.card-same-followings > :first-child {
+        .${gm.id}.card-same-followings .gm-pre {
           position: absolute;
           margin-left: -5em;
           font-weight: bold;
@@ -397,7 +466,7 @@
           box-shadow: 0 0 0 1px #eee;
           border-radius: 0 0 4px 4px;
         }
-        .${gm.id}.space-same-followings > :first-child {
+        .${gm.id}.space-same-followings .gm-pre {
           font-weight: bold;
           padding-right: 1em;
         }
@@ -405,8 +474,10 @@
         .${gm.id}.live-same-followings > * {
           display: block;
         }
-        .${gm.id}.live-same-followings > :first-child {
+        .${gm.id}.live-same-followings > :first-child { /* 不要直接加到容器上，避免为空时出现间隔 */
           margin-top: 1em;
+        }
+        .${gm.id}.live-same-followings .gm-pre {
           font-weight: bold;
         }
       `, doc)
@@ -421,7 +492,7 @@
     script.initScriptMenu()
     webpage.addStyle()
 
-    if (gm.config.lv1Card) {
+    if (gm.config.commonCard) {
       // 遍布全站的常规用户卡片，如视频评论区、动态评论区、用户空间评论区……
       webpage.cardLogic({
         card: '.user-card',
@@ -431,7 +502,7 @@
       })
     }
     if (api.web.urlMatch(gm.regex.page_videoNormalMode)) {
-      if (gm.config.lv2Card) {
+      if (gm.config.commonCard) {
         // 常规播放页中的 UP 主头像
         webpage.cardLogic({
           container: '#app .v-wrap',
@@ -441,7 +512,7 @@
         })
       }
     } else if (api.web.urlMatch(gm.regex.page_videoWatchlaterMode)) {
-      if (gm.config.lv2Card) {
+      if (gm.config.commonCard) {
         // 稍后再看播放页中的 UP 主头像
         webpage.cardLogic({
           container: '#app #app', // 这是什么阴间玩意？
@@ -451,7 +522,7 @@
         })
       }
     } else if (api.web.urlMatch(gm.regex.page_dynamic)) {
-      if (gm.config.lv2Card) {
+      if (gm.config.commonCard) {
         // 1. 动态页左边「正在直播」主播的用户卡片
         // 2. 动态页中，被转发动态的所有者的用户卡片
         webpage.cardLogic({
@@ -470,7 +541,7 @@
           className: `${gm.id} space-same-followings`,
         })
       }
-      if (gm.config.lv3Card) {
+      if (gm.config.rareCard) {
         // 用户空间的动态中，被转发动态的所有者的用户卡片
         webpage.cardLogic({
           card: '.userinfo-wrapper',
