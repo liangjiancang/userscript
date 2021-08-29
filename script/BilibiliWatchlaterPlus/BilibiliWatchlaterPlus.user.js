@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.18.12.20210829
+// @version         4.18.13.20210829
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -1806,7 +1806,7 @@
 
         el.historySort = gm.el.history.querySelector('#gm-history-sort')
         if (el.historySort.type !== 0) {
-          el.historySort.setType(0) // 倒序
+          el.historySort.setType(0) // 降序
         }
 
         _self.openMenuItem('history')
@@ -1830,7 +1830,7 @@
               <div class="gm-comment">
                 <div>根据最近<span id="gm-save-times">0</span>条不重复数据记录生成，共筛选出<span id="gm-removed-num">0</span>条移除记录。排序由视频<span id="gm-history-time-point"></span>被观察到处于稍后再看的时间决定，与被移除出稍后再看的时间无关。如果记录太少请在下方设置增加历史回溯深度；记录太多则减少之，并善用浏览器的搜索功能辅助定位。鼠标移动到内容区域可向下滚动翻页，点击对话框以外的位置退出。</div>
                 <div style="text-align:right;font-weight:bold">
-                  <span id="gm-history-sort" style="text-decoration:underline;cursor:pointer">倒序</span>
+                  <span id="gm-history-sort" style="text-decoration:underline;cursor:pointer">降序</span>
                   <span title="搜寻时在最近保存的多少条稍后再看历史数据记录中查找。按下回车键或输入框失去焦点时刷新数据，设置较小的值能较好地定位最近被添加到稍后再看的视频。">历史回溯深度：<input type="text" id="gm-search-times" value="0"></span>
                 </div>
               </div>
