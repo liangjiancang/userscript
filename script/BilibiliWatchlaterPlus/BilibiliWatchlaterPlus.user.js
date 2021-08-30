@@ -280,9 +280,9 @@
   /**
    * @typedef {[bvid: string, title: string, lastModified: number]} GMObject_data_item
    * `bvid` 视频 BV 号
-   * 
+   *
    * `title` 视频标题
-   * 
+   *
    * `[lastModified]` 时间戳：最后被观察到的时间点
    */
   /**
