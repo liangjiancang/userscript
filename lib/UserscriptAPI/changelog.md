@@ -2,6 +2,14 @@
 
 本日志只记录用户友好的更新说明，影响不大的问题修复与修改不作记录，具体修改见 [提交记录](https://gitee.com/liangjiancang/userscript/commits/master/lib/UserscriptAPI)。
 
+## V1.6
+
+1. `wait`：优化元素等待 API，使得启用 `multiple` 或 `repeat` 时支持检测节流。
+2. `wait`：针对元素等待 API，明确 `multiple` 与 `repeat` 在各种取值下的最佳行为并以此为基准重新设计行为。
+3. `wait`：优化元素等待 API 错误处理流程，使得启用 `multiple` 并禁用 `stopOnError` 时，在同一个检测集合中，前方元素的回调处理错误不会影响到后方元素的处理。
+4. `wait`：优化元素等待 API 后台计时逻辑。
+5. 库：修复基于同一 `id` 再次获取 `Userscript` 对象时，内部数据出错的问题。
+
 ## V1.5
 
 1. `message`：鼠标在 `advanced()` 产生的信息框上移动一小段距离后，将关闭信息框。
