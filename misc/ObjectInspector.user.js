@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            [DEBUG] 对象观察器
-// @version         2.1.4.20210817
+// @version         2.1.5.20210830
 // @namespace       laster2800
 // @author          Laster2800
 // @homepageURL     https://greasyfork.org/zh-CN/scripts/430945
@@ -16,7 +16,7 @@
   const getObjectInspector = win => {
     /**
      * 对象观察器
-     * 
+     *
      * 根据 `regex` 在 `depth` 层深度内找到匹配 `regex` 的属性。
      *
      * 比如，已知某关键属性值为 `geo110`，可用： `new ObjectInspector(window, /^geo110$/).inspect()` 来确认其是否在页面中存在，并列出其在 `window` 上的存储路径。
@@ -77,7 +77,7 @@
         const depth = config.depth
         const result = {}
         if (depth > 0) {
-          const objSet = new Set()
+          const objSet = new WeakSet()
           const prevKey = ''
           this._inner(config, depth, result, prevKey, objSet)
         }
