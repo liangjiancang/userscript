@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站防剧透进度条
-// @version         2.1.6.20210830
+// @version         2.1.7.20210831
 // @namespace       laster2800
 // @author          Laster2800
 // @description     看比赛、看番总是被进度条剧透？装上这个脚本再也不用担心这些问题了
@@ -63,7 +63,7 @@
    * @property {boolean} disableCurrentPoint 隐藏当前播放时间
    * @property {boolean} disableDuration 隐藏视频时长
    * @property {boolean} disablePreview 隐藏进度条预览
-   * @property {boolean} disablePartInformation 隐藏分 P 信息
+   * @property {boolean} disablePartInformation 隐藏分P信息
    * @property {boolean} disableSegmentInformation 隐藏分段信息
    * @property {number} offsetTransformFactor 进度条极端偏移因子
    * @property {number} offsetLeft 进度条偏移极左值
@@ -95,19 +95,19 @@
    * @property {number} [configVersion] 涉及信息更改的最后配置版本
    */
   /**
-   * @callback uploaderList 不传入/传入参数时获取/修改防剧透 UP 主名单
+   * @callback uploaderList 不传入/传入参数时获取/修改防剧透UP主名单
    * @param {string} [updateData] 更新数据
-   * @returns {string} 防剧透 UP 主名单
+   * @returns {string} 防剧透UP主名单
    */
   /**
-   * @callback uploaderListSet 通过懒加载方式获取格式化的防剧透 UP 主名单
+   * @callback uploaderListSet 通过懒加载方式获取格式化的防剧透UP主名单
    * @param {boolean} [reload] 是否重新加载数据
-   * @returns {Set<String>} 防剧透 UP 主名单
+   * @returns {Set<String>} 防剧透UP主名单
    */
   /**
    * @typedef GMObject_data
-   * @property {uploaderList} uploaderList 防剧透 UP 主名单
-   * @property {uploaderListSet} uploaderListSet 防剧透 UP 主名单集合
+   * @property {uploaderList} uploaderList 防剧透UP主名单
+   * @property {uploaderListSet} uploaderListSet 防剧透UP主名单集合
    */
   /**
    * @callback api_videoInfo
@@ -131,7 +131,7 @@
   /**
    * @typedef GMObject_menu
    * @property {GMObject_menu_item} setting 设置
-   * @property {GMObject_menu_item} uploaderList 防剧透 UP 主名单
+   * @property {GMObject_menu_item} uploaderList 防剧透UP主名单
    */
   /**
    * @typedef GMObject_menu_item
@@ -402,8 +402,8 @@
       const _self = this
       // 用户配置设置
       GM_registerMenuCommand('用户设置', () => _self.openUserSetting())
-      // 防剧透 UP 主名单
-      GM_registerMenuCommand('防剧透 UP 主名单', () => _self.openUploaderList())
+      // 防剧透UP主名单
+      GM_registerMenuCommand('防剧透UP主名单', () => _self.openUploaderList())
       // 强制初始化
       GM_registerMenuCommand('初始化脚本', () => _self.resetScript())
     }
@@ -452,11 +452,11 @@
                     </td>
                   </tr>
 
-                  <tr class="gm-item" title="加入防剧透名单 UP 主的视频，会在打开视自动开启防剧透进度条。">
+                  <tr class="gm-item" title="加入防剧透名单UP主的视频，会在打开视自动开启防剧透进度条。">
                     <td><div>自动化</div></td>
                     <td>
                       <div>
-                        <span>防剧透 UP 主名单</span>
+                        <span>防剧透UP主名单</span>
                         <span id="gm-uploaderList" class="gm-info">编辑</span>
                       </div>
                     </td>
@@ -514,10 +514,10 @@
                       </label>
                     </td>
                   </tr>
-                  <tr class="gm-subitem" title="是否隐藏视频分 P 信息？它们可能会造成剧透。该功能对番剧无效。">
+                  <tr class="gm-subitem" title="是否隐藏视频分P信息？它们可能会造成剧透。该功能对番剧无效。">
                     <td>
                       <label>
-                        <span>隐藏分 P 信息</span>
+                        <span>隐藏分P信息</span>
                         <input id="gm-disablePartInformation" type="checkbox">
                       </label>
                     </td>
@@ -894,7 +894,7 @@
     }
 
     /**
-     * 打开防剧透 UP 主名单
+     * 打开防剧透UP主名单
      */
     openUploaderList() {
       const _self = this
@@ -909,7 +909,7 @@
         })
 
         /**
-         * 初始化防剧透 UP 主名单编辑器
+         * 初始化防剧透UP主名单编辑器
          */
         const initEditor = () => {
           gm.el.uploaderList = gm.el.gmRoot.appendChild(document.createElement('div'))
@@ -917,9 +917,9 @@
           gm.el.uploaderList.className = 'gm-uploaderList'
           gm.el.uploaderList.innerHTML = `
             <div class="gm-uploaderList-page">
-              <div class="gm-title">防剧透 UP 主名单</div>
+              <div class="gm-title">防剧透UP主名单</div>
               <div class="gm-comment">
-                <div>当打开名单内 UP 主的视频时，会自动启用防剧透进度条。在下方文本框内填入 UP 主的 UID，其中 UID 可在 UP 主的个人空间中找到。每行必须以 UID 开头，UID 后可以用空格隔开进行注释。<b>第一行以&nbsp;&nbsp;*&nbsp;&nbsp;开头</b>时，匹配所有 UP 主。<span id="gm-uploader-list-example" class="gm-info">点击填充示例。</span></div>
+                <div>当打开名单内UP主的视频时，会自动启用防剧透进度条。在下方文本框内填入UP主的 UID，其中 UID 可在UP主的个人空间中找到。每行必须以 UID 开头，UID 后可以用空格隔开进行注释。<b>第一行以&nbsp;&nbsp;*&nbsp;&nbsp;开头</b>时，匹配所有UP主。<span id="gm-uploader-list-example" class="gm-info">点击填充示例。</span></div>
               </div>
               <div class="gm-list-editor">
                 <textarea id="gm-uploaderList"></textarea>
@@ -952,7 +952,7 @@
         }
 
         /**
-         * 防剧透 UP 主名单保存时执行
+         * 防剧透UP主名单保存时执行
          */
         const onSave = () => {
           gm.data.uploaderList(el.uploaderList.value)
@@ -960,7 +960,7 @@
         }
 
         /**
-         * 防剧透 UP 主名单打开时执行
+         * 防剧透UP主名单打开时执行
          */
         const onOpen = () => {
           el.uploaderList.value = gm.data.uploaderList()
@@ -973,7 +973,7 @@
      * 初始化脚本
      */
     resetScript() {
-      const result = api.message.confirm('是否要初始化脚本？\n\n注意：本操作不会重置「防剧透 UP 主名单」。')
+      const result = api.message.confirm('是否要初始化脚本？\n\n注意：本操作不会重置「防剧透UP主名单」。')
       if (result) {
         const keyNoReset = { uploaderList: true }
         const gmKeys = GM_listValues()
@@ -1164,7 +1164,7 @@
        */
       this.enabled = false
       /**
-       * 当前 UP 主是否在防剧透名单中
+       * 当前UP主是否在防剧透名单中
        */
       this.uploaderEnabled = false
 
@@ -1442,9 +1442,9 @@
         pakku.style.visibility = _self.enabled ? 'hidden' : ''
       }).catch(() => {})
 
-      // 隐藏分 P 信息（番剧没有必要隐藏）
+      // 隐藏分P信息（番剧没有必要隐藏）
       if (gm.config.disablePartInformation && !api.web.urlMatch(gm.regex.page_bangumi)) {
-        // 全屏播放时的分 P 选择（即使没有分 P 也存在）
+        // 全屏播放时的分P选择（即使没有分P也存在）
         if (_self.enabled) {
           api.wait.waitQuerySelector('.bilibili-player-video-btn-menu').then(menu => {
             menu.querySelectorAll('.bilibili-player-video-btn-menu-list').forEach((item, idx) => {
@@ -1452,11 +1452,11 @@
             })
           })
         }
-        // 全屏播放时显示的分 P 标题
+        // 全屏播放时显示的分P标题
         api.wait.waitQuerySelector('.bilibili-player-video-top-title').then(el => {
           el.style.visibility = _self.enabled ? 'hidden' : 'visible'
         })
-        // 播放页右侧分 P 选择（可能存在）
+        // 播放页右侧分P选择（可能存在）
         if (api.web.urlMatch(gm.regex.page_videoNormalMode)) {
           api.wait.waitQuerySelector('#multi_page', document, true).then(multiPage => {
             multiPage.querySelectorAll('.clickitem .part, .clickitem .duration').forEach(el => {
@@ -1719,7 +1719,7 @@
     }
 
     /**
-     * 切换分 P、页面内切换视频、播放器刷新等各种情况下，重新初始化
+     * 切换分P、页面内切换视频、播放器刷新等各种情况下，重新初始化
      */
     initSwitch() {
       const _self = this
@@ -1777,7 +1777,7 @@
 
         if (!gm.config.simpleScriptControl) {
           if (api.web.urlMatch([gm.regex.page_videoNormalMode, gm.regex.page_videoWatchlaterMode], 'OR')) {
-            if (!gm.data.uploaderListSet().has('*')) { // * 匹配所有 UP 主不显示该按钮
+            if (!gm.data.uploaderListSet().has('*')) { // * 匹配所有UP主不显示该按钮
               _self.scriptControl.uploaderEnabled.style.display = 'unset'
               _self.scriptControl.uploaderEnabled.onclick = async function() {
                 const ulSet = gm.data.uploaderListSet() // 必须每次读取

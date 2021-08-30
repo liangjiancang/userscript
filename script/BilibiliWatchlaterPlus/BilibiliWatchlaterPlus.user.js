@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.18.14.20210830
+// @version         4.18.15.20210831
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -269,12 +269,12 @@
    * @property {string} title 视频标题
    * @property {number} state 视频状态
    * @property {string} [pic] 视频封面
-   * @property {Object} [owner] UP 主信息
-   * @property {number} [owner.mid] UP 主 ID
-   * @property {string} [owner.name] UP 主名字
+   * @property {Object} [owner] UP主信息
+   * @property {number} [owner.mid] UP主 ID
+   * @property {string} [owner.name] UP主名字
    * @property {number} [progress] 视频播放进度
    * @property {number} [duration] 视频时长
-   * @property {number} [videos] 稿件分 P 数
+   * @property {number} [videos] 稿件分P数
    * @see {@link https://github.com/SocialSisterYi/bilibili-API-collect/blob/master/history%26toview/toview.md#获取稍后再看视频列表 获取稍后再看视频列表}
    */
   /**
@@ -1037,7 +1037,7 @@
                           <option value="${Enums.autoSort.duration}">使用 [ 时长 ] 排序</option>
                           <option value="${Enums.autoSort.durationR}">使用 [ 时长↓ ] 排序</option>
                           <option value="${Enums.autoSort.progress}">使用 [ 进度 ] 排序</option>
-                          <option value="${Enums.autoSort.uploader}">使用 [ UP 主 ] 排序</option>
+                          <option value="${Enums.autoSort.uploader}">使用 [ UP主 ] 排序</option>
                           <option value="${Enums.autoSort.title}">使用 [ 标题 ] 排序</option>
                           <option value="${Enums.autoSort.fixed}">使用 [ 固定 ] 排序</option>
                         </select>
@@ -2973,7 +2973,7 @@
                         <div class="gm-option" value="${Enums.sortType.fixed}">固定</div>
                         <div class="gm-option" value="${Enums.sortType.title}">标题</div>
                         ${gm.config.headerMenu == Enums.headerMenu.enable ? `
-                          <div class="gm-option" value="${Enums.sortType.uploader}">UP 主</div>
+                          <div class="gm-option" value="${Enums.sortType.uploader}">UP主</div>
                           <div class="gm-option" value="${Enums.sortType.progress}">进度</div>
                         ` : ''}
                         <div class="gm-option" value="${Enums.sortType.durationR}">时长↓</div>
@@ -3748,7 +3748,7 @@
 
         bus.pathname = location.pathname
         window.addEventListener('urlchange', async function() {
-          if (location.pathname == bus.pathname) return // 并非切换视频（如切分 P）
+          if (location.pathname == bus.pathname) return // 并非切换视频（如切分P）
           bus.pathname = location.pathname
           bus.aid = _self.method.getAid()
           let reloaded = false
@@ -4362,7 +4362,7 @@
           <option value="${Enums.sortType.duration}">排序：时长</option>
           <option value="${Enums.sortType.durationR}">排序：时长↓</option>
           <option value="${Enums.sortType.progress}">排序：进度</option>
-          <option value="${Enums.sortType.uploader}">排序：UP 主</option>
+          <option value="${Enums.sortType.uploader}">排序：UP主</option>
           <option value="${Enums.sortType.title}">排序：标题</option>
           <option value="${Enums.sortType.fixed}">排序：固定</option>
         `
