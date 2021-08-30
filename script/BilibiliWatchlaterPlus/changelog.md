@@ -17,7 +17,7 @@
 11. 代码：引入 `aid` 与 `bvid` 互转算法。
 12. UI：优化素材，包括且不限于使用矢量图重绘图形。
 13. UI：修复显示被 V3 播放器遮挡的问题。
-14. API：升级至 V1.5。详见 [UserscriptAPI 更新日志](https://gitee.com/liangjiancang/userscript/blob/master/lib/UserscriptAPI/changelog.md)。
+14. API：升级至 V1.6，大幅优化元素等待逻辑。详见 [UserscriptAPI 更新日志](https://gitee.com/liangjiancang/userscript/blob/master/lib/UserscriptAPI/changelog.md)。
 
 > 「固定」「收藏」这两个功能本质是一样的，就是「『稍后再看』的『稍后再看』」。只不过它们的解决思路不一样，一个是移到稍后再看最后以免妨碍日常浏览，另一个是将默认收藏夹当成暂存区来使。之前我对「『稍后再看』的『稍后再看』」这一重要需求毫无意识，直到上一版本实现了排序功能——随着时间推移，排在列表前方的总是一些希望留到以后再看的视频，无论使用何种排序都无法摆脱它们。
 >

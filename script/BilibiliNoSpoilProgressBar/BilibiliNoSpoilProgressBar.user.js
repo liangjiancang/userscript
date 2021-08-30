@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站防剧透进度条
-// @version         2.1.5.20210823
+// @version         2.1.6.20210830
 // @namespace       laster2800
 // @author          Laster2800
 // @description     看比赛、看番总是被进度条剧透？装上这个脚本再也不用担心这些问题了
@@ -13,7 +13,7 @@
 // @include         *://www.bilibili.com/medialist/play/watchlater
 // @include         *://www.bilibili.com/medialist/play/watchlater/*
 // @include         *://www.bilibili.com/bangumi/play/*
-// @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=963098
+// @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=965576
 // @grant           GM_registerMenuCommand
 // @grant           GM_xmlhttpRequest
 // @grant           GM_setValue
@@ -1738,11 +1738,10 @@
         api.wait.executeAfterElementLoaded({
           selector: '.bilibili-player-video-control',
           exclude: [_self.control],
+          repeat: true,
+          throttleWait: 2000,
           timeout: 0,
-          callback: () => {
-            _self.initNoSpoil()
-            _self.initSwitch() // 这里用重新调用代替 repeat，否则会禁用元素等待 throttle
-          },
+          callback: () => _self.initNoSpoil(),
         })
       }
     }
