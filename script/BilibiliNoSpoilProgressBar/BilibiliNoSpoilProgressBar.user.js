@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站防剧透进度条
-// @version         2.1.7.20210831
+// @version         2.1.8.20210901
 // @namespace       laster2800
 // @author          Laster2800
 // @description     看比赛、看番总是被进度条剧透？装上这个脚本再也不用担心这些问题了
@@ -13,7 +13,7 @@
 // @include         *://www.bilibili.com/medialist/play/watchlater
 // @include         *://www.bilibili.com/medialist/play/watchlater/*
 // @include         *://www.bilibili.com/bangumi/play/*
-// @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=965576
+// @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=965951
 // @grant           GM_registerMenuCommand
 // @grant           GM_xmlhttpRequest
 // @grant           GM_setValue
@@ -431,13 +431,13 @@
         const initSetting = () => {
           gm.el.setting = gm.el.gmRoot.appendChild(document.createElement('div'))
           gm.menu.setting.el = gm.el.setting
-          gm.el.setting.className = 'gm-setting'
+          gm.el.setting.className = 'gm-setting gm-modal-container'
           gm.el.setting.innerHTML = `
-            <div id="gm-setting-page">
+            <div class="gm-setting-page gm-modal">
               <div class="gm-title">
-                <div id="gm-maintitle" title="${GM_info.script.homepage}">
-                  <a href="${GM_info.script.homepage}" target="_blank">${GM_info.script.name}</a>
-                </div>
+                <a class="gm-maintitle" title="${GM_info.script.homepage}" href="${GM_info.script.homepage}" target="_blank">
+                  <span>${GM_info.script.name}</span>
+                </a>
                 <div class="gm-subtitle">V${GM_info.script.version} by ${GM_info.script.author}</div>
               </div>
               <div class="gm-items">
@@ -607,11 +607,11 @@
                 </table>
               </div>
               <div class="gm-bottom">
-                <button id="gm-save">保存</button>
-                <button id="gm-cancel">取消</button>
+                <button class="gm-save">保存</button>
+                <button class="gm-cancel">取消</button>
               </div>
-              <div id="gm-reset" title="重置脚本设置及内部数据，也许能解决脚本运行错误的问题。无法解决请联系脚本作者：${GM_info.script.supportURL}">初始化脚本</div>
-              <a id="gm-changelog" title="显示更新日志" href="${gm.url.gm_changelog}" target="_blank">更新日志</a>
+              <div class="gm-reset" title="重置脚本设置及内部数据，也许能解决脚本运行错误的问题。无法解决请联系脚本作者：${GM_info.script.supportURL}">初始化脚本</div>
+              <a class="gm-changelog" title="显示更新日志" href="${gm.url.gm_changelog}" target="_blank">更新日志</a>
             </div>
             <div class="gm-shadow"></div>
           `
@@ -621,9 +621,9 @@
             el[name] = gm.el.setting.querySelector(`#gm-${name}`)
           }
 
-          el.settingPage = gm.el.setting.querySelector('#gm-setting-page')
-          el.maintitle = gm.el.setting.querySelector('#gm-maintitle')
-          el.changelog = gm.el.setting.querySelector('#gm-changelog')
+          el.settingPage = gm.el.setting.querySelector('.gm-setting-page')
+          el.maintitle = gm.el.setting.querySelector('.gm-maintitle')
+          el.changelog = gm.el.setting.querySelector('.gm-changelog')
           switch (type) {
             case 1:
               el.settingPage.setAttribute('setting-type', 'init')
@@ -651,10 +651,10 @@
               }
               break
           }
-          el.save = gm.el.setting.querySelector('#gm-save')
-          el.cancel = gm.el.setting.querySelector('#gm-cancel')
+          el.save = gm.el.setting.querySelector('.gm-save')
+          el.cancel = gm.el.setting.querySelector('.gm-cancel')
           el.shadow = gm.el.setting.querySelector('.gm-shadow')
-          el.reset = gm.el.setting.querySelector('#gm-reset')
+          el.reset = gm.el.setting.querySelector('.gm-reset')
 
           // 提示信息
           el.offsetTransformFactorInformation = gm.el.setting.querySelector('#gm-offsetTransformFactorInformation')
@@ -862,8 +862,7 @@
             // 需要等所有配置读取完成后再进行选项初始化
             el[name].init?.()
           }
-          el.settingPage.parentElement.style.display = 'block'
-          api.dom.setAbsoluteCenter(el.settingPage)
+          gm.el.setting.style.display = 'flex'
         }
 
         /**
@@ -914,9 +913,9 @@
         const initEditor = () => {
           gm.el.uploaderList = gm.el.gmRoot.appendChild(document.createElement('div'))
           gm.menu.uploaderList.el = gm.el.uploaderList
-          gm.el.uploaderList.className = 'gm-uploaderList'
+          gm.el.uploaderList.className = 'gm-uploaderList gm-modal-container'
           gm.el.uploaderList.innerHTML = `
-            <div class="gm-uploaderList-page">
+            <div class="gm-uploaderList-page gm-modal">
               <div class="gm-title">防剧透UP主名单</div>
               <div class="gm-comment">
                 <div>当打开名单内UP主的视频时，会自动启用防剧透进度条。在下方文本框内填入UP主的 UID，其中 UID 可在UP主的个人空间中找到。每行必须以 UID 开头，UID 后可以用空格隔开进行注释。<b>第一行以&nbsp;&nbsp;*&nbsp;&nbsp;开头</b>时，匹配所有UP主。<span id="gm-uploader-list-example" class="gm-info">点击填充示例。</span></div>
@@ -925,8 +924,8 @@
                 <textarea id="gm-uploaderList"></textarea>
               </div>
               <div class="gm-bottom">
-                <button id="gm-save">保存</button>
-                <button id="gm-cancel">取消</button>
+                <button class="gm-save">保存</button>
+                <button class="gm-cancel">取消</button>
               </div>
             </div>
             <div class="gm-shadow"></div>
@@ -934,8 +933,8 @@
           el.uploaderListPage = gm.el.uploaderList.querySelector('.gm-uploaderList-page')
           el.uploaderList = gm.el.uploaderList.querySelector('#gm-uploaderList')
           el.uploaderListExample = gm.el.uploaderList.querySelector('#gm-uploader-list-example')
-          el.save = gm.el.uploaderList.querySelector('#gm-save')
-          el.cancel = gm.el.uploaderList.querySelector('#gm-cancel')
+          el.save = gm.el.uploaderList.querySelector('.gm-save')
+          el.cancel = gm.el.uploaderList.querySelector('.gm-cancel')
           el.shadow = gm.el.uploaderList.querySelector('.gm-shadow')
         }
 
@@ -964,7 +963,7 @@
          */
         const onOpen = () => {
           el.uploaderList.value = gm.data.uploaderList()
-          api.dom.setAbsoluteCenter(el.uploaderListPage)
+          gm.el.uploaderList.style.display = 'flex'
         }
       }
     }
@@ -1896,7 +1895,6 @@
           --${gm.id}-important-color: red;
           --${gm.id}-warn-color: #e37100;
           --${gm.id}-disabled-color: gray;
-          --${gm.id}-link-visited-color: #551a8b;
           --${gm.id}-opacity-fade-transition: opacity ${gm.const.fadeTime}ms ease-in-out;
         }
 
@@ -1941,31 +1939,40 @@
           box-sizing: content-box;
         }
 
-        #${gm.id} .gm-setting {
-          font-size: 12px;
-          line-height: normal;
-          transition: var(--${gm.id}-opacity-fade-transition);
-          opacity: 0;
+        #${gm.id} .gm-modal-container {
           display: none;
           position: fixed;
+          justify-content: center;
+          align-items: center;
+          top: 0;
+          left: 0;
+          width: 100%;
+          height: 100%;
           z-index: 1000000;
+          font-size: 12px;
+          line-height: normal;
           user-select: none;
+          opacity: 0;
+          transition: var(--${gm.id}-opacity-fade-transition);
         }
 
-        #${gm.id} .gm-setting #gm-setting-page {
+        #${gm.id} .gm-modal {
+          position: relative;
           background-color: var(--${gm.id}-background-color);
           border-radius: 10px;
           z-index: 1;
-          min-width: 42em;
-          padding: 1em 1.4em;
-          transition: top 100ms, left 100ms;
         }
 
-        #${gm.id} .gm-setting #gm-maintitle * {
+        #${gm.id} .gm-setting .gm-setting-page {
+          min-width: 42em;
+          padding: 1em 1.4em;
+        }
+
+        #${gm.id} .gm-setting .gm-maintitle {
           cursor: pointer;
           color: var(--${gm.id}-text-color);
         }
-        #${gm.id} .gm-setting #gm-maintitle:hover * {
+        #${gm.id} .gm-setting .gm-maintitle:hover {
           color: var(--${gm.id}-hightlight-color);
         }
 
@@ -2045,23 +2052,12 @@
         }
 
         #${gm.id} .gm-uploaderList {
-          font-size: 12px;
-          line-height: normal;
-          transition: var(--${gm.id}-opacity-fade-transition);
-          opacity: 0;
-          display: none;
-          position: fixed;
           z-index: 1100000;
-          user-select: none;
         }
 
         #${gm.id} .gm-uploaderList .gm-uploaderList-page {
-          background-color: var(--${gm.id}-background-color);
-          border-radius: 10px;
-          z-index: 1;
           width: 36em;
           height: 40em;
-          transition: top 100ms, left 100ms;
         }
 
         #${gm.id} .gm-uploaderList .gm-comment {
@@ -2113,9 +2109,6 @@
           padding: 0 0.2em;
           cursor: pointer;
         }
-        #${gm.id} .gm-info:visited {
-          color: var(--${gm.id}-hint-text-color);
-        }
         #${gm.id} .gm-info:hover {
           color: var(--${gm.id}-important-color);
         }
@@ -2124,7 +2117,7 @@
           cursor: not-allowed;
         }
 
-        #${gm.id} #gm-reset {
+        #${gm.id} .gm-reset {
           position: absolute;
           right: 0;
           bottom: 0;
@@ -2133,7 +2126,7 @@
           cursor: pointer;
         }
 
-        #${gm.id} #gm-changelog {
+        #${gm.id} .gm-changelog {
           position: absolute;
           right: 0;
           bottom: 1.8em;
@@ -2141,11 +2134,11 @@
           color: var(--${gm.id}-hint-text-color);
           cursor: pointer;
         }
-        #${gm.id} [setting-type=updated] #gm-changelog {
+        #${gm.id} [setting-type=updated] .gm-changelog {
           font-weight: bold;
           color: var(--${gm.id}-update-hightlight-hover-color);
         }
-        #${gm.id} [setting-type=updated] #gm-changelog:hover {
+        #${gm.id} [setting-type=updated] .gm-changelog:hover {
           color: var(--${gm.id}-update-hightlight-hover-color);
         }
         #${gm.id} [setting-type=updated] .gm-updated,
@@ -2161,8 +2154,8 @@
           font-weight: bold;
         }
 
-        #${gm.id} #gm-reset:hover,
-        #${gm.id} #gm-changelog:hover {
+        #${gm.id} .gm-reset:hover,
+        #${gm.id} .gm-changelog:hover {
           color: var(--${gm.id}-hint-text-hightlight-color);
           text-decoration: underline;
         }
@@ -2201,13 +2194,6 @@
           outline: none;
           border-radius: 0;
           appearance: auto; /* 番剧播放页该项被覆盖 */
-        }
-
-        #${gm.id} a {
-        color: var(--${gm.id}-hightlight-color)
-        }
-        #${gm.id} a:visited {
-        color: var(--${gm.id}-link-visited-color)
         }
 
         #${gm.id} [disabled],

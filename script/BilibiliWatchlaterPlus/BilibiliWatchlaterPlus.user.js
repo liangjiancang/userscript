@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.18.15.20210831
+// @version         4.18.16.20210901
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -17,7 +17,7 @@
 // @exclude         *://message.bilibili.com/*/*
 // @exclude         *://t.bilibili.com/h5/*
 // @exclude         *://www.bilibili.com/page-proxy/*
-// @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=965576
+// @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=965951
 // @grant           GM_registerMenuCommand
 // @grant           GM_xmlhttpRequest
 // @grant           GM_setValue
@@ -808,17 +808,16 @@
         const initSetting = () => {
           gm.el.setting = gm.el.gmRoot.appendChild(document.createElement('div'))
           gm.menu.setting.el = gm.el.setting
+          gm.el.setting.className = 'gm-setting gm-modal-container'
           if (gm.config.hideDisabledSubitems) {
-            gm.el.setting.className = 'gm-setting gm-hideDisabledSubitems'
-          } else {
-            gm.el.setting.className = 'gm-setting'
+            api.dom.addClass(gm.el.setting, 'gm-hideDisabledSubitems')
           }
           gm.el.setting.innerHTML = `
-            <div id="gm-setting-page">
+            <div class="gm-setting-page gm-modal">
               <div class="gm-title">
-                <div id="gm-maintitle" title="${GM_info.script.homepage}">
-                  <a href="${GM_info.script.homepage}" target="_blank">${GM_info.script.name}</a>
-                </div>
+                <a class="gm-maintitle" title="${GM_info.script.homepage}" href="${GM_info.script.homepage}" target="_blank">
+                  <span>${GM_info.script.name}</span>
+                </a>
                 <div class="gm-subtitle">V${GM_info.script.version} by ${GM_info.script.author}</div>
               </div>
               <div class="gm-items">
@@ -1235,11 +1234,11 @@
                 </table>
               </div>
               <div class="gm-bottom">
-                <button id="gm-save">保存</button>
-                <button id="gm-cancel">取消</button>
+                <button class="gm-save">保存</button>
+                <button class="gm-cancel">取消</button>
               </div>
-              <div id="gm-reset" title="重置脚本设置及内部数据，也许能解决脚本运行错误的问题。该操作不会清除已保存的稍后再看历史数据，因此不会导致移除记录丢失。无法解决请联系脚本作者：${GM_info.script.supportURL}">初始化脚本</div>
-              <a id="gm-changelog" title="显示更新日志" href="${gm.url.gm_changelog}" target="_blank">更新日志</a>
+              <div class="gm-reset" title="重置脚本设置及内部数据，也许能解决脚本运行错误的问题。该操作不会清除已保存的稍后再看历史数据，因此不会导致移除记录丢失。无法解决请联系脚本作者：${GM_info.script.supportURL}">初始化脚本</div>
+              <a class="gm-changelog" title="显示更新日志" href="${gm.url.gm_changelog}" target="_blank">更新日志</a>
             </div>
             <div class="gm-shadow"></div>
           `
@@ -1249,10 +1248,10 @@
             el[name] = gm.el.setting.querySelector(`#gm-${name}`)
           }
 
-          el.settingPage = gm.el.setting.querySelector('#gm-setting-page')
+          el.settingPage = gm.el.setting.querySelector('.gm-setting-page')
           el.items = gm.el.setting.querySelector('.gm-items')
-          el.maintitle = gm.el.setting.querySelector('#gm-maintitle')
-          el.changelog = gm.el.setting.querySelector('#gm-changelog')
+          el.maintitle = gm.el.setting.querySelector('.gm-maintitle')
+          el.changelog = gm.el.setting.querySelector('.gm-changelog')
           switch (type) {
             case 1:
               el.settingPage.setAttribute('setting-type', 'init')
@@ -1280,10 +1279,10 @@
               }
               break
           }
-          el.save = gm.el.setting.querySelector('#gm-save')
-          el.cancel = gm.el.setting.querySelector('#gm-cancel')
+          el.save = gm.el.setting.querySelector('.gm-save')
+          el.cancel = gm.el.setting.querySelector('.gm-cancel')
           el.shadow = gm.el.setting.querySelector('.gm-shadow')
-          el.reset = gm.el.setting.querySelector('#gm-reset')
+          el.reset = gm.el.setting.querySelector('.gm-reset')
 
           // 提示信息
           el.rhspInformation = gm.el.setting.querySelector('#gm-rhspInformation')
@@ -1377,7 +1376,7 @@
             })
           }
           el.headerMenuFn = el.headerMenuFnSetting.parentElement.parentElement
-          el.headerButton.init = function() {
+          el.headerButton.init = el.headerButton.onchange = function() {
             subitemChange(this, 'headerButton')
             if (this.checked) {
               el.headerMenuFn.removeAttribute('disabled')
@@ -1385,24 +1384,12 @@
               el.headerMenuFn.setAttribute('disabled', '')
             }
           }
-          el.headerButton.onchange = function() {
-            this.init()
-            if (gm.config.hideDisabledSubitems) {
-              api.dom.setAbsoluteCenter(el.settingPage)
-            }
-          }
           el.headerCompatible.init = el.headerCompatible.onchange = function() {
             setHcWarning()
           }
-          el.removeHistory.init = function() {
+          el.removeHistory.init = el.removeHistory.onchange = function() {
             subitemChange(this, 'removeHistory')
             setRhWaring()
-          }
-          el.removeHistory.onchange = function() {
-            this.init()
-            if (gm.config.hideDisabledSubitems) {
-              api.dom.setAbsoluteCenter(el.settingPage)
-            }
           }
 
           // 输入框内容处理
@@ -1622,8 +1609,7 @@
           } else {
             el.cleanRemoveHistoryData.textContent = '清空数据(0条)'
           }
-          el.settingPage.parentElement.style.display = 'block'
-          api.dom.setAbsoluteCenter(el.settingPage)
+          gm.el.setting.style.display = 'flex'
           el.items.scrollTop = 0
         }
 
@@ -1823,9 +1809,9 @@
         const initHistory = () => {
           gm.el.history = gm.el.gmRoot.appendChild(document.createElement('div'))
           gm.menu.history.el = gm.el.history
-          gm.el.history.className = 'gm-history'
+          gm.el.history.className = 'gm-history gm-modal-container'
           gm.el.history.innerHTML = `
-            <div class="gm-history-page">
+            <div class="gm-history-page gm-modal">
               <div class="gm-title">稍后再看移除记录</div>
               <div class="gm-comment">
                 <div>根据最近<span id="gm-save-times">0</span>条不重复数据记录生成，共筛选出<span id="gm-removed-num">0</span>条移除记录。排序由视频<span id="gm-history-time-point"></span>被观察到处于稍后再看的时间决定，与被移除出稍后再看的时间无关。如果记录太少请在下方设置增加历史回溯深度；记录太多则减少之，并善用浏览器的搜索功能辅助定位。鼠标移动到内容区域可向下滚动翻页，点击对话框以外的位置退出。</div>
@@ -1917,8 +1903,7 @@
           el.content = el.historyPage.appendChild(document.createElement('div'))
           el.content.className = 'gm-content'
           el.timePoint.textContent = gm.config.removeHistoryTimestamp ? '最后一次' : '第一次'
-          el.historyPage.parentElement.style.display = 'block'
-          api.dom.setAbsoluteCenter(el.historyPage)
+          gm.el.history.style.display = 'flex'
 
           try {
             const map = await webpage.method.getWatchlaterDataMap(item => item.bvid, null, true)
@@ -4559,7 +4544,6 @@
             --${gm.id}-important-color: red;
             --${gm.id}-warn-color: #e37100;
             --${gm.id}-disabled-color: gray;
-            --${gm.id}-link-visited-color: #551a8b;
             --${gm.id}-scrollbar-background-color: transparent;
             --${gm.id}-scrollbar-thumb-color: #0000002b;
             --${gm.id}-box-shadow: #00000033 0px 3px 6px;
@@ -4582,7 +4566,7 @@
             opacity: 0;
             display: none;
             position: absolute;
-            z-index: 1000000;
+            z-index: 900000;
             user-select: none;
             width: 32em;
             padding-top: 1em;
@@ -4872,31 +4856,40 @@
             background-color: var(--${gm.id}-background-hightlight-color);
           }
 
-          #${gm.id} .gm-setting {
-            font-size: 12px;
-            line-height: normal;
-            transition: var(--${gm.id}-opacity-fade-transition);
-            opacity: 0;
+          #${gm.id} .gm-modal-container {
             display: none;
             position: fixed;
-            z-index: 1100000;
+            justify-content: center;
+            align-items: center;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1000000;
+            font-size: 12px;
+            line-height: normal;
             user-select: none;
+            opacity: 0;
+            transition: var(--${gm.id}-opacity-fade-transition);
           }
 
-          #${gm.id} .gm-setting #gm-setting-page {
+          #${gm.id} .gm-modal {
+            position: relative;
             background-color: var(--${gm.id}-background-color);
             border-radius: 10px;
             z-index: 1;
-            min-width: 53em;
-            padding: 1em 1.4em;
-            transition: top 100ms, left 100ms;
           }
 
-          #${gm.id} .gm-setting #gm-maintitle * {
+          #${gm.id} .gm-setting .gm-setting-page {
+            min-width: 53em;
+            padding: 1em 1.4em;
+          }
+
+          #${gm.id} .gm-setting .gm-maintitle {
             cursor: pointer;
             color: var(--${gm.id}-text-color);
           }
-          #${gm.id} .gm-setting #gm-maintitle:hover * {
+          #${gm.id} .gm-setting .gm-maintitle:hover {
             color: var(--${gm.id}-hightlight-color);
           }
 
@@ -5007,30 +5000,15 @@
             right: -1.1em;
           }
 
-          #${gm.id} .gm-setting.gm-hideDisabledSubitems #gm-setting-page:not([setting-type]) [disabled] {
+          #${gm.id} .gm-hideDisabledSubitems .gm-setting-page:not([setting-type]) [disabled] {
             display: none;
-          }
-
-          #${gm.id} .gm-history {
-            font-size: 12px;
-            line-height: normal;
-            transition: var(--${gm.id}-opacity-fade-transition);
-            opacity: 0;
-            display: none;
-            position: fixed;
-            z-index: 1100000;
-            user-select: none;
           }
 
           #${gm.id} .gm-history .gm-history-page {
-            background-color: var(--${gm.id}-background-color);
-            border-radius: 10px;
-            z-index: 1;
             height: 75vh;
             width: 60vw;
             min-width: 40em;
             min-height: 50em;
-            transition: top 100ms, left 100ms;
           }
 
           #${gm.id} .gm-history .gm-comment {
@@ -5121,9 +5099,6 @@
             padding: 0 0.2em;
             cursor: pointer;
           }
-          #${gm.id} .gm-info:visited {
-            color: var(--${gm.id}-hint-text-color);
-          }
           #${gm.id} .gm-info:hover {
             color: var(--${gm.id}-important-color);
           }
@@ -5132,7 +5107,7 @@
             cursor: not-allowed;
           }
 
-          #${gm.id} #gm-reset {
+          #${gm.id} .gm-reset {
             position: absolute;
             right: 0;
             bottom: 0;
@@ -5141,7 +5116,7 @@
             cursor: pointer;
           }
 
-          #${gm.id} #gm-changelog {
+          #${gm.id} .gm-changelog {
             position: absolute;
             right: 0;
             bottom: 1.8em;
@@ -5149,11 +5124,11 @@
             color: var(--${gm.id}-hint-text-color);
             cursor: pointer;
           }
-          #${gm.id} [setting-type=updated] #gm-changelog {
+          #${gm.id} [setting-type=updated] .gm-changelog {
             font-weight: bold;
             color: var(--${gm.id}-update-hightlight-hover-color);
           }
-          #${gm.id} [setting-type=updated] #gm-changelog:hover {
+          #${gm.id} [setting-type=updated] .gm-changelog:hover {
             color: var(--${gm.id}-update-hightlight-hover-color);
           }
           #${gm.id} [setting-type=updated] .gm-updated,
@@ -5170,8 +5145,8 @@
             font-weight: bold;
           }
 
-          #${gm.id} #gm-reset:hover,
-          #${gm.id} #gm-changelog:hover {
+          #${gm.id} .gm-reset:hover,
+          #${gm.id} .gm-changelog:hover {
             color: var(--${gm.id}-hint-text-hightlight-color);
             text-decoration: underline;
           }
@@ -5213,13 +5188,6 @@
             border-radius: 0;
             color: var(--${gm.id}-text-color);
             background-color: var(--${gm.id}-background-color);
-          }
-
-          #${gm.id} a {
-          color: var(--${gm.id}-hightlight-color)
-          }
-          #${gm.id} a:visited {
-          color: var(--${gm.id}-link-visited-color)
           }
 
           #${gm.id} [disabled],
