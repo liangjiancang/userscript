@@ -8,7 +8,8 @@
 2. `wait`：针对元素等待 API，明确 `multiple` 与 `repeat` 在各种取值下的最佳行为并以此为基准重新设计行为。
 3. `wait`：优化元素等待 API 错误处理流程，使得启用 `multiple` 并禁用 `stopOnError` 时，在同一个检测集合中，前方元素的回调处理错误不会影响到后方元素的处理。
 4. `wait`：优化元素等待 API 后台计时逻辑。
-5. 库：修复基于同一 `id` 再次获取 `Userscript` 对象时，内部数据出错的问题。
+5. `dom`：将 `setAbsoluteCenter()` 重命名为 `setPosition()`，并移除其让目标元素在窗口尺寸变化后依然保持在设定位置的作用。
+6. 库：修复基于同一 `id` 再次获取 `Userscript` 对象时，内部数据出错的问题。
 
 ## V1.5
 
@@ -56,7 +57,7 @@
 3. `wait`：元素等待 API 引入节流控制，仅当 `repeat` 为 `false` 时生效。
 4. `wait`：条件等待 API 实现机制由 `setInterval()` 改为 `setTimeout()`，大幅优化异步条件下的条件等待。
 5. `dom`：采用 `Element.classList` 重写并增强类名 API。
-6. `dom`：`setAbsoluteCenter()` 现在会使目标元素在窗口尺寸变化时保持绝对居中状态。
+6. `dom`：`setAbsoluteCenter()` 现在会使目标元素在窗口尺寸变化时保持在设定位置。
 7. 代码：使用可选链操作符 `?.` 及空值合并运算符 `??` 进行简写。
 
 ## V1.0
