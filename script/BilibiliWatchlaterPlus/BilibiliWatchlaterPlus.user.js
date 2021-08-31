@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.18.16.20210901
+// @version         4.18.17.20210901
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -4882,6 +4882,7 @@
 
           #${gm.id} .gm-setting .gm-setting-page {
             min-width: 53em;
+            max-width: 84em;
             padding: 1em 1.4em;
           }
 
@@ -4914,11 +4915,14 @@
             padding-right: 0.6em;
             font-weight: bold;
             color: var(--${gm.id}-text-bold-color);
+            word-break: keep-all;
           }
           #${gm.id} .gm-setting .gm-item:not(:first-child) td {
             padding-top: 0.5em;
           }
           #${gm.id} .gm-setting td > * {
+            display: flex;
+            align-items: flex-end;
             padding: 0.2em;
             border-radius: 0.2em;
           }
@@ -4955,10 +4959,6 @@
             vertical-align: -1px;
           }
 
-          #${gm.id} .gm-setting td > * {
-            display: flex;
-            align-items: flex-end;
-          }
           #${gm.id} .gm-setting input[type=checkbox] {
             margin-left: auto;
           }
@@ -5009,6 +5009,8 @@
             width: 60vw;
             min-width: 40em;
             min-height: 50em;
+            max-width: 80em;
+            max-height: 60em;
           }
 
           #${gm.id} .gm-history .gm-comment {

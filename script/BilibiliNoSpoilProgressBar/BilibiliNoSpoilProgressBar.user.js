@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站防剧透进度条
-// @version         2.1.8.20210901
+// @version         2.1.9.20210901
 // @namespace       laster2800
 // @author          Laster2800
 // @description     看比赛、看番总是被进度条剧透？装上这个脚本再也不用担心这些问题了
@@ -1965,6 +1965,7 @@
 
         #${gm.id} .gm-setting .gm-setting-page {
           min-width: 42em;
+          max-width: 84em;
           padding: 1em 1.4em;
         }
 
@@ -1996,11 +1997,14 @@
           padding-right: 0.6em;
           font-weight: bold;
           color: var(--${gm.id}-text-bold-color);
+          word-break: keep-all;
         }
         #${gm.id} .gm-setting .gm-item:not(:first-child) td {
           padding-top: 0.5em;
         }
         #${gm.id} .gm-setting td > * {
+          display: flex;
+          align-items: flex-end;
           padding: 0.2em;
           border-radius: 0.2em;
         }
@@ -2016,10 +2020,6 @@
           color: var(--${gm.id}-hightlight-color);
         }
 
-        #${gm.id} .gm-setting td > * {
-          display: flex;
-          align-items: flex-end;
-        }
         #${gm.id} .gm-setting input[type=checkbox] {
           margin-left: auto;
         }
