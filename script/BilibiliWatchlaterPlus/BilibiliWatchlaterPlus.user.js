@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.19.1.20210902
+// @version         4.19.2.20210902
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -2011,7 +2011,7 @@
                     api.message.create(`${note}成功`)
                   } else {
                     this.checked = !status
-                    api.message.create(`${note}失败${status ? '，可能视频不可用，或为不支持的稿件类型（如互动视频）' : ''}`)
+                    api.message.create(`${note}失败${status ? '，可能是因为该稿件不可用' : ''}`)
                   }
                 })
               })
@@ -3779,7 +3779,7 @@
           api.message.create(`${note}成功`)
         } else {
           cb.checked = btn.added
-          api.message.create(`${note}失败${!btn.added ? '，可能是因为不支持当前稿件类型（如互动视频）' : ''}`)
+          api.message.create(`${note}失败${!btn.added ? '，可能是因为稍后再看不支持该稿件类型（如互动视频）' : ''}`)
         }
       }
     }
@@ -4712,7 +4712,7 @@
               }
               api.message.create('批量添加：添加完成', { ms: 1800 })
             } catch (e) {
-              api.message.alert('执行失败')
+              api.message.alert('执行失败：可能是因为该稿件不可用或稍后再看不支持该稿件类型（如互动视频），请尝试取消勾选当前列表中第一个选定的稿件后重新执行')
               api.logger.error(e)
             } finally {
               stopAdd = false
