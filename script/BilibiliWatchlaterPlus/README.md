@@ -25,6 +25,10 @@
 
     ![列表页](https://gitee.com/liangjiancang/userscript/raw/master/script/BilibiliWatchlaterPlus/screenshot/列表页.png)
 
+* 批量添加
+
+    ![批量添加](https://gitee.com/liangjiancang/userscript/raw/master/script/BilibiliWatchlaterPlus/screenshot/批量添加.png)
+
 * 移除记录
 
     ![移除记录](https://gitee.com/liangjiancang/userscript/raw/master/script/BilibiliWatchlaterPlus/screenshot/移除记录.png)

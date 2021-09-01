@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.18.18.20210901
+// @version         4.19.0.20210902
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -27,6 +27,7 @@
 // @grant           unsafeWindow
 // @grant           window.onurlchange
 // @connect         api.bilibili.com
+// @connect         api.vc.bilibili.com
 // @run-at          document-start
 // @incompatible    firefox 完全不兼容 Greasemonkey，不完全兼容 Violentmonkey
 // ==/UserScript==
@@ -177,6 +178,7 @@
    * @property {GMObject_config} config 用户配置
    * @property {GMObject_configMap} configMap 用户配置属性
    * @property {GMObject_infoMap} infoMap 信息属性
+   * @property {GMObject_runtime} runtime 运行时变量
    * @property {string[]} configDocumentStart document-start 时期配置
    * @property {GMObject_data} data 脚本数据
    * @property {GMObject_url} url URL
@@ -212,6 +214,7 @@
    * @property {number} removeHistorySearchTimes 历史回溯深度
    * @property {fillWatchlaterStatus} fillWatchlaterStatus 填充稍后再看状态
    * @property {autoSort} autoSort 自动排序
+   * @property {boolean} dynamicBatchAddManagerButton 动态主页批量添加管理器入口按钮
    * @property {boolean} videoButton 视频播放页稍后再看状态快速切换
    * @property {autoRemove} autoRemove 自动将视频从播放列表移除
    * @property {boolean} redirect 稍后再看模式重定向至常规模式播放
@@ -248,6 +251,10 @@
   /**
    * @typedef GMObject_infoMap_item
    * @property {number} [configVersion] 涉及信息更改的最后配置版本
+   */
+  /**
+   * @typedef GMObject_runtime
+   * @property {boolean} reloadWatchlaterListData 刷新稍后再看列表数据
    */
   /**
    * @callback removeHistoryData 通过懒加载方式获取 `removeHistoryData`
@@ -310,6 +317,7 @@
    * @property {string} api_clearWatchlater 清空稍后再看，要求 POST 一个含 `csrf` 的表单
    * @property {string} api_listFav 列出所有收藏夹
    * @property {string} api_dealFav 将视频添加/移除至收藏夹
+   * @property {string} api_dynamicHistory 动态列表
    * @property {string} page_watchlaterList 列表页面
    * @property {string} page_videoNormalMode 正常模式播放页
    * @property {string} page_videoWatchlaterMode 稍后再看模式播放页
@@ -331,6 +339,7 @@
    * @typedef GMObject_menu
    * @property {GMObject_menu_item} setting 设置
    * @property {GMObject_menu_item} history 移除记录
+   * @property {GMObject_menu_item} batchAddManager 批量添加管理器
    * @property {GMObject_menu_item} entryPopup 入口弹出菜单
    */
   /**
@@ -350,7 +359,7 @@
   const gm = {
     id: gmId,
     configVersion: GM_getValue('configVersion'),
-    configUpdate: 20210822,
+    configUpdate: 20210902,
     searchParams: new URL(location.href).searchParams,
     config: {},
     configMap: {
@@ -379,6 +388,7 @@
       removeHistorySearchTimes: { default: 100, type: 'int', attr: 'value', manual: true, needNotReload: true, min: 1, max: 500, configVersion: 20210819 },
       fillWatchlaterStatus: { default: Enums.fillWatchlaterStatus.dynamic, attr: 'value', configVersion: 20200819 },
       autoSort: { default: Enums.autoSort.default, attr: 'value', configVersion: 20210819 },
+      dynamicBatchAddManagerButton: { default: true, attr: 'checked', configVersion: 20210902 },
       videoButton: { default: true, attr: 'checked' },
       autoRemove: { default: Enums.autoRemove.openFromList, attr: 'value', configVersion: 20210612 },
       redirect: { default: false, attr: 'checked', configVersion: 20210322.1 },
@@ -400,6 +410,9 @@
       watchlaterMediaList: { configVersion: 20210822 },
       fixHeader: { configVersion: 20210810.1 },
     },
+    runtime: {
+      reloadWatchlaterListData: false,
+    },
     configDocumentStart: ['redirect', 'menuScrollbarSetting', 'mainRunAt'],
     data: {
       removeHistoryData: null,
@@ -413,6 +426,7 @@
       api_clearWatchlater: 'http://api.bilibili.com/x/v2/history/toview/clear',
       api_listFav: 'http://api.bilibili.com/x/v3/fav/folder/created/list-all',
       api_dealFav: 'http://api.bilibili.com/x/v3/fav/resource/deal',
+      api_dynamicHistory: 'https://api.vc.bilibili.com/dynamic_svr/v1/dynamic_svr/dynamic_history',
       page_watchlaterList: 'https://www.bilibili.com/watchlater/#/list',
       page_videoNormalMode: 'https://www.bilibili.com/video',
       page_videoWatchlaterMode: 'https://www.bilibili.com/medialist/play/watchlater',
@@ -441,6 +455,7 @@
     menu: {
       setting: { state: 0, wait: 0, el: null },
       history: { state: 0, wait: 0, el: null },
+      batchAddManager: { state: 0, wait: 0, el: null },
       entryPopup: { state: 0, wait: 0, el: null }
     },
     el: {
@@ -575,6 +590,10 @@
         },
         watchlaterListData: async (reload, cache = true, disablePageCache = false) => {
           const _ = gm.data._
+          if (gm.runtime.reloadWatchlaterListData) {
+            reload = true
+            gm.runtime.reloadWatchlaterListData = false
+          }
           if (_.watchlaterListData === undefined || reload || disablePageCache || gm.config.disablePageCache) {
             if (_.watchlaterListData_loading) {
               // 一旦数据已在加载中，那么直接等待该次加载完成
@@ -734,7 +753,7 @@
           }
 
           // 功能性更新后更新此处配置版本
-          if (gm.configVersion < 20210822) {
+          if (gm.configVersion < 20210902) {
             _self.openUserSetting(2)
           } else {
             gm.configVersion = gm.configUpdate
@@ -1051,6 +1070,16 @@
                         <span>稍后再看收藏夹</span>
                         <span id="gm-watchlaterMediaList" class="gm-info">设置</span>
                       </div>
+                    </td>
+                  </tr>
+
+                  <tr class="gm-item" title="批量添加管理器可以将投稿批量添加到稍后再看。">
+                    <td><div>动态主页</div></td>
+                    <td>
+                      <label>
+                        <span>加入批量添加管理器入口按钮</span>
+                        <input id="gm-dynamicBatchAddManagerButton" type="checkbox">
+                      </label>
                     </td>
                   </tr>
 
@@ -1484,7 +1513,6 @@
          * 处理与设置页相关的数据和元素
          */
         const processSettingItem = () => {
-          const _self = this
           gm.menu.setting.openHandler = onOpen
           gm.menu.setting.openedHandler = onOpened
           gm.el.setting.fadeInDisplay = 'flex'
@@ -2303,15 +2331,8 @@
          * @returns {Promise<boolean>} 视频是否在稍后再看中
          */
         async getVideoWatchlaterStatusByAid(aid, reload = false, localCache = true, disablePageCache = false) {
-          const current = await gm.data.watchlaterListData(reload, localCache, disablePageCache)
-          if (current.length > 0) {
-            for (const e of current) {
-              if (aid == e.aid) {
-                return true
-              }
-            }
-          }
-          return false
+          const map = await this.getWatchlaterDataMap(item => String(item.aid), 'aid', reload, localCache, disablePageCache)
+          return map.has(aid)
         },
 
         /**
@@ -2362,12 +2383,8 @@
             })
             const success = JSON.parse(resp.response).code === 0
             if (success) {
-              const empty = []
-              gm.data._.watchlaterListData = empty
-              if (gm.config.watchlaterListCacheValidPeriod > 0) {
-                GM_setValue('watchlaterListCacheTime', new Date().getTime())
-                GM_setValue('watchlaterListCache', empty)
-              }
+              gm.runtime.reloadWatchlaterListData = true
+              window.dispatchEvent(new CustomEvent('reloadWatchlaterListData'))
             }
             return success
           } catch (e) {
@@ -2392,10 +2409,8 @@
             })
             const success = JSON.parse(resp.response).code === 0
             if (success) {
-              gm.data._.watchlaterListData = null
-              if (gm.config.watchlaterListCacheValidPeriod > 0) {
-                GM_setValue('watchlaterListCacheTime', 0)
-              }
+              gm.runtime.reloadWatchlaterListData = true
+              window.dispatchEvent(new CustomEvent('reloadWatchlaterListData'))
             }
             return success
           } catch (e) {
@@ -2506,9 +2521,12 @@
          * @param {boolean} [reload] 是否重新加载稍后再看列表数据
          * @param {boolean} [cache=true] 是否使用稍后再看列表数据本地缓存
          * @param {boolean} [disablePageCache] 是否禁用稍后再看列表数据页面缓存
-         * @returns {Map<string, GMObject_data_item0>} 稍后再看列表数据以指定值为键的映射
+         * @returns {Promise<Map<string, GMObject_data_item0>>} 稍后再看列表数据以指定值为键的映射
          */
         async getWatchlaterDataMap(key, cacheId, reload, cache = true, disablePageCache = false) {
+          if (gm.runtime.reloadWatchlaterListData) {
+            reload = true
+          }
           let obj = null
           if (cacheId) {
             const _ = this._
@@ -2832,12 +2850,7 @@
           if (gm.config.watchlaterListCacheValidPeriod > 0) {
             setTimeout(() => {
               if (this.mouseOver) {
-                if (gm.menu.entryPopup.needReload) {
-                  gm.menu.entryPopup.needReload = false
-                  gm.data.watchlaterListData(true)
-                } else {
-                  gm.data.watchlaterListData(false, true, true) // 启用本地缓存但禁用页面缓存
-                }
+                gm.data.watchlaterListData(false, true, true) // 启用本地缓存但禁用页面缓存
               }
             }, 25) // 以鼠标快速掠过不触发为准
           }
@@ -3018,9 +3031,9 @@
                       }
                       if (valid) {
                         cnt[i] += 1
-                        api.dom.removeClass(card, 'gm-search-hide')
+                        api.dom.removeClass(card, 'gm-filtered')
                       } else {
-                        api.dom.addClass(card, 'gm-search-hide')
+                        api.dom.addClass(card, 'gm-filtered')
                       }
                     }
                     list.scrollTop = 0
@@ -3201,13 +3214,7 @@
             el.entryList.total = 0
             el.entryRemovedList.textContent = ''
             el.entryRemovedList.total = 0
-            let data = []
-            if (gm.menu.entryPopup.needReload) {
-              gm.menu.entryPopup.needReload = false
-              data = await gm.data.watchlaterListData(true)
-            } else {
-              data = await gm.data.watchlaterListData(false, true, true) // 启用本地缓存但禁用页面缓存
-            }
+            const data = await gm.data.watchlaterListData(false, true, true) // 启用本地缓存但禁用页面缓存
             const simplePopup = gm.config.headerMenu == Enums.headerMenu.enableSimple
             let serial = 0
             if (data.length > 0) {
@@ -3292,6 +3299,8 @@
                         api.dom.removeClass(card, 'gm-fixed')
                       }
                       dispInfo && api.message.create(`${note}成功`)
+                      gm.runtime.reloadWatchlaterListData = true
+                      window.dispatchEvent(new CustomEvent('reloadWatchlaterListData'))
                     } else {
                       if (card.added) {
                         api.dom.removeClass(card, 'gm-removed')
@@ -3304,12 +3313,10 @@
 
                   card.added = true
                   card.querySelector('.gm-card-switcher').addEventListener('click', function(e) {
-                    gm.menu.entryPopup.needReload = true
                     e.preventDefault()
                     switchStatus(!card.added)
                   })
                   card.querySelector('.gm-card-collector').addEventListener('click', function(e) {
-                    gm.menu.entryPopup.needReload = true
                     e.preventDefault() // 不能放到 async 中
                     setTimeout(async () => {
                       const uid = _self.method.getDedeUserID()
@@ -3388,9 +3395,10 @@
                           if (api.dom.containsClass(e.target, excludes)) return
                         }
                         if (autoRemoveControl.autoRemove) {
-                          gm.menu.entryPopup.needReload = true
                           api.dom.addClass(card, 'gm-removed')
                           card.added = false
+                          gm.runtime.reloadWatchlaterListData = true
+                          // 移除由播放页控制，此时并为实际发生，不分发重载列表事件
                         }
                       }
                     })
@@ -3568,28 +3576,31 @@
         if (location.pathname == '/') { // 仅动态主页
           api.wait.waitQuerySelector('.feed-card').then(feed => {
             api.wait.executeAfterElementLoaded({
-              selector: '.tab',
+              selector: '.tab:not(#gm-batch-manager-btn)',
               base: feed,
               multiple: true,
               callback: tab => {
-                tab.addEventListener('click', async function() {
-                  map = await _self.method.getWatchlaterDataMap(item => String(item.aid), 'aid', true)
-                  // map 更新期间，ob 偷跑可能会将错误的数据写入，重新遍历并修正之
-                  feed.querySelectorAll('.video-container').forEach(video => {
-                    const vue = video.__vue__
-                    if (vue) {
-                      const aid = String(vue.aid)
-                      if (map.has(aid)) {
-                        vue.seeLaterStatus = 1
-                      } else {
-                        vue.seeLaterStatus = 0
-                      }
-                    }
-                  })
-                })
+                tab.addEventListener('click', refillDynamicWatchlaterStatus)
               },
             })
+            window.addEventListener('reloadWatchlaterListData', api.tool.debounce(refillDynamicWatchlaterStatus, 2000))
             fillWatchlaterStatus_dynamic()
+
+            async function refillDynamicWatchlaterStatus() {
+              map = await _self.method.getWatchlaterDataMap(item => String(item.aid), 'aid', true)
+              // map 更新期间，ob 偷跑可能会将错误的数据写入，重新遍历并修正之
+              feed.querySelectorAll('.video-container').forEach(video => {
+                const vue = video.__vue__
+                if (vue) {
+                  const aid = String(vue.aid)
+                  if (map.has(aid)) {
+                    vue.seeLaterStatus = 1
+                  } else {
+                    vue.seeLaterStatus = 0
+                  }
+                }
+              })
+            }
           })
         }
       } else if (api.web.urlMatch(gm.regex.page_userSpace)) {
@@ -4060,9 +4071,9 @@
           valid = true
         }
         if (valid) {
-          api.dom.removeClass(item, 'gm-search-hide')
+          api.dom.removeClass(item, 'gm-filtered')
         } else {
-          api.dom.addClass(item, 'gm-search-hide')
+          api.dom.addClass(item, 'gm-filtered')
         }
       })
     }
@@ -4125,8 +4136,8 @@
       const container = await api.wait.waitQuerySelector('.watch-later-list')
       const listBox = (typeof total == 'undefined' && typeof all == 'undefined') && await api.wait.waitQuerySelector('.list-box', container)
       const elTotal = await api.wait.waitQuerySelector('header .t em')
-      all = all ?? listBox.querySelectorAll('.av-item:not(.gm-search-hide)').length
-      total = total ?? all - listBox.querySelectorAll('.gm-removed:not(.gm-search-hide)').length
+      all = all ?? listBox.querySelectorAll('.av-item:not(.gm-filtered)').length
+      total = total ?? all - listBox.querySelectorAll('.gm-removed:not(.gm-filtered)').length
       elTotal.textContent = `（${total}/${all}）`
 
       const empty = container.querySelector('.abnormal-item')
@@ -4439,6 +4450,263 @@
         }
         collect.addEventListener('mouseover', process)
       })
+    }
+
+    /**
+     * 添加批量添加管理器按钮
+     */
+    addBatchAddManagerButton() {
+      if (location.pathname == '/') { // 仅动态主页
+        api.wait.waitQuerySelector('.feed-card .tab-bar').then(bar => {
+          const btn = bar.firstElementChild.cloneNode(true)
+          btn.id = 'gm-batch-manager-btn'
+          api.dom.removeClass(btn.firstElementChild, 'selected')
+          btn.firstElementChild.textContent = '批量添加'
+          btn.addEventListener('click', () => this.openBatchAddManager())
+          bar.appendChild(btn)
+        })
+      }
+    }
+
+    /**
+     * 打开批量添加管理器
+     */
+    openBatchAddManager() {
+      if (gm.el.batchAddManager) {
+        script.openMenuItem('batchAddManager')
+      } else {
+        const _self = this
+        const el = {}
+        setTimeout(() => {
+          initManager()
+          processItem()
+          script.openMenuItem('batchAddManager')
+        })
+
+        /**
+         * 初始化管理器
+         */
+        const initManager = () => {
+          gm.el.batchAddManager = gm.el.gmRoot.appendChild(document.createElement('div'))
+          gm.menu.batchAddManager.el = gm.el.batchAddManager
+          gm.el.batchAddManager.className = 'gm-batchAddManager gm-modal-container'
+          gm.el.batchAddManager.innerHTML = `
+            <div class="gm-batchAddManager-page gm-modal">
+              <div class="gm-title">批量添加管理器</div>
+              <div class="gm-comment">
+                <div>请执行以下步骤以将投稿批量添加到稍后再看（可以跳过部分步骤）。执行过程中可以关闭对话框，但不能关闭页面；将当前页面置于后台时，大部分浏览器会暂缓甚至暂停任务执行。</div>
+                <div>脚本会优先添加投稿时间较早的投稿，达到稍后再看容量上限 100 时终止执行。注意，该功能会向后台发起大量请求，滥用可能会导致一段时间内无法正常访问B站，您可以增加平均请求间隔以降低被 BAN 的概率。<button id="gm-save-batch-params">保存参数</button><button id="gm-reset-batch-params">重置参数</button></div>
+                <div>第一步：加载最近 <input id="gm-batch-1a" type="text" value="24"> <select id="gm-batch-1b" style="border:none;margin: 0 -4px">
+                  <option value="${3600 * 24}">天</option>
+                  <option value="3600" selected>小时</option>
+                  <option value="60">分钟</option>
+                </select> 以内发布的视频投稿<button id="gm-batch-1c">执行</button><button id="gm-batch-1d" disabled>终止</button></div>
+                <div>第二步：缩小时间范围到 <input id="gm-batch-2a" type="tex分钟"> <select id="gm-batch-2b" style="border:none;margin: 0 -4px">
+                  <option value="${3600 * 24}">天</option>
+                  <option value="3600" selected>小时</option>
+                  <option value="60">分钟</option>
+                </select> 以内<button id="gm-batch-2c">执行</button></div>
+                <div>第三步：筛选 <input id="gm-batch-3a" type="text" style="width:10em">，过滤 <input id="gm-batch-3b" type="text" style="width:10em">；支持通配符 ( ? * )，使用 | 分隔关键词<button id="gm-batch-3c">执行</button></div>
+                <div>第四步：将选定稿件添加到稍后再看（平均请求间隔：<input id="gm-batch-4a" type="text" value="100">ms）<button id="gm-batch-4b">执行</button><button id="gm-batch-4c" disabled>终止</button></div>
+              </div>
+              <div class="gm-items"></div>
+            </div>
+            <div class="gm-shadow"></div>
+          `
+          const ids = ['1a', '1b', '1c', '1d', '2a', '2b', '2c', '3a', '3b', '3c', '4a', '4b', '4c']
+          for (const id of ids) {
+            el[`id${id}`] = gm.el.batchAddManager.querySelector(`#gm-batch-${id}`)
+          }
+          el.items = gm.el.batchAddManager.querySelector('.gm-items')
+          el.saveParams = gm.el.batchAddManager.querySelector('#gm-save-batch-params')
+          el.resetParams = gm.el.batchAddManager.querySelector('#gm-reset-batch-params')
+          el.shadow = gm.el.batchAddManager.querySelector('.gm-shadow')
+
+          el.saveParams.paramIds = ['1a', '1b', '2a', '2b', '3a', '3b', '4a']
+          const batchParams = GM_getValue('batchParams')
+          if (batchParams) {
+            for (const id of el.saveParams.paramIds) {
+              el[`id${id}`].value = batchParams[`id${id}`]
+            }
+          }
+        }
+
+        /**
+         * 维护内部元素和数据
+         */
+        const processItem = () => {
+          gm.el.batchAddManager.fadeInDisplay = 'flex'
+          el.shadow.addEventListener('click', () => script.closeMenuItem('batchAddManager'))
+
+          // 参数
+          el.saveParams.addEventListener('click', function() {
+            const batchParams = {}
+            for (const id of el.saveParams.paramIds) {
+              batchParams[`id${id}`] = el[`id${id}`].value
+            }
+            GM_setValue('batchParams', batchParams)
+            api.message.create('保存成功，重新加载页面后当前参数会被自动加载')
+          })
+          el.resetParams.addEventListener('click', function() {
+            GM_deleteValue('batchParams')
+            api.message.create('重置成功，重新加载页面后参数将被初始化')
+          })
+
+          // 加载投稿
+          let stopLoad = false
+          el.id1c.addEventListener('click', async function() {
+            try {
+              const v1a = parseFloat(el.id1a.value)
+              if (isNaN(v1a)) throw 'v1a is NaN'
+              el.id1a.value = v1a
+              this.disabled = true
+              this.textContent = '执行中'
+              el.id1d.disabled = false
+              el.items.textContent = ''
+              const firstCard = await api.wait.waitQuerySelector('.feed-card .card')
+              const firstOffset = parseInt(firstCard.getAttribute('data-did'))
+              if (isNaN(firstOffset)) throw 'dom error' // 需借助 parseInt() 来判断是否出错
+              // dynamic_id 位数过多，直接运算会丢失精度，必须转为 BigInt 后再进行后续处理
+              // 要直接从字符串初始化，经 parseInt() 转手就不对了
+              let dynamicOffset = BigInt(firstCard.getAttribute('data-did')) + 1n
+              const end = new Date().getTime() - v1a * el.id1b.value * 1000
+              while (!stopLoad) {
+                const data = new URLSearchParams()
+                data.append('uid', _self.method.getDedeUserID())
+                data.append('offset_dynamic_id', dynamicOffset)
+                data.append('type', 8) // 视频
+                const resp = await api.web.request({
+                  url: `${gm.url.api_dynamicHistory}?${data.toString()}`,
+                })
+                const json = JSON.parse(resp.responseText)
+                const items = json.data.cards
+                if (items.length === 0) return
+                // 不要用 json.data.next_offset，会丢失精度
+                dynamicOffset = items[items.length - 1].desc.dynamic_id_str
+                let html = ''
+                for (const item of items) {
+                  const info = JSON.parse(item.card)
+                  if (item.desc.timestamp * 1000 < end) {
+                    el.items.insertAdjacentHTML('afterbegin', html)
+                    api.message.create('批量添加：加载完成', { ms: 1800 })
+                    return // -> finally
+                  }
+                  const status = await _self.method.getVideoWatchlaterStatusByAid(String(info.aid))
+                  html = `<label class="gm-item" aid="${info.aid}" timestamp="${item.desc.timestamp}"><input type="checkbox"${status ? '' : ' checked'}> <span>[${info.owner.name}] ${info.title}</span></label>` + html
+                }
+                el.items.insertAdjacentHTML('afterbegin', html)
+                await new Promise(resolve => setTimeout(resolve, 100)) // 多让点时间给其他线程，否则会出问题
+              }
+            } catch (e) {
+              api.message.alert('执行失败')
+              api.logger.error(e)
+            } finally {
+              stopLoad = false
+              this.disabled = false
+              this.textContent = '重新执行'
+              el.id1d.disabled = true
+            }
+          })
+          el.id1d.addEventListener('click', function() {
+            stopLoad = true
+          })
+
+          // 时间过滤
+          el.id2c.addEventListener('click', function() {
+            try {
+              const v2a = parseFloat(el.id2a.value)
+              if (isNaN(v2a)) throw 'v1a is NaN'
+              el.id2a.value = v2a
+              const newEnd = new Date().getTime() - v2a * el.id2b.value * 1000
+              for (let i = 0; i < el.items.childElementCount; i++) {
+                const item = el.items.children[i]
+                const timestamp = parseInt(item.getAttribute('timestamp'))
+                if (timestamp * 1000 < newEnd) {
+                  api.dom.addClass(item, 'gm-filtered')
+                } else {
+                  api.dom.removeClass(item, 'gm-filtered')
+                }
+              }
+            } catch (e) {
+              api.message.alert('执行失败')
+              api.logger.error(e)
+            }
+          })
+
+          // 正则过滤
+          el.id3c.addEventListener('click', function() {
+            const getRegex = str => {
+              let result = null
+              str = str.trim()
+              if (str !== '') {
+                try {
+                  str = str.replace(/[.+^${}()[\]\\]/g, '\\$&') // escape regex except |
+                    .replaceAll('?', '.').replaceAll('*', '.+') // 通配符
+                  result = new RegExp(str, 'i')
+                } catch (e) { /* nothing to do */ }
+              }
+              return result
+            }
+            try {
+              const v3a = getRegex(el.id3a.value)
+              const v3b = getRegex(el.id3b.value)
+              for (let i = 0; i < el.items.childElementCount; i++) {
+                const item = el.items.children[i]
+                const tc = item.textContent
+                if ((v3a && !v3a.test(tc)) || v3b?.test(tc)) {
+                  api.dom.addClass(item, 'gm-filtered')
+                } else {
+                  api.dom.removeClass(item, 'gm-filtered')
+                }
+              }
+            } catch (e) {
+              api.message.alert('执行失败')
+              api.logger.error(e)
+            }
+          })
+
+          // 添加
+          let stopAdd = false
+          el.id4b.addEventListener('click', async function() {
+            try {
+              const v4a = parseFloat(el.id4a.value)
+              if (isNaN(v4a)) throw 'v1a is NaN'
+              el.id4a.value = v4a
+              this.disabled = true
+              this.textContent = '执行中'
+              el.id4c.disabled = false
+
+              let available = 100 - (await gm.data.watchlaterListData()).length
+              const checks = el.items.querySelectorAll('label:not(.gm-filtered) input')
+              for (const check of checks) {
+                if (stopAdd || available <= 0) return // -> finally
+                if (!check.checked) continue
+                const item = check.parentElement
+                const success = await _self.method.switchVideoWatchlaterStatus(item.getAttribute('aid'))
+                if (!success) throw 'add request error'
+                check.checked = false
+                available -= 1
+                await new Promise(resolve => setTimeout(resolve, v4a * (Math.random() + 0.5)))
+              }
+              api.message.create('批量添加：添加完成', { ms: 1800 })
+            } catch (e) {
+              api.message.alert('执行失败')
+              api.logger.error(e)
+            } finally {
+              stopAdd = false
+              this.disabled = false
+              this.textContent = '重新执行'
+              el.id4c.disabled = true
+              gm.runtime.reloadWatchlaterListData = true
+              window.dispatchEvent(new CustomEvent('reloadWatchlaterListData'))
+            }
+
+          })
+          el.id4c.addEventListener('click', function() {
+            stopAdd = true
+          })
+        }
+      }
     }
 
     /**
@@ -4907,7 +5175,7 @@
           }
           #${gm.id} .gm-setting td > * {
             display: flex;
-            align-items: flex-end;
+            align-items: center;
             padding: 0.2em;
             border-radius: 0.2em;
           }
@@ -4941,7 +5209,7 @@
           }
           #${gm.id} .gm-setting .gm-subitem .gm-lineitem input[type=checkbox] {
             margin-left: 2px;
-            vertical-align: -1px;
+            vertical-align: -2px;
           }
 
           #${gm.id} .gm-setting input[type=checkbox] {
@@ -5006,7 +5274,7 @@
             font-weight: bold;
             color: var(--${gm.id}-hint-text-emphasis-color);
           }
-          #${gm.id} .gm-history .gm-comment input{
+          #${gm.id} .gm-history .gm-comment input {
             text-align: center;
             width: 3.5em;
             border-width: 0 0 1px 0;
@@ -5155,6 +5423,54 @@
             margin-top: 0.4em;
           }
 
+          #${gm.id} .gm-batchAddManager .gm-batchAddManager-page {
+            width: 70em;
+            height: 56em;
+          }
+          #${gm.id} .gm-batchAddManager .gm-comment {
+            margin: 1.4em 2.5em 0.5em;
+            font-size: 1.2em;
+            line-height: 1.8em;
+          }
+          #${gm.id} .gm-batchAddManager .gm-comment button {
+            margin-left: 1em;
+            padding: 0.1em 0.3em;
+            border-radius: 2px;
+            cursor: pointer;
+          }
+          #${gm.id} .gm-batchAddManager .gm-comment button:not([disabled]):hover {
+            background-color: var(--${gm.id}-background-hightlight-color);
+          }
+          #${gm.id} .gm-batchAddManager .gm-comment button[disabled] {
+            cursor: not-allowed;
+          }
+          #${gm.id} .gm-batchAddManager .gm-comment input {
+            width: 3em;
+            padding: 0 0.2em;
+            border-width: 0 0 1px 0;
+            text-align: center;
+          }
+          #${gm.id} .gm-batchAddManager .gm-items {
+            width: calc(100% - 2.5em * 2);
+            height: 24em;
+            padding: 0.4em 0;
+            margin: 0.5em 2.5em;
+            font-size: 1.1em;
+            border: 1px solid var(--${gm.id}-scrollbar-thumb-color);
+            border-radius: 4px;
+            overflow-y: scroll;
+          }
+          #${gm.id} .gm-batchAddManager .gm-items label {
+            display: block;
+            padding: 0.2em 1em;
+          }
+          #${gm.id} .gm-batchAddManager .gm-items label:hover {
+            background-color: var(--${gm.id}-background-hightlight-color);
+          }
+          #${gm.id} .gm-batchAddManager .gm-items label input {
+            vertical-align: -0.15em;
+          }
+
           #${gm.id} .gm-shadow {
             background-color: var(--${gm.id}-shadow-color);
             position: fixed;
@@ -5201,7 +5517,7 @@
             appearance: auto;
           }
 
-          #${gm.id} .gm-setting .gm-items::-webkit-scrollbar,
+          #${gm.id} .gm-items::-webkit-scrollbar,
           #${gm.id} .gm-history .gm-content::-webkit-scrollbar {
             width: 6px;
             height: 6px;
@@ -5211,12 +5527,12 @@
             border-radius: 3px;
             background-color: var(--${gm.id}-scrollbar-background-color);
           }
-          #${gm.id} .gm-setting .gm-items::-webkit-scrollbar-thumb,
+          #${gm.id} .gm-items::-webkit-scrollbar-thumb,
           #${gm.id} .gm-history .gm-content:hover::-webkit-scrollbar-thumb {
             border-radius: 3px;
             background-color: var(--${gm.id}-scrollbar-thumb-color);
           }
-          #${gm.id} .gm-setting .gm-items::-webkit-scrollbar-corner,
+          #${gm.id} gm-items::-webkit-scrollbar-corner,
           #${gm.id} .gm-history .gm-content::-webkit-scrollbar-corner {
             background-color: var(--${gm.id}-scrollbar-background-color);
           }
@@ -5247,7 +5563,7 @@
             cursor: pointer;
             visibility: hidden;
           }
-          .gm-search-hide {
+          .gm-filtered {
             display: none !important;
           }
 
@@ -5592,6 +5908,10 @@
         } else if (api.web.urlMatch([gm.regex.page_videoNormalMode, gm.regex.page_videoWatchlaterMode], 'OR')) {
           if (gm.config.videoButton) {
             webpage.addVideoButton()
+          }
+        } else if (api.web.urlMatch(gm.regex.page_dynamic)) {
+          if (gm.config.dynamicBatchAddManagerButton) {
+            webpage.addBatchAddManagerButton()
           }
         }
 
