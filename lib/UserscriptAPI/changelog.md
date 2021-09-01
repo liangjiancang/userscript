@@ -2,6 +2,13 @@
 
 本日志只记录用户友好的更新说明，影响不大的问题修复与修改不作记录，具体修改见 [提交记录](https://gitee.com/liangjiancang/userscript/commits/master/lib/UserscriptAPI)。
 
+## V1.7
+
+1. `dom`：`fade()` 读取 `target` 上的 `fadeInDisplay` 来设定渐显开始后的 `display` 样式。若没有设定：
+   * 若当前 `display` 与 `fadeOutDisplay` 不同，默认值为当前 `display`。
+   * 若当前 `display` 与 `fadeOutDisplay` 相同，默认值为 `block`。
+2. `dom`：`fade()` 读取 `target` 上的 `fadeOutDisplay` 来设定渐隐开始后的 `display` 样式，默认值为 `none`。
+
 ## V1.6
 
 1. `wait`：优化元素等待 API，使得启用 `multiple` 或 `repeat` 时支持检测节流。
