@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站防剧透进度条
-// @version         2.1.9.20210901
+// @version         2.1.10.20210901
 // @namespace       laster2800
 // @author          Laster2800
 // @description     看比赛、看番总是被进度条剧透？装上这个脚本再也不用担心这些问题了
@@ -13,7 +13,7 @@
 // @include         *://www.bilibili.com/medialist/play/watchlater
 // @include         *://www.bilibili.com/medialist/play/watchlater/*
 // @include         *://www.bilibili.com/bangumi/play/*
-// @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=965951
+// @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=966080
 // @grant           GM_registerMenuCommand
 // @grant           GM_xmlhttpRequest
 // @grant           GM_setValue
@@ -789,6 +789,7 @@
         const processSettingItem = () => {
           const _self = this
           gm.menu.setting.openHandler = onOpen
+          gm.el.setting.fadeInDisplay = 'flex'
           el.save.onclick = onSave
           el.cancel.onclick = () => _self.closeMenuItem('setting')
           el.shadow.onclick = function() {
@@ -862,7 +863,6 @@
             // 需要等所有配置读取完成后再进行选项初始化
             el[name].init?.()
           }
-          gm.el.setting.style.display = 'flex'
         }
 
         /**
@@ -943,6 +943,7 @@
          */
         const processItem = () => {
           gm.menu.uploaderList.openHandler = onOpen
+          gm.el.uploaderList.fadeInDisplay = 'flex'
           el.uploaderListExample.onclick = () => {
             el.uploaderList.value = '# 非 UID 起始的行不会影响名单读取\n204335848 # 皇室战争电竞频道\n50329118 # 哔哩哔哩英雄联盟赛事'
           }
@@ -963,7 +964,6 @@
          */
         const onOpen = () => {
           el.uploaderList.value = gm.data.uploaderList()
-          gm.el.uploaderList.style.display = 'flex'
         }
       }
     }
@@ -1822,7 +1822,7 @@
           }
         }
 
-        api.dom.fade(true, _self.scriptControl, null, 'flex')
+        api.dom.fade(true, _self.scriptControl)
       }
 
       if (!_self.progress.root._scriptControlListeners) {

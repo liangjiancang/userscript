@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.18.17.20210901
+// @version         4.18.18.20210901
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -17,7 +17,7 @@
 // @exclude         *://message.bilibili.com/*/*
 // @exclude         *://t.bilibili.com/h5/*
 // @exclude         *://www.bilibili.com/page-proxy/*
-// @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=965951
+// @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=966080
 // @grant           GM_registerMenuCommand
 // @grant           GM_xmlhttpRequest
 // @grant           GM_setValue
@@ -1487,6 +1487,7 @@
           const _self = this
           gm.menu.setting.openHandler = onOpen
           gm.menu.setting.openedHandler = onOpened
+          gm.el.setting.fadeInDisplay = 'flex'
           el.save.onclick = onSave
           el.cancel.onclick = () => _self.closeMenuItem('setting')
           el.shadow.onclick = function() {
@@ -1609,7 +1610,6 @@
           } else {
             el.cleanRemoveHistoryData.textContent = '清空数据(0条)'
           }
-          gm.el.setting.style.display = 'flex'
           el.items.scrollTop = 0
         }
 
@@ -1820,15 +1820,17 @@
                   <span title="搜寻时在最近保存的多少条稍后再看历史数据记录中查找。按下回车键或输入框失去焦点时刷新数据，设置较小的值能较好地定位最近被添加到稍后再看的视频。">历史回溯深度：<input type="text" id="gm-search-times" value="0"></span>
                 </div>
               </div>
+              <div class="gm-content"></div>
             </div>
             <div class="gm-shadow"></div>
           `
           el.historyPage = gm.el.history.querySelector('.gm-history-page')
           el.comment = gm.el.history.querySelector('.gm-comment')
-          el.content = null
+          el.content = gm.el.history.querySelector('.gm-content')
           el.timePoint = gm.el.history.querySelector('#gm-history-time-point')
           el.saveTimes = gm.el.history.querySelector('#gm-save-times')
           el.removedNum = gm.el.history.querySelector('#gm-removed-num')
+          el.searchTimes = gm.el.history.querySelector('#gm-search-times')
           el.shadow = gm.el.history.querySelector('.gm-shadow')
         }
 
@@ -1836,8 +1838,9 @@
          * 维护内部元素和数据
          */
         const processItem = () => {
-          // 使用 el.searchTimes.current 代替本地变量记录数据，可以保证任何情况下闭包中都能获取到正确数据
-          el.searchTimes = gm.el.history.querySelector('#gm-search-times')
+          el.content.fadeOutDisplay = 'block'
+          el.content.fadeInTime = gm.const.textFadeTime
+          el.content.fadeOutTime = gm.const.textFadeTime
           el.searchTimes.current = gm.config.removeHistorySearchTimes
           el.searchTimes.value = el.searchTimes.current
           const stMin = gm.configMap.removeHistorySearchTimes.min
@@ -1887,7 +1890,7 @@
           }
 
           gm.menu.history.openHandler = onOpen
-          window.addEventListener('resize', api.tool.throttle(setContentTop, 100))
+          gm.el.history.fadeInDisplay = 'flex'
           el.shadow.onclick = () => _self.closeMenuItem('history')
         }
 
@@ -1895,15 +1898,8 @@
          * 移除记录打开时执行
          */
         const onOpen = async () => {
-          if (el.content) {
-            const oldContent = el.content
-            oldContent.fadeOutTime = gm.const.textFadeTime
-            api.dom.fade(false, oldContent, () => oldContent.remove())
-          }
-          el.content = el.historyPage.appendChild(document.createElement('div'))
-          el.content.className = 'gm-content'
+          api.dom.fade(false, el.content)
           el.timePoint.textContent = gm.config.removeHistoryTimestamp ? '最后一次' : '第一次'
-          gm.el.history.style.display = 'flex'
 
           try {
             const map = await webpage.method.getWatchlaterDataMap(item => item.bvid, null, true)
@@ -1975,7 +1971,6 @@
             }
             el.removedNum.textContent = result.length
 
-            setContentTop() // 在设置内容前设置好 top，这样看不出修改的痕迹
             if (result.length > 0) {
               el.content.innerHTML = result.join('')
               el.content.querySelectorAll('input[bvid]').forEach(box => {
@@ -1996,25 +1991,15 @@
               setEmptyContent('没有找到移除记录，请尝试增大历史回溯深度')
             }
           } catch (e) {
-            setContentTop() // 在设置内容前设置好 top，这样看不出修改的痕迹
-            setEmptyContent(`网络连接错误，出现这个问题有可能是因为网络加载速度不足或者B站后台 API 被改动。也不排除是脚本内部数据出错造成的，初始化脚本或清空稍后再看历史数据也许能解决问题。无法解决请联系脚本作者：${GM_info.script.supportURL}`)
+            setEmptyContent(`网络连接错误或内部数据错误，初始化脚本或清空稍后再看历史数据或许能解决问题。无法解决时请提供反馈：<br><a style="color:inherit;font-weight:normal" href="${GM_info.script.supportURL}" target="_blank">${GM_info.script.supportURL}<a>`)
             api.logger.error(e)
           } finally {
-            el.content.style.opacity = '1'
-          }
-        }
-
-        const setContentTop = () => {
-          if (el.content) {
-            el.content.style.top = `${el.comment.offsetTop + el.comment.offsetHeight}px`
+            api.dom.fade(true, el.content)
           }
         }
 
         const setEmptyContent = text => {
-          el.content.textContent = text
-          el.content.style.color = 'gray'
-          el.content.style.fontSize = '1.5em'
-          el.content.style.paddingTop = '2em'
+          el.content.innerHTML = `<div class="gm-empty"><div>${text}</div></div>`
         }
       }
     }
@@ -5005,12 +4990,9 @@
           }
 
           #${gm.id} .gm-history .gm-history-page {
-            height: 75vh;
             width: 60vw;
             min-width: 40em;
-            min-height: 50em;
             max-width: 80em;
-            max-height: 60em;
           }
 
           #${gm.id} .gm-history .gm-comment {
@@ -5037,13 +5019,10 @@
             text-align: center;
             line-height: 1.6em;
             overflow-y: auto;
-            position: absolute;
-            top: 8em;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            opacity: 0;
+            height: 56vh;
+            max-height: 60em;
             user-select: text;
+            opacity: 0;
           }
           #${gm.id} .gm-history .gm-content > * {
             position: relative;
@@ -5069,6 +5048,18 @@
           #${gm.id} .gm-history .gm-content > *:hover a {
             font-weight: bold;
             color: var(--${gm.id}-hightlight-color);
+          }
+          #${gm.id} .gm-history .gm-content .gm-empty {
+            display: flex;
+            justify-content: center;
+            font-size: 1.5em;
+            line-height: 1.6em;
+            margin-top: 3.6em;
+            color: gray;
+          }
+          #${gm.id} .gm-history .gm-content .gm-empty > * {
+            width: fit-content;
+            text-align: left;
           }
 
           #${gm.id} .gm-bottom {
