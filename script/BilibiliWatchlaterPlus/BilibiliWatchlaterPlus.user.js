@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.19.0.20210902
+// @version         4.19.1.20210902
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -4494,8 +4494,8 @@
             <div class="gm-batchAddManager-page gm-modal">
               <div class="gm-title">批量添加管理器</div>
               <div class="gm-comment">
-                <div>请执行以下步骤以将投稿批量添加到稍后再看（可以跳过部分步骤）。执行过程中可以关闭对话框，但不能关闭页面；将当前页面置于后台时，大部分浏览器会暂缓甚至暂停任务执行。</div>
-                <div>脚本会优先添加投稿时间较早的投稿，达到稍后再看容量上限 100 时终止执行。注意，该功能会向后台发起大量请求，滥用可能会导致一段时间内无法正常访问B站，您可以增加平均请求间隔以降低被 BAN 的概率。<button id="gm-save-batch-params">保存参数</button><button id="gm-reset-batch-params">重置参数</button></div>
+                <div>请执行以下步骤以将投稿批量添加到稍后再看（可以跳过部分步骤）。执行过程中可以关闭对话框，但不能关闭页面——且将当前页面置于后台时，大部分浏览器会暂缓甚至暂停任务执行。</div>
+                <div>脚本会优先添加投稿时间较早的投稿，达到稍后再看容量上限 100 时终止执行。注意，该功能会向后台发起大量请求，滥用可能会导致一段时间内无法正常访问B站，您可以增加平均请求间隔以降低被 BAN 的概率。</div>
                 <div>第一步：加载最近 <input id="gm-batch-1a" type="text" value="24"> <select id="gm-batch-1b" style="border:none;margin: 0 -4px">
                   <option value="${3600 * 24}">天</option>
                   <option value="3600" selected>小时</option>
@@ -4510,6 +4510,11 @@
                 <div>第四步：将选定稿件添加到稍后再看（平均请求间隔：<input id="gm-batch-4a" type="text" value="100">ms）<button id="gm-batch-4b">执行</button><button id="gm-batch-4c" disabled>终止</button></div>
               </div>
               <div class="gm-items"></div>
+              <div class="gm-bottom">
+                <button id="gm-unchecked-display">隐藏非选</button>
+                <button id="gm-save-batch-params">保存参数</button>
+                <button id="gm-reset-batch-params">重置参数</button>
+              </div>
             </div>
             <div class="gm-shadow"></div>
           `
@@ -4518,6 +4523,7 @@
             el[`id${id}`] = gm.el.batchAddManager.querySelector(`#gm-batch-${id}`)
           }
           el.items = gm.el.batchAddManager.querySelector('.gm-items')
+          el.uncheckedDisplay = gm.el.batchAddManager.querySelector('#gm-unchecked-display')
           el.saveParams = gm.el.batchAddManager.querySelector('#gm-save-batch-params')
           el.resetParams = gm.el.batchAddManager.querySelector('#gm-reset-batch-params')
           el.shadow = gm.el.batchAddManager.querySelector('.gm-shadow')
@@ -4538,6 +4544,20 @@
           gm.el.batchAddManager.fadeInDisplay = 'flex'
           el.shadow.addEventListener('click', () => script.closeMenuItem('batchAddManager'))
 
+          // 非选显示
+          el.uncheckedDisplay.hide = false
+          el.uncheckedDisplay.addEventListener('click', function() {
+            this.hide = !this.hide
+            this.textContent = this.hide ? '显示非选' : '隐藏非选'
+            const display = this.hide ? 'none' : ''
+            for (let i = 0; i < el.items.childElementCount; i++) {
+              const item = el.items.children[i]
+              if (!item.firstElementChild.checked) {
+                item.style.display = display
+              }
+            }
+          })
+
           // 参数
           el.saveParams.addEventListener('click', function() {
             const batchParams = {}
@@ -4549,7 +4569,7 @@
           })
           el.resetParams.addEventListener('click', function() {
             GM_deleteValue('batchParams')
-            api.message.create('重置成功，重新加载页面后参数将被初始化')
+            api.message.create('重置成功，重新加载页面后参数将加载默认值')
           })
 
           // 加载投稿
@@ -4592,7 +4612,8 @@
                     return // -> finally
                   }
                   const status = await _self.method.getVideoWatchlaterStatusByAid(String(info.aid))
-                  html = `<label class="gm-item" aid="${info.aid}" timestamp="${item.desc.timestamp}"><input type="checkbox"${status ? '' : ' checked'}> <span>[${info.owner.name}] ${info.title}</span></label>` + html
+                  const displayNone = status && el.uncheckedDisplay.hide
+                  html = `<label class="gm-item" aid="${info.aid}" timestamp="${item.desc.timestamp}"${displayNone ? ' style="display:none"' : ''}><input type="checkbox"${status ? '' : ' checked'}> <span>[${info.owner.name}] ${info.title}</span></label>` + html
                 }
                 el.items.insertAdjacentHTML('afterbegin', html)
                 await new Promise(resolve => setTimeout(resolve, 100)) // 多让点时间给其他线程，否则会出问题
@@ -4665,7 +4686,7 @@
             }
           })
 
-          // 添加
+          // 添加到稍后再看
           let stopAdd = false
           el.id4b.addEventListener('click', async function() {
             try {
@@ -4679,7 +4700,8 @@
               let available = 100 - (await gm.data.watchlaterListData()).length
               const checks = el.items.querySelectorAll('label:not(.gm-filtered) input')
               for (const check of checks) {
-                if (stopAdd || available <= 0) return // -> finally
+                if (stopAdd) return // -> finally
+                if (available <= 0) break
                 if (!check.checked) continue
                 const item = check.parentElement
                 const success = await _self.method.switchVideoWatchlaterStatus(item.getAttribute('aid'))
@@ -4700,7 +4722,6 @@
               gm.runtime.reloadWatchlaterListData = true
               window.dispatchEvent(new CustomEvent('reloadWatchlaterListData'))
             }
-
           })
           el.id4c.addEventListener('click', function() {
             stopAdd = true
@@ -5454,7 +5475,7 @@
             width: calc(100% - 2.5em * 2);
             height: 24em;
             padding: 0.4em 0;
-            margin: 0.5em 2.5em;
+            margin: 0 2.5em;
             font-size: 1.1em;
             border: 1px solid var(--${gm.id}-scrollbar-thumb-color);
             border-radius: 4px;
