@@ -9,6 +9,7 @@ module.exports = {
     'SharedArrayBuffer': 'readonly',
     'module': true,
     'ClipboardItem': true,
+    'BigInt': true,
     'unsafeWindow': true,
     'GM_info': true,
     'GM_addElement': true,
