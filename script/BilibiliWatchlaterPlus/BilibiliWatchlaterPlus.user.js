@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.19.3.20210902
+// @version         4.19.4.20210902
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -265,8 +265,8 @@
   /**
    * @callback watchlaterListData 通过懒加载方式获取稍后再看列表数据
    * @param {boolean} [reload] 是否重新加载稍后再看列表数据
-   * @param {boolean} [cache=true] 是否使用本地缓存
-   * @param {boolean} [disablePageCache] 是否禁用页面缓存
+   * @param {boolean} [pageCache=false] 是否使用页面缓存
+   * @param {boolean} [localCache=true] 是否使用本地缓存
    * @returns {Promise<GMObject_data_item0[]>} 稍后再看列表数据
    */
   /**
@@ -591,13 +591,13 @@
             return _.removeHistoryData
           }
         },
-        watchlaterListData: async (reload, cache = true, disablePageCache = false) => {
+        watchlaterListData: async (reload, pageCache, localCache = true) => {
           const _ = gm.data._
           if (gm.runtime.reloadWatchlaterListData) {
             reload = true
             gm.runtime.reloadWatchlaterListData = false
           }
-          if (_.watchlaterListData === undefined || reload || disablePageCache || gm.config.disablePageCache) {
+          if (_.watchlaterListData === undefined || reload || !pageCache || gm.config.disablePageCache) {
             if (_.watchlaterListData_loading) {
               // 一旦数据已在加载中，那么直接等待该次加载完成
               // 无论加载成功与否，所有被阻塞的数据请求均都使用该次加载的结果，完全保持一致
@@ -617,7 +617,7 @@
               }
             }
 
-            if (!reload && cache && gm.config.watchlaterListCacheValidPeriod > 0) {
+            if (!reload && localCache && gm.config.watchlaterListCacheValidPeriod > 0) {
               const cacheTime = GM_getValue('watchlaterListCacheTime')
               if (cacheTime) {
                 const current = new Date().getTime()
@@ -1957,6 +1957,7 @@
                 return BigInt(items[0].desc.dynamic_id_str) + 1n
               })()
               const end = new Date().getTime() - v1a * el.id1b.value * 1000
+              gm.runtime.reloadWatchlaterListData = true
               while (!stopLoad) {
                 const data = new URLSearchParams()
                 data.append('uid', uid)
@@ -1977,7 +1978,7 @@
                     el.items.insertAdjacentHTML('afterbegin', html)
                     return // -> finally
                   }
-                  const status = await webpage.method.getVideoWatchlaterStatusByAid(String(info.aid))
+                  const status = await webpage.method.getVideoWatchlaterStatusByAid(String(info.aid), false, true)
                   const displayNone = status && el.uncheckedDisplay.hide
                   html = `<label class="gm-item" aid="${info.aid}" timestamp="${item.desc.timestamp}"${displayNone ? ' style="display:none"' : ''}><input type="checkbox"${status ? '' : ' checked'}> <span>[${info.owner.name}] ${info.title}</span></label>` + html
                 }
@@ -2288,7 +2289,7 @@
           el.timePoint.textContent = gm.config.removeHistoryTimestamp ? '最后一次' : '第一次'
 
           try {
-            const map = await webpage.method.getWatchlaterDataMap(item => item.bvid, null, true)
+            const map = await webpage.method.getWatchlaterDataMap(item => item.bvid, 'bvid', true)
             const depth = parseInt(el.searchTimes.current)
             let data = null
             if (el.historySort.type < 2) {
@@ -2670,12 +2671,12 @@
          * 根据 `aid` 获取视频的稍后再看状态
          * @param {string} aid 视频 `aid`
          * @param {boolean} [reload] 是否重新加载
+         * @param {boolean} [pageCache] 是否禁用页面缓存
          * @param {boolean} [localCache=true] 是否使用本地缓存
-         * @param {boolean} [disablePageCache] 是否禁用页面缓存
          * @returns {Promise<boolean>} 视频是否在稍后再看中
          */
-        async getVideoWatchlaterStatusByAid(aid, reload = false, localCache = true, disablePageCache = false) {
-          const map = await this.getWatchlaterDataMap(item => String(item.aid), 'aid', reload, localCache, disablePageCache)
+        async getVideoWatchlaterStatusByAid(aid, reload, pageCache, localCache = true) {
+          const map = await this.getWatchlaterDataMap(item => String(item.aid), 'aid', reload, pageCache, localCache)
           return map.has(aid)
         },
 
@@ -2861,13 +2862,13 @@
         /**
          * 获取稍后再看列表数据以指定值为键的映射
          * @param {(GMObject_data_item0) => *} key 计算键值的方法
-         * @param {string} [cacheId] 缓存 ID，保留空值时不缓存
-         * @param {boolean} [reload] 是否重新加载稍后再看列表数据
-         * @param {boolean} [cache=true] 是否使用稍后再看列表数据本地缓存
-         * @param {boolean} [disablePageCache] 是否禁用稍后再看列表数据页面缓存
+         * @param {string} [cacheId] 缓存 ID，传入空值时不缓存
+         * @param {boolean} [reload] 是否重新加载
+         * @param {boolean} [pageCache] 是否使用页面缓存
+         * @param {boolean} [localCache=true] 是否使用本地缓存
          * @returns {Promise<Map<string, GMObject_data_item0>>} 稍后再看列表数据以指定值为键的映射
          */
-        async getWatchlaterDataMap(key, cacheId, reload, cache = true, disablePageCache = false) {
+        async getWatchlaterDataMap(key, cacheId, reload, pageCache, localCache = true) {
           if (gm.runtime.reloadWatchlaterListData) {
             reload = true
           }
@@ -2879,9 +2880,9 @@
             }
             obj = _.watchlaterDataSet
           }
-          if (!obj?.[cacheId] || reload || disablePageCache) {
+          if (!obj?.[cacheId] || reload || !pageCache) {
             const map = new Map()
-            const current = await gm.data.watchlaterListData(reload, cache, disablePageCache)
+            const current = await gm.data.watchlaterListData(reload, pageCache, localCache)
             for (const item of current) {
               map.set(key(item), item)
             }
@@ -3197,7 +3198,7 @@
           if (gm.config.watchlaterListCacheValidPeriod > 0) {
             setTimeout(() => {
               if (this.mouseOver) {
-                gm.data.watchlaterListData(false, true, true) // 启用本地缓存但禁用页面缓存
+                gm.data.watchlaterListData()
               }
             }, 25) // 以鼠标快速掠过不触发为准
           }
@@ -3561,7 +3562,7 @@
             el.entryList.total = 0
             el.entryRemovedList.textContent = ''
             el.entryRemovedList.total = 0
-            const data = await gm.data.watchlaterListData(false, true, true) // 启用本地缓存但禁用页面缓存
+            const data = await gm.data.watchlaterListData()
             const simplePopup = gm.config.headerMenu == Enums.headerMenu.enableSimple
             let serial = 0
             if (data.length > 0) {
@@ -3917,7 +3918,10 @@
      */
     async fillWatchlaterStatus() {
       const _self = this
-      let map = await _self.method.getWatchlaterDataMap(item => String(item.aid), 'aid')
+      let map = null
+      const initMap = async () => {
+        map = await _self.method.getWatchlaterDataMap(item => String(item.aid), 'aid', false, true)
+      }
       if (api.web.urlMatch(gm.regex.page_dynamicMenu)) { // 必须在动态页之前匹配
         fillWatchlaterStatus_dynamicMenu()
       } else if (api.web.urlMatch(gm.regex.page_dynamic)) {
@@ -3979,6 +3983,7 @@
        * 填充动态页稍后再看状态
        */
       async function fillWatchlaterStatus_dynamic() {
+        await initMap()
         api.wait.executeAfterElementLoaded({
           selector: '.video-container',
           base: await api.wait.waitQuerySelector('.feed-card'),
@@ -4004,6 +4009,7 @@
        * 填充动态入口菜单稍后再看状态
        */
       async function fillWatchlaterStatus_dynamicMenu() {
+        await initMap()
         api.wait.executeAfterElementLoaded({
           selector: '.list-item',
           base: await api.wait.waitQuerySelector('.video-list'),
@@ -4025,7 +4031,8 @@
       /**
        * 填充稍后再看状态（通用逻辑）
        */
-      function fillWatchlaterStatus_main() {
+      async function fillWatchlaterStatus_main() {
+        await initMap()
         api.wait.executeAfterElementLoaded({
           selector: '.watch-later-video, .watch-later-trigger, .watch-later, .w-later',
           base: document.body,
@@ -4084,6 +4091,7 @@
           gm.searchParams = new URL(location.href).searchParams
           const removed = await _self.processAutoRemove()
           if (gm.config.removeHistory && gm.config.removeHistorySavePoint == Enums.removeHistorySavePoint.anypage) {
+            // 本来没必要强制刷新，但后面查询状态必须要新数据，搭个顺风车
             await _self.method.updateRemoveHistoryData(true)
             reloaded = true
           }
@@ -4098,7 +4106,7 @@
        */
       async function initButtonStatus() {
         const setStatus = async () => {
-          const status = await _self.method.getVideoWatchlaterStatusByAid(bus.aid)
+          const status = await _self.method.getVideoWatchlaterStatusByAid(bus.aid, false, true)
           bus.btn.added = status
           bus.cb.checked = status
         }
