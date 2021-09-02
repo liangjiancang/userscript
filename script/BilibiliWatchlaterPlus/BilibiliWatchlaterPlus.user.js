@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.19.4.20210902
+// @version         4.19.5.20210902
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -1954,7 +1954,8 @@
                 const json = JSON.parse(resp.responseText)
                 const items = json.data.cards
                 if (items.length === 0) return // -> finally
-                return BigInt(items[0].desc.dynamic_id_str) + 1n
+                // dynamic_id 数值过大，直接运算会丢失精度，必须转为 BigInt 运算
+                return BigInt(items[0].desc.dynamic_id_str) + 1n // +1 才能获取到当前首项
               })()
               const end = new Date().getTime() - v1a * el.id1b.value * 1000
               gm.runtime.reloadWatchlaterListData = true
@@ -1970,6 +1971,7 @@
                 const items = json.data.cards
                 if (items.length === 0) return // -> finally
                 // 不要用 json.data.next_offset，会丢失精度
+                // offset 本身不会被获取，末项 offset 即下次查询 offset
                 dynamicOffset = items[items.length - 1].desc.dynamic_id_str
                 let html = ''
                 for (const item of items) {
