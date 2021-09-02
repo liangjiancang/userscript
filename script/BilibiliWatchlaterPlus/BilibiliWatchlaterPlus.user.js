@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.19.2.20210902
+// @version         4.19.3.20210902
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -69,6 +69,7 @@
       clearWatchedInWatchlater: 'clearWatchedInWatchlater',
       openUserSetting: 'openUserSetting',
       openRemoveHistory: 'openRemoveHistory',
+      openBatchAddManager: 'openBatchAddManager',
       noOperation: 'noOperation',
     },
     /**
@@ -317,7 +318,8 @@
    * @property {string} api_clearWatchlater 清空稍后再看，要求 POST 一个含 `csrf` 的表单
    * @property {string} api_listFav 列出所有收藏夹
    * @property {string} api_dealFav 将视频添加/移除至收藏夹
-   * @property {string} api_dynamicHistory 动态列表
+   * @property {string} api_dynamicNew 动态列表（首次）
+   * @property {string} api_dynamicHistory 动态列表（后续）
    * @property {string} page_watchlaterList 列表页面
    * @property {string} page_videoNormalMode 正常模式播放页
    * @property {string} page_videoWatchlaterMode 稍后再看模式播放页
@@ -359,14 +361,14 @@
   const gm = {
     id: gmId,
     configVersion: GM_getValue('configVersion'),
-    configUpdate: 20210902,
+    configUpdate: 20210902.1,
     searchParams: new URL(location.href).searchParams,
     config: {},
     configMap: {
       headerButton: { default: true, attr: 'checked' },
-      headerButtonOpL: { default: Enums.headerButtonOp.openListInCurrent, attr: 'value', configVersion: 20210323 },
-      headerButtonOpR: { default: Enums.headerButtonOp.openUserSetting, attr: 'value', configVersion: 20210323 },
-      headerButtonOpM: { default: Enums.headerButtonOp.openListInNew, attr: 'value', configVersion: 20210323 },
+      headerButtonOpL: { default: Enums.headerButtonOp.openListInCurrent, attr: 'value', configVersion: 20210902.1 },
+      headerButtonOpR: { default: Enums.headerButtonOp.openUserSetting, attr: 'value', configVersion: 20210902.1 },
+      headerButtonOpM: { default: Enums.headerButtonOp.openListInNew, attr: 'value', configVersion: 20210902.1 },
       headerMenu: { default: Enums.headerMenu.enable, attr: 'value', configVersion: 20210706 },
       openHeaderMenuLink: { default: Enums.openHeaderMenuLink.openInCurrent, attr: 'value', configVersion: 20200717 },
       headerMenuKeepRemoved: { default: true, attr: 'checked', needNotReload: true, configVersion: 20210724 },
@@ -426,6 +428,7 @@
       api_clearWatchlater: 'http://api.bilibili.com/x/v2/history/toview/clear',
       api_listFav: 'http://api.bilibili.com/x/v3/fav/folder/created/list-all',
       api_dealFav: 'http://api.bilibili.com/x/v3/fav/resource/deal',
+      api_dynamicNew: 'https://api.vc.bilibili.com/dynamic_svr/v1/dynamic_svr/dynamic_new',
       api_dynamicHistory: 'https://api.vc.bilibili.com/dynamic_svr/v1/dynamic_svr/dynamic_history',
       page_watchlaterList: 'https://www.bilibili.com/watchlater/#/list',
       page_videoNormalMode: 'https://www.bilibili.com/video',
@@ -753,7 +756,7 @@
           }
 
           // 功能性更新后更新此处配置版本
-          if (gm.configVersion < 20210902) {
+          if (gm.configVersion < 20210902.1) {
             _self.openUserSetting(2)
           } else {
             gm.configVersion = gm.configUpdate
@@ -794,6 +797,8 @@
       const _self = this
       // 用户配置设置
       GM_registerMenuCommand('用户设置', () => _self.openUserSetting())
+      // 批量添加管理器
+      GM_registerMenuCommand('批量添加管理器', () => _self.openBatchAddManager())
       if (gm.config.removeHistory) {
         // 稍后再看移除记录
         GM_registerMenuCommand('稍后再看移除记录', () => _self.openRemoveHistory())
@@ -1384,6 +1389,7 @@
             <option value="${Enums.headerButtonOp.clearWatchedInWatchlater}">移除稍后再看已观看视频</option>
             <option value="${Enums.headerButtonOp.openUserSetting}">打开用户设置</option>
             <option value="${Enums.headerButtonOp.openRemoveHistory}">打开稍后再看移除记录</option>
+            <option value="${Enums.headerButtonOp.openBatchAddManager}">打开批量添加管理器</option>
             <option value="${Enums.headerButtonOp.noOperation}">不执行操作</option>
           `
         }
@@ -1405,7 +1411,7 @@
             })
           }
           el.headerMenuFn = el.headerMenuFnSetting.parentElement.parentElement
-          el.headerButton.init = el.headerButton.onchange = function() {
+          el.headerButton.init = function() {
             subitemChange(this, 'headerButton')
             if (this.checked) {
               el.headerMenuFn.removeAttribute('disabled')
@@ -1413,16 +1419,19 @@
               el.headerMenuFn.setAttribute('disabled', '')
             }
           }
-          el.headerCompatible.init = el.headerCompatible.onchange = function() {
+          el.headerButton.addEventListener('change', el.headerButton.init)
+          el.headerCompatible.init = function() {
             setHcWarning()
           }
-          el.removeHistory.init = el.removeHistory.onchange = function() {
+          el.headerCompatible.addEventListener('change', el.headerCompatible.init)
+          el.removeHistory.init = function() {
             subitemChange(this, 'removeHistory')
             setRhWaring()
           }
+          el.removeHistory.addEventListener('change', el.removeHistory.init)
 
           // 输入框内容处理
-          el.removeHistoryFuzzyCompare.oninput = function() {
+          el.removeHistoryFuzzyCompare.addEventListener('input', function() {
             const v0 = this.value.replace(/[^\d]/g, '')
             if (v0 === '') {
               this.value = ''
@@ -1433,14 +1442,14 @@
               }
               this.value = value
             }
-          }
-          el.removeHistoryFuzzyCompare.onblur = function() {
+          })
+          el.removeHistoryFuzzyCompare.addEventListener('blur', function() {
             if (this.value === '') {
               this.value = gm.configMap.removeHistoryFuzzyCompare.default
             }
-          }
+          })
 
-          el.removeHistorySaves.oninput = function() {
+          el.removeHistorySaves.addEventListener('input', function() {
             const v0 = this.value.replace(/[^\d]/g, '')
             if (v0 === '') {
               this.value = ''
@@ -1452,8 +1461,8 @@
               this.value = value
             }
             setRhWaring()
-          }
-          el.removeHistorySaves.onblur = function() {
+          })
+          el.removeHistorySaves.addEventListener('blur', function() {
             if (this.value === '') {
               this.value = gm.configMap.removeHistorySaves.default
             } else {
@@ -1464,9 +1473,9 @@
               this.value = value
             }
             setRhWaring()
-          }
+          })
 
-          el.removeHistorySearchTimes.oninput = function() {
+          el.removeHistorySearchTimes.addEventListener('input', function() {
             const v0 = this.value.replace(/[^\d]/g, '')
             if (v0 === '') {
               this.value = ''
@@ -1477,8 +1486,8 @@
               }
               this.value = value
             }
-          }
-          el.removeHistorySearchTimes.onblur = function() {
+          })
+          el.removeHistorySearchTimes.addEventListener('blur', function() {
             if (this.value === '') {
               this.value = gm.configMap.removeHistorySearchTimes.default
             } else {
@@ -1488,9 +1497,9 @@
               }
               this.value = value
             }
-          }
+          })
 
-          el.watchlaterListCacheValidPeriod.oninput = function() {
+          el.watchlaterListCacheValidPeriod.addEventListener('input', function() {
             const v0 = this.value.replace(/[^\d]/g, '')
             if (v0 === '') {
               this.value = ''
@@ -1501,12 +1510,12 @@
               }
               this.value = value
             }
-          }
-          el.watchlaterListCacheValidPeriod.onblur = function() {
+          })
+          el.watchlaterListCacheValidPeriod.addEventListener('blur', function() {
             if (this.value === '') {
               this.value = gm.configMap.watchlaterListCacheValidPeriod.default
             }
-          }
+          })
         }
 
         /**
@@ -1516,25 +1525,25 @@
           gm.menu.setting.openHandler = onOpen
           gm.menu.setting.openedHandler = onOpened
           gm.el.setting.fadeInDisplay = 'flex'
-          el.save.onclick = onSave
-          el.cancel.onclick = () => _self.closeMenuItem('setting')
-          el.shadow.onclick = function() {
+          el.save.addEventListener('click', onSave) 
+          el.cancel.addEventListener('click', () => _self.closeMenuItem('setting'))
+          el.shadow.addEventListener('click', function() {
             if (!this.hasAttribute('disabled')) {
               _self.closeMenuItem('setting')
             }
-          }
-          el.reset.onclick = () => _self.resetScript()
-          el.cleanRemoveHistoryData.onclick = function() {
+          })
+          el.reset.addEventListener('click', () => _self.resetScript())
+          el.cleanRemoveHistoryData.addEventListener('click', function() {
             el.removeHistory.checked && _self.cleanRemoveHistoryData()
-          }
-          el.watchlaterMediaList.onclick = function() {
+          })
+          el.watchlaterMediaList.addEventListener('click', function() {
             const uid = webpage.method.getDedeUserID()
             const mlid = api.message.prompt('指定使用收藏功能时，将视频从稍后再看移动至哪个收藏夹。\n下方应填入目标收藏夹 ID，置空时使用默认收藏夹。\n获取方式：打开目标收藏夹页面，网址为「space.bilibili.com/${uid}/favlist?fid=${mlid}」。其中 ${mlid} 为收藏夹 ID。', GM_getValue(`watchlaterMediaList_${uid}`) ?? undefined)
             if (mlid !== null) {
               GM_setValue(`watchlaterMediaList_${uid}`, mlid)
               api.message.create('已保存稍后再看收藏夹设置')
             }
-          }
+          })
           if (type > 0) {
             if (type == 2) {
               el.save.title = '向下滚动……'
@@ -1803,6 +1812,339 @@
     }
 
     /**
+     * 打开批量添加管理器
+     */
+    openBatchAddManager() {
+      if (gm.el.batchAddManager) {
+        script.openMenuItem('batchAddManager')
+      } else {
+        const el = {}
+        setTimeout(() => {
+          initManager()
+          processItem()
+          script.openMenuItem('batchAddManager')
+        })
+
+        /**
+         * 初始化管理器
+         */
+        const initManager = () => {
+          gm.el.batchAddManager = gm.el.gmRoot.appendChild(document.createElement('div'))
+          gm.menu.batchAddManager.el = gm.el.batchAddManager
+          gm.el.batchAddManager.className = 'gm-batchAddManager gm-modal-container'
+          gm.el.batchAddManager.innerHTML = `
+            <div class="gm-batchAddManager-page gm-modal">
+              <div class="gm-title">批量添加管理器</div>
+              <div class="gm-comment">
+                <div>请执行以下步骤以将投稿批量添加到稍后再看（可以跳过部分步骤）。执行过程中可以关闭对话框，但不能关闭页面——且将当前页面置于后台时，大部分浏览器会暂缓甚至暂停任务执行。</div>
+                <div>脚本会优先添加投稿时间较早的投稿，达到稍后再看容量上限 100 时终止执行。注意，该功能会向后台发起大量请求，滥用可能会导致一段时间内无法正常访问B站，您可以增加平均请求间隔以降低被 BAN 的概率。</div>
+                <div>第一步：加载最近 <input id="gm-batch-1a" type="text" value="24"> <select id="gm-batch-1b" style="border:none;margin: 0 -4px">
+                  <option value="${3600 * 24}">天</option>
+                  <option value="3600" selected>小时</option>
+                  <option value="60">分钟</option>
+                </select> 以内发布的视频投稿<button id="gm-batch-1c">执行</button><button id="gm-batch-1d" disabled>终止</button></div>
+                <div>第二步：缩小时间范围到 <input id="gm-batch-2a" type="text"> <select id="gm-batch-2b" style="border:none;margin: 0 -4px">
+                  <option value="${3600 * 24}">天</option>
+                  <option value="3600" selected>小时</option>
+                  <option value="60">分钟</option>
+                </select> 以内<button id="gm-batch-2c" disabled>执行</button></div>
+                <div>第三步：筛选 <input id="gm-batch-3a" type="text" style="width:10em">，过滤 <input id="gm-batch-3b" type="text" style="width:10em">；支持通配符 ( ? * )，使用 | 分隔关键词<button id="gm-batch-3c" disabled>执行</button></div>
+                <div>第四步：将选定稿件添加到稍后再看（平均请求间隔：<input id="gm-batch-4a" type="text" value="100">ms）<button id="gm-batch-4b" disabled>执行</button><button id="gm-batch-4c" disabled>终止</button></div>
+              </div>
+              <div class="gm-items"></div>
+              <div class="gm-bottom">
+                <button id="gm-unchecked-display"></button>
+                <button id="gm-save-batch-params">保存参数</button>
+                <button id="gm-reset-batch-params">重置参数</button>
+              </div>
+            </div>
+            <div class="gm-shadow"></div>
+          `
+          const ids = ['1a', '1b', '1c', '1d', '2a', '2b', '2c', '3a', '3b', '3c', '4a', '4b', '4c']
+          for (const id of ids) {
+            el[`id${id}`] = gm.el.batchAddManager.querySelector(`#gm-batch-${id}`)
+          }
+          el.items = gm.el.batchAddManager.querySelector('.gm-items')
+          el.uncheckedDisplay = gm.el.batchAddManager.querySelector('#gm-unchecked-display')
+          el.saveParams = gm.el.batchAddManager.querySelector('#gm-save-batch-params')
+          el.resetParams = gm.el.batchAddManager.querySelector('#gm-reset-batch-params')
+          el.shadow = gm.el.batchAddManager.querySelector('.gm-shadow')
+
+          el.saveParams.paramIds = ['1a', '1b', '2a', '2b', '3a', '3b', '4a']
+          const batchParams = GM_getValue('batchParams')
+          if (batchParams) {
+            for (const id of el.saveParams.paramIds) {
+              el[`id${id}`].value = batchParams[`id${id}`]
+            }
+          }
+        }
+
+        /**
+         * 维护内部元素和数据
+         */
+        const processItem = () => {
+          gm.el.batchAddManager.fadeInDisplay = 'flex'
+          el.shadow.addEventListener('click', () => script.closeMenuItem('batchAddManager'))
+
+          // 非选显示
+          const setUncheckedDisplayText = () => {
+            el.uncheckedDisplay.textContent = el.uncheckedDisplay.hide ? '显示非选' : '隐藏非选'
+          }
+          el.uncheckedDisplay.hide = GM_getValue('batchUncheckedDisplay') ?? false
+          setUncheckedDisplayText()
+          el.uncheckedDisplay.addEventListener('click', function() {
+            this.hide = !this.hide
+            GM_setValue('batchUncheckedDisplay', this.hide)
+            setUncheckedDisplayText()
+            const display = this.hide ? 'none' : ''
+            for (let i = 0; i < el.items.childElementCount; i++) {
+              const item = el.items.children[i]
+              if (!item.firstElementChild.checked) {
+                item.style.display = display
+              }
+            }
+          })
+          el.items.addEventListener('click', function(e) {
+            if (e.target.type == 'checkbox' && el.uncheckedDisplay.hide) {
+              if (!e.target.checked) {
+                e.target.parentElement.style.display = 'none'
+              }
+            }
+          })
+
+          // 参数
+          el.saveParams.addEventListener('click', function() {
+            const batchParams = {}
+            for (const id of el.saveParams.paramIds) {
+              batchParams[`id${id}`] = el[`id${id}`].value
+            }
+            GM_setValue('batchParams', batchParams)
+            api.message.create('保存成功，重新加载页面后当前参数会被自动加载')
+          })
+          el.resetParams.addEventListener('click', function() {
+            GM_deleteValue('batchParams')
+            api.message.create('重置成功，重新加载页面后参数将加载默认值')
+          })
+
+          // 加载投稿
+          let stopLoad = false
+          el.id1c.addEventListener('click', async function() {
+            let error = false
+            try {
+              const v1a = parseFloat(el.id1a.value)
+              if (isNaN(v1a)) throw 'v1a is NaN'
+              el.id1a.value = v1a
+              this.disabled = true
+              this.textContent = '执行中'
+              el.id1d.disabled = false
+              el.id2c.disabled = true
+              el.id3c.disabled = true
+              el.id4b.disabled = true
+              el.items.textContent = ''
+              const uid = webpage.method.getDedeUserID()
+              let dynamicOffset = await (async () => {
+                // 一定要确保取到的是视频投稿的 dynamic_id
+                // 某些动态（如直播）会显示在动态列表前方，但它们 dynamic_id 对应的时间点却可以是几天前的，非常诡异
+                const data = new URLSearchParams()
+                data.append('uid', uid)
+                data.append('type_list', 8) // 视频（8 表示视频列表是猜的，目前测试下来应该没问题）
+                const resp = await api.web.request({
+                  url: `${gm.url.api_dynamicNew}?${data.toString()}`,
+                })
+                const json = JSON.parse(resp.responseText)
+                const items = json.data.cards
+                if (items.length === 0) return // -> finally
+                return BigInt(items[0].desc.dynamic_id_str) + 1n
+              })()
+              const end = new Date().getTime() - v1a * el.id1b.value * 1000
+              while (!stopLoad) {
+                const data = new URLSearchParams()
+                data.append('uid', uid)
+                data.append('offset_dynamic_id', dynamicOffset)
+                data.append('type', 8) // 视频（参考动态入口弹出菜单的请求）
+                const resp = await api.web.request({
+                  url: `${gm.url.api_dynamicHistory}?${data.toString()}`,
+                })
+                const json = JSON.parse(resp.responseText)
+                const items = json.data.cards
+                if (items.length === 0) return // -> finally
+                // 不要用 json.data.next_offset，会丢失精度
+                dynamicOffset = items[items.length - 1].desc.dynamic_id_str
+                let html = ''
+                for (const item of items) {
+                  const info = JSON.parse(item.card)
+                  if (item.desc.timestamp * 1000 < end) {
+                    el.items.insertAdjacentHTML('afterbegin', html)
+                    return // -> finally
+                  }
+                  const status = await webpage.method.getVideoWatchlaterStatusByAid(String(info.aid))
+                  const displayNone = status && el.uncheckedDisplay.hide
+                  html = `<label class="gm-item" aid="${info.aid}" timestamp="${item.desc.timestamp}"${displayNone ? ' style="display:none"' : ''}><input type="checkbox"${status ? '' : ' checked'}> <span>[${info.owner.name}] ${info.title}</span></label>` + html
+                }
+                el.items.insertAdjacentHTML('afterbegin', html)
+                await new Promise(resolve => setTimeout(resolve, 100 * (Math.random() + 0.5))) // 多让点时间给其他线程，顺便给请求留点间隔
+              }
+            } catch (e) {
+              error = true
+              api.message.alert('执行失败')
+              api.logger.error(e)
+            } finally {
+              if (!error && !stopLoad) {
+                api.message.create('批量添加：稿件加载完成', { ms: 1800 })
+              }
+              stopLoad = false
+              this.disabled = false
+              this.textContent = '重新执行'
+              el.id1d.disabled = true
+              el.id2c.disabled = false
+              el.id3c.disabled = false
+              el.id4b.disabled = false
+            }
+          })
+          el.id1d.addEventListener('click', function() {
+            stopLoad = true
+          })
+
+          // 时间过滤
+          const filterTime = function() {
+            try {
+              el.id2c.disabled = true
+              const v2a = parseFloat(el.id2a.value)
+              if (isNaN(v2a)) {
+                for (let i = 0; i < el.items.childElementCount; i++) {
+                  api.dom.removeClass(el.items.children[i], 'gm-filtered-time')
+                }
+              } else {
+                const newEnd = new Date().getTime() - v2a * el.id2b.value * 1000
+                for (let i = 0; i < el.items.childElementCount; i++) {
+                  const item = el.items.children[i]
+                  const timestamp = parseInt(item.getAttribute('timestamp'))
+                  if (timestamp * 1000 < newEnd) {
+                    api.dom.addClass(item, 'gm-filtered-time')
+                  } else {
+                    api.dom.removeClass(item, 'gm-filtered-time')
+                  }
+                }
+              }
+            } catch (e) {
+              api.message.alert('执行失败')
+              api.logger.error(e)
+            }
+          }
+          el.id2a.addEventListener('input', api.tool.throttle(filterTime, gm.const.inputThrottleWait))
+          el.id2b.addEventListener('change', filterTime)
+          el.id2c.addEventListener('click', filterTime)
+          el.id2a.addEventListener('input', function() {
+            const val = parseFloat(this.value)
+            if (isNaN(val)) {
+              this.value = ''
+            } else {
+              let valStr = String(val)
+              if (valStr.indexOf('.') < 0 && this.value.indexOf('.') >= 0) {
+                valStr += '.'
+              }
+              this.value = valStr
+            }
+          })
+          el.id2a.addEventListener('blur', function() {
+            if (this.value.endsWith('.')) {
+              this.value = this.value.slice(0, -1)
+            }
+          })
+
+          // 正则过滤
+          const filterRegex = function() {
+            const getRegex = str => {
+              let result = null
+              str = str.trim()
+              if (str !== '') {
+                try {
+                  str = str.replace(/[.+^${}()[\]\\]/g, '\\$&') // escape regex except |
+                    .replaceAll('?', '.').replaceAll('*', '.+') // 通配符
+                  result = new RegExp(str, 'i')
+                } catch (e) { /* nothing to do */ }
+              }
+              return result
+            }
+            try {
+              el.id3c.disabled = true
+              el.id3a.value = el.id3a.value.trim()
+              el.id3b.value = el.id3b.value.trim()
+              const v3a = getRegex(el.id3a.value)
+              const v3b = getRegex(el.id3b.value)
+              for (let i = 0; i < el.items.childElementCount; i++) {
+                const item = el.items.children[i]
+                const tc = item.textContent
+                if ((v3a && !v3a.test(tc)) || v3b?.test(tc)) {
+                  api.dom.addClass(item, 'gm-filtered-regex')
+                } else {
+                  api.dom.removeClass(item, 'gm-filtered-regex')
+                }
+              }
+            } catch (e) {
+              api.message.alert('执行失败')
+              api.logger.error(e)
+            }
+          }
+          const throttledFilterRegex = api.tool.throttle(filterRegex, gm.const.inputThrottleWait)
+          el.id3a.addEventListener('input', throttledFilterRegex)
+          el.id3b.addEventListener('input', throttledFilterRegex)
+          el.id3c.addEventListener('click', throttledFilterRegex)
+
+          // 添加到稍后再看
+          let stopAdd = false
+          el.id4b.addEventListener('click', async function() {
+            try {
+              const v4a = parseFloat(el.id4a.value)
+              if (isNaN(v4a)) throw 'v4a is NaN'
+              el.id4a.value = v4a
+              this.disabled = true
+              this.textContent = '执行中'
+              el.id4c.disabled = false
+              el.id1c.disabled = true
+              el.id2c.disabled = true
+              el.id3c.disabled = true
+
+              let available = 100 - (await gm.data.watchlaterListData()).length
+              const checks = el.items.querySelectorAll('label:not(.gm-filtered-time, .gm-filtered-regex) input')
+              for (const check of checks) {
+                if (stopAdd) return // -> finally
+                if (available <= 0) break
+                if (!check.checked) continue
+                const item = check.parentElement
+                const success = await webpage.method.switchVideoWatchlaterStatus(item.getAttribute('aid'))
+                if (!success) throw 'add request error'
+                check.checked = false
+                if (el.uncheckedDisplay.hide) {
+                  item.style.display = 'none'
+                }
+                available -= 1
+                await new Promise(resolve => setTimeout(resolve, v4a * (Math.random() + 0.5)))
+              }
+              api.message.create('批量添加：已将所有选定稿件添加到稍后再看', { ms: 1800 })
+            } catch (e) {
+              api.message.alert('执行失败：可能是因为该稿件不可用或稍后再看不支持该稿件类型（如互动视频），请尝试取消勾选当前列表中第一个选定的稿件后重新执行')
+              api.logger.error(e)
+            } finally {
+              stopAdd = false
+              this.disabled = false
+              this.textContent = '重新执行'
+              el.id4c.disabled = true
+              el.id1c.disabled = false
+              el.id2c.disabled = false
+              el.id3c.disabled = false
+              gm.runtime.reloadWatchlaterListData = true
+              window.dispatchEvent(new CustomEvent('reloadWatchlaterListData'))
+            }
+          })
+          el.id4c.addEventListener('click', function() {
+            stopAdd = true
+          })
+        }
+      }
+    }
+
+    /**
      * 打开移除记录
      */
     openRemoveHistory() {
@@ -1842,7 +2184,7 @@
             <div class="gm-history-page gm-modal">
               <div class="gm-title">稍后再看移除记录</div>
               <div class="gm-comment">
-                <div>根据最近<span id="gm-save-times">0</span>条不重复数据记录生成，共筛选出<span id="gm-removed-num">0</span>条移除记录。排序由视频<span id="gm-history-time-point"></span>被观察到处于稍后再看的时间决定，与被移除出稍后再看的时间无关。如果记录太少请在下方设置增加历史回溯深度；记录太多则减少之，并善用浏览器的搜索功能辅助定位。鼠标移动到内容区域可向下滚动翻页，点击对话框以外的位置退出。</div>
+                <div>根据最近<span id="gm-save-times">0</span>条不重复数据记录生成，共筛选出<span id="gm-removed-num">0</span>条移除记录。排序由视频<span id="gm-history-time-point"></span>被观察到处于稍后再看的时间决定，与被移除出稍后再看的时间无关。如果记录太少请设置增加历史回溯深度；记录太多则减少之，并善用浏览器搜索功能辅助定位。</div>
                 <div style="text-align:right;font-weight:bold">
                   <span id="gm-history-sort" style="text-decoration:underline;cursor:pointer">降序</span>
                   <span title="搜寻时在最近保存的多少条稍后再看历史数据记录中查找。按下回车键或输入框失去焦点时刷新数据，设置较小的值能较好地定位最近被添加到稍后再看的视频。">历史回溯深度：<input type="text" id="gm-search-times" value="0"></span>
@@ -1872,7 +2214,7 @@
           el.searchTimes.current = gm.config.removeHistorySearchTimes
           el.searchTimes.value = el.searchTimes.current
           const stMin = gm.configMap.removeHistorySearchTimes.min
-          el.searchTimes.oninput = function() {
+          el.searchTimes.addEventListener('input', function() {
             const v0 = this.value.replace(/[^\d]/g, '')
             if (v0 === '') {
               this.value = ''
@@ -1886,8 +2228,8 @@
               }
               this.value = value
             }
-          }
-          el.searchTimes.onblur = function() {
+          })
+          el.searchTimes.addEventListener('blur', function() {
             if (this.value === '') {
               this.value = gm.config.removeHistorySearchTimes
             }
@@ -1895,12 +2237,28 @@
               el.searchTimes.current = this.value
               gm.menu.history.openHandler()
             }
-          }
-          el.searchTimes.onkeyup = function(e) {
+          })
+          el.searchTimes.addEventListener('keyup', function(e) {
             if (e.keyCode == 13) {
-              this.onblur()
+              this.dispatchEvent(new Event('blur'))
             }
-          }
+          })
+
+          el.content.addEventListener('click', async function(e) {
+            if (e.target.type == 'checkbox') {
+              const box = e.target
+              const status = box.checked
+              const bvid = box.getAttribute('bvid')
+              const note = status ? '添加到稍后再看' : '从稍后再看移除'
+              const success = await webpage?.method.switchVideoWatchlaterStatus(bvid, status)
+              if (success) {
+                api.message.create(`${note}成功`)
+              } else {
+                box.checked = !status
+                api.message.create(`${note}失败${status ? '，可能是因为该稿件不可用' : ''}`)
+              }
+            }
+          })
 
           // 排序方式
           el.historySort = gm.el.history.querySelector('#gm-history-sort')
@@ -1912,14 +2270,14 @@
             this.textContent = this.typeText[type]
             this.title = `点击切换${this.typeText[(type + 1) % this.typeText.length]}`
           }
-          el.historySort.onclick = function() {
+          el.historySort.addEventListener('click', function() {
             this.setType((this.type + 1) % this.typeText.length)
             gm.menu.history.openHandler()
-          }
+          })
 
           gm.menu.history.openHandler = onOpen
           gm.el.history.fadeInDisplay = 'flex'
-          el.shadow.onclick = () => _self.closeMenuItem('history')
+          el.shadow.addEventListener('click', () => _self.closeMenuItem('history'))
         }
 
         /**
@@ -2001,20 +2359,6 @@
 
             if (result.length > 0) {
               el.content.innerHTML = result.join('')
-              el.content.querySelectorAll('input[bvid]').forEach(box => {
-                box.addEventListener('click', async function() {
-                  const status = this.checked
-                  const bvid = this.getAttribute('bvid')
-                  const note = status ? '添加到稍后再看' : '从稍后再看移除'
-                  const success = await webpage?.method.switchVideoWatchlaterStatus(bvid, status)
-                  if (success) {
-                    api.message.create(`${note}成功`)
-                  } else {
-                    this.checked = !status
-                    api.message.create(`${note}失败${status ? '，可能是因为该稿件不可用' : ''}`)
-                  }
-                })
-              })
             } else {
               setEmptyContent('没有找到移除记录，请尝试增大历史回溯深度')
             }
@@ -2797,18 +3141,21 @@
             case Enums.headerButtonOp.openRemoveHistory:
               script.openRemoveHistory()
               break
+            case Enums.headerButtonOp.openBatchAddManager:
+              script.openBatchAddManager()
+              break
           }
         }
-        watchlater.onmousedown = function(e) {
+        watchlater.addEventListener('mousedown', function(e) {
           if (e.button != 2) {
             process(e.button)
             e.preventDefault()
           }
-        }
-        watchlater.oncontextmenu = function(e) {
+        })
+        watchlater.addEventListener('contextmenu', function(e) {
           process(2) // 整合写进 mousedown 中会导致无法阻止右键菜单弹出
           e.preventDefault()
-        }
+        })
       }
 
       /**
@@ -3046,10 +3393,10 @@
                   el.entryListEmpty.style.display = 'unset'
                 }
               }, gm.const.inputThrottleWait))
-              el.searchClear.onclick = function() {
+              el.searchClear.addEventListener('click', function() {
                 el.search.value = ''
                 el.search.dispatchEvent(new Event('input'))
-              }
+              })
             } else {
               el.entryHeader.style.display = 'none'
             }
@@ -3543,6 +3890,7 @@
           case Enums.headerButtonOp.clearWatchlater:
           case Enums.headerButtonOp.openUserSetting:
           case Enums.headerButtonOp.openRemoveHistory:
+          case Enums.headerButtonOp.openBatchAddManager:
           case Enums.headerButtonOp.noOperation:
             result.href = gm.url.noop
             break
@@ -4249,18 +4597,23 @@
         })
         ob.observe(playAll, { attributeFilter: ['href'] })
       }
-      // 在列表页面加入「移除记录」
+      // 加入「批量添加」
+      const batchButton = r_con.appendChild(document.createElement('div'))
+      batchButton.textContent = '批量添加'
+      batchButton.className = 's-btn'
+      batchButton.addEventListener('click', () => script.openBatchAddManager())
+      // 加入「移除记录」
       if (gm.config.removeHistory) {
         const removeHistoryButton = r_con.appendChild(document.createElement('div'))
         removeHistoryButton.textContent = '移除记录'
         removeHistoryButton.className = 's-btn'
-        removeHistoryButton.onclick = () => script.openRemoveHistory() // 要避免 MouseEvent 的传递
+        removeHistoryButton.addEventListener('click', () => script.openRemoveHistory())
       }
-      // 在列表页面加如「增强设置」
+      // 加入「增强设置」
       const plusButton = r_con.appendChild(document.createElement('div'))
       plusButton.textContent = '增强设置'
       plusButton.className = 's-btn'
-      plusButton.onclick = () => script.openUserSetting() // 要避免 MouseEvent 的传递
+      plusButton.addEventListener('click', () => script.openUserSetting())
       // 移除「一键清空」按钮
       if (gm.config.removeButton_removeAll) {
         r_con.children[1].style.display = 'none'
@@ -4325,10 +4678,10 @@
           await _self.updateWatchlaterListTotal()
           _self.triggerWatchlaterListContentLoad()
         }, gm.const.inputThrottleWait))
-        searchClear.onclick = function() {
+        searchClear.addEventListener('click', function() {
           search.value = ''
           search.dispatchEvent(new Event('input'))
-        }
+        })
       }
 
       // 增加排序控制
@@ -4462,271 +4815,9 @@
           btn.id = 'gm-batch-manager-btn'
           api.dom.removeClass(btn.firstElementChild, 'selected')
           btn.firstElementChild.textContent = '批量添加'
-          btn.addEventListener('click', () => this.openBatchAddManager())
+          btn.addEventListener('click', () => script.openBatchAddManager())
           bar.appendChild(btn)
         })
-      }
-    }
-
-    /**
-     * 打开批量添加管理器
-     */
-    openBatchAddManager() {
-      if (gm.el.batchAddManager) {
-        script.openMenuItem('batchAddManager')
-      } else {
-        const _self = this
-        const el = {}
-        setTimeout(() => {
-          initManager()
-          processItem()
-          script.openMenuItem('batchAddManager')
-        })
-
-        /**
-         * 初始化管理器
-         */
-        const initManager = () => {
-          gm.el.batchAddManager = gm.el.gmRoot.appendChild(document.createElement('div'))
-          gm.menu.batchAddManager.el = gm.el.batchAddManager
-          gm.el.batchAddManager.className = 'gm-batchAddManager gm-modal-container'
-          gm.el.batchAddManager.innerHTML = `
-            <div class="gm-batchAddManager-page gm-modal">
-              <div class="gm-title">批量添加管理器</div>
-              <div class="gm-comment">
-                <div>请执行以下步骤以将投稿批量添加到稍后再看（可以跳过部分步骤）。执行过程中可以关闭对话框，但不能关闭页面——且将当前页面置于后台时，大部分浏览器会暂缓甚至暂停任务执行。</div>
-                <div>脚本会优先添加投稿时间较早的投稿，达到稍后再看容量上限 100 时终止执行。注意，该功能会向后台发起大量请求，滥用可能会导致一段时间内无法正常访问B站，您可以增加平均请求间隔以降低被 BAN 的概率。</div>
-                <div>第一步：加载最近 <input id="gm-batch-1a" type="text" value="24"> <select id="gm-batch-1b" style="border:none;margin: 0 -4px">
-                  <option value="${3600 * 24}">天</option>
-                  <option value="3600" selected>小时</option>
-                  <option value="60">分钟</option>
-                </select> 以内发布的视频投稿<button id="gm-batch-1c">执行</button><button id="gm-batch-1d" disabled>终止</button></div>
-                <div>第二步：缩小时间范围到 <input id="gm-batch-2a" type="tex分钟"> <select id="gm-batch-2b" style="border:none;margin: 0 -4px">
-                  <option value="${3600 * 24}">天</option>
-                  <option value="3600" selected>小时</option>
-                  <option value="60">分钟</option>
-                </select> 以内<button id="gm-batch-2c">执行</button></div>
-                <div>第三步：筛选 <input id="gm-batch-3a" type="text" style="width:10em">，过滤 <input id="gm-batch-3b" type="text" style="width:10em">；支持通配符 ( ? * )，使用 | 分隔关键词<button id="gm-batch-3c">执行</button></div>
-                <div>第四步：将选定稿件添加到稍后再看（平均请求间隔：<input id="gm-batch-4a" type="text" value="100">ms）<button id="gm-batch-4b">执行</button><button id="gm-batch-4c" disabled>终止</button></div>
-              </div>
-              <div class="gm-items"></div>
-              <div class="gm-bottom">
-                <button id="gm-unchecked-display">隐藏非选</button>
-                <button id="gm-save-batch-params">保存参数</button>
-                <button id="gm-reset-batch-params">重置参数</button>
-              </div>
-            </div>
-            <div class="gm-shadow"></div>
-          `
-          const ids = ['1a', '1b', '1c', '1d', '2a', '2b', '2c', '3a', '3b', '3c', '4a', '4b', '4c']
-          for (const id of ids) {
-            el[`id${id}`] = gm.el.batchAddManager.querySelector(`#gm-batch-${id}`)
-          }
-          el.items = gm.el.batchAddManager.querySelector('.gm-items')
-          el.uncheckedDisplay = gm.el.batchAddManager.querySelector('#gm-unchecked-display')
-          el.saveParams = gm.el.batchAddManager.querySelector('#gm-save-batch-params')
-          el.resetParams = gm.el.batchAddManager.querySelector('#gm-reset-batch-params')
-          el.shadow = gm.el.batchAddManager.querySelector('.gm-shadow')
-
-          el.saveParams.paramIds = ['1a', '1b', '2a', '2b', '3a', '3b', '4a']
-          const batchParams = GM_getValue('batchParams')
-          if (batchParams) {
-            for (const id of el.saveParams.paramIds) {
-              el[`id${id}`].value = batchParams[`id${id}`]
-            }
-          }
-        }
-
-        /**
-         * 维护内部元素和数据
-         */
-        const processItem = () => {
-          gm.el.batchAddManager.fadeInDisplay = 'flex'
-          el.shadow.addEventListener('click', () => script.closeMenuItem('batchAddManager'))
-
-          // 非选显示
-          el.uncheckedDisplay.hide = false
-          el.uncheckedDisplay.addEventListener('click', function() {
-            this.hide = !this.hide
-            this.textContent = this.hide ? '显示非选' : '隐藏非选'
-            const display = this.hide ? 'none' : ''
-            for (let i = 0; i < el.items.childElementCount; i++) {
-              const item = el.items.children[i]
-              if (!item.firstElementChild.checked) {
-                item.style.display = display
-              }
-            }
-          })
-
-          // 参数
-          el.saveParams.addEventListener('click', function() {
-            const batchParams = {}
-            for (const id of el.saveParams.paramIds) {
-              batchParams[`id${id}`] = el[`id${id}`].value
-            }
-            GM_setValue('batchParams', batchParams)
-            api.message.create('保存成功，重新加载页面后当前参数会被自动加载')
-          })
-          el.resetParams.addEventListener('click', function() {
-            GM_deleteValue('batchParams')
-            api.message.create('重置成功，重新加载页面后参数将加载默认值')
-          })
-
-          // 加载投稿
-          let stopLoad = false
-          el.id1c.addEventListener('click', async function() {
-            try {
-              const v1a = parseFloat(el.id1a.value)
-              if (isNaN(v1a)) throw 'v1a is NaN'
-              el.id1a.value = v1a
-              this.disabled = true
-              this.textContent = '执行中'
-              el.id1d.disabled = false
-              el.items.textContent = ''
-              const firstCard = await api.wait.waitQuerySelector('.feed-card .card')
-              const firstOffset = parseInt(firstCard.getAttribute('data-did'))
-              if (isNaN(firstOffset)) throw 'dom error' // 需借助 parseInt() 来判断是否出错
-              // dynamic_id 位数过多，直接运算会丢失精度，必须转为 BigInt 后再进行后续处理
-              // 要直接从字符串初始化，经 parseInt() 转手就不对了
-              let dynamicOffset = BigInt(firstCard.getAttribute('data-did')) + 1n
-              const end = new Date().getTime() - v1a * el.id1b.value * 1000
-              while (!stopLoad) {
-                const data = new URLSearchParams()
-                data.append('uid', _self.method.getDedeUserID())
-                data.append('offset_dynamic_id', dynamicOffset)
-                data.append('type', 8) // 视频
-                const resp = await api.web.request({
-                  url: `${gm.url.api_dynamicHistory}?${data.toString()}`,
-                })
-                const json = JSON.parse(resp.responseText)
-                const items = json.data.cards
-                if (items.length === 0) return
-                // 不要用 json.data.next_offset，会丢失精度
-                dynamicOffset = items[items.length - 1].desc.dynamic_id_str
-                let html = ''
-                for (const item of items) {
-                  const info = JSON.parse(item.card)
-                  if (item.desc.timestamp * 1000 < end) {
-                    el.items.insertAdjacentHTML('afterbegin', html)
-                    api.message.create('批量添加：加载完成', { ms: 1800 })
-                    return // -> finally
-                  }
-                  const status = await _self.method.getVideoWatchlaterStatusByAid(String(info.aid))
-                  const displayNone = status && el.uncheckedDisplay.hide
-                  html = `<label class="gm-item" aid="${info.aid}" timestamp="${item.desc.timestamp}"${displayNone ? ' style="display:none"' : ''}><input type="checkbox"${status ? '' : ' checked'}> <span>[${info.owner.name}] ${info.title}</span></label>` + html
-                }
-                el.items.insertAdjacentHTML('afterbegin', html)
-                await new Promise(resolve => setTimeout(resolve, 100)) // 多让点时间给其他线程，否则会出问题
-              }
-            } catch (e) {
-              api.message.alert('执行失败')
-              api.logger.error(e)
-            } finally {
-              stopLoad = false
-              this.disabled = false
-              this.textContent = '重新执行'
-              el.id1d.disabled = true
-            }
-          })
-          el.id1d.addEventListener('click', function() {
-            stopLoad = true
-          })
-
-          // 时间过滤
-          el.id2c.addEventListener('click', function() {
-            try {
-              const v2a = parseFloat(el.id2a.value)
-              if (isNaN(v2a)) throw 'v1a is NaN'
-              el.id2a.value = v2a
-              const newEnd = new Date().getTime() - v2a * el.id2b.value * 1000
-              for (let i = 0; i < el.items.childElementCount; i++) {
-                const item = el.items.children[i]
-                const timestamp = parseInt(item.getAttribute('timestamp'))
-                if (timestamp * 1000 < newEnd) {
-                  api.dom.addClass(item, 'gm-filtered')
-                } else {
-                  api.dom.removeClass(item, 'gm-filtered')
-                }
-              }
-            } catch (e) {
-              api.message.alert('执行失败')
-              api.logger.error(e)
-            }
-          })
-
-          // 正则过滤
-          el.id3c.addEventListener('click', function() {
-            const getRegex = str => {
-              let result = null
-              str = str.trim()
-              if (str !== '') {
-                try {
-                  str = str.replace(/[.+^${}()[\]\\]/g, '\\$&') // escape regex except |
-                    .replaceAll('?', '.').replaceAll('*', '.+') // 通配符
-                  result = new RegExp(str, 'i')
-                } catch (e) { /* nothing to do */ }
-              }
-              return result
-            }
-            try {
-              const v3a = getRegex(el.id3a.value)
-              const v3b = getRegex(el.id3b.value)
-              for (let i = 0; i < el.items.childElementCount; i++) {
-                const item = el.items.children[i]
-                const tc = item.textContent
-                if ((v3a && !v3a.test(tc)) || v3b?.test(tc)) {
-                  api.dom.addClass(item, 'gm-filtered')
-                } else {
-                  api.dom.removeClass(item, 'gm-filtered')
-                }
-              }
-            } catch (e) {
-              api.message.alert('执行失败')
-              api.logger.error(e)
-            }
-          })
-
-          // 添加到稍后再看
-          let stopAdd = false
-          el.id4b.addEventListener('click', async function() {
-            try {
-              const v4a = parseFloat(el.id4a.value)
-              if (isNaN(v4a)) throw 'v1a is NaN'
-              el.id4a.value = v4a
-              this.disabled = true
-              this.textContent = '执行中'
-              el.id4c.disabled = false
-
-              let available = 100 - (await gm.data.watchlaterListData()).length
-              const checks = el.items.querySelectorAll('label:not(.gm-filtered) input')
-              for (const check of checks) {
-                if (stopAdd) return // -> finally
-                if (available <= 0) break
-                if (!check.checked) continue
-                const item = check.parentElement
-                const success = await _self.method.switchVideoWatchlaterStatus(item.getAttribute('aid'))
-                if (!success) throw 'add request error'
-                check.checked = false
-                available -= 1
-                await new Promise(resolve => setTimeout(resolve, v4a * (Math.random() + 0.5)))
-              }
-              api.message.create('批量添加：添加完成', { ms: 1800 })
-            } catch (e) {
-              api.message.alert('执行失败：可能是因为该稿件不可用或稍后再看不支持该稿件类型（如互动视频），请尝试取消勾选当前列表中第一个选定的稿件后重新执行')
-              api.logger.error(e)
-            } finally {
-              stopAdd = false
-              this.disabled = false
-              this.textContent = '重新执行'
-              el.id4c.disabled = true
-              gm.runtime.reloadWatchlaterListData = true
-              window.dispatchEvent(new CustomEvent('reloadWatchlaterListData'))
-            }
-          })
-          el.id4c.addEventListener('click', function() {
-            stopAdd = true
-          })
-        }
       }
     }
 
@@ -5308,7 +5399,7 @@
             text-align: center;
             line-height: 1.6em;
             overflow-y: auto;
-            height: 56vh;
+            height: 60vh;
             max-height: 60em;
             user-select: text;
             opacity: 0;
@@ -5584,7 +5675,8 @@
             cursor: pointer;
             visibility: hidden;
           }
-          .gm-filtered {
+          .gm-filtered,
+          [class*=gm-filtered-] {
             display: none !important;
           }
 
