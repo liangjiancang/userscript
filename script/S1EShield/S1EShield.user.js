@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name            S1战斗力屏蔽
 // @namespace       laster2800
-// @version         3.5.11.20210901
+// @version         3.5.12.20210902
 // @author          Laster2800
 // @description     屏蔽 S1 的战斗力系统，眼不见为净
 // @author          Laster2800
@@ -52,7 +52,7 @@
       nv.appendChild(sw)
 
       sw.enabled = true
-      sw.lastElementChild.onclick = function() {
+      sw.lastElementChild.addEventListener('click', function() {
         const enabled = !sw.enabled
         const body = document.body
         if (enabled) {
@@ -61,7 +61,7 @@
           body.removeAttribute(enabledAttr)
         }
         sw.enabled = enabled
-      }
+      })
     })
 
     // 系统提醒

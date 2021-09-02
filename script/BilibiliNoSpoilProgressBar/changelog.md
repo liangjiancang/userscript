@@ -9,7 +9,8 @@
 3. UI：修复显示被 V3 播放器遮挡的问题。
 4. UI：优化文字排版。
 5. UI：优化布局。
-6. API：升级至 V1.7，大幅优化元素等待逻辑。详见 [UserscriptAPI 更新日志](https://gitee.com/liangjiancang/userscript/blob/master/lib/UserscriptAPI/changelog.md)。
+6. 代码：弃用事件处理器属性。
+7. API：升级至 V1.7，大幅优化元素等待逻辑。详见 [UserscriptAPI 更新日志](https://gitee.com/liangjiancang/userscript/blob/master/lib/UserscriptAPI/changelog.md)。
 
 ## V2.0
 

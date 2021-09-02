@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站防剧透进度条
-// @version         2.1.11.20210901
+// @version         2.1.12.20210902
 // @namespace       laster2800
 // @author          Laster2800
 // @description     看比赛、看番总是被进度条剧透？装上这个脚本再也不用担心这些问题了
@@ -710,7 +710,7 @@
          * 维护与设置项相关的数据和元素
          */
         const processConfigItem = () => {
-          el.offsetTransformFactor.oninput = function() {
+          el.offsetTransformFactor.addEventListener('input', function() {
             const v0 = this.value.replace(/[^\d.]/g, '')
             if (v0 === '') {
               this.value = ''
@@ -741,15 +741,15 @@
               }
               this.value = value
             }
-          }
-          el.offsetTransformFactor.onblur = function() {
+          })
+          el.offsetTransformFactor.addEventListener('blur', function() {
             let value = this.value
             if (value === '') {
               value = gm.configMap.offsetTransformFactor.default
             }
             this.value = parseFloat(value).toFixed(2)
-          }
-          el.offsetLeft.oninput = el.offsetRight.oninput = el.reservedLeft.oninput = el.reservedRight.oninput = function() {
+          })
+          const onInput = function() {
             const v0 = this.value.replace(/[^\d]/g, '')
             if (v0 === '') {
               this.value = ''
@@ -761,26 +761,30 @@
               this.value = value
             }
           }
-          el.offsetLeft.onblur = function() {
+          el.offsetLeft.addEventListener('input', onInput)
+          el.offsetRight.addEventListener('input', onInput)
+          el.reservedLeft.addEventListener('input', onInput)
+          el.reservedRight.addEventListener('input', onInput)
+          el.offsetLeft.addEventListener('blur', function() {
             if (this.value === '') {
               this.value = gm.configMap.offsetLeft.default
             }
-          }
-          el.offsetRight.onblur = function() {
+          })
+          el.offsetRight.addEventListener('blur', function() {
             if (this.value === '') {
               this.value = gm.configMap.offsetRight.default
             }
-          }
-          el.reservedLeft.onblur = function() {
+          })
+          el.reservedLeft.addEventListener('blur', function() {
             if (this.value === '') {
               this.value = gm.configMap.reservedLeft.default
             }
-          }
-          el.reservedRight.onblur = function() {
+          })
+          el.reservedRight.addEventListener('blur', function() {
             if (this.value === '') {
               this.value = gm.configMap.reservedRight.default
             }
-          }
+          })
         }
 
         /**
@@ -789,25 +793,25 @@
         const processSettingItem = () => {
           gm.menu.setting.openHandler = onOpen
           gm.el.setting.fadeInDisplay = 'flex'
-          el.save.onclick = onSave
-          el.cancel.onclick = () => _self.closeMenuItem('setting')
-          el.shadow.onclick = function() {
+          el.save.addEventListener('click', onSave)
+          el.cancel.addEventListener('click', () => _self.closeMenuItem('setting'))
+          el.shadow.addEventListener('click', function() {
             if (!this.hasAttribute('disabled')) {
               _self.closeMenuItem('setting')
             }
-          }
-          el.reset.onclick = () => _self.resetScript()
-          el.resetParam.onclick = () => {
+          })
+          el.reset.addEventListener('click', () => _self.resetScript())
+          el.resetParam.addEventListener('click', function() {
             el.offsetTransformFactor.value = gm.configMap.offsetTransformFactor.default
             el.offsetLeft.value = gm.configMap.offsetLeft.default
             el.offsetRight.value = gm.configMap.offsetRight.default
             el.reservedLeft.value = gm.configMap.reservedLeft.default
             el.reservedRight.value = gm.configMap.reservedRight.default
             el.postponeOffset.checked = gm.configMap.postponeOffset.default
-          }
-          el.uploaderList.onclick = () => {
+          })
+          el.uploaderList.addEventListener('click', () => {
             _self.openUploaderList()
-          }
+          })
           if (type > 0) {
             el.cancel.disabled = true
             el.shadow.setAttribute('disabled', '')
@@ -943,11 +947,12 @@
         const processItem = () => {
           gm.menu.uploaderList.openHandler = onOpen
           gm.el.uploaderList.fadeInDisplay = 'flex'
-          el.uploaderListExample.onclick = () => {
+          el.uploaderListExample.addEventListener('click', () => {
             el.uploaderList.value = '# 非 UID 起始的行不会影响名单读取\n204335848 # 皇室战争电竞频道\n50329118 # 哔哩哔哩英雄联盟赛事'
-          }
-          el.save.onclick = onSave
-          el.cancel.onclick = el.shadow.onclick = () => _self.closeMenuItem('uploaderList')
+          })
+          el.save.addEventListener('click', onSave)
+          el.cancel.addEventListener('click', () => _self.closeMenuItem('uploaderList'))
+          el.shadow.addEventListener('click', () => _self.closeMenuItem('uploaderList'))
         }
 
         /**
@@ -1768,16 +1773,16 @@
         _self.scriptControl.bangumiEnabled = _self.scriptControl.querySelector(`#${gm.id}-bangumiEnabled`)
         _self.scriptControl.setting = _self.scriptControl.querySelector(`#${gm.id}-setting`)
 
-        _self.scriptControl.enabled.onclick = function() {
+        _self.scriptControl.enabled.addEventListener('click', function() {
           _self.enabled = !_self.enabled
           _self.processNoSpoil()
-        }
+        })
 
         if (!gm.config.simpleScriptControl) {
           if (api.web.urlMatch([gm.regex.page_videoNormalMode, gm.regex.page_videoWatchlaterMode], 'OR')) {
             if (!gm.data.uploaderListSet().has('*')) { // * 匹配所有UP主不显示该按钮
               _self.scriptControl.uploaderEnabled.style.display = 'unset'
-              _self.scriptControl.uploaderEnabled.onclick = async function() {
+              _self.scriptControl.uploaderEnabled.addEventListener('click', async function() {
                 const ulSet = gm.data.uploaderListSet() // 必须每次读取
                 const vid = await _self.method.getVid()
                 const videoInfo = await _self.method.getVideoInfo(vid.id, vid.type)
@@ -1798,13 +1803,13 @@
                     gm.data.uploaderList(ul)
                   }
                 }
-              }
+              })
             }
           }
 
           if (api.web.urlMatch(gm.regex.page_bangumi)) {
             _self.scriptControl.bangumiEnabled.style.display = 'unset'
-            _self.scriptControl.bangumiEnabled.onclick = function() {
+            _self.scriptControl.bangumiEnabled.addEventListener('click', function() {
               gm.config.bangumiEnabled = !gm.config.bangumiEnabled
               if (gm.config.bangumiEnabled) {
                 this.setAttribute('enabled', '')
@@ -1812,13 +1817,13 @@
                 this.removeAttribute('enabled')
               }
               GM_setValue('bangumiEnabled', gm.config.bangumiEnabled)
-            }
+            })
           }
 
           _self.scriptControl.setting.style.display = 'unset'
-          _self.scriptControl.setting.onclick = function() {
+          _self.scriptControl.setting.addEventListener('click', function() {
             script.openUserSetting()
-          }
+          })
         }
 
         api.dom.fade(true, _self.scriptControl)
