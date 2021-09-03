@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            [DEBUG] 信息显式化
-// @version         2.4.5.20210903
+// @version         2.4.6.20210903
 // @namespace       laster2800
 // @author          Laster2800
 // @description     用 alert() 提示符合匹配规则的日志或未捕获异常，帮助开发者在日常使用网页时发现潜藏问题
@@ -31,7 +31,7 @@
        * @param {Function} log 日志函数
        * @param {string} type 类型
        * @param {string} [source] 源
-       * @returns 封装日志函数
+       * @returns {Function} 封装日志函数
        */
       wrappedLog(console, log, type, source) {
         const config = gm.config
