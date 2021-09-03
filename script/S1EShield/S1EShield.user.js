@@ -3,7 +3,7 @@
 // @namespace       laster2800
 // @version         3.5.13.20210903
 // @author          Laster2800
-// @description     屏蔽 S1 的战斗力系统，眼不见为净
+// @description     屏蔽S1的战斗力系统，眼不见为净
 // @author          Laster2800
 // @icon            https://www.saraba1st.com/favicon.ico
 // @noframes
