@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站封面获取
-// @version         5.3.11.20210903
+// @version         5.3.12.20210903
 // @namespace       laster2800
 // @author          Laster2800
 // @description     获取B站各播放页及直播间封面，支持手动及实时预览等多种模式，支持点击下载、封面预览、快速复制，可高度自定义
@@ -16,7 +16,7 @@
 // @include         *://live.bilibili.com/*
 // @exclude         *://live.bilibili.com/
 // @exclude         *://live.bilibili.com/?*
-// @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=966080
+// @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=966902
 // @grant           GM_download
 // @grant           GM_notification
 // @grant           GM_xmlhttpRequest
@@ -110,6 +110,9 @@
   /** @type {Webpage} */
   let webpage = null
 
+  /**
+   * 脚本运行的抽象，为脚本本身服务的核心功能
+   */
   class Script {
     /**
      * 初始化脚本
@@ -407,460 +410,462 @@
     }
   }
 
+  /**
+   * 页面处理的抽象，脚本围绕网站的特化部分
+   */
   class Webpage {
-    constructor() {
-      this.method = {
-        /**
-         * 下载封面
-         * @param {string} url 封面 URL
-         * @param {string} [name='Cover'] 保存文件名
-         */
-        download(url, name) {
-          name = name || 'Cover'
-          const onerror = function(error) {
-            if (error?.error == 'not_whitelisted') {
-              api.message.alert('该封面的文件格式不在下载模式白名单中，从而触发安全限制导致无法直接下载。可修改脚本管理器的「下载模式」或「文件扩展名白名单」设置以放开限制。')
-              window.open(url)
-            } else {
-              GM_notification({
-                text: '下载错误',
-                timeout: gm.const.noticeTimeout,
-              })
-            }
-          }
-          const ontimeout = function() {
+    /** 通用方法 */
+    method = {
+      /**
+       * 下载封面
+       * @param {string} url 封面 URL
+       * @param {string} [name='Cover'] 保存文件名
+       */
+      download(url, name) {
+        name = name || 'Cover'
+        const onerror = function(error) {
+          if (error?.error == 'not_whitelisted') {
+            api.message.alert('该封面的文件格式不在下载模式白名单中，从而触发安全限制导致无法直接下载。可修改脚本管理器的「下载模式」或「文件扩展名白名单」设置以放开限制。')
+            window.open(url)
+          } else {
             GM_notification({
-              text: '下载超时',
+              text: '下载错误',
               timeout: gm.const.noticeTimeout,
             })
-            window.open(url)
           }
-          api.web.download({ url, name, onerror, ontimeout })
-        },
+        }
+        const ontimeout = function() {
+          GM_notification({
+            text: '下载超时',
+            timeout: gm.const.noticeTimeout,
+          })
+          window.open(url)
+        }
+        api.web.download({ url, name, onerror, ontimeout })
+      },
 
-        /**
-         * 从 URL 获取视频 ID
-         * @param {string} [url=location.pathname] 提取视频 ID 的源字符串
-         * @returns {{id: string, type: 'aid' | 'bvid'}} `{id, type}`
-         */
-        getVid(url = location.pathname) {
-          let m = null
-          if ((m = /\/bv([0-9a-z]+)([/?#]|$)/i.exec(url))) {
-            return { id: 'BV' + m[1], type: 'bvid' }
-          } else if ((m = /\/(av)?(\d+)([/?#]|$)/i.exec(url))) { // 兼容 URL 中 BV 号被第三方修改为 AV 号的情况
-            return { id: m[2], type: 'aid' }
-          }
-        },
+      /**
+       * 从 URL 获取视频 ID
+       * @param {string} [url=location.pathname] 提取视频 ID 的源字符串
+       * @returns {{id: string, type: 'aid' | 'bvid'}} `{id, type}`
+       */
+      getVid(url = location.pathname) {
+        let m = null
+        if ((m = /\/bv([0-9a-z]+)([/?#]|$)/i.exec(url))) {
+          return { id: 'BV' + m[1], type: 'bvid' }
+        } else if ((m = /\/(av)?(\d+)([/?#]|$)/i.exec(url))) { // 兼容 URL 中 BV 号被第三方修改为 AV 号的情况
+          return { id: m[2], type: 'aid' }
+        }
+      },
 
-        /**
-         * 从 URL 获取番剧 ID
-         * @param {string} [url=location.pathname] 提取视频 ID 的源字符串
-         * @returns {{id: string, type: 'ssid' | 'epid'}} `{id, type}`
-         */
-        getBgmid(url = location.pathname) {
-          let m = null
-          if ((m = /\/(ss\d+)([/?#]|$)/.exec(url))) {
-            return { id: m[1], type: 'ssid' }
-          } else if ((m = /\/(ep\d+)([/?#]|$)/.exec(url))) {
-            return { id: m[1], type: 'epid' }
-          }
-        },
+      /**
+       * 从 URL 获取番剧 ID
+       * @param {string} [url=location.pathname] 提取视频 ID 的源字符串
+       * @returns {{id: string, type: 'ssid' | 'epid'}} `{id, type}`
+       */
+      getBgmid(url = location.pathname) {
+        let m = null
+        if ((m = /\/(ss\d+)([/?#]|$)/.exec(url))) {
+          return { id: m[1], type: 'ssid' }
+        } else if ((m = /\/(ep\d+)([/?#]|$)/.exec(url))) {
+          return { id: m[1], type: 'epid' }
+        }
+      },
 
-        /**
-         * 添加下载图片事件
-         * @param {HTMLElement} target 触发元素
-         */
-        addDownloadEvent(target) {
-          if (!target._downloadEvent) {
-            const _self = this
-            // 此处必须用 mousedown，否则无法与动态获取封面的代码达成正确的联动
-            target.addEventListener('mousedown', function(e) {
-              if (target.loaded && gm.config.download && e.button == 0) {
-                _self.download(this.href, document.title)
-              }
-            })
-            // 开启下载时，若没有以下处理器，则鼠标左键长按图片按钮，过一段时间后再松开，松开时依然会触发默认点击事件（在新标签页打开封面）
-            target.addEventListener('click', function(e) {
-              if (target.loaded && gm.config.download) {
-                e.preventDefault()
-              }
-            })
-            target._downloadEvent = true
-          }
-        },
-
-        /**
-         * 添加复制事件
-         * @param {HTMLElement} target 触发元素
-         */
-        addCopyEvent(target) {
-          if (!target._copyLinkEvent) {
-            target.addEventListener('mousedown', async function(e) {
-              if (target.loaded && e.button == 2) {
-                let ctrl = e.ctrlKey
-                if (gm.config.switchQuickCopy) {
-                  ctrl = !ctrl
-                }
-                if (ctrl) {
-                  // 借助 image 中转避免跨域；网络请求其实更简单，但还是防一手某些封面图不在 i0.hdslb.com 的情况
-                  // 理论上来说这里可以复用 realtime-image 或者 preview，但是很麻烦，再考虑到图片缓存也没必要
-                  const image = new Image()
-                  image.crossOrigin = 'Anonymous'
-                  image.src = target.href
-                  image.addEventListener('load', function() {
-                    const canvas = document.createElement('canvas')
-                    const ctx = canvas.getContext('2d')
-                    canvas.width = this.width
-                    canvas.height = this.height
-                    ctx.drawImage(image, 0, 0)
-                    canvas.toBlob(async blob => {
-                      try {
-                        await navigator.clipboard.write([new ClipboardItem({ [blob.type]: blob })])
-                        api.message.create('已复制封面内容')
-                      } catch (e) {
-                        api.logger.warn(e)
-                        api.message.create('当前浏览器不支持复制图片')
-                      }
-                    })
-                  })
-                } else {
-                  try {
-                    await navigator.clipboard.writeText(target.href)
-                    api.message.create('已复制封面链接')
-                  } catch (e) {
-                    // 只要脚本管理器有向浏览器要剪贴板权限就没问题
-                    api.logger.warn(e)
-                    api.message.create('当前浏览器不支持剪贴板')
-                  }
-                }
-              }
-            })
-          }
-        },
-
-        /**
-         * 提示错误信息
-         * @param {HTMLElement} target 触发元素
-         */
-        addErrorEvent(target) {
-          if (!target._errorEvent) {
-            target.addEventListener('mousedown', function() {
-              if (!target.loaded) {
-                api.message.create(gm.const.errorMsg)
-              }
-            })
-            target._errorEvent = true
-          }
-        },
-
-        /**
-         * 设置封面
-         * @param {HTMLElement} target 封面元素
-         * @param {HTMLElement} preview 预览元素，无预览元素时传空值即可
-         * @param {string} url 封面 URL
-         */
-        setCover(target, preview, url) {
-          if (url) {
-            target.title = gm.const.hintText
-            target.href = url
-            target.target = '_blank'
-            target.loaded = true
-            this.addDownloadEvent(target)
-            this.addCopyEvent(target)
-            if (target.img) {
-              if (gm.runtime.realtimeQuality != 'best') {
-                target.img.src = `${url}@${gm.runtime.realtimeQuality}.webp`
-                target.img.lossless = url
-              } else {
-                target.img.src = url
-              }
-            }
-            if (preview) {
-              preview._src = url
-            }
-          } else {
-            target.title = gm.const.errorMsg
-            target.href = gm.url.noop
-            target.target = '_self'
-            target.loaded = false
-            this.addErrorEvent(target)
-            if (target.img) {
-              target.img.removeAttribute('src')
-              target.img.lossless = null
-            }
-            if (preview) {
-              preview.removeAttribute('src')
-            }
-          }
-        },
-
-        /**
-         * 创建预览元素
-         * @param {HTMLElement} target 触发元素
-         * @returns {HTMLImageElement}
-         */
-        createPreview(target) {
+      /**
+       * 添加下载图片事件
+       * @param {HTMLElement} target 触发元素
+       */
+      addDownloadEvent(target) {
+        if (!target._downloadEvent) {
           const _self = this
-          const preview = document.body.appendChild(document.createElement('img'))
-          preview.className = `${gm.id}-preview`
-          preview.fadeOutNoInteractive = true
-          const fade = inOut => api.dom.fade(inOut, preview)
+          // 此处必须用 mousedown，否则无法与动态获取封面的代码达成正确的联动
+          target.addEventListener('mousedown', function(e) {
+            if (target.loaded && gm.config.download && e.button == 0) {
+              _self.download(this.href, document.title)
+            }
+          })
+          // 开启下载时，若没有以下处理器，则鼠标左键长按图片按钮，过一段时间后再松开，松开时依然会触发默认点击事件（在新标签页打开封面）
+          target.addEventListener('click', function(e) {
+            if (target.loaded && gm.config.download) {
+              e.preventDefault()
+            }
+          })
+          target._downloadEvent = true
+        }
+      },
 
-          const onMouseenter = api.tool.debounce(async function() {
-            if (gm.runtime.preview) {
-              if (preview._src) {
-                try {
-                  await new Promise((resolve, reject) => {
-                    preview.addEventListener('load', resolve, { once: true })
-                    preview.addEventListener('error', reject, { once: true })
-                    preview.src = preview._src
-                    preview._src = null
+      /**
+       * 添加复制事件
+       * @param {HTMLElement} target 触发元素
+       */
+      addCopyEvent(target) {
+        if (!target._copyLinkEvent) {
+          target.addEventListener('mousedown', async function(e) {
+            if (target.loaded && e.button == 2) {
+              let ctrl = e.ctrlKey
+              if (gm.config.switchQuickCopy) {
+                ctrl = !ctrl
+              }
+              if (ctrl) {
+                // 借助 image 中转避免跨域；网络请求其实更简单，但还是防一手某些封面图不在 i0.hdslb.com 的情况
+                // 理论上来说这里可以复用 realtime-image 或者 preview，但是很麻烦，再考虑到图片缓存也没必要
+                const image = new Image()
+                image.crossOrigin = 'Anonymous'
+                image.src = target.href
+                image.addEventListener('load', function() {
+                  const canvas = document.createElement('canvas')
+                  const ctx = canvas.getContext('2d')
+                  canvas.width = this.width
+                  canvas.height = this.height
+                  ctx.drawImage(image, 0, 0)
+                  canvas.toBlob(async blob => {
+                    try {
+                      await navigator.clipboard.write([new ClipboardItem({ [blob.type]: blob })])
+                      api.message.create('已复制封面内容')
+                    } catch (e) {
+                      api.logger.warn(e)
+                      api.message.create('当前浏览器不支持复制图片')
+                    }
                   })
+                })
+              } else {
+                try {
+                  await navigator.clipboard.writeText(target.href)
+                  api.message.create('已复制封面链接')
                 } catch (e) {
-                  _self.setCover(target, preview, false)
-                  api.logger.error(e)
-                  return
+                  // 只要脚本管理器有向浏览器要剪贴板权限就没问题
+                  api.logger.warn(e)
+                  api.message.create('当前浏览器不支持剪贴板')
                 }
               }
-              this.mouseOver && preview.src && fade(true)
             }
-          }, 200)
-          const onMouseleave = api.tool.debounce(function() {
-            if (gm.runtime.preview) {
-              !preview.mouseOver && fade(false)
-            }
-          }, 200)
-          target.addEventListener('mouseenter', function() {
-            this.mouseOver = true
-            onMouseenter.call(this)
           })
-          target.addEventListener('mouseleave', function() {
-            this.mouseOver = false
-            onMouseleave.call(this)
-          })
+        }
+      },
 
-          // 在链接上左键打开链接，和中键在新标签页打开链接，都要求：
-          // 鼠标点击与松开时都在链接元素上，也就是说链接元素上不能有覆盖物，需让 preview 回避一下
-          // 不做这个处理，将鼠标快速移动至按钮/实时预览上点击时，操作有概率会被吞掉
+      /**
+       * 提示错误信息
+       * @param {HTMLElement} target 触发元素
+       */
+      addErrorEvent(target) {
+        if (!target._errorEvent) {
           target.addEventListener('mousedown', function() {
-            preview.style.pointerEvents = 'none'
+            if (!target.loaded) {
+              api.message.create(gm.const.errorMsg)
+            }
           })
-          target.addEventListener('mouseup', function() {
-            setTimeout(() => {
-              preview.style.pointerEvents = ''
-            }, 10)
-          })
+          target._errorEvent = true
+        }
+      },
 
-          let startPos = null // 鼠标进入预览时的初始坐标
-          preview.addEventListener('mouseenter', function() {
-            this.mouseOver = true
-            startPos = null
-          })
-          preview.addEventListener('mouseleave', function() {
-            this.mouseOver = false
-            setTimeout(() => {
-              if (!target.mouseOver) {
-                startPos = null
-                fade(false)
+      /**
+       * 设置封面
+       * @param {HTMLElement} target 封面元素
+       * @param {HTMLElement} preview 预览元素，无预览元素时传空值即可
+       * @param {string} url 封面 URL
+       */
+      setCover(target, preview, url) {
+        if (url) {
+          target.title = gm.const.hintText
+          target.href = url
+          target.target = '_blank'
+          target.loaded = true
+          this.addDownloadEvent(target)
+          this.addCopyEvent(target)
+          if (target.img) {
+            if (gm.runtime.realtimeQuality != 'best') {
+              target.img.src = `${url}@${gm.runtime.realtimeQuality}.webp`
+              target.img.lossless = url
+            } else {
+              target.img.src = url
+            }
+          }
+          if (preview) {
+            preview._src = url
+          }
+        } else {
+          target.title = gm.const.errorMsg
+          target.href = gm.url.noop
+          target.target = '_self'
+          target.loaded = false
+          this.addErrorEvent(target)
+          if (target.img) {
+            target.img.removeAttribute('src')
+            target.img.lossless = null
+          }
+          if (preview) {
+            preview.removeAttribute('src')
+          }
+        }
+      },
+
+      /**
+       * 创建预览元素
+       * @param {HTMLElement} target 触发元素
+       * @returns {HTMLImageElement}
+       */
+      createPreview(target) {
+        const _self = this
+        const preview = document.body.appendChild(document.createElement('img'))
+        preview.className = `${gm.id}-preview`
+        preview.fadeOutNoInteractive = true
+        const fade = inOut => api.dom.fade(inOut, preview)
+
+        const onMouseenter = api.tool.debounce(async function() {
+          if (gm.runtime.preview) {
+            if (preview._src) {
+              try {
+                await new Promise((resolve, reject) => {
+                  preview.addEventListener('load', resolve, { once: true })
+                  preview.addEventListener('error', reject, { once: true })
+                  preview.src = preview._src
+                  preview._src = null
+                })
+              } catch (e) {
+                _self.setCover(target, preview, false)
+                api.logger.error(e)
+                return
               }
-            }, 200)
-          })
-          preview.addEventListener('mousedown', function(e) {
-            if (this.src) {
-              if (e.button == 0 || e.button == 1) {
-                if (e.button == 0) {
-                  if (gm.config.download) {
-                    _self.download(this.src, document.title)
-                  } else {
-                    window.open(this.src)
-                  }
+            }
+            this.mouseOver && preview.src && fade(true)
+          }
+        }, 200)
+        const onMouseleave = api.tool.debounce(function() {
+          if (gm.runtime.preview) {
+            !preview.mouseOver && fade(false)
+          }
+        }, 200)
+        target.addEventListener('mouseenter', function() {
+          this.mouseOver = true
+          onMouseenter.call(this)
+        })
+        target.addEventListener('mouseleave', function() {
+          this.mouseOver = false
+          onMouseleave.call(this)
+        })
+
+        // 在链接上左键打开链接，和中键在新标签页打开链接，都要求：
+        // 鼠标点击与松开时都在链接元素上，也就是说链接元素上不能有覆盖物，需让 preview 回避一下
+        // 不做这个处理，将鼠标快速移动至按钮/实时预览上点击时，操作有概率会被吞掉
+        target.addEventListener('mousedown', function() {
+          preview.style.pointerEvents = 'none'
+        })
+        target.addEventListener('mouseup', function() {
+          setTimeout(() => {
+            preview.style.pointerEvents = ''
+          }, 10)
+        })
+
+        let startPos = null // 鼠标进入预览时的初始坐标
+        preview.addEventListener('mouseenter', function() {
+          this.mouseOver = true
+          startPos = null
+        })
+        preview.addEventListener('mouseleave', function() {
+          this.mouseOver = false
+          setTimeout(() => {
+            if (!target.mouseOver) {
+              startPos = null
+              fade(false)
+            }
+          }, 200)
+        })
+        preview.addEventListener('mousedown', function(e) {
+          if (this.src) {
+            if (e.button == 0 || e.button == 1) {
+              if (e.button == 0) {
+                if (gm.config.download) {
+                  _self.download(this.src, document.title)
                 } else {
                   window.open(this.src)
                 }
-              }
-            }
-          })
-          preview.addEventListener('mousemove', function(e) {
-            // 鼠标移动一段距离关闭预览，优化用户体验
-            if (startPos) {
-              const dSquare = (startPos.x - e.clientX) ** 2 + (startPos.y - e.clientY) ** 2
-              if (dSquare > 20 ** 2) { // 20px
-                // 鼠标需已移出触发元素范围方可
-                const rect = target.getBoundingClientRect()
-                if (!(e.clientX > rect.left && e.clientX < rect.right && e.clientY > rect.top && e.clientY < rect.bottom)) {
-                  fade(false)
-                }
-              }
-            } else {
-              startPos = {
-                x: e.clientX,
-                y: e.clientY,
-              }
-            }
-          })
-          // 滚动时关闭预览，优化用户体验
-          preview.addEventListener('wheel', api.tool.throttle(function() {
-            fade(false)
-          }, 200))
-          // 根据宽高比设置不同样式
-          preview.addEventListener('load', function() {
-            if (this.width > this.height) {
-              if (this.naturalWidth < window.innerWidth) {
-                this.style.width = `${this.naturalWidth * 1.5}px`
-              }
-              this.style.height = ''
-            } else {
-              if (this.naturalHeight < window.innerHeight) {
-                this.style.height = `${this.naturalHeight * 1.5}px`
-              }
-              this.style.width = ''
-            }
-          })
-
-          // 快速复制相关
-          preview.addEventListener('mousedown', function(e) {
-            if (e.button == 2) {
-              target.dispatchEvent(_self.cloneEvent(e, ['button']))
-            }
-          })
-          if (gm.config.disableContextMenu) {
-            _self.disableContextMenu(preview)
-          }
-          return preview
-        },
-
-        /**
-         * 创建实时封面元素
-         * @returns {Promise<HTMLElement>} 实时封面元素
-         */
-        async createRealtimeCover() {
-          const _self = this
-          const ref = await api.wait.waitQuerySelector(gm.runtime.realtimeSelector)
-          const cover = ref.insertAdjacentElement(gm.runtime.realtimePosition, document.createElement('a'))
-          cover.id = `${gm.id}-realtime-cover`
-          cover.img = cover.appendChild(document.createElement('img'))
-          cover.error = cover.appendChild(document.createElement('div'))
-          cover.error.textContent = '封面获取失败'
-          cover.img.addEventListener('load', function() {
-            cover.error.style.display = ''
-          })
-          cover.img.addEventListener('error', function(e) {
-            if (this.lossless && this.src != this.lossless) {
-              if (gm.config.mode == gm.const.customMode) {
-                api.message.create(`缩略图获取失败，使用原图进行替换！请检查「${gm.runtime.realtimeQuality}」是否为有效的图片质量参数。可能是正常现象，因为年代久远的视频封面有可能不支持缩略图。`, { ms: 4000 })
               } else {
-                api.message.create('缩略图获取失败，使用原图进行替换！可能是正常现象，因为年代久远的视频封面有可能不支持缩略图。', { ms: 3000 })
+                window.open(this.src)
               }
-              api.logger.warn(['缩略图获取失败，使用原图进行替换！', this.src, this.lossless])
+            }
+          }
+        })
+        preview.addEventListener('mousemove', function(e) {
+          // 鼠标移动一段距离关闭预览，优化用户体验
+          if (startPos) {
+            const dSquare = (startPos.x - e.clientX) ** 2 + (startPos.y - e.clientY) ** 2
+            if (dSquare > 20 ** 2) { // 20px
+              // 鼠标需已移出触发元素范围方可
+              const rect = target.getBoundingClientRect()
+              if (!(e.clientX > rect.left && e.clientX < rect.right && e.clientY > rect.top && e.clientY < rect.bottom)) {
+                fade(false)
+              }
+            }
+          } else {
+            startPos = {
+              x: e.clientX,
+              y: e.clientY,
+            }
+          }
+        })
+        // 滚动时关闭预览，优化用户体验
+        preview.addEventListener('wheel', api.tool.throttle(function() {
+          fade(false)
+        }, 200))
+        // 根据宽高比设置不同样式
+        preview.addEventListener('load', function() {
+          if (this.width > this.height) {
+            if (this.naturalWidth < window.innerWidth) {
+              this.style.width = `${this.naturalWidth * 1.5}px`
+            }
+            this.style.height = ''
+          } else {
+            if (this.naturalHeight < window.innerHeight) {
+              this.style.height = `${this.naturalHeight * 1.5}px`
+            }
+            this.style.width = ''
+          }
+        })
+
+        // 快速复制相关
+        preview.addEventListener('mousedown', function(e) {
+          if (e.button == 2) {
+            target.dispatchEvent(_self.cloneEvent(e, ['button', 'ctrlKey']))
+          }
+        })
+        if (gm.config.disableContextMenu) {
+          _self.disableContextMenu(preview)
+        }
+        return preview
+      },
+
+      /**
+       * 创建实时封面元素
+       * @returns {Promise<HTMLElement>} 实时封面元素
+       */
+      async createRealtimeCover() {
+        const _self = this
+        const ref = await api.wait.waitQuerySelector(gm.runtime.realtimeSelector)
+        const cover = ref.insertAdjacentElement(gm.runtime.realtimePosition, document.createElement('a'))
+        cover.id = `${gm.id}-realtime-cover`
+        cover.img = cover.appendChild(document.createElement('img'))
+        cover.error = cover.appendChild(document.createElement('div'))
+        cover.error.textContent = '封面获取失败'
+        cover.img.addEventListener('load', function() {
+          cover.error.style.display = ''
+        })
+        cover.img.addEventListener('error', function(e) {
+          if (this.lossless && this.src != this.lossless) {
+            if (gm.config.mode == gm.const.customMode) {
+              api.message.create(`缩略图获取失败，使用原图进行替换！请检查「${gm.runtime.realtimeQuality}」是否为有效的图片质量参数。可能是正常现象，因为年代久远的视频封面有可能不支持缩略图。`, { ms: 4000 })
+            } else {
+              api.message.create('缩略图获取失败，使用原图进行替换！可能是正常现象，因为年代久远的视频封面有可能不支持缩略图。', { ms: 3000 })
+            }
+            api.logger.warn(['缩略图获取失败，使用原图进行替换！', this.src, this.lossless])
+            this.src = this.lossless
+            this.lossless = null
+          } else {
+            _self.setCover(cover, null, false) // preview 会自动处理 error，不必理会
+            cover.error.style.display = 'block'
+            api.logger.error(e)
+          }
+        })
+        if (gm.runtime.realtimeStyle != 'disable') {
+          api.dom.addStyle(gm.runtime.realtimeStyle)
+        }
+        if (gm.config.disableContextMenu) {
+          this.disableContextMenu(cover)
+        } else if (gm.runtime.realtimeQuality != 'best') {
+          // 将缩略图替换为原图，以便右键菜单获取到正确的图像
+          cover.img.addEventListener('mousedown', function(e) {
+            if (e.button == 2 && this.lossless && this.src != this.lossless) {
               this.src = this.lossless
               this.lossless = null
-            } else {
-              _self.setCover(cover, null, false) // preview 会自动处理 error，不必理会
-              cover.error.style.display = 'block'
-              api.logger.error(e)
             }
           })
-          if (gm.runtime.realtimeStyle != 'disable') {
-            api.dom.addStyle(gm.runtime.realtimeStyle)
-          }
-          if (gm.config.disableContextMenu) {
-            this.disableContextMenu(cover)
-          } else if (gm.runtime.realtimeQuality != 'best') {
-            // 将缩略图替换为原图，以便右键菜单获取到正确的图像
-            cover.img.addEventListener('mousedown', function(e) {
-              if (e.button == 2 && this.lossless && this.src != this.lossless) {
-                this.src = this.lossless
-                this.lossless = null
+        }
+        return cover
+      },
+
+      /**
+       * 禁用右键菜单
+       * @param {HTMLElement} target 目标元素
+       */
+      disableContextMenu(target) {
+        target.addEventListener('contextmenu', function(e) {
+          e.preventDefault()
+        })
+      },
+
+      /**
+       * 克隆事件
+       *
+       * 直接复用 event 在某些情况下会出问题，克隆可避免之。
+       * @param {Event} event 原事件
+       * @param {string[]} attrNames 需克隆的属性值
+       * @returns {Event} 克隆事件
+       */
+      cloneEvent(event, attrNames = []) {
+        const cloned = new Event(event.type)
+        for (const name of attrNames) {
+          cloned[name] = event[name]
+        }
+        return cloned
+      },
+
+      /**
+       * @callback coverInteractionPre 封面交互前置处理
+       * @param {Event} 事件
+       * @returns {boolean | Promise<boolean>} 本次是否启用代理
+       */
+      /**
+       * 代理封面交互
+       *
+       * 全面接管一切用户交互引起的行为，默认链接点击行为除外
+       * @param {HTMLElement} target 目标元素
+       * @param {coverInteractionPre} pre 封面交互前置处理
+       */
+      async proxyCoverInteraction(target, pre) {
+        const _self = this
+        addEventListeners()
+
+        async function main(event) {
+          if (!await pre(event)) return
+          removeEventListeners()
+          if (event.type == 'mousedown') {
+            // 鼠标左键点击链接可通过 click 拦截但没必要，中键点击链接无法通过 js 拦截不过也没必要拦
+            // 同样地，无法通过 mousedown 事件中让浏览器模拟出链接被左键或中键点击的结果，需手动模拟
+            let needDispatch = true
+            if (event.button == 0) {
+              if (!gm.config.download && target.loaded) {
+                window.open(target.href)
+                needDispatch = false
               }
-            })
+            } else if (event.button == 1) {
+              if (target.loaded) {
+                window.open(target.href)
+                needDispatch = false
+              }
+            }
+            if (needDispatch) {
+              target.dispatchEvent(_self.cloneEvent(event, ['button', 'ctrlKey']))
+            }
+          } else if (event.type == 'mouseenter') {
+            target.dispatchEvent(_self.cloneEvent(event))
           }
-          return cover
-        },
-
-        /**
-         * 禁用右键菜单
-         * @param {HTMLElement} target 目标元素
-         */
-        disableContextMenu(target) {
-          target.addEventListener('contextmenu', function(e) {
-            e.preventDefault()
-          })
-        },
-
-        /**
-         * 克隆事件
-         *
-         * 直接复用 event 在某些情况下会出问题，克隆可避免之。
-         * @param {Event} event 原事件
-         * @param {string[]} attrNames 需克隆的属性值
-         * @returns {Event} 克隆事件
-         */
-        cloneEvent(event, attrNames = []) {
-          const cloned = new Event(event.type)
-          for (const name of attrNames) {
-            cloned[name] = event[name]
-          }
-          return cloned
-        },
-
-        /**
-         * @callback coverInteractionPre 封面交互前置处理
-         * @param {Event} 事件
-         * @returns {boolean | Promise<boolean>} 本次是否启用代理
-         */
-        /**
-         * 代理封面交互
-         *
-         * 全面接管一切用户交互引起的行为，默认链接点击行为除外
-         * @param {HTMLElement} target 目标元素
-         * @param {coverInteractionPre} pre 封面交互前置处理
-         */
-        async proxyCoverInteraction(target, pre) {
-          const _self = this
           addEventListeners()
+        }
 
-          async function main(event) {
-            if (!await pre(event)) return
-            removeEventListeners()
-            if (event.type == 'mousedown') {
-              // 鼠标左键点击链接可通过 click 拦截但没必要，中键点击链接无法通过 js 拦截不过也没必要拦
-              // 同样地，无法通过 mousedown 事件中让浏览器模拟出链接被左键或中键点击的结果，需手动模拟
-              let needDispatch = true
-              if (event.button == 0) {
-                if (!gm.config.download && target.loaded) {
-                  window.open(target.href)
-                  needDispatch = false
-                }
-              } else if (event.button == 1) {
-                if (target.loaded) {
-                  window.open(target.href)
-                  needDispatch = false
-                }
-              }
-              if (needDispatch) {
-                target.dispatchEvent(_self.cloneEvent(event, ['button', 'ctrlKey']))
-              }
-            } else if (event.type == 'mouseenter') {
-              target.dispatchEvent(_self.cloneEvent(event))
-            }
-            addEventListeners()
+        function addEventListeners() {
+          target.addEventListener('mousedown', main, true)
+          if (gm.runtime.preview) {
+            target.addEventListener('mouseenter', main, true)
           }
+        }
 
-          function addEventListeners() {
-            target.addEventListener('mousedown', main, true)
-            if (gm.runtime.preview) {
-              target.addEventListener('mouseenter', main, true)
-            }
+        function removeEventListeners() {
+          target.removeEventListener('mousedown', main, true)
+          if (gm.runtime.preview) {
+            target.removeEventListener('mouseenter', main, true)
           }
-
-          function removeEventListeners() {
-            target.removeEventListener('mousedown', main, true)
-            if (gm.runtime.preview) {
-              target.removeEventListener('mouseenter', main, true)
-            }
-          }
-        },
-      }
+        }
+      },
     }
 
     async initVideo() {
