@@ -25,8 +25,10 @@ module.exports = {
     'GM_registerMenuCommand': true,
     'GM_unregisterMenuCommand': true,
   },
+  'parser': '@babel/eslint-parser',
   'parserOptions': {
-    'ecmaVersion': 2020,
+    'requireConfigFile': false,
+    'sourceType': 'script',
   },
   'rules': {
     'indent': ['warn', 2, {
