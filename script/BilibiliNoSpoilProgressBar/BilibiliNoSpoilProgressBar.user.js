@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站防剧透进度条
-// @version         2.1.12.20210902
+// @version         2.1.13.20210903
 // @namespace       laster2800
 // @author          Laster2800
 // @description     看比赛、看番总是被进度条剧透？装上这个脚本再也不用担心这些问题了
@@ -13,7 +13,7 @@
 // @include         *://www.bilibili.com/medialist/play/watchlater
 // @include         *://www.bilibili.com/medialist/play/watchlater/*
 // @include         *://www.bilibili.com/bangumi/play/*
-// @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=966080
+// @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=966902
 // @grant           GM_registerMenuCommand
 // @grant           GM_xmlhttpRequest
 // @grant           GM_setValue
@@ -216,39 +216,37 @@
   let webpage = null
 
   /**
-   * 脚本运行的抽象，脚本独立于网站、为脚本本身服务的部分
+   * 脚本运行的抽象，为脚本本身服务的核心功能
    */
   class Script {
-    constructor() {
+    #data = {}
+
+    /** 通用方法 */
+    method = {
       /**
-       * 通用方法
+       * GM 读取流程
+       *
+       * 一般情况下，读取用户配置；如果配置出错，则沿用默认值，并将默认值写入配置中
+       * @param {string} gmKey 键名
+       * @param {*} defaultValue 默认值
+       * @param {boolean} [writeback=true] 配置出错时是否将默认值回写入配置中
+       * @returns {*} 通过校验时是配置值，不能通过校验时是默认值
        */
-      this.method = {
-        /**
-         * GM 读取流程
-         *
-         * 一般情况下，读取用户配置；如果配置出错，则沿用默认值，并将默认值写入配置中
-         * @param {string} gmKey 键名
-         * @param {*} defaultValue 默认值
-         * @param {boolean} [writeback=true] 配置出错时是否将默认值回写入配置中
-         * @returns {*} 通过校验时是配置值，不能通过校验时是默认值
-         */
-        gmValidate(gmKey, defaultValue, writeback = true) {
-          const value = GM_getValue(gmKey)
-          if (Enums && gmKey in Enums) {
-            if (Object.values(Enums[gmKey]).indexOf(value) >= 0) {
-              return value
-            }
-          } else if (typeof value == typeof defaultValue) { // typeof null == 'object'，对象默认值赋 null 无需额外处理
+      gmValidate(gmKey, defaultValue, writeback = true) {
+        const value = GM_getValue(gmKey)
+        if (Enums && gmKey in Enums) {
+          if (Object.values(Enums[gmKey]).indexOf(value) >= 0) {
             return value
           }
+        } else if (typeof value == typeof defaultValue) { // typeof null == 'object'，对象默认值赋 null 无需额外处理
+          return value
+        }
 
-          if (writeback) {
-            GM_setValue(gmKey, defaultValue)
-          }
-          return defaultValue
-        },
-      }
+        if (writeback) {
+          GM_setValue(gmKey, defaultValue)
+        }
+        return defaultValue
+      },
     }
 
     /**
@@ -283,13 +281,12 @@
       gm.data = {
         ...gm.data,
         uploaderList: updateData => {
-          const _ = gm.data._
           if (typeof updateData == 'string') {
             // 注意多行模式「\n」位置为「line$\n^line」，且「\n」是空白符，被视为在下一行「行首」
             updateData = updateData.replace(/\s+$/gm, '') // 除空行及行尾空白符（有效的换行符被「^」隔断而得以保留），除下面的特殊情况
               .replace(/^\n/, '') // 移除为作为「\s*$」且有后续的首行的换行符，此时该换行符被视为在第二行「行首」
             GM_setValue('uploaderList', updateData)
-            _.uploaderListSet = null
+            this.#data.uploaderListSet = undefined
             return updateData
           } else {
             let uploaderList = GM_getValue('uploaderList')
@@ -301,8 +298,8 @@
           }
         },
         uploaderListSet: reload => {
-          const _ = gm.data._
-          if (!_.uploaderListSet || reload) {
+          const $data = this.#data
+          if (!$data.uploaderListSet || reload) {
             const set = new Set()
             const content = gm.data.uploaderList()
             if (content.startsWith('*')) {
@@ -316,11 +313,10 @@
                 }
               }
             }
-            _.uploaderListSet = set
+            $data.uploaderListSet = set
           }
-          return _.uploaderListSet
+          return $data.uploaderListSet
         },
-        _: {}, // 用于存储内部数据，不公开访问
       }
 
       gm.el = {
@@ -1117,140 +1113,137 @@
    * 页面处理的抽象，脚本围绕网站的特化部分
    */
   class Webpage {
-    constructor() {
-      const webpage = this
-      /**
-       * 播放控制
-       * @type {HTMLElement}
-       */
-      this.control = null
-      /**
-       * 播放控制面板
-       * @type {HTMLElement}
-       */
-      this.controlPanel = null
-      /**
-       * 进度条
-       * @typedef ProgressBar
-       * @property {HTMLElement} root 进度条根元素
-       * @property {HTMLElement} thumb 进度条滑块
-       * @property {HTMLElement} preview 进度条预览
-       * @property {HTMLElement[]} dispEl 进度条中应该被隐藏的可视部分
-       */
-      /**
-       * 进度条
-       * @type {ProgressBar}
-       */
-      this.progress = {}
-      /**
-       * 伪进度条
-       * @typedef FakeProgressBar
-       * @property {HTMLElement} root 伪进度条根元素
-       * @property {HTMLElement} track 伪进度条滑槽
-       * @property {HTMLElement} played 伪进度条已播放部分
-       */
-      /**
-       * 伪进度条
-       * @type {FakeProgressBar}
-       */
-      this.fakeProgress = {}
+    /**
+     * 播放控制
+     * @type {HTMLElement}
+     */
+    control = null
+    /**
+     * 播放控制面板
+     * @type {HTMLElement}
+     */
+    controlPanel = null
+    /**
+     * 进度条
+     * @typedef ProgressBar
+     * @property {HTMLElement} root 进度条根元素
+     * @property {HTMLElement} thumb 进度条滑块
+     * @property {HTMLElement} preview 进度条预览
+     * @property {HTMLElement[]} dispEl 进度条中应该被隐藏的可视部分
+     */
+    /**
+     * 进度条
+     * @type {ProgressBar}
+     */
+    progress = {}
+    /**
+     * 伪进度条
+     * @typedef FakeProgressBar
+     * @property {HTMLElement} root 伪进度条根元素
+     * @property {HTMLElement} track 伪进度条滑槽
+     * @property {HTMLElement} played 伪进度条已播放部分
+     */
+    /**
+     * 伪进度条
+     * @type {FakeProgressBar}
+     */
+    fakeProgress = {}
+
+    /**
+     * 脚本控制条
+     * @type {HTMLElement}
+     */
+    scriptControl = null
+
+    /**
+     * 是否开启防剧透功能
+     * @type {boolean}
+     */
+    enabled = false
+    /**
+     * 当前UP主是否在防剧透名单中
+     */
+    uploaderEnabled = false
+
+    /** 通用方法 */
+    method = {
+      obj: this,
 
       /**
-       * 脚本控制条
-       * @type {HTMLElement}
+       * 判断播放器是否为 V3
+       * @returns {boolean} 播放器是否为 V3
        */
-      this.scriptControl = null
+      isV3Player() {
+        return !!document.querySelector('.bpx-player-video-area')
+      },
 
       /**
-       * 是否开启防剧透功能
-       * @type {boolean}
+       * 判断播放器是否启用分段进度条
+       * @returns {boolean} 播放器是否启用分段进度条
        */
-      this.enabled = false
-      /**
-       * 当前UP主是否在防剧透名单中
-       */
-      this.uploaderEnabled = false
+      isSegmentedProgress() {
+        return !!document.querySelector('.bilibili-player-video-btn-viewpointlist')
+      },
 
       /**
-       * 通用方法
+       * 从 URL 获取视频 ID
+       * @param {string} [url=location.pathname] 提取视频 ID 的源字符串
+       * @returns {{id: string, type: 'aid' | 'bvid'}} `{id, type}`
        */
-      this.method = {
-        /**
-         * 判断播放器是否为 V3
-         * @returns 播放器是否为 V3
-         */
-        isV3Player() {
-          return !!document.querySelector('.bpx-player-video-area')
-        },
+      getVid(url = location.pathname) {
+        let m = null
+        if ((m = /\/bv([0-9a-z]+)([/?#]|$)/i.exec(url))) {
+          return { id: 'BV' + m[1], type: 'bvid' }
+        } else if ((m = /\/(av)?(\d+)([/?#]|$)/i.exec(url))) { // 兼容 URL 中 BV 号被第三方修改为 AV 号的情况
+          return { id: m[2], type: 'aid' }
+        }
+      },
 
-        /**
-         * 判断播放器是否启用分段进度条
-         * @returns 播放器是否启用分段进度条
-         */
-        isSegmentedProgress() {
-          return !!document.querySelector('.bilibili-player-video-btn-viewpointlist')
-        },
+      /**
+       * 获取视频信息
+       * @param {string} id `aid` 或 `bvid`
+       * @param {'aid' | 'bvid'} [type='bvid'] `id` 类型
+       * @returns {Promise<JSON>} 视频信息
+       */
+      async getVideoInfo(id, type = 'bvid') {
+        const resp = await api.web.request({
+          url: gm.url.api_videoInfo(id, type),
+        })
+        return JSON.parse(resp.responseText).data
+      },
 
-        /**
-         * 从 URL 获取视频 ID
-         * @param {string} [url=location.pathname] 提取视频 ID 的源字符串
-         * @returns {{id: string, type: 'aid' | 'bvid'}} `{id, type}`
-         */
-        getVid(url = location.pathname) {
-          let m = null
-          if ((m = /\/bv([0-9a-z]+)([/?#]|$)/i.exec(url))) {
-            return { id: 'BV' + m[1], type: 'bvid' }
-          } else if ((m = /\/(av)?(\d+)([/?#]|$)/i.exec(url))) { // 兼容 URL 中 BV 号被第三方修改为 AV 号的情况
-            return { id: m[2], type: 'aid' }
-          }
-        },
+      /**
+       * 获取当前播放时间
+       * @returns {number} 当前播放时间（单位：秒）
+       */
+      getCurrentTime() {
+        const el = this.obj.control.querySelector('.bilibili-player-video-time-now, .squirtle-video-time-now')
+        return this.getTimeFromElement(el)
+      },
 
-        /**
-         * 获取视频信息
-         * @param {string} id `aid` 或 `bvid`
-         * @param {'aid' | 'bvid'} [type='bvid'] `id` 类型
-         * @returns {Promise<JSON>} 视频信息
-         */
-        async getVideoInfo(id, type = 'bvid') {
-          const resp = await api.web.request({
-            url: gm.url.api_videoInfo(id, type),
-          })
-          return JSON.parse(resp.responseText).data
-        },
+      /**
+       * 获取视频时长
+       * @returns {number} 视频时长（单位：秒）
+       */
+      getDuration() {
+        const el = this.obj.control.querySelector('.bilibili-player-video-time-total, .squirtle-video-time-total')
+        return this.getTimeFromElement(el)
+      },
 
-        /**
-         * 获取当前播放时间
-         * @returns 当前播放时间
-         */
-        getCurrentTime() {
-          const el = webpage.control.querySelector('.bilibili-player-video-time-now, .squirtle-video-time-now')
-          return this.getTimeFromElement(el)
-        },
-
-        /**
-         * 获取视频时长
-         * @returns 视频时长
-         */
-        getDuration() {
-          const el = webpage.control.querySelector('.bilibili-player-video-time-total, .squirtle-video-time-total')
-          return this.getTimeFromElement(el)
-        },
-
-        /**
-         * 从元素中提取时间
-         * @param {HTMLElement} el 元素
-         * @returns 时间
-         */
-        getTimeFromElement(el) {
-          let result = 0
-          const factors = [24 * 3600, 3600, 60, 1]
-          const parts = el.textContent.split(':')
-          while (parts.length > 0) {
-            result += parts.pop() * factors.pop()
-          }
-          return result
-        },
-      }
+      /**
+       * 从元素中提取时间
+       * @param {HTMLElement} el 元素
+       * @returns {number} 时间（单位：秒）
+       */
+      getTimeFromElement(el) {
+        let result = 0
+        const factors = [24 * 3600, 3600, 60, 1]
+        const parts = el.textContent.split(':')
+        while (parts.length > 0) {
+          result += parts.pop() * factors.pop()
+        }
+        return result
+      },
     }
 
     /**

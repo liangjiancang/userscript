@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站共同关注快速查看
-// @version         1.5.7.20210901
+// @version         1.5.8.20210903
 // @namespace       laster2800
 // @author          Laster2800
 // @description     快速查看与特定用户的共同关注（视频播放页、动态页、用户空间、直播间）
@@ -16,7 +16,7 @@
 // @exclude         *://live.bilibili.com/
 // @exclude         *://live.bilibili.com/?*
 // @exclude         *://www.bilibili.com/watchlater/
-// @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=966080
+// @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=966902
 // @grant           GM_notification
 // @grant           GM_xmlhttpRequest
 // @grant           GM_setValue
@@ -86,6 +86,9 @@
   /** @type {Webpage} */
   let webpage = null
 
+  /**
+   * 脚本运行的抽象，为脚本本身服务的核心功能
+   */
   class Script {
     /**
      * 初始化脚本
@@ -195,32 +198,34 @@
     }
   }
 
+  /**
+   * 页面处理的抽象，脚本围绕网站的特化部分
+   */
   class Webpage {
-    constructor() {
-      this.method = {
-        /**
-         * 从 URL 中获取 UID
-         * @param {string} [url=location.pathname] URL
-         * @returns {string} UID
-         */
-        getUid(url = location.pathname) {
-          return /\/(\d+)([/?#]|$)/.exec(url)?.[1]
-        },
+    /** 通用方法 */
+    method = {
+      /**
+       * 从 URL 中获取 UID
+       * @param {string} [url=location.pathname] URL
+       * @returns {string} UID
+       */
+      getUid(url = location.pathname) {
+        return /\/(\d+)([/?#]|$)/.exec(url)?.[1]
+      },
 
-        /**
-         * 获取指定用户与你的关系
-         * @param {string} uid UID
-         * @returns {Promise<{code: number, special: boolean}>} `{code, special}`
-         * @see {@link https://github.com/SocialSisterYi/bilibili-API-collect/blob/master/user/relation.md#查询用户与自己关系_互相 查询用户与自己关系_互相}
-         */
-        async getRelation(uid) {
-          const resp = await api.web.request({
-            url: gm.url.api_relation(uid),
-          })
-          const relation = JSON.parse(resp.responseText).data.be_relation
-          return { code: relation.attribute, special: relation.special == 1 }
-        },
-      }
+      /**
+       * 获取指定用户与你的关系
+       * @param {string} uid UID
+       * @returns {Promise<{code: number, special: boolean}>} `{code, special}`
+       * @see {@link https://github.com/SocialSisterYi/bilibili-API-collect/blob/master/user/relation.md#查询用户与自己关系_互相 查询用户与自己关系_互相}
+       */
+      async getRelation(uid) {
+        const resp = await api.web.request({
+          url: gm.url.api_relation(uid),
+        })
+        const relation = JSON.parse(resp.responseText).data.be_relation
+        return { code: relation.attribute, special: relation.special == 1 }
+      },
     }
 
     /**

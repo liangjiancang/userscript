@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.19.6.20210903
+// @version         4.19.7.20210903
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -17,7 +17,7 @@
 // @exclude         *://message.bilibili.com/*/*
 // @exclude         *://t.bilibili.com/h5/*
 // @exclude         *://www.bilibili.com/page-proxy/*
-// @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=966080
+// @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=966902
 // @grant           GM_registerMenuCommand
 // @grant           GM_xmlhttpRequest
 // @grant           GM_setValue
@@ -256,11 +256,14 @@
   /**
    * @typedef GMObject_runtime
    * @property {boolean} reloadWatchlaterListData 刷新稍后再看列表数据
+   * @property {boolean} loadingWatchlaterListData 正在加载稍后再看列表数据
+   * @property {boolean} savingRemoveHistoryData 正在存储稍后再看历史数据
+   * @property {boolean} savedRemoveHistoryData 当前 URL 已存储过稍后再看历史数据
    */
   /**
-   * @callback removeHistoryData 通过懒加载方式获取 `removeHistoryData`
-   * @param {boolean} [remove] 是否将 `removeHistoryData` 移除
-   * @returns {PushQueue<GMObject_data_item>} `removeHistoryData`
+   * @callback removeHistoryData 通过懒加载方式获取稍后再看历史数据
+   * @param {boolean} [remove] 是否将稍后再看历史数据移除
+   * @returns {PushQueue<GMObject_data_item>} 稍后再看历史数据
    */
   /**
    * @callback watchlaterListData 通过懒加载方式获取稍后再看列表数据
@@ -301,7 +304,7 @@
    */
   /**
    * @typedef GMObject_data
-   * @property {removeHistoryData} removeHistoryData 为生成移除记录而保存的稍后再看历史数据
+   * @property {removeHistoryData} removeHistoryData 稍后再看历史数据
    * @property {watchlaterListData} watchlaterListData 当前稍后再看列表数据
    * @property {fixedItem} fixedItem 固定列表项
    */
@@ -412,15 +415,9 @@
       watchlaterMediaList: { configVersion: 20210822 },
       fixHeader: { configVersion: 20210810.1 },
     },
-    runtime: {
-      reloadWatchlaterListData: false,
-    },
+    runtime: {},
     configDocumentStart: ['redirect', 'menuScrollbarSetting', 'mainRunAt'],
-    data: {
-      removeHistoryData: null,
-      watchlaterListData: null,
-      fixedItem: null,
-    },
+    data: {},
     url: {
       api_queryWatchlaterList: 'https://api.bilibili.com/x/v2/history/toview/web',
       api_addToWatchlater: 'https://api.bilibili.com/x/v2/history/toview/add',
@@ -481,39 +478,38 @@
   let webpage = null
 
   /**
-   * 脚本运行的抽象，脚本独立于网站、为脚本本身服务的部分
+   * 脚本运行的抽象，为脚本本身服务的核心功能
    */
   class Script {
-    constructor() {
+    /** 内部数据 */
+    #data = {}
+
+    /** 通用方法 */
+    method = {
       /**
-       * 通用方法
+       * GM 读取流程
+       *
+       * 一般情况下，读取用户配置；如果配置出错，则沿用默认值，并将默认值写入配置中
+       * @param {string} gmKey 键名
+       * @param {*} defaultValue 默认值
+       * @param {boolean} [writeback=true] 配置出错时是否将默认值回写入配置中
+       * @returns {*} 通过校验时是配置值，不能通过校验时是默认值
        */
-      this.method = {
-        /**
-         * GM 读取流程
-         *
-         * 一般情况下，读取用户配置；如果配置出错，则沿用默认值，并将默认值写入配置中
-         * @param {string} gmKey 键名
-         * @param {*} defaultValue 默认值
-         * @param {boolean} [writeback=true] 配置出错时是否将默认值回写入配置中
-         * @returns {*} 通过校验时是配置值，不能通过校验时是默认值
-         */
-        gmValidate(gmKey, defaultValue, writeback = true) {
-          const value = GM_getValue(gmKey)
-          if (Enums && gmKey in Enums) {
-            if (Object.values(Enums[gmKey]).indexOf(value) >= 0) {
-              return value
-            }
-          } else if (typeof value == typeof defaultValue) { // typeof null == 'object'，对象默认值赋 null 无需额外处理
+      gmValidate(gmKey, defaultValue, writeback = true) {
+        const value = GM_getValue(gmKey)
+        if (Enums && gmKey in Enums) {
+          if (Object.values(Enums[gmKey]).indexOf(value) >= 0) {
             return value
           }
+        } else if (typeof value == typeof defaultValue) { // typeof null == 'object'，对象默认值赋 null 无需额外处理
+          return value
+        }
 
-          if (writeback) {
-            GM_setValue(gmKey, defaultValue)
-          }
-          return defaultValue
-        },
-      }
+        if (writeback) {
+          GM_setValue(gmKey, defaultValue)
+        }
+        return defaultValue
+      },
     }
 
     /**
@@ -567,11 +563,11 @@
       gm.data = {
         ...gm.data,
         removeHistoryData: remove => {
-          const _ = gm.data._
+          const $data = this.#data
           if (remove) {
-            _.removeHistoryData = undefined
+            $data.removeHistoryData = undefined
           } else {
-            if (_.removeHistoryData == null) {
+            if ($data.removeHistoryData == null) {
               /** @type {PushQueue<GMObject_data_item>} */
               let data = GM_getValue('removeHistoryData')
               if (data && typeof data == 'object') {
@@ -586,34 +582,34 @@
                 data = new PushQueue(gm.config.removeHistorySaves)
                 GM_setValue('removeHistoryData', data)
               }
-              _.removeHistoryData = data
+              $data.removeHistoryData = data
             }
-            return _.removeHistoryData
+            return $data.removeHistoryData
           }
         },
         watchlaterListData: async (reload, pageCache, localCache = true) => {
-          const _ = gm.data._
+          const $data = this.#data
           if (gm.runtime.reloadWatchlaterListData) {
             reload = true
             gm.runtime.reloadWatchlaterListData = false
           }
-          if (_.watchlaterListData == null || reload || !pageCache || gm.config.disablePageCache) {
-            if (_.watchlaterListData_loading) {
+          if ($data.watchlaterListData == null || reload || !pageCache || gm.config.disablePageCache) {
+            if (gm.runtime.loadingWatchlaterListData) {
               // 一旦数据已在加载中，那么直接等待该次加载完成
               // 无论加载成功与否，所有被阻塞的数据请求均都使用该次加载的结果，完全保持一致
               // 注意：加载失败时，返回的空数组并非同一对象
               try {
                 return await api.wait.waitForConditionPassed({
                   condition: () => {
-                    if (!_.watchlaterListData_loading) {
-                      return _.watchlaterListData ?? []
+                    if (!gm.runtime.loadingWatchlaterListData) {
+                      return $data.watchlaterListData ?? []
                     }
                   },
                 })
               } catch (e) {
-                _.watchlaterListData_loading = false
+                gm.runtime.loadingWatchlaterListData = false
                 api.logger.error(e)
-                return _.watchlaterListData ?? []
+                return $data.watchlaterListData ?? []
               }
             }
 
@@ -624,14 +620,14 @@
                 if (current - cacheTime < gm.config.watchlaterListCacheValidPeriod * 1000) {
                   const list = GM_getValue('watchlaterListCache')
                   if (list) {
-                    _.watchlaterListData = list
+                    $data.watchlaterListData = list
                     return list // 默认缓存不为空
                   }
                 }
               }
             }
 
-            _.watchlaterListData_loading = true
+            gm.runtime.loadingWatchlaterListData = true
             try {
               const resp = await api.web.request({
                 url: gm.url.api_queryWatchlaterList,
@@ -657,16 +653,16 @@
                   }
                 }))
               }
-              _.watchlaterListData = current
+              $data.watchlaterListData = current
               return current
             } catch (e) {
               api.logger.error(e)
-              return _.watchlaterListData ?? []
+              return $data.watchlaterListData ?? []
             } finally {
-              _.watchlaterListData_loading = false
+              gm.runtime.loadingWatchlaterListData = false
             }
           } else {
-            return _.watchlaterListData
+            return $data.watchlaterListData
           }
         },
         fixedItem: (id, op) => {
@@ -689,7 +685,6 @@
             return false
           }
         },
-        _: {}, // 用于存储内部数据，不公开访问
       }
 
       gm.el = {
@@ -2542,490 +2537,489 @@
    * 页面处理的抽象，脚本围绕网站的特化部分
    */
   class Webpage {
-    constructor() {
-      /** 通用方法 */
-      this.method = {
-        /** 内部数据 */
-        _: {},
+    /** 内部数据 */
+    #data = {}
 
-        /**
-         * 获取指定 Cookie
-         * @param {string} key 键
-         * @returns {string} 值
-         * @see {@link https://developer.mozilla.org/zh-CN/docs/Web/API/Document/cookie#示例2_得到名为test2的cookie Document.cookie - Web API 接口参考 | MDN}
-         */
-        cookie(key) {
-          return document.cookie.replace(RegExp(String.raw`(?:(?:^|.*;\s*)${key}\s*=\s*([^;]*).*$)|^.*$`), '$1')
-        },
+    /** 通用方法 */
+    method = {
+      obj: this,
 
-        /**
-         * 判断用户是否已登录
-         * @returns {boolean} 用户是否已登录
-         */
-        isLogin() {
-          return Boolean(this.getCSRF())
-        },
+      /**
+       * 获取指定 Cookie
+       * @param {string} key 键
+       * @returns {string} 值
+       * @see {@link https://developer.mozilla.org/zh-CN/docs/Web/API/Document/cookie#示例2_得到名为test2的cookie Document.cookie - Web API 接口参考 | MDN}
+       */
+      cookie(key) {
+        return document.cookie.replace(RegExp(String.raw`(?:(?:^|.*;\s*)${key}\s*=\s*([^;]*).*$)|^.*$`), '$1')
+      },
 
-        /**
-         * 获取当前登录用户 ID
-         * @returns {string} `DedeUserID`
-         */
-        getDedeUserID() {
-          return this.cookie('DedeUserID')
-        },
+      /**
+       * 判断用户是否已登录
+       * @returns {boolean} 用户是否已登录
+       */
+      isLogin() {
+        return Boolean(this.getCSRF())
+      },
 
-        /**
-         * 获取 CSRF
-         * @returns {string} `csrf`
-         */
-        getCSRF() {
-          return this.cookie('bili_jct')
-        },
+      /**
+       * 获取当前登录用户 ID
+       * @returns {string} `DedeUserID`
+       */
+      getDedeUserID() {
+        return this.cookie('DedeUserID')
+      },
 
-        /**
-         * av/bv 互转
-         *
-         * 保证 av < 2 ** 27 时正确，同时应该在 av < 2 ** 30 时正确
-         * @see {@link https://www.zhihu.com/question/381784377/answer/1099438784 如何看待 2020 年 3 月 23 日哔哩哔哩将稿件的「av 号」变更为「BV 号」？ - 知乎 - mcfx 的回答}
-         */
-        bvTool: new class bvTool {
-          constructor() {
-            const table = 'fZodR9XQDSUm21yCkr6zBqiveYah8bt4xsWpHnJE7jL5VG3guMTKNPAwcF'
-            const tr = {}
-            for (let i = 0; i < 58; i++) {
-              tr[table[i]] = i
-            }
-            const s = [11, 10, 3, 8, 4, 6]
-            const xor = 177451812
-            const add = 8728348608
-            this.bv2av = dec
-            this.av2bv = enc
+      /**
+       * 获取 CSRF
+       * @returns {string} `csrf`
+       */
+      getCSRF() {
+        return this.cookie('bili_jct')
+      },
 
-            function dec(x) {
-              let r = 0
-              for (let i = 0; i < 6; i++) {
-                r += tr[x[s[i]]] * 58 ** i
-              }
-              return String((r - add) ^ xor)
-            }
-
-            function enc(x) {
-              x = parseInt(x)
-              x = (x ^ xor) + add
-              let r = 'BV1  4 1 7  '.split('')
-              for (let i = 0; i < 6; i++) {
-                r[s[i]] = table[Math.floor(x / 58 ** i) % 58]
-              }
-              return r.join('')
-            }
+      /**
+       * av/bv 互转
+       *
+       * 保证 av < 2 ** 27 时正确，同时应该在 av < 2 ** 30 时正确
+       * @see {@link https://www.zhihu.com/question/381784377/answer/1099438784 如何看待 2020 年 3 月 23 日哔哩哔哩将稿件的「av 号」变更为「BV 号」？ - 知乎 - mcfx 的回答}
+       */
+      bvTool: new class bvTool {
+        constructor() {
+          const table = 'fZodR9XQDSUm21yCkr6zBqiveYah8bt4xsWpHnJE7jL5VG3guMTKNPAwcF'
+          const tr = {}
+          for (let i = 0; i < 58; i++) {
+            tr[table[i]] = i
           }
-        }(),
+          const s = [11, 10, 3, 8, 4, 6]
+          const xor = 177451812
+          const add = 8728348608
+          this.bv2av = dec
+          this.av2bv = enc
 
-        /**
-         * 从 URL 获取视频 ID
-         * @param {string} [url=location.pathname] 提取视频 ID 的源字符串
-         * @returns {{id: string, type: 'aid' | 'bvid'}} `{id, type}`
-         */
-        getVid(url = location.pathname) {
-          let m = null
-          if ((m = /\/bv([0-9a-z]+)([/?#]|$)/i.exec(url))) {
-            return { id: 'BV' + m[1], type: 'bvid' }
-          } else if ((m = /\/(av)?(\d+)([/?#]|$)/i.exec(url))) { // 兼容 URL 中 BV 号被第三方修改为 AV 号的情况
-            return { id: m[2], type: 'aid' }
-          }
-        },
-
-        /**
-         * 从 URL 获取视频 `aid`
-         * @param {string} [url=location.pathname] 提取视频 `aid` 的源字符串
-         * @returns {string} `aid`
-         */
-        getAid(url = location.pathname) {
-          const _self = this
-          const vid = _self.getVid(url)
-          if (vid) {
-            if (vid.type == 'bvid') {
-              return _self.bvTool.bv2av(vid.id)
+          function dec(x) {
+            let r = 0
+            for (let i = 0; i < 6; i++) {
+              r += tr[x[s[i]]] * 58 ** i
             }
-            return vid.id
+            return String((r - add) ^ xor)
           }
-          return null
-        },
 
-        /**
-         * 从 URL 获取视频 `bvid`
-         * @param {string} [url=location.pathname] 提取视频 `bvid` 的源字符串
-         * @returns {string} `bvid`
-         */
-        getBvid(url = location.pathname) {
-          const _self = this
-          const vid = _self.getVid(url)
-          if (vid) {
-            if (vid.type == 'aid') {
-              return _self.bvTool.av2bv(vid.id)
+          function enc(x) {
+            x = parseInt(x)
+            x = (x ^ xor) + add
+            let r = 'BV1  4 1 7  '.split('')
+            for (let i = 0; i < 6; i++) {
+              r[s[i]] = table[Math.floor(x / 58 ** i) % 58]
             }
-            return vid.id
+            return r.join('')
           }
-          return null
-        },
+        }
+      }(),
 
-        /**
-         * 根据 `aid` 获取视频的稍后再看状态
-         * @param {string} aid 视频 `aid`
-         * @param {boolean} [reload] 是否重新加载
-         * @param {boolean} [pageCache] 是否禁用页面缓存
-         * @param {boolean} [localCache=true] 是否使用本地缓存
-         * @returns {Promise<boolean>} 视频是否在稍后再看中
-         */
-        async getVideoWatchlaterStatusByAid(aid, reload, pageCache, localCache = true) {
-          const map = await this.getWatchlaterDataMap(item => String(item.aid), 'aid', reload, pageCache, localCache)
-          return map.has(aid)
-        },
+      /**
+       * 从 URL 获取视频 ID
+       * @param {string} [url=location.pathname] 提取视频 ID 的源字符串
+       * @returns {{id: string, type: 'aid' | 'bvid'}} `{id, type}`
+       */
+      getVid(url = location.pathname) {
+        let m = null
+        if ((m = /\/bv([0-9a-z]+)([/?#]|$)/i.exec(url))) {
+          return { id: 'BV' + m[1], type: 'bvid' }
+        } else if ((m = /\/(av)?(\d+)([/?#]|$)/i.exec(url))) { // 兼容 URL 中 BV 号被第三方修改为 AV 号的情况
+          return { id: m[2], type: 'aid' }
+        }
+      },
 
-        /**
-         * 将视频加入稍后再看，或从稍后再看移除
-         * @param {string} id 视频 `aid` 或 `bvid`（执行移除时优先选择 `aid`）
-         * @param {boolean} [status=true] 添加 `true` / 移除 `false`
-         * @returns {Promise<boolean>} 操作是否成功（视频不在稍后在看中不被判定为失败）
-         */
-        async switchVideoWatchlaterStatus(id, status = true) {
-          const _self = this
-          try {
-            let typeA = !isNaN(id)
-            if (!typeA && !status) { // 移除 API 只支持 aid，先作转换
-              id = _self.bvTool.bv2av(id)
-              typeA = true
-            }
-            const data = new URLSearchParams()
-            if (typeA) {
-              data.append('aid', id)
-            } else {
-              data.append('bvid', id)
-            }
-            data.append('csrf', _self.getCSRF())
-            const resp = await api.web.request({
-              method: 'POST',
-              url: status ? gm.url.api_addToWatchlater : gm.url.api_removeFromWatchlater,
-              data: data,
-            })
-            return JSON.parse(resp.response).code === 0
-          } catch (e) {
-            api.logger.error(e)
-            return false
+      /**
+       * 从 URL 获取视频 `aid`
+       * @param {string} [url=location.pathname] 提取视频 `aid` 的源字符串
+       * @returns {string} `aid`
+       */
+      getAid(url = location.pathname) {
+        const _self = this
+        const vid = _self.getVid(url)
+        if (vid) {
+          if (vid.type == 'bvid') {
+            return _self.bvTool.bv2av(vid.id)
           }
-        },
+          return vid.id
+        }
+        return null
+      },
 
-        /**
-         * 清空稍后再看
-         * @returns {Promise<boolean>} 操作是否成功
-         */
-        async clearWatchlater() {
-          try {
-            const data = new URLSearchParams()
-            data.append('csrf', this.getCSRF())
-            const resp = await api.web.request({
-              method: 'POST',
-              url: gm.url.api_clearWatchlater,
-              data: data,
-            })
-            const success = JSON.parse(resp.response).code === 0
-            if (success) {
-              gm.runtime.reloadWatchlaterListData = true
-              window.dispatchEvent(new CustomEvent('reloadWatchlaterListData'))
-            }
-            return success
-          } catch (e) {
-            api.logger.error(e)
-            return false
+      /**
+       * 从 URL 获取视频 `bvid`
+       * @param {string} [url=location.pathname] 提取视频 `bvid` 的源字符串
+       * @returns {string} `bvid`
+       */
+      getBvid(url = location.pathname) {
+        const _self = this
+        const vid = _self.getVid(url)
+        if (vid) {
+          if (vid.type == 'aid') {
+            return _self.bvTool.av2bv(vid.id)
           }
-        },
+          return vid.id
+        }
+        return null
+      },
 
-        /**
-         * 移除稍后再看已观看视频
-         * @returns {Promise<boolean>} 操作是否成功
-         */
-        async clearWatchedInWatchlater() {
-          try {
-            const data = new URLSearchParams()
-            data.append('viewed', true)
-            data.append('csrf', this.getCSRF())
-            const resp = await api.web.request({
-              method: 'POST',
-              url: gm.url.api_removeFromWatchlater,
-              data: data,
-            })
-            const success = JSON.parse(resp.response).code === 0
-            if (success) {
-              gm.runtime.reloadWatchlaterListData = true
-              window.dispatchEvent(new CustomEvent('reloadWatchlaterListData'))
-            }
-            return success
-          } catch (e) {
-            api.logger.error(e)
-            return false
+      /**
+       * 根据 `aid` 获取视频的稍后再看状态
+       * @param {string} aid 视频 `aid`
+       * @param {boolean} [reload] 是否重新加载
+       * @param {boolean} [pageCache] 是否禁用页面缓存
+       * @param {boolean} [localCache=true] 是否使用本地缓存
+       * @returns {Promise<boolean>} 视频是否在稍后再看中
+       */
+      async getVideoWatchlaterStatusByAid(aid, reload, pageCache, localCache = true) {
+        const map = await this.getWatchlaterDataMap(item => String(item.aid), 'aid', reload, pageCache, localCache)
+        return map.has(aid)
+      },
+
+      /**
+       * 将视频加入稍后再看，或从稍后再看移除
+       * @param {string} id 视频 `aid` 或 `bvid`（执行移除时优先选择 `aid`）
+       * @param {boolean} [status=true] 添加 `true` / 移除 `false`
+       * @returns {Promise<boolean>} 操作是否成功（视频不在稍后在看中不被判定为失败）
+       */
+      async switchVideoWatchlaterStatus(id, status = true) {
+        const _self = this
+        try {
+          let typeA = !isNaN(id)
+          if (!typeA && !status) { // 移除 API 只支持 aid，先作转换
+            id = _self.bvTool.bv2av(id)
+            typeA = true
           }
-        },
+          const data = new URLSearchParams()
+          if (typeA) {
+            data.append('aid', id)
+          } else {
+            data.append('bvid', id)
+          }
+          data.append('csrf', _self.getCSRF())
+          const resp = await api.web.request({
+            method: 'POST',
+            url: status ? gm.url.api_addToWatchlater : gm.url.api_removeFromWatchlater,
+            data: data,
+          })
+          return JSON.parse(resp.response).code === 0
+        } catch (e) {
+          api.logger.error(e)
+          return false
+        }
+      },
 
-        /**
-         * 使用稍后再看列表数据更新稍后再看历史数据
-         * @param {boolean} [reload] 是否重新加载稍后再看列表数据
-         */
-        updateRemoveHistoryData(reload) {
-          const _ = this._
-          if (gm.config.removeHistory) {
-            if (!_.watchLaterListData_saved || reload) {
-              if (!_.watchlaterListData_saving) {
-                _.watchlaterListData_saving = true
-                return gm.data.watchlaterListData(reload).then(current => {
-                  if (current.length > 0) {
-                    if (gm.config.removeHistoryFuzzyCompare > 0) {
-                      const ref = GM_getValue('removeHistoryFuzzyCompareReference')
-                      let same = true
-                      if (ref) {
-                        for (let i = 0; i < gm.config.removeHistoryFuzzyCompare; i++) {
-                          const c = current[i]
-                          const r = ref[i]
-                          if (c) { // 如果 current 没有数据直接跳过得了
-                            if (r) {
-                              if (c.bvid != r) {
-                                same = false
-                                break
-                              }
-                            } else {
+      /**
+       * 清空稍后再看
+       * @returns {Promise<boolean>} 操作是否成功
+       */
+      async clearWatchlater() {
+        try {
+          const data = new URLSearchParams()
+          data.append('csrf', this.getCSRF())
+          const resp = await api.web.request({
+            method: 'POST',
+            url: gm.url.api_clearWatchlater,
+            data: data,
+          })
+          const success = JSON.parse(resp.response).code === 0
+          if (success) {
+            gm.runtime.reloadWatchlaterListData = true
+            window.dispatchEvent(new CustomEvent('reloadWatchlaterListData'))
+          }
+          return success
+        } catch (e) {
+          api.logger.error(e)
+          return false
+        }
+      },
+
+      /**
+       * 移除稍后再看已观看视频
+       * @returns {Promise<boolean>} 操作是否成功
+       */
+      async clearWatchedInWatchlater() {
+        try {
+          const data = new URLSearchParams()
+          data.append('viewed', true)
+          data.append('csrf', this.getCSRF())
+          const resp = await api.web.request({
+            method: 'POST',
+            url: gm.url.api_removeFromWatchlater,
+            data: data,
+          })
+          const success = JSON.parse(resp.response).code === 0
+          if (success) {
+            gm.runtime.reloadWatchlaterListData = true
+            window.dispatchEvent(new CustomEvent('reloadWatchlaterListData'))
+          }
+          return success
+        } catch (e) {
+          api.logger.error(e)
+          return false
+        }
+      },
+
+      /**
+       * 使用稍后再看列表数据更新稍后再看历史数据
+       * @param {boolean} [reload] 是否重新加载稍后再看列表数据
+       */
+      updateRemoveHistoryData(reload) {
+        if (gm.config.removeHistory) {
+          if (!gm.runtime.savedRemoveHistoryData || reload) {
+            if (!gm.runtime.savingRemoveHistoryData) {
+              gm.runtime.savingRemoveHistoryData = true
+              return gm.data.watchlaterListData(reload).then(current => {
+                if (current.length > 0) {
+                  if (gm.config.removeHistoryFuzzyCompare > 0) {
+                    const ref = GM_getValue('removeHistoryFuzzyCompareReference')
+                    let same = true
+                    if (ref) {
+                      for (let i = 0; i < gm.config.removeHistoryFuzzyCompare; i++) {
+                        const c = current[i]
+                        const r = ref[i]
+                        if (c) { // 如果 current 没有数据直接跳过得了
+                          if (r) {
+                            if (c.bvid != r) {
                               same = false
                               break
                             }
+                          } else {
+                            same = false
+                            break
                           }
                         }
-                      } else {
-                        same = false
                       }
-                      if (same) {
-                        _.watchLaterListData_saved = true
-                        return
-                      } else {
-                        if (current.length >= gm.config.removeHistoryFuzzyCompare) {
-                          const newRef = []
-                          for (let i = 0; i < gm.config.removeHistoryFuzzyCompare; i++) {
-                            newRef.push(current[i].bvid)
-                          }
-                          GM_setValue('removeHistoryFuzzyCompareReference', newRef)
-                        } else {
-                          // 若 current 长度不够，那么加进去也白搭
-                          GM_deleteValue('removeHistoryFuzzyCompareReference')
-                        }
-                      }
-                    }
-
-                    const data = gm.data.removeHistoryData()
-                    let updated = false
-                    if (gm.config.removeHistoryTimestamp) {
-                      const timestamp = new Date().getTime()
-                      const map = new Map()
-                      for (let i = 0; i < data.size; i++) {
-                        map.set(data.get(i)[0], i)
-                      }
-                      for (let i = current.length - 1; i >= 0; i--) {
-                        const item = current[i]
-                        if (map.has(item.bvid)) {
-                          const idx = map.get(item.bvid)
-                          data.get(idx)[2] = timestamp
-                        } else {
-                          data.push([item.bvid, item.title, timestamp])
-                        }
-                      }
-                      updated = true
                     } else {
-                      const set = new Set()
-                      for (let i = 0; i < data.size; i++) {
-                        set.add(data.get(i)[0])
-                      }
-                      for (let i = current.length - 1; i >= 0; i--) {
-                        const item = current[i]
-                        if (!set.has(item.bvid)) {
-                          data.push([item.bvid, item.title])
-                          updated = true
+                      same = false
+                    }
+                    if (same) {
+                      gm.runtime.savedRemoveHistoryData = true
+                      return
+                    } else {
+                      if (current.length >= gm.config.removeHistoryFuzzyCompare) {
+                        const newRef = []
+                        for (let i = 0; i < gm.config.removeHistoryFuzzyCompare; i++) {
+                          newRef.push(current[i].bvid)
                         }
+                        GM_setValue('removeHistoryFuzzyCompareReference', newRef)
+                      } else {
+                        // 若 current 长度不够，那么加进去也白搭
+                        GM_deleteValue('removeHistoryFuzzyCompareReference')
                       }
                     }
-                    if (updated) {
-                      GM_setValue('removeHistoryData', data)
-                    }
-                    _.watchLaterListData_saved = true
                   }
-                }).finally(() => {
-                  _.watchlaterListData_saving = false
-                })
-              }
+
+                  const data = gm.data.removeHistoryData()
+                  let updated = false
+                  if (gm.config.removeHistoryTimestamp) {
+                    const timestamp = new Date().getTime()
+                    const map = new Map()
+                    for (let i = 0; i < data.size; i++) {
+                      map.set(data.get(i)[0], i)
+                    }
+                    for (let i = current.length - 1; i >= 0; i--) {
+                      const item = current[i]
+                      if (map.has(item.bvid)) {
+                        const idx = map.get(item.bvid)
+                        data.get(idx)[2] = timestamp
+                      } else {
+                        data.push([item.bvid, item.title, timestamp])
+                      }
+                    }
+                    updated = true
+                  } else {
+                    const set = new Set()
+                    for (let i = 0; i < data.size; i++) {
+                      set.add(data.get(i)[0])
+                    }
+                    for (let i = current.length - 1; i >= 0; i--) {
+                      const item = current[i]
+                      if (!set.has(item.bvid)) {
+                        data.push([item.bvid, item.title])
+                        updated = true
+                      }
+                    }
+                  }
+                  if (updated) {
+                    GM_setValue('removeHistoryData', data)
+                  }
+                  gm.runtime.savedRemoveHistoryData = true
+                }
+              }).finally(() => {
+                gm.runtime.savingRemoveHistoryData = false
+              })
             }
           }
-        },
+        }
+      },
 
-        /**
-         * 获取稍后再看列表数据以指定值为键的映射
-         * @param {(GMObject_data_item0) => *} key 计算键值的方法
-         * @param {string} [cacheId] 缓存 ID，传入空值时不缓存
-         * @param {boolean} [reload] 是否重新加载
-         * @param {boolean} [pageCache] 是否使用页面缓存
-         * @param {boolean} [localCache=true] 是否使用本地缓存
-         * @returns {Promise<Map<string, GMObject_data_item0>>} 稍后再看列表数据以指定值为键的映射
-         */
-        async getWatchlaterDataMap(key, cacheId, reload, pageCache, localCache = true) {
-          if (gm.runtime.reloadWatchlaterListData) {
-            reload = true
+      /**
+       * 获取稍后再看列表数据以指定值为键的映射
+       * @param {(GMObject_data_item0) => *} key 计算键值的方法
+       * @param {string} [cacheId] 缓存 ID，传入空值时不缓存
+       * @param {boolean} [reload] 是否重新加载
+       * @param {boolean} [pageCache] 是否使用页面缓存
+       * @param {boolean} [localCache=true] 是否使用本地缓存
+       * @returns {Promise<Map<string, GMObject_data_item0>>} 稍后再看列表数据以指定值为键的映射
+       */
+      async getWatchlaterDataMap(key, cacheId, reload, pageCache, localCache = true) {
+        if (gm.runtime.reloadWatchlaterListData) {
+          reload = true
+        }
+        let obj = null
+        if (cacheId) {
+          const $data = this.obj.#data
+          if (!$data.watchlaterDataSet) {
+            $data.watchlaterDataSet = {}
           }
-          let obj = null
+          obj = $data.watchlaterDataSet
+        }
+        if (!obj?.[cacheId] || reload || !pageCache) {
+          const map = new Map()
+          const current = await gm.data.watchlaterListData(reload, pageCache, localCache)
+          for (const item of current) {
+            map.set(key(item), item)
+          }
           if (cacheId) {
-            const _ = this._
-            if (!_.watchlaterDataSet) {
-              _.watchlaterDataSet = {}
-            }
-            obj = _.watchlaterDataSet
+            obj[cacheId] = map
+          } else {
+            obj = map
           }
-          if (!obj?.[cacheId] || reload || !pageCache) {
-            const map = new Map()
-            const current = await gm.data.watchlaterListData(reload, pageCache, localCache)
-            for (const item of current) {
-              map.set(key(item), item)
-            }
-            if (cacheId) {
-              obj[cacheId] = map
-            } else {
-              obj = map
-            }
-          }
-          return cacheId ? obj[cacheId] : obj
-        },
+        }
+        return cacheId ? obj[cacheId] : obj
+      },
 
-        /**
-         * 清理 URL 上的查询参数
-         */
-        cleanSearchParams() {
-          if (location.search.indexOf(gm.id) < 0) return
-          let removed = false
-          const url = new URL(location.href)
-          const searchParams = url.searchParams
-          gm.searchParams.forEach((value, key) => {
-            if (key.startsWith(gm.id)) {
-              searchParams.delete(key)
-              removed = true
-            }
+      /**
+       * 清理 URL 上的查询参数
+       */
+      cleanSearchParams() {
+        if (location.search.indexOf(gm.id) < 0) return
+        let removed = false
+        const url = new URL(location.href)
+        const searchParams = url.searchParams
+        gm.searchParams.forEach((value, key) => {
+          if (key.startsWith(gm.id)) {
+            searchParams.delete(key)
+            removed = true
+          }
+        })
+        if (removed && location.href != url.href) {
+          history.replaceState({}, null, url.href)
+        }
+      },
+
+      /**
+       * 将秒格式的时间转换为字符串形式
+       * @param {number} sTime 秒格式的时间
+       * @returns {string} 字符串形式
+       */
+      getSTimeString(sTime) {
+        let iH = 0
+        let iM = Math.floor(sTime / 60)
+        if (iM >= 60) {
+          iH = Math.floor(iM / 60)
+          iM = iM % 60
+        }
+        const iS = sTime % 60
+
+        let sH = ''
+        if (iH > 0) {
+          sH = String(iH)
+          if (sH.length < 2) {
+            sH = '0' + sH
+          }
+        }
+        let sM = String(iM)
+        if (sM.length < 2) {
+          sM = '0' + sM
+        }
+        let sS = String(iS)
+        if (sS.length < 2) {
+          sS = '0' + sS
+        }
+        return `${sH ? sH + ':' : ''}${sM}:${sS}`
+      },
+
+      /**
+       * 获取默认收藏夹 ID
+       * @param {string} [uid] 用户 ID，缺省时指定当前登录用户
+       * @returns {Promise<string>} `mlid`
+       */
+      async getDefaultMediaListId(uid = this.getDedeUserID()) {
+        let mlid = GM_getValue(`defaultMediaList_${uid}`)
+        if (!mlid) {
+          const data = new URLSearchParams()
+          data.append('up_mid', uid)
+          data.append('type', 2)
+          const resp = await api.web.request({
+            url: `${gm.url.api_listFav}?${data.toString()}`,
           })
-          if (removed && location.href != url.href) {
-            history.replaceState({}, null, url.href)
-          }
-        },
+          mlid = String(JSON.parse(resp.response).data.list[0].id)
+          GM_setValue(`defaultMediaList_${uid}`, mlid)
+        }
+        return mlid
+      },
 
-        /**
-         * 将秒格式的时间转换为字符串形式
-         * @param {number} sTime 秒格式的时间
-         * @returns {string} 字符串形式
-         */
-        getSTimeString(sTime) {
-          let iH = 0
-          let iM = Math.floor(sTime / 60)
-          if (iM >= 60) {
-            iH = Math.floor(iM / 60)
-            iM = iM % 60
-          }
-          const iS = sTime % 60
+      /**
+       * 将视频添加到收藏夹
+       * @param {string} aid `aid`
+       * @param {string} mlid 收藏夹 ID
+       * @returns {Promise<boolean>} 操作是否成功
+       */
+      async addToFav(aid, mlid) {
+        try {
+          const data = new URLSearchParams()
+          data.append('rid', aid)
+          data.append('type', 2)
+          data.append('add_media_ids', mlid)
+          data.append('csrf', this.getCSRF())
+          const resp = await api.web.request({
+            method: 'POST',
+            url: gm.url.api_dealFav,
+            data: data,
+          })
+          return JSON.parse(resp.response).code === 0
+        } catch (e) {
+          api.logger.error(e)
+          return false
+        }
+      },
 
-          let sH = ''
-          if (iH > 0) {
-            sH = String(iH)
-            if (sH.length < 2) {
-              sH = '0' + sH
-            }
-          }
-          let sM = String(iM)
-          if (sM.length < 2) {
-            sM = '0' + sM
-          }
-          let sS = String(iS)
-          if (sS.length < 2) {
-            sS = '0' + sS
-          }
-          return `${sH ? sH + ':' : ''}${sM}:${sS}`
-        },
-
-        /**
-         * 获取默认收藏夹 ID
-         * @param {string} [uid] 用户 ID，缺省时指定当前登录用户
-         * @returns {Promise<string>} `mlid`
-         */
-        async getDefaultMediaListId(uid = this.getDedeUserID()) {
-          let mlid = GM_getValue(`defaultMediaList_${uid}`)
-          if (!mlid) {
-            const data = new URLSearchParams()
-            data.append('up_mid', uid)
-            data.append('type', 2)
-            const resp = await api.web.request({
-              url: `${gm.url.api_listFav}?${data.toString()}`,
-            })
-            mlid = String(JSON.parse(resp.response).data.list[0].id)
-            GM_setValue(`defaultMediaList_${uid}`, mlid)
-          }
-          return mlid
-        },
-
-        /**
-         * 将视频添加到收藏夹
-         * @param {string} aid `aid`
-         * @param {string} mlid 收藏夹 ID
-         * @returns {Promise<boolean>} 操作是否成功
-         */
-        async addToFav(aid, mlid) {
-          try {
-            const data = new URLSearchParams()
-            data.append('rid', aid)
-            data.append('type', 2)
-            data.append('add_media_ids', mlid)
-            data.append('csrf', this.getCSRF())
-            const resp = await api.web.request({
-              method: 'POST',
-              url: gm.url.api_dealFav,
-              data: data,
-            })
-            return JSON.parse(resp.response).code === 0
-          } catch (e) {
-            api.logger.error(e)
-            return false
-          }
-        },
-
-        /**
-         * 获取稿件 `state` 说明
-         * @param {number} state 稿件状态
-         * @returns {string} 说明
-         * @see {@link https://github.com/SocialSisterYi/bilibili-API-collect/blob/master/video/attribute_data.md#state字段值稿件状态 state字段值(稿件状态)}
-         */
-        getItemStateDesc(state) {
-          return ({
-            [1]: '橙色通过',
-            [0]: '开放浏览',
-            [-1]: '待审',
-            [-2]: '被打回',
-            [-3]: '网警锁定',
-            [-4]: '被锁定',
-            [-5]: '管理员锁定',
-            [-6]: '修复待审',
-            [-7]: '暂缓审核',
-            [-8]: '补档待审',
-            [-9]: '等待转码',
-            [-10]: '延迟审核',
-            [-11]: '视频源待修',
-            [-12]: '转储失败',
-            [-13]: '允许评论待审',
-            [-14]: '临时回收站',
-            [-15]: '分发中',
-            [-16]: '转码失败',
-            [-20]: '创建未提交',
-            [-30]: '创建已提交',
-            [-40]: '定时发布',
-            [-100]: '用户删除',
-          })[state] ?? '未知状态'
-        },
-      }
+      /**
+       * 获取稿件 `state` 说明
+       * @param {number} state 稿件状态
+       * @returns {string} 说明
+       * @see {@link https://github.com/SocialSisterYi/bilibili-API-collect/blob/master/video/attribute_data.md#state字段值稿件状态 state字段值(稿件状态)}
+       */
+      getItemStateDesc(state) {
+        return ({
+          [1]: '橙色通过',
+          [0]: '开放浏览',
+          [-1]: '待审',
+          [-2]: '被打回',
+          [-3]: '网警锁定',
+          [-4]: '被锁定',
+          [-5]: '管理员锁定',
+          [-6]: '修复待审',
+          [-7]: '暂缓审核',
+          [-8]: '补档待审',
+          [-9]: '等待转码',
+          [-10]: '延迟审核',
+          [-11]: '视频源待修',
+          [-12]: '转储失败',
+          [-13]: '允许评论待审',
+          [-14]: '临时回收站',
+          [-15]: '分发中',
+          [-16]: '转码失败',
+          [-20]: '创建未提交',
+          [-30]: '创建已提交',
+          [-40]: '定时发布',
+          [-100]: '用户删除',
+        })[state] ?? '未知状态'
+      },
     }
 
     /**
