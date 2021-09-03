@@ -8,6 +8,7 @@
    * 若当前 `display` 与 `fadeOutDisplay` 不同，默认值为当前 `display`。
    * 若当前 `display` 与 `fadeOutDisplay` 相同，默认值为 `block`。
 2. `dom`：`fade()` 读取 `target` 上的 `fadeOutDisplay` 来设定渐隐开始后的 `display` 样式，默认值为 `none`。
+3. 库：若能访问到 `unsafeWindow`，则实例化时将实例引用保存在 `unsafeWindow` 而非 `window` 上。
 
 ## V1.6
 
