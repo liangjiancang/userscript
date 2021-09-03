@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name            S1战斗力屏蔽
 // @namespace       laster2800
-// @version         3.5.12.20210902
+// @version         3.5.13.20210903
 // @author          Laster2800
 // @description     屏蔽 S1 的战斗力系统，眼不见为净
 // @author          Laster2800
@@ -10,7 +10,7 @@
 // @homepageURL     https://greasyfork.org/zh-CN/scripts/394407
 // @supportURL      https://greasyfork.org/zh-CN/scripts/394407/feedback
 // @license         LGPL-3.0
-// @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=966080
+// @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=966902
 // @include         *.saraba1st.com/*
 // @exclude         *.saraba1st.com/2b/search*
 // @grant           none
