@@ -12,6 +12,4 @@
 
     ![context-menu 脚本](https://gitee.com/liangjiancang/userscript/raw/master/misc/screenshot/context-menu%20脚本.png)
 
-*gitee: [misc](https://gitee.com/liangjiancang/userscript/tree/master/misc)*
-
-*by Laster2800*
+**Source: [Gitee](https://gitee.com/liangjiancang/userscript/tree/master/misc) / [GitHub](https://github.com/liangjiancang/userscript/tree/master/misc)** - *by Laster2800*

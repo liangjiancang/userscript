@@ -6,6 +6,4 @@
 
 ![屏蔽开关](https://gitee.com/liangjiancang/userscript/raw/master/script/S1EShield/screenshot/屏蔽开关.png)
 
-*gitee: [S1EShield](https://gitee.com/liangjiancang/userscript/tree/master/script/S1EShield)*
-
-*by Laster2800*
+**Source: [Gitee](https://gitee.com/liangjiancang/userscript/tree/master/script/S1EShield) / [GitHub](https://github.com/liangjiancang/userscript/tree/master/script/S1EShield)** - *by Laster2800*

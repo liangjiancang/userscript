@@ -41,6 +41,4 @@
 
     ![设置入口](https://gitee.com/liangjiancang/userscript/raw/master/script/BilibiliWatchlaterPlus/screenshot/设置入口.png)
 
-*gitee: [BilibiliWatchlaterPlus](https://gitee.com/liangjiancang/userscript/tree/master/script/BilibiliWatchlaterPlus)*
-
-*by Laster2800*
+**Source: [Gitee](https://gitee.com/liangjiancang/userscript/tree/master/script/BilibiliWatchlaterPlus) / [GitHub](https://github.com/liangjiancang/userscript/tree/master/script/BilibiliWatchlaterPlus)** - *by Laster2800*

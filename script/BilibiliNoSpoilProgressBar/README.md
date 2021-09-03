@@ -57,6 +57,4 @@
 
     ![脚本控制-2](https://gitee.com/liangjiancang/userscript/raw/master/script/BilibiliNoSpoilProgressBar/screenshot/脚本控制-2.png)
 
-*gitee: [BilibiliNoSpoilProgressBar](https://gitee.com/liangjiancang/userscript/tree/master/script/BilibiliNoSpoilProgressBar)*
-
-*by Laster2800*
+**Source: [Gitee](https://gitee.com/liangjiancang/userscript/tree/master/script/BilibiliNoSpoilProgressBar) / [GitHub](https://github.com/liangjiancang/userscript/tree/master/script/BilibiliNoSpoilProgressBar)** - *by Laster2800*

@@ -54,6 +54,4 @@
 
     ![脚本设置](https://gitee.com/liangjiancang/userscript/raw/master/script/ExplicitMessage/screenshot/脚本设置.png)
 
-*gitee: [ExplicitMessage](https://gitee.com/liangjiancang/userscript/tree/master/script/ExplicitMessage)*
-
-*by Laster2800*
+**Source: [Gitee](https://gitee.com/liangjiancang/userscript/tree/master/script/ExplicitMessage) / [GitHub](https://github.com/liangjiancang/userscript/tree/master/script/ExplicitMessage)** - *by Laster2800*

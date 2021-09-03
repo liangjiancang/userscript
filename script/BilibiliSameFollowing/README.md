@@ -45,6 +45,4 @@
 
     ![直播间](https://gitee.com/liangjiancang/userscript/raw/master/script/BilibiliSameFollowing/screenshot/直播间.png)
 
-*gitee: [BilibiliSameFollowing](https://gitee.com/liangjiancang/userscript/tree/master/script/BilibiliSameFollowing)*
-
-*by Laster2800*
+**Source: [Gitee](https://gitee.com/liangjiancang/userscript/tree/master/script/BilibiliSameFollowing) / [GitHub](https://github.com/liangjiancang/userscript/tree/master/script/BilibiliSameFollowing)** - *by Laster2800*

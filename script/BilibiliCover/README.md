@@ -28,6 +28,4 @@
 
     ![封面预览](https://gitee.com/liangjiancang/userscript/raw/master/script/BilibiliCover/screenshot/封面预览.jpg)
 
-*gitee: [BilibiliCover](https://gitee.com/liangjiancang/userscript/tree/master/script/BilibiliCover)*
-
-*by Laster2800*
+**Source: [Gitee](https://gitee.com/liangjiancang/userscript/tree/master/script/BilibiliCover) / [GitHub](https://github.com/liangjiancang/userscript/tree/master/script/BilibiliCover)** - *by Laster2800*
