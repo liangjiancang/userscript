@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.19.5.20210902
+// @version         4.19.6.20210903
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -571,11 +571,11 @@
           if (remove) {
             _.removeHistoryData = undefined
           } else {
-            if (_.removeHistoryData === undefined) {
-              /** @type {PushQueue} */
+            if (_.removeHistoryData == null) {
+              /** @type {PushQueue<GMObject_data_item>} */
               let data = GM_getValue('removeHistoryData')
               if (data && typeof data == 'object') {
-                Object.setPrototypeOf(data, PushQueue.prototype) // 还原类型信息
+                Object.setPrototypeOf(data, PushQueue.prototype) // 初始化替换原型不会影响内联缓存
                 if (data.maxSize != gm.config.removeHistorySaves) {
                   data.setMaxSize(gm.config.removeHistorySaves)
                 }
@@ -597,7 +597,7 @@
             reload = true
             gm.runtime.reloadWatchlaterListData = false
           }
-          if (_.watchlaterListData === undefined || reload || !pageCache || gm.config.disablePageCache) {
+          if (_.watchlaterListData == null || reload || !pageCache || gm.config.disablePageCache) {
             if (_.watchlaterListData_loading) {
               // 一旦数据已在加载中，那么直接等待该次加载完成
               // 无论加载成功与否，所有被阻塞的数据请求均都使用该次加载的结果，完全保持一致
@@ -673,7 +673,7 @@
           const items = GM_getValue('fixedItems') ?? []
           const idx = items.indexOf(id)
           const fixed = idx >= 0
-          if (typeof op == 'undefined') {
+          if (op == null) {
             return fixed
           } else if (op) {
             if (!fixed) {
@@ -1539,7 +1539,7 @@
           el.watchlaterMediaList.addEventListener('click', function() {
             const uid = webpage.method.getDedeUserID()
             const mlid = api.message.prompt('指定使用收藏功能时，将视频从稍后再看移动至哪个收藏夹。\n下方应填入目标收藏夹 ID，置空时使用默认收藏夹。\n获取方式：打开目标收藏夹页面，网址为「space.bilibili.com/${uid}/favlist?fid=${mlid}」。其中 ${mlid} 为收藏夹 ID。', GM_getValue(`watchlaterMediaList_${uid}`) ?? undefined)
-            if (mlid !== null) {
+            if (mlid != null) {
               GM_setValue(`watchlaterMediaList_${uid}`, mlid)
               api.message.create('已保存稍后再看收藏夹设置')
             }
@@ -4107,16 +4107,20 @@
        * 初始化按钮的稍后再看状态
        */
       async function initButtonStatus() {
-        const setStatus = async () => {
-          const status = await _self.method.getVideoWatchlaterStatusByAid(bus.aid, false, true)
+        const setStatus = async status => {
+          status = status ?? await _self.method.getVideoWatchlaterStatusByAid(bus.aid, false, true)
           bus.btn.added = status
           bus.cb.checked = status
         }
-        const alwaysAutoRemove = gm.config.autoRemove == Enums.autoRemove.always
-        const spRemove = gm.searchParams.get(`${gm.id}_remove`) == 'true'
-        const spDisableRemove = gm.searchParams.get(`${gm.id}_disable_remove`) == 'true'
-        if ((!alwaysAutoRemove && !spRemove) || spDisableRemove || gm.data.fixedItem(_self.method.getBvid())) {
-          setStatus()
+        if (gm.data.fixedItem(_self.method.getBvid())) {
+          setStatus(true)
+        } else {
+          const alwaysAutoRemove = gm.config.autoRemove == Enums.autoRemove.always
+          const spRemove = gm.searchParams.get(`${gm.id}_remove`) == 'true'
+          const spDisableRemove = gm.searchParams.get(`${gm.id}_disable_remove`) == 'true'
+          if ((!alwaysAutoRemove && !spRemove) || spDisableRemove) {
+            setStatus()
+          }
         }
         // 如果当前视频应当被移除，那就不必读取状态了
         // 注意，哪处代码先执行不确定，不过从理论上来说这里应该是会晚执行
@@ -4487,15 +4491,13 @@
 
     /**
      * 更新列表页面上方的视频总数统计
-     * @param {number} [total] 列表非移除视频总数，默认为自动获取
-     * @param {number} [all] 列表视频总数，默认为自动获取
      */
-    async updateWatchlaterListTotal(total, all) {
+    async updateWatchlaterListTotal() {
       const container = await api.wait.waitQuerySelector('.watch-later-list')
-      const listBox = (typeof total == 'undefined' && typeof all == 'undefined') && await api.wait.waitQuerySelector('.list-box', container)
+      const listBox = await api.wait.waitQuerySelector('.list-box', container)
       const elTotal = await api.wait.waitQuerySelector('header .t em')
-      all = all ?? listBox.querySelectorAll('.av-item:not(.gm-filtered)').length
-      total = total ?? all - listBox.querySelectorAll('.gm-removed:not(.gm-filtered)').length
+      const all = listBox.querySelectorAll('.av-item:not(.gm-filtered)').length
+      const total = all - listBox.querySelectorAll('.gm-removed:not(.gm-filtered)').length
       elTotal.textContent = `（${total}/${all}）`
 
       const empty = container.querySelector('.abnormal-item')
