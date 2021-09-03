@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            [DEBUG] 信息显式化
-// @version         2.4.4.20210830
+// @version         2.4.5.20210903
 // @namespace       laster2800
 // @author          Laster2800
 // @description     用 alert() 提示符合匹配规则的日志或未捕获异常，帮助开发者在日常使用网页时发现潜藏问题
@@ -44,7 +44,7 @@
               if (fn.match(m, config.include) && !fn.match(m, config.exclude)) {
                 let msg = null
                 if (arguments.length == 1) {
-                  if (typeof arguments[0] == 'object') {
+                  if (arguments[0] && typeof arguments[0] == 'object') {
                     msg = JSON.stringify(arguments[0], null, 2)
                   } else {
                     msg = arguments[0]

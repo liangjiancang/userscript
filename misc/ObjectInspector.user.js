@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            [DEBUG] 对象观察器
-// @version         2.1.5.20210830
+// @version         2.1.6.20210903
 // @namespace       laster2800
 // @author          Laster2800
 // @homepageURL     https://greasyfork.org/zh-CN/scripts/430945
@@ -93,7 +93,7 @@
           } else {
             try {
               const value = obj[key]
-              if (value && (typeof value == 'object') || typeof value == 'function') {
+              if (value && (typeof value == 'object' || typeof value == 'function')) {
                 if (value == obj) continue
                 if (noWindows && value == value.window) continue
                 if (exType) {

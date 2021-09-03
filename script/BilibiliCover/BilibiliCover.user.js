@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站封面获取
-// @version         5.3.10.20210901
+// @version         5.3.11.20210903
 // @namespace       laster2800
 // @author          Laster2800
 // @description     获取B站各播放页及直播间封面，支持手动及实时预览等多种模式，支持点击下载、封面预览、快速复制，可高度自定义
@@ -285,7 +285,7 @@
       msgbox = await display(msg)
       result = api.message.prompt(info, val)
       await close(msgbox)
-      if (result === null) return
+      if (result == null) return
       result = parseInt(result)
       if ([1, 2, gm.const.customMode].indexOf(result) >= 0) {
         gm.config.mode = result
@@ -311,7 +311,7 @@
         `
         msgbox = await display(msg)
         result = api.message.prompt(info, val)
-        if (result !== null) {
+        if (result != null) {
           result = result.trim()
           if (result === '') {
             result = gm.configMap.customModeSelector.default
@@ -342,7 +342,7 @@
             api.message.alert('设置失败，请填入正确的参数。')
           }
         }
-        if (result !== null) {
+        if (result != null) {
           gm.config.customModePosition = result
           GM_setValue('customModePosition', result)
         }
@@ -364,7 +364,7 @@
         `
         msgbox = await display(msg)
         result = api.message.prompt(info, val)
-        if (result !== null) {
+        if (result != null) {
           result = result.trim()
           if (result === '') {
             result = gm.configMap.customModeQuality.default
@@ -388,7 +388,7 @@
         `
         msgbox = await display(msg)
         result = api.message.prompt(info, val)
-        if (result !== null) {
+        if (result != null) {
           result = result.trim()
           if (result === '') {
             result = gm.configMap.customModeStyle.default
