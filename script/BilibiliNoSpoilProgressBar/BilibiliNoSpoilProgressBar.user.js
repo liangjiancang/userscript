@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站防剧透进度条
-// @version         2.1.15.20210904
+// @version         2.1.16.20210904
 // @namespace       laster2800
 // @author          Laster2800
 // @description     看比赛、看番总是被进度条剧透？装上这个脚本再也不用担心这些问题了
@@ -13,7 +13,7 @@
 // @include         *://www.bilibili.com/medialist/play/watchlater
 // @include         *://www.bilibili.com/medialist/play/watchlater/*
 // @include         *://www.bilibili.com/bangumi/play/*
-// @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=967171
+// @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=967228
 // @grant           GM_registerMenuCommand
 // @grant           GM_xmlhttpRequest
 // @grant           GM_setValue
@@ -22,7 +22,9 @@
 // @grant           GM_listValues
 // @grant           window.onurlchange
 // @connect         api.bilibili.com
-// @incompatible    firefox 完全不兼容 Greasemonkey，不完全兼容 Violentmonkey
+// @compatible      edge 版本不小于 85
+// @compatible      chrome 版本不小于 85
+// @compatible      firefox 版本不小于 90
 // ==/UserScript==
 
 (function() {
@@ -1569,7 +1571,7 @@
             // 切换视频控制显隐时，添加或删除 ob 以控制伪进度条
             playerArea._obControlShow = new MutationObserver(records => {
               if (records[0].oldValue == playerArea.className) return // 不能去，有个东西一直在原地修改 class……
-              const before = api.dom.containsClass({ className: records[0].oldValue }, clzControlShow)
+              const before = new RegExp(String.raw`(^|\s)${clzControlShow}(\s|$)`).test(records[0].oldValue)
               const current = api.dom.containsClass(playerArea, clzControlShow)
               if (before != current) {
                 if (current) {

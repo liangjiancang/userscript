@@ -5,14 +5,15 @@
 ## V2.1
 
 1. 脚本：优化切换分P、页面内切换视频、播放器刷新等各种情况下重新初始化的处理。
-2. 隐藏分P信息：优化处理流程。
-3. UI：修复显示被 V3 播放器遮挡的问题。
-4. UI：优化文字排版。
-5. UI：优化布局。
-6. 代码：弃用事件处理器属性。
-7. 代码：引入类字段声明。
-8. 代码：引入逻辑空赋值运算符 `??=`。
-9. API：升级至 V1.8，大幅优化元素等待逻辑，引入网络请求检查、解析、报告功能。详见 [UserscriptAPI 更新日志](https://gitee.com/liangjiancang/userscript/blob/master/lib/UserscriptAPI/changelog.md)。
+2. 进度条偏移时间点延后：修复在视频播放页中，启用功能后立即点击进度条修改定位时，进度条会立即发生偏移的问题。
+3. 隐藏分P信息：优化处理流程。
+4. UI：修复显示被 V3 播放器遮挡的问题。
+5. UI：优化文字排版。
+6. UI：优化布局。
+7. 代码：弃用事件处理器属性。
+8. 代码：引入类字段声明。
+9. 代码：引入逻辑空赋值运算符 `??=`。
+10. API：升级至 V1.8，大幅优化元素等待逻辑，引入网络请求检查、解析、报告功能。详见 [UserscriptAPI 更新日志](https://gitee.com/liangjiancang/userscript/blob/master/lib/UserscriptAPI/changelog.md)。
 
 ## V2.0
 
