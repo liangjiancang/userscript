@@ -6,7 +6,8 @@
 
 1. `web`：重做 `request()`，并新增 `requestXHR()`。现网络请求 API 提供检查、解析、报告等功能。
 2. `web`：修复 Violentmonkey 在发送 POST 请求时，擅自往请求头中添加 `origin` 导致请求失败的问题。
-3. 库：优化错误处理流程。
+3. `dom`：`waitQuerySelector()` 重命名为 `$()`。
+4. 库：优化错误处理流程。
 
 ## V1.7
 
