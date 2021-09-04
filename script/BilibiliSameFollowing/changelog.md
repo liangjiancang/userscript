@@ -11,8 +11,9 @@
 5. UI：非以纯文本形式显示时，用特殊格式标注出特殊用户（如特别关注、互粉）。
 6. UI：针对提示信息选项，修复部分信息无法被提示的问题。
 7. UI：优化文字排版。
-8. 代码：引入类字段声明。
-9. API：升级至 V1.8，大幅优化元素等待逻辑，引入网络请求检查、解析、报告功能。详见 [UserscriptAPI 更新日志](https://gitee.com/liangjiancang/userscript/blob/master/lib/UserscriptAPI/changelog.md)。
+8. 脚本：更新兼容性说明。
+9. 代码：引入类字段声明。
+10. API：升级至 V1.8，大幅优化元素等待逻辑，引入网络请求检查、解析、报告功能。详见 [UserscriptAPI 更新日志](https://gitee.com/liangjiancang/userscript/blob/master/lib/UserscriptAPI/changelog.md)。
 
 > 上个版本最后都更到 `v1.4.45`，挺离谱的——尽管大部分都是跟随性更新……
 
