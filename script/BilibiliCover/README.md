@@ -13,6 +13,7 @@
 ## 补充说明
 
 * 脚本基于 Microsoft Edge 浏览器和 Tampermonkey 脚本管理器开发，不支持 Greasemonkey。要求 Edge / Chrome / Chromium 内核版本不小于 85，Firefox 版本不小于 90。
+* Firefox 配置工作模式时显示有问题，不影响功能。
 
 ## 截图
 

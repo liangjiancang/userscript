@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站封面获取
-// @version         5.3.17.20210904
+// @version         5.3.18.20210904
 // @namespace       laster2800
 // @author          Laster2800
 // @description     获取B站各播放页及直播间封面，支持手动及实时预览等多种模式，支持点击下载、封面预览、快速复制，可高度自定义
@@ -31,7 +31,7 @@
 // @connect         api.bilibili.com
 // @compatible      edge 版本不小于 85
 // @compatible      chrome 版本不小于 85
-// @compatible      firefox 版本不小于 90
+// @incompatible    firefox 配置工作模式时显示有问题，不影响功能；版本不小于 90
 // ==/UserScript==
 
 (function() {
@@ -666,6 +666,7 @@
         })
         preview.addEventListener('mouseleave', function() {
           this.mouseOver = false
+          if (this.style.pointerEvents == 'none') return
           setTimeout(() => {
             if (!target.mouseOver) {
               startPos = null
