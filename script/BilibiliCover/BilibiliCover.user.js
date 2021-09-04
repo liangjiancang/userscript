@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站封面获取
-// @version         5.3.12.20210903
+// @version         5.3.13.20210904
 // @namespace       laster2800
 // @author          Laster2800
 // @description     获取B站各播放页及直播间封面，支持手动及实时预览等多种模式，支持点击下载、封面预览、快速复制，可高度自定义
@@ -16,7 +16,7 @@
 // @include         *://live.bilibili.com/*
 // @exclude         *://live.bilibili.com/
 // @exclude         *://live.bilibili.com/?*
-// @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=966902
+// @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=967122
 // @grant           GM_download
 // @grant           GM_notification
 // @grant           GM_xmlhttpRequest
@@ -948,8 +948,8 @@
           if (cover._cover_id != vid.id) {
             const resp = await api.web.request({
               url: gm.url.api_videoInfo(vid.id, vid.type),
-            })
-            cover._cover_url = JSON.parse(resp.responseText).data.pic ?? ''
+            }, { check: r => r.code === 0 })
+            cover._cover_url = resp.data.pic ?? ''
             cover._cover_id = vid.id
           }
           return cover._cover_url

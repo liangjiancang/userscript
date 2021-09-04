@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站共同关注快速查看
-// @version         1.5.8.20210903
+// @version         1.5.9.20210904
 // @namespace       laster2800
 // @author          Laster2800
 // @description     快速查看与特定用户的共同关注（视频播放页、动态页、用户空间、直播间）
@@ -16,7 +16,7 @@
 // @exclude         *://live.bilibili.com/
 // @exclude         *://live.bilibili.com/?*
 // @exclude         *://www.bilibili.com/watchlater/
-// @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=966902
+// @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=967122
 // @grant           GM_notification
 // @grant           GM_xmlhttpRequest
 // @grant           GM_setValue
@@ -222,8 +222,8 @@
       async getRelation(uid) {
         const resp = await api.web.request({
           url: gm.url.api_relation(uid),
-        })
-        const relation = JSON.parse(resp.responseText).data.be_relation
+        }, { check: r => r.code === 0 })
+        const relation = resp.data.be_relation
         return { code: relation.attribute, special: relation.special == 1 }
       },
     }
@@ -294,9 +294,8 @@
         const resp = await api.web.request({
           url: gm.url.api_sameFollowings(config.uid),
         })
-        const json = JSON.parse(resp.responseText)
-        if (json.code === 0) {
-          const data = json.data
+        if (resp.code === 0) {
+          const data = resp.data
           let sameFollowings = null
           if (gm.config.dispInText) {
             sameFollowings = data.list?.map(item => item.uname) ?? []
@@ -329,11 +328,11 @@
             }
           }
         } else {
-          if (gm.config.dispMessage && json.message) {
-            dispEl.innerHTML = `<div class="gm-pre">共同关注</div><div>[ ${json.message} ]</div>`
+          if (gm.config.dispMessage && resp.message) {
+            dispEl.innerHTML = `<div class="gm-pre">共同关注</div><div>[ ${resp.message} ]</div>`
           }
-          const msg = [json.code, json.message]
-          if (json.code > 0) {
+          const msg = [resp.code, resp.message]
+          if (resp.code > 0) {
             api.logger.info(msg)
           } else {
             api.logger.error(msg)

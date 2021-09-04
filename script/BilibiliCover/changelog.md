@@ -20,7 +20,7 @@
 10. UI：修复显示被 V3 播放器遮挡的问题。
 11. UI：优化文本。
 12. 代码：引入类字段声明。
-13. API：升级至 V1.7，大幅优化元素等待逻辑。详见 [UserscriptAPI 更新日志](https://gitee.com/liangjiancang/userscript/blob/master/lib/UserscriptAPI/changelog.md)。
+13. API：升级至 V1.8，大幅优化元素等待逻辑，引入网络请求检查、解析、报告功能。详见 [UserscriptAPI 更新日志](https://gitee.com/liangjiancang/userscript/blob/master/lib/UserscriptAPI/changelog.md)。
 
 > 快速复制功能其实是「无法将右键菜单弹出的时间点延后至封面获取成功后」的妥协产物，目的是为了解决在特定设置下在某些页面中第一次激活的右键菜单获取不到正确链接信息的问题——不过实现出来却发现意外地好用。
 >

@@ -15,6 +15,7 @@
 9. 代码：弃用事件处理器属性。
 10. 代码：对涉及 `undefined` 与 `null` 的判断与比较采取更合理的实践。
 11. 代码：引入类字段声明。
+12. API：升级至 V1.8，引入网络请求检查、解析、报告功能。详见 [UserscriptAPI 更新日志](https://gitee.com/liangjiancang/userscript/blob/master/lib/UserscriptAPI/changelog.md)。
 
 ## V4.18
 

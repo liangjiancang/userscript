@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.19.7.20210903
+// @version         4.19.8.20210904
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -17,7 +17,7 @@
 // @exclude         *://message.bilibili.com/*/*
 // @exclude         *://t.bilibili.com/h5/*
 // @exclude         *://www.bilibili.com/page-proxy/*
-// @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=966902
+// @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=967122
 // @grant           GM_registerMenuCommand
 // @grant           GM_xmlhttpRequest
 // @grant           GM_setValue
@@ -631,9 +631,8 @@
             try {
               const resp = await api.web.request({
                 url: gm.url.api_queryWatchlaterList,
-              })
-              const json = JSON.parse(resp.responseText)
-              const current = json.data.list ?? []
+              }, { check: r => r.code === 0 })
+              const current = resp.data.list ?? []
               if (gm.config.watchlaterListCacheValidPeriod > 0) {
                 GM_setValue('watchlaterListCacheTime', new Date().getTime())
                 GM_setValue('watchlaterListCache', current.map(item => {
@@ -1945,9 +1944,8 @@
                 data.append('type_list', 8) // 视频（8 表示视频列表是猜的，目前测试下来应该没问题）
                 const resp = await api.web.request({
                   url: `${gm.url.api_dynamicNew}?${data.toString()}`,
-                })
-                const json = JSON.parse(resp.responseText)
-                const items = json.data.cards
+                }, { check: r => r.code === 0 })
+                const items = resp.data.cards
                 if (items.length === 0) return // -> finally
                 // dynamic_id 数值过大，直接运算会丢失精度，必须转为 BigInt 运算
                 return BigInt(items[0].desc.dynamic_id_str) + 1n // +1 才能获取到当前首项
@@ -1961,9 +1959,8 @@
                 data.append('type', 8) // 视频（参考动态入口弹出菜单的请求）
                 const resp = await api.web.request({
                   url: `${gm.url.api_dynamicHistory}?${data.toString()}`,
-                })
-                const json = JSON.parse(resp.responseText)
-                const items = json.data.cards
+                }, { check: r => r.code === 0 })
+                const items = resp.data.cards
                 if (items.length === 0) return // -> finally
                 // 不要用 json.data.next_offset，会丢失精度
                 // offset 本身不会被获取，末项 offset 即下次查询 offset
@@ -2699,12 +2696,11 @@
             data.append('bvid', id)
           }
           data.append('csrf', _self.getCSRF())
-          const resp = await api.web.request({
+          return await api.web.request({
             method: 'POST',
             url: status ? gm.url.api_addToWatchlater : gm.url.api_removeFromWatchlater,
             data: data,
-          })
-          return JSON.parse(resp.response).code === 0
+          }, { parser: 'check', check: r => r.code === 0 })
         } catch (e) {
           api.logger.error(e)
           return false
@@ -2719,12 +2715,11 @@
         try {
           const data = new URLSearchParams()
           data.append('csrf', this.getCSRF())
-          const resp = await api.web.request({
+          const success = await api.web.request({
             method: 'POST',
             url: gm.url.api_clearWatchlater,
             data: data,
-          })
-          const success = JSON.parse(resp.response).code === 0
+          }, { parser: 'check', check: r => r.code === 0 })
           if (success) {
             gm.runtime.reloadWatchlaterListData = true
             window.dispatchEvent(new CustomEvent('reloadWatchlaterListData'))
@@ -2745,12 +2740,11 @@
           const data = new URLSearchParams()
           data.append('viewed', true)
           data.append('csrf', this.getCSRF())
-          const resp = await api.web.request({
+          const success = await api.web.request({
             method: 'POST',
             url: gm.url.api_removeFromWatchlater,
             data: data,
-          })
-          const success = JSON.parse(resp.response).code === 0
+          }, { parser: 'check', check: r => r.code === 0 })
           if (success) {
             gm.runtime.reloadWatchlaterListData = true
             window.dispatchEvent(new CustomEvent('reloadWatchlaterListData'))
@@ -2858,7 +2852,7 @@
 
       /**
        * 获取稍后再看列表数据以指定值为键的映射
-       * @param {(GMObject_data_item0) => *} key 计算键值的方法
+       * @param {(item: GMObject_data_item0) => *} key 计算键值的方法
        * @param {string} [cacheId] 缓存 ID，传入空值时不缓存
        * @param {boolean} [reload] 是否重新加载
        * @param {boolean} [pageCache] 是否使用页面缓存
@@ -2956,8 +2950,8 @@
           data.append('type', 2)
           const resp = await api.web.request({
             url: `${gm.url.api_listFav}?${data.toString()}`,
-          })
-          mlid = String(JSON.parse(resp.response).data.list[0].id)
+          }, { check: r => r.code === 0 })
+          mlid = String(resp.data.list[0].id)
           GM_setValue(`defaultMediaList_${uid}`, mlid)
         }
         return mlid
@@ -2976,12 +2970,11 @@
           data.append('type', 2)
           data.append('add_media_ids', mlid)
           data.append('csrf', this.getCSRF())
-          const resp = await api.web.request({
+          return await api.web.request({
             method: 'POST',
             url: gm.url.api_dealFav,
             data: data,
-          })
-          return JSON.parse(resp.response).code === 0
+          }, { parser: 'check', check: r => r.code === 0 })
         } catch (e) {
           api.logger.error(e)
           return false
@@ -4158,9 +4151,8 @@
         } else { // 如果为空就是以 watchlater/ 直接结尾，等同于稍后再看中的第一个视频
           const resp = await api.web.request({
             url: gm.url.api_queryWatchlaterList,
-          })
-          const json = JSON.parse(resp.responseText)
-          id = json.data.list[0].bvid
+          }, { check: r => r.code === 0 })
+          id = resp.data.list[0].bvid
         }
         location.replace(`${gm.url.page_videoNormalMode}/${id}${location.search}${location.hash}`)
       } catch (e) {
