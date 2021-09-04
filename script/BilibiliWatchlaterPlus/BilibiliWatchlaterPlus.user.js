@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.19.11.20210904
+// @version         4.19.12.20210904
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -17,7 +17,7 @@
 // @exclude         *://message.bilibili.com/*/*
 // @exclude         *://t.bilibili.com/h5/*
 // @exclude         *://www.bilibili.com/page-proxy/*
-// @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=967183
+// @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=967228
 // @grant           GM_registerMenuCommand
 // @grant           GM_xmlhttpRequest
 // @grant           GM_setValue
@@ -29,7 +29,9 @@
 // @connect         api.bilibili.com
 // @connect         api.vc.bilibili.com
 // @run-at          document-start
-// @incompatible    firefox 完全不兼容 Greasemonkey，不完全兼容 Violentmonkey
+// @compatible      edge 版本不小于 85
+// @compatible      chrome 版本不小于 85
+// @compatible      firefox 版本不小于 90
 // ==/UserScript==
 
 (function() {
@@ -1843,7 +1845,7 @@
                   <option value="60">分钟</option>
                 </select> 以内<button id="gm-batch-2c" disabled>执行</button></div>
                 <div>第三步：筛选 <input id="gm-batch-3a" type="text" style="width:10em">，过滤 <input id="gm-batch-3b" type="text" style="width:10em">；支持通配符 ( ? * )，使用 | 分隔关键词<button id="gm-batch-3c" disabled>执行</button></div>
-                <div>第四步：将选定稿件添加到稍后再看（平均请求间隔：<input id="gm-batch-4a" type="text" value="100">ms）<button id="gm-batch-4b" disabled>执行</button><button id="gm-batch-4c" disabled>终止</button></div>
+                <div>第四步：将选定稿件添加到稍后再看（平均请求间隔：<input id="gm-batch-4a" type="text" value="300">ms）<button id="gm-batch-4b" disabled>执行</button><button id="gm-batch-4c" disabled>终止</button></div>
               </div>
               <div class="gm-items"></div>
               <div class="gm-bottom">
@@ -1977,7 +1979,7 @@
                   html = `<label class="gm-item" aid="${info.aid}" timestamp="${item.desc.timestamp}"${displayNone ? ' style="display:none"' : ''}><input type="checkbox"${status ? '' : ' checked'}> <span>[${info.owner.name}] ${info.title}</span></label>` + html
                 }
                 el.items.insertAdjacentHTML('afterbegin', html)
-                await new Promise(resolve => setTimeout(resolve, 100 * (Math.random() + 0.5))) // 多让点时间给其他线程，顺便给请求留点间隔
+                await new Promise(resolve => setTimeout(resolve, 250 * (Math.random() + 0.5))) // 多让点时间给其他线程，顺便给请求留点间隔
               }
             } catch (e) {
               error = true
@@ -2090,8 +2092,9 @@
           let stopAdd = false
           el.id4b.addEventListener('click', async function() {
             try {
-              const v4a = parseFloat(el.id4a.value)
+              let v4a = parseFloat(el.id4a.value)
               if (isNaN(v4a)) throw 'v4a is NaN'
+              v4a = Math.max(v4a, 200)
               el.id4a.value = v4a
               this.disabled = true
               this.textContent = '执行中'
@@ -2101,7 +2104,7 @@
               el.id3c.disabled = true
 
               let available = 100 - (await gm.data.watchlaterListData()).length
-              const checks = el.items.querySelectorAll('label:not(.gm-filtered-time, .gm-filtered-regex) input')
+              const checks = el.items.querySelectorAll('label:not([class*=gm-filtered-]) input')
               for (const check of checks) {
                 if (stopAdd) return // -> finally
                 if (available <= 0) break
@@ -5140,7 +5143,7 @@
             padding: 0.5em 1em;
             cursor: pointer;
           }
-          #${gm.id} .gm-entrypopup .gm-entry-list .gm-entry-list-simple-item:not(:last-child, .gm-fixed) {
+          #${gm.id} .gm-entrypopup .gm-entry-list .gm-entry-list-simple-item:not(:last-child) {
             border-bottom: 1px solid var(--${gm.id}-light-border-color);
           }
           #${gm.id} .gm-entrypopup .gm-entry-list .gm-entry-list-simple-item.gm-invalid,
@@ -5741,8 +5744,8 @@
             flex-direction: column-reverse !important;
           }
 
-          .gm-fixed:not(.gm-removed) {
-            border: 2px dashed var(--${gm.id}-light-hint-text-color);
+          .gm-fixed {
+            border: 2px dashed var(--${gm.id}-light-hint-text-color) !important;
           }
         `)
       } else {
