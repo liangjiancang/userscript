@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站防剧透进度条
-// @version         2.1.14.20210904
+// @version         2.1.15.20210904
 // @namespace       laster2800
 // @author          Laster2800
 // @description     看比赛、看番总是被进度条剧透？装上这个脚本再也不用担心这些问题了
@@ -13,7 +13,7 @@
 // @include         *://www.bilibili.com/medialist/play/watchlater
 // @include         *://www.bilibili.com/medialist/play/watchlater/*
 // @include         *://www.bilibili.com/bangumi/play/*
-// @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=967122
+// @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=967171
 // @grant           GM_registerMenuCommand
 // @grant           GM_xmlhttpRequest
 // @grant           GM_setValue
@@ -30,9 +30,9 @@
 
   if (GM_info.scriptHandler != 'Tampermonkey') {
     const script = GM_info.script
-    script.author = script.author ?? 'Laster2800'
-    script.homepage = script.homepage ?? 'https://greasyfork.org/zh-CN/scripts/411092'
-    script.supportURL = script.supportURL ?? 'https://greasyfork.org/zh-CN/scripts/411092/feedback'
+    script.author ??= 'Laster2800'
+    script.homepage ??= 'https://greasyfork.org/zh-CN/scripts/411092'
+    script.supportURL ??= 'https://greasyfork.org/zh-CN/scripts/411092/feedback'
   }
 
   /**
@@ -1256,9 +1256,9 @@
         controlPanel: '.bilibili-player-video-control-bottom, .squirtle-controller-wrap',
         progressRoot: '.bilibili-player-video-progress, .squirtle-progress-wrap',
       }
-      _self.control = await api.wait.waitQuerySelector(selector.control)
-      _self.controlPanel = await api.wait.waitQuerySelector(selector.controlPanel, _self.control)
-      _self.progress.root = await api.wait.waitQuerySelector(selector.progressRoot, _self.control)
+      _self.control = await api.wait.$(selector.control)
+      _self.controlPanel = await api.wait.$(selector.controlPanel, _self.control)
+      _self.progress.root = await api.wait.$(selector.progressRoot, _self.control)
       _self.initScriptControl()
     }
 
@@ -1294,15 +1294,15 @@
         }
       }
 
-      _self.progress.thumb = await api.wait.waitQuerySelector(selector.thumb, _self.control)
-      _self.progress.preview = await api.wait.waitQuerySelector(selector.preview, _self.control)
+      _self.progress.thumb = await api.wait.$(selector.thumb, _self.control)
+      _self.progress.preview = await api.wait.$(selector.preview, _self.control)
       _self.progress.dispEl = []
       for (const elSelector of selector.dispEl) {
         if (elSelector.indexOf('<select-all>') >= 0) {
-          await api.wait.waitQuerySelector(elSelector, _self.control)
+          await api.wait.$(elSelector, _self.control)
           _self.control.querySelectorAll(elSelector).forEach(el => _self.progress.dispEl.push(el))
         } else {
-          _self.progress.dispEl.push(await api.wait.waitQuerySelector(elSelector, _self.control))
+          _self.progress.dispEl.push(await api.wait.$(elSelector, _self.control))
         }
       }
 
@@ -1377,7 +1377,7 @@
       }
 
       // 隐藏当前播放时间
-      api.wait.waitQuerySelector('.bilibili-player-video-time-now:not(.fake), .squirtle-video-time-now:not(.fake)').then(currentPoint => {
+      api.wait.$('.bilibili-player-video-time-now:not(.fake), .squirtle-video-time-now:not(.fake)').then(currentPoint => {
         if (_self.enabled && gm.config.disableCurrentPoint) {
           if (!currentPoint._fake) {
             currentPoint._fake = currentPoint.insertAdjacentElement('afterend', currentPoint.cloneNode(true))
@@ -1394,7 +1394,7 @@
         }
       })
       // 隐藏视频预览上的当前播放时间（鼠标移至进度条上显示）
-      api.wait.waitQuerySelector('.bilibili-player-video-progress-detail-time, .squirtle-progress-time').then(currentPoint => {
+      api.wait.$('.bilibili-player-video-progress-detail-time, .squirtle-progress-time').then(currentPoint => {
         if (_self.enabled && gm.config.disableCurrentPoint) {
           currentPoint.style.visibility = 'hidden'
         } else {
@@ -1403,7 +1403,7 @@
       })
 
       // 隐藏视频时长
-      api.wait.waitQuerySelector('.bilibili-player-video-time-total:not(.fake), .squirtle-video-time-total:not(.fake)').then(duration => {
+      api.wait.$('.bilibili-player-video-time-total:not(.fake), .squirtle-video-time-total:not(.fake)').then(duration => {
         if (_self.enabled && gm.config.disableDuration) {
           if (!duration._fake) {
             duration._fake = duration.insertAdjacentElement('afterend', duration.cloneNode(true))
@@ -1420,7 +1420,7 @@
         }
       })
       // 隐藏进度条自动跳转提示（可能存在）
-      api.wait.waitQuerySelector('.bilibili-player-video-toast-wrp, .bpx-player-toast-wrap', document, true).then(tip => {
+      api.wait.$('.bilibili-player-video-toast-wrp, .bpx-player-toast-wrap', document, true).then(tip => {
         if (_self.enabled) {
           tip.style.display = 'none'
         } else {
@@ -1429,12 +1429,12 @@
       }).catch(() => {})
 
       // 隐藏高能进度条的「热度」曲线（可能存在）
-      api.wait.waitQuerySelector('#bilibili_pbp', _self.control, true).then(pbp => {
+      api.wait.$('#bilibili_pbp', _self.control, true).then(pbp => {
         pbp.style.visibility = _self.enabled ? 'hidden' : ''
       }).catch(() => {})
 
       // 隐藏 pakku 扩展引入的弹幕密度显示（可能存在）
-      api.wait.waitQuerySelector('.pakku-fluctlight', _self.control, true).then(pakku => {
+      api.wait.$('.pakku-fluctlight', _self.control, true).then(pakku => {
         pakku.style.visibility = _self.enabled ? 'hidden' : ''
       }).catch(() => {})
 
@@ -1442,19 +1442,19 @@
       if (gm.config.disablePartInformation && !api.web.urlMatch(gm.regex.page_bangumi)) {
         // 全屏播放时的分P选择（即使没有分P也存在）
         if (_self.enabled) {
-          api.wait.waitQuerySelector('.bilibili-player-video-btn-menu').then(menu => {
+          api.wait.$('.bilibili-player-video-btn-menu').then(menu => {
             menu.querySelectorAll('.bilibili-player-video-btn-menu-list').forEach((item, idx) => {
               item.textContent = `P${idx + 1}`
             })
           })
         }
         // 全屏播放时显示的分P标题
-        api.wait.waitQuerySelector('.bilibili-player-video-top-title').then(el => {
+        api.wait.$('.bilibili-player-video-top-title').then(el => {
           el.style.visibility = _self.enabled ? 'hidden' : 'visible'
         })
         // 播放页右侧分P选择（可能存在）
         if (api.web.urlMatch(gm.regex.page_videoNormalMode)) {
-          api.wait.waitQuerySelector('#multi_page', document, true).then(multiPage => {
+          api.wait.$('#multi_page', document, true).then(multiPage => {
             multiPage.querySelectorAll('.clickitem .part, .clickitem .duration').forEach(el => {
               el.style.visibility = _self.enabled ? 'hidden' : 'visible'
             })
@@ -1463,7 +1463,7 @@
             }
           }).catch(() => {})
         } else if (api.web.urlMatch(gm.regex.page_videoWatchlaterMode)) {
-          api.wait.waitQuerySelector('.player-auxiliary-playlist-list').then(list => {
+          api.wait.$('.player-auxiliary-playlist-list').then(list => {
             const exec = () => {
               if (_self.enabled) {
                 list.querySelectorAll('.player-auxiliary-playlist-item-p-item').forEach(item => {
@@ -1487,15 +1487,15 @@
       if (gm.config.disableSegmentInformation && _self.method.isSegmentedProgress()) {
         if (!_self.method.isV3Player()) {
           // 分段按钮
-          api.wait.waitQuerySelector('.bilibili-player-video-btn-viewpointlist', _self.control).then(btn => {
+          api.wait.$('.bilibili-player-video-btn-viewpointlist', _self.control).then(btn => {
             btn.style.visibility = _self.enabled ? 'hidden' : ''
           })
           // 分段列表
-          api.wait.waitQuerySelector('.player-auxiliary-collapse-viewpointlist').then(list => {
+          api.wait.$('.player-auxiliary-collapse-viewpointlist').then(list => {
             list.style.display = 'none' // 一律隐藏即可，用户要看就再点一次分段按钮
           })
           // 进度条预览上的分段标题（必定存在）
-          api.wait.waitQuerySelector('.bilibili-player-video-progress-detail-content').then(content => {
+          api.wait.$('.bilibili-player-video-progress-detail-content').then(content => {
             content.style.display = _self.enabled ? 'none' : ''
           })
         }

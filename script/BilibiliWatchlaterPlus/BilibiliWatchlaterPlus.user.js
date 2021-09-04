@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.19.9.20210904
+// @version         4.19.10.20210904
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -17,7 +17,7 @@
 // @exclude         *://message.bilibili.com/*/*
 // @exclude         *://t.bilibili.com/h5/*
 // @exclude         *://www.bilibili.com/page-proxy/*
-// @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=967134
+// @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=967171
 // @grant           GM_registerMenuCommand
 // @grant           GM_xmlhttpRequest
 // @grant           GM_setValue
@@ -37,9 +37,9 @@
 
   if (GM_info.scriptHandler != 'Tampermonkey') {
     const script = GM_info.script
-    script.author = script.author ?? 'Laster2800'
-    script.homepage = script.homepage ?? 'https://greasyfork.org/zh-CN/scripts/395456'
-    script.supportURL = script.supportURL ?? 'https://greasyfork.org/zh-CN/scripts/395456/feedback'
+    script.author ??= 'Laster2800'
+    script.homepage ??= 'https://greasyfork.org/zh-CN/scripts/395456'
+    script.supportURL ??= 'https://greasyfork.org/zh-CN/scripts/395456/feedback'
   }
 
   const sortType = {
@@ -3021,7 +3021,7 @@
     addHeaderButton() {
       const _self = this
       if (gm.config.headerCompatible == Enums.headerCompatible.bilibiliEvolved) {
-        api.wait.waitQuerySelector('.custom-navbar [data-name=watchlaterList]').then(el => {
+        api.wait.$('.custom-navbar [data-name=watchlaterList]').then(el => {
           const watchlater = el.parentElement.appendChild(el.cloneNode(true))
           el.style.display = 'none'
           const link = watchlater.querySelector('a.main-content')
@@ -3053,7 +3053,7 @@
           }
         `)
       } else {
-        api.wait.waitQuerySelector('.user-con.signin').then(header => {
+        api.wait.$('.user-con.signin').then(header => {
           const collect = header.children[4]
           const watchlater = document.createElement('div')
           watchlater.className = 'item'
@@ -3915,7 +3915,7 @@
         fillWatchlaterStatus_dynamicMenu()
       } else if (api.web.urlMatch(gm.regex.page_dynamic)) {
         if (location.pathname == '/') { // 仅动态主页
-          api.wait.waitQuerySelector('.feed-card').then(feed => {
+          api.wait.$('.feed-card').then(feed => {
             api.wait.executeAfterElementLoaded({
               selector: '.tab:not(#gm-batch-manager-btn)',
               base: feed,
@@ -3975,7 +3975,7 @@
         await initMap()
         api.wait.executeAfterElementLoaded({
           selector: '.video-container',
-          base: await api.wait.waitQuerySelector('.feed-card'),
+          base: await api.wait.$('.feed-card'),
           multiple: true,
           repeat: true,
           timeout: 0,
@@ -4001,7 +4001,7 @@
         await initMap()
         api.wait.executeAfterElementLoaded({
           selector: '.list-item',
-          base: await api.wait.waitQuerySelector('.video-list'),
+          base: await api.wait.$('.video-list'),
           multiple: true,
           repeat: true,
           timeout: 0,
@@ -4048,9 +4048,9 @@
       const _self = this
       let bus = {}
 
-      const app = await api.wait.waitQuerySelector('#app')
-      const atr = await api.wait.waitQuerySelector('#arc_toolbar_report', app)
-      const original = await api.wait.waitQuerySelector('.van-watchlater', atr)
+      const app = await api.wait.$('#app')
+      const atr = await api.wait.$('#arc_toolbar_report', app)
+      const original = await api.wait.$('.van-watchlater', atr)
       api.wait.waitForConditionPassed({
         condition: () => app.__vue__,
       }).then(async () => {
@@ -4095,7 +4095,7 @@
        */
       async function initButtonStatus() {
         const setStatus = async status => {
-          status = status ?? await _self.method.getVideoWatchlaterStatusByAid(bus.aid, false, true)
+          status ??= await _self.method.getVideoWatchlaterStatusByAid(bus.aid, false, true)
           bus.btn.added = status
           bus.cb.checked = status
         }
@@ -4179,10 +4179,10 @@
       const sortable = gm.config.autoSort != Enums.autoSort.default || gm.config.listSortControl
       let autoRemoveControl = null
       if (gm.config.autoRemove != Enums.autoRemove.absoluteNever) {
-        autoRemoveControl = await api.wait.waitQuerySelector('#gm-list-auto-remove-control')
+        autoRemoveControl = await api.wait.$('#gm-list-auto-remove-control')
       }
-      const listContainer = await api.wait.waitQuerySelector('.watch-later-list')
-      const listBox = await api.wait.waitQuerySelector('.list-box', listContainer)
+      const listContainer = await api.wait.$('.watch-later-list')
+      const listBox = await api.wait.$('.list-box', listContainer)
       listBox.querySelectorAll('.av-item').forEach((item, idx) => {
         // info
         const d = data[idx]
@@ -4210,7 +4210,7 @@
       }
 
       if (sortable) {
-        const sortControl = await api.wait.waitQuerySelector('#gm-list-sort-control')
+        const sortControl = await api.wait.$('#gm-list-sort-control')
         if (sortControl.value != sortControl.prevVal) {
           _self.sortWatchlaterList()
         }
@@ -4391,7 +4391,7 @@
      * 对稍后再看列表进行搜索
      */
     async searchWatchlaterList() {
-      const search = await api.wait.waitQuerySelector('#gm-list-search input')
+      const search = await api.wait.$('#gm-list-search input')
       let val = search.value.trim()
       const match = str => str && val?.test(str)
       if (val.length > 0) {
@@ -4406,7 +4406,7 @@
         val = null
       }
 
-      const listBox = await api.wait.waitQuerySelector('.watch-later-list .list-box')
+      const listBox = await api.wait.$('.watch-later-list .list-box')
       listBox.querySelectorAll('.av-item').forEach(item => {
         let valid = false
         if (val) {
@@ -4430,8 +4430,8 @@
      * 对稍后再看列表页面进行排序
      */
     async sortWatchlaterList() {
-      const sortControl = await api.wait.waitQuerySelector('#gm-list-sort-control')
-      const listBox = await api.wait.waitQuerySelector('.watch-later-list .list-box')
+      const sortControl = await api.wait.$('#gm-list-sort-control')
+      const listBox = await api.wait.$('.watch-later-list .list-box')
       let type = sortControl.value
       sortControl.prevVal = type
       if (type == Enums.sortType.fixed) {
@@ -4479,9 +4479,9 @@
      * 更新列表页面上方的视频总数统计
      */
     async updateWatchlaterListTotal() {
-      const container = await api.wait.waitQuerySelector('.watch-later-list')
-      const listBox = await api.wait.waitQuerySelector('.list-box', container)
-      const elTotal = await api.wait.waitQuerySelector('header .t em')
+      const container = await api.wait.$('.watch-later-list')
+      const listBox = await api.wait.$('.list-box', container)
+      const elTotal = await api.wait.$('header .t em')
       const all = listBox.querySelectorAll('.av-item:not(.gm-filtered)').length
       const total = all - listBox.querySelectorAll('.gm-removed:not(.gm-filtered)').length
       elTotal.textContent = `（${total}/${all}）`
@@ -4578,7 +4578,7 @@
      */
     async adjustWatchlaterListUI() {
       const _self = this
-      const r_con = await api.wait.waitQuerySelector('.watch-later-list header .r-con')
+      const r_con = await api.wait.$('.watch-later-list header .r-con')
       // 页面上本来就存在的「全部播放」按钮不要触发重定向
       const setPlayAll = el => {
         el.href = gm.url.page_watchlaterPlayAll
@@ -4791,10 +4791,10 @@
      * 隐藏「收藏」中的「稍后再看」
      */
     async hideWatchlaterInCollect() {
-      api.wait.waitQuerySelector('.user-con .mini-favorite').then(fav => {
+      api.wait.$('.user-con .mini-favorite').then(fav => {
         const collect = fav.parentElement
         const process = function() {
-          api.wait.waitQuerySelector('[role=tooltip] .tab-item [title=稍后再看]', document, true).then(el => {
+          api.wait.$('[role=tooltip] .tab-item [title=稍后再看]', document, true).then(el => {
             el.parentElement.style.display = 'none'
             collect.removeEventListener('mouseover', process) // 确保移除后再解绑
           }).catch(() => {}) // 有时候鼠标经过收藏也没弹出来，不知道什么原因，就不报错了
@@ -4808,7 +4808,7 @@
      */
     addBatchAddManagerButton() {
       if (location.pathname == '/') { // 仅动态主页
-        api.wait.waitQuerySelector('.feed-card .tab-bar').then(bar => {
+        api.wait.$('.feed-card .tab-bar').then(bar => {
           const btn = bar.firstElementChild.cloneNode(true)
           btn.id = 'gm-batch-manager-btn'
           api.dom.removeClass(btn.firstElementChild, 'selected')

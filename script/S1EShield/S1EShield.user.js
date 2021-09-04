@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name            S1战斗力屏蔽
 // @namespace       laster2800
-// @version         3.5.16.20210904
+// @version         3.5.17.20210904
 // @author          Laster2800
 // @description     屏蔽S1的战斗力系统，眼不见为净
 // @author          Laster2800
@@ -10,7 +10,7 @@
 // @homepageURL     https://greasyfork.org/zh-CN/scripts/394407
 // @supportURL      https://greasyfork.org/zh-CN/scripts/394407/feedback
 // @license         LGPL-3.0
-// @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=967134
+// @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=967171
 // @include         *.saraba1st.com/*
 // @exclude         *.saraba1st.com/2b/search*
 // @grant           none
@@ -37,12 +37,12 @@
   }
 
   (function() {
-    api.wait.waitQuerySelector('body').then(body => {
+    api.wait.$('body').then(body => {
       body.setAttribute(enabledAttr, '')
     })
 
     // 在导航栏中加入脚本开关
-    api.wait.waitQuerySelector('#nv').then(nv => {
+    api.wait.$('#nv').then(nv => {
       const sw = document.createElement('label')
       sw.innerHTML = `
         <span>战斗力系统</span>
@@ -77,11 +77,11 @@
         visibility: hidden;
       }
     `)
-    api.wait.waitQuerySelector('#myprompt_menu').then(menu => {
+    api.wait.$('#myprompt_menu').then(menu => {
       // 有系统提醒时，每次打开页面时都会弹出一个通知菜单
       // 点击网页提供的关闭按键后，此菜单在有新提醒前不会再次弹出
       // 注意，需在 menu.initialized 为 true 后点击关闭按键
-      const p1 = api.wait.waitQuerySelector('.ignore_notice', document, true).then(ignore_notice => {
+      const p1 = api.wait.$('.ignore_notice', document, true).then(ignore_notice => {
         return api.wait.waitForConditionPassed({
           condition: () => menu.getAttribute('initialized') == 'true' && ignore_notice,
           interval: 25,
@@ -90,13 +90,13 @@
 
       // 有系统提醒处于未读状态时，相关位置会有高亮显示，网页标题也会有所不同
       // 将这些差异化显示，在用户没有反应出来之前去除
-      const p2 = api.wait.waitQuerySelector('#myprompt').then(menu_button => {
+      const p2 = api.wait.$('#myprompt').then(menu_button => {
         const menu_mypost = menu.querySelector('.notice_mypost') // 右上角菜单「我的帖子」
         const menu_system = menu.querySelector('.notice_system') // 右上角菜单「系统提醒」
         if (menu_mypost || menu_system) {
           menu_button.textContent = '提醒'
           menu_button.className = 'a showmenu'
-          api.wait.waitQuerySelector('title', document.head).then(title => {
+          api.wait.$('title', document.head).then(title => {
             // 常规情况下，此时 title 仍未被改变，添加一个 ob 来跟踪变化
             const obCfg = { childList: true }
             const ob = new MutationObserver((mutations, observer) => {
@@ -126,7 +126,7 @@
         padding-right: 1em;
       }
     `)
-    api.wait.waitQuerySelector('#extcreditmenu').then(extcreditmenu => {
+    api.wait.$('#extcreditmenu').then(extcreditmenu => {
       extcreditmenu.className = ''
       extcreditmenu.onmouseover = null
     })

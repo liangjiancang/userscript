@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站共同关注快速查看
-// @version         1.5.10.20210904
+// @version         1.5.11.20210904
 // @namespace       laster2800
 // @author          Laster2800
 // @description     快速查看与特定用户的共同关注（视频播放页、动态页、用户空间、直播间）
@@ -16,7 +16,7 @@
 // @exclude         *://live.bilibili.com/
 // @exclude         *://live.bilibili.com/?*
 // @exclude         *://www.bilibili.com/watchlater/
-// @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=967134
+// @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=967171
 // @grant           GM_notification
 // @grant           GM_xmlhttpRequest
 // @grant           GM_setValue
@@ -243,7 +243,7 @@
       const _self = this
       let container = document.body
       if (config.container) {
-        container = await api.wait.waitQuerySelector(config.container)
+        container = await api.wait.$(config.container)
       }
       api.wait.executeAfterElementLoaded({
         selector: config.card,
@@ -254,14 +254,14 @@
         callback: async card => {
           let userLink = null
           if (config.lazy) {
-            userLink = await api.wait.waitQuerySelector(config.user, card)
+            userLink = await api.wait.$(config.user, card)
           } else {
             // 此时并不是在「正在加载」状态的 user-card 中添加新元素以转向「已完成」状态
             // 而是将「正在加载」的 user-card 彻底移除，然后直接将「已完成」的 user-card 添加到 DOM 中
             userLink = card.querySelector(config.user)
           }
           if (userLink) {
-            const info = await api.wait.waitQuerySelector(config.info, card)
+            const info = await api.wait.$(config.info, card)
             await _self.generalLogic({
               uid: _self.method.getUid(userLink.href),
               target: info,
@@ -379,7 +379,7 @@
      */
     async initLive() {
       let frame = null
-      let container = await api.wait.waitQuerySelector('.danmaku-menu, #player-ctnr iframe')
+      let container = await api.wait.$('.danmaku-menu, #player-ctnr iframe')
       if (container.tagName == 'IFRAME') {
         frame = container
         let doc = frame.contentDocument
@@ -396,10 +396,10 @@
             })
           })
         }
-        container = await api.wait.waitQuerySelector('.danmaku-menu', doc)
+        container = await api.wait.$('.danmaku-menu', doc)
         webpage.addStyle(doc)
       }
-      const userLink = await api.wait.waitQuerySelector('.go-space a', container)
+      const userLink = await api.wait.$('.go-space a', container)
       container.style.maxWidth = frame ? '264px' : '300px'
 
       const ob = new MutationObserver(async records => {
@@ -542,7 +542,7 @@
         // 用户空间顶部显示
         webpage.generalLogic({
           uid: webpage.method.getUid(),
-          target: await api.wait.waitQuerySelector('.h .wrapper'),
+          target: await api.wait.$('.h .wrapper'),
           className: `${gm.id} space-same-followings`,
         })
       }

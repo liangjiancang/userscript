@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站封面获取
-// @version         5.3.14.20210904
+// @version         5.3.15.20210904
 // @namespace       laster2800
 // @author          Laster2800
 // @description     获取B站各播放页及直播间封面，支持手动及实时预览等多种模式，支持点击下载、封面预览、快速复制，可高度自定义
@@ -16,7 +16,7 @@
 // @include         *://live.bilibili.com/*
 // @exclude         *://live.bilibili.com/
 // @exclude         *://live.bilibili.com/?*
-// @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=967134
+// @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=967171
 // @grant           GM_download
 // @grant           GM_notification
 // @grant           GM_xmlhttpRequest
@@ -741,7 +741,7 @@
        */
       async createRealtimeCover() {
         const _self = this
-        const ref = await api.wait.waitQuerySelector(gm.runtime.realtimeSelector)
+        const ref = await api.wait.$(gm.runtime.realtimeSelector)
         const cover = ref.insertAdjacentElement(gm.runtime.realtimePosition, document.createElement('a'))
         cover.id = `${gm.id}-realtime-cover`
         cover.img = cover.appendChild(document.createElement('img'))
@@ -870,8 +870,8 @@
 
     async initVideo() {
       const _self = this
-      const app = await api.wait.waitQuerySelector('#app')
-      const atr = await api.wait.waitQuerySelector('#arc_toolbar_report') // 无论如何都卡一下时间
+      const app = await api.wait.$('#app')
+      const atr = await api.wait.$('#arc_toolbar_report') // 无论如何都卡一下时间
       await api.wait.waitForConditionPassed({
         condition: () => app.__vue__,
       })
@@ -959,8 +959,8 @@
 
     async initBangumi() {
       const _self = this
-      const app = await api.wait.waitQuerySelector('#app')
-      const tm = await api.wait.waitQuerySelector('#toolbar_module') // 无论如何都卡一下时间
+      const app = await api.wait.$('#app')
+      const tm = await api.wait.$('#toolbar_module') // 无论如何都卡一下时间
       await api.wait.waitForConditionPassed({
         condition: () => app.__vue__,
       })
@@ -980,7 +980,7 @@
 
       if (gm.config.bangumiSeries) {
         const setCover = img => _self.method.setCover(cover, preview, img.src.replace(/@[^@]*$/, ''))
-        api.wait.waitQuerySelector('.media-cover img').then(img => {
+        api.wait.$('.media-cover img').then(img => {
           setCover(img)
           const ob = new MutationObserver(() => setCover(img))
           ob.observe(img, { attributeFilter: ['src'] })
@@ -1036,7 +1036,7 @@
       const _self = this
       let win = unsafeWindow
       let doc = document
-      let container = await api.wait.waitQuerySelector(`
+      let container = await api.wait.$(`
         #head-info-vm .right-ctnr,
         #head-info-vm .upper-right-ctnr,
         #player-ctnr iframe
@@ -1059,11 +1059,11 @@
             })
           })
         }
-        container = await api.wait.waitQuerySelector('#head-info-vm .right-ctnr, #head-info-vm .upper-right-ctnr', doc)
+        container = await api.wait.$('#head-info-vm .right-ctnr, #head-info-vm .upper-right-ctnr', doc)
         _self.addStyle(doc)
       }
       // 这里再获取 hiVm，提前获取到的 hiVm 有可能会被替换成新的
-      const hiVm = await api.wait.waitQuerySelector('#head-info-vm', doc)
+      const hiVm = await api.wait.$('#head-info-vm', doc)
       await api.wait.waitForConditionPassed({
         condition: async () => hiVm.__vue__,
       })

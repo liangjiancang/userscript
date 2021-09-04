@@ -11,7 +11,8 @@
 5. UI：优化布局。
 6. 代码：弃用事件处理器属性。
 7. 代码：引入类字段声明。
-8. API：升级至 V1.8，大幅优化元素等待逻辑，引入网络请求检查、解析、报告功能。详见 [UserscriptAPI 更新日志](https://gitee.com/liangjiancang/userscript/blob/master/lib/UserscriptAPI/changelog.md)。
+8. 代码：引入逻辑空赋值运算符 `??=`。
+9. API：升级至 V1.8，大幅优化元素等待逻辑，引入网络请求检查、解析、报告功能。详见 [UserscriptAPI 更新日志](https://gitee.com/liangjiancang/userscript/blob/master/lib/UserscriptAPI/changelog.md)。
 
 ## V2.0
 
@@ -50,7 +51,7 @@
 
 1. API：升级至 V1.1，大幅优化条件等待逻辑，优化元素等待逻辑。详见 [UserscriptAPI 更新日志](https://gitee.com/liangjiancang/userscript/blob/master/lib/UserscriptAPI/changelog.md)。
 2. 脚本：优化脚本菜单运行流程。
-3. 代码：使用可选链操作符 `?.` 及空值合并运算符 `??` 进行简写。
+3. 代码：引入可选链操作符 `?.` 及空值合并运算符 `??`。
 
 ## V1.6
 
