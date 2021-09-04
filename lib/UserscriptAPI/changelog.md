@@ -2,6 +2,11 @@
 
 本日志只记录用户友好的更新说明，影响不大的问题修复与修改不作记录，具体修改见 [提交记录](https://gitee.com/liangjiancang/userscript/commits/master/lib/UserscriptAPI)。
 
+## V1.8
+
+1. `web`：重做 `request()`，并新增 `requestXHR()`。现网络请求 API 提供检查、解析、报告等功能。
+2. 库：优化错误处理流程。
+
 ## V1.7
 
 1. `dom`：`fade()` 读取 `target` 上的 `fadeInDisplay` 来设定渐显开始后的 `display` 样式。若没有设定：
