@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站共同关注快速查看
-// @version         1.5.9.20210904
+// @version         1.5.10.20210904
 // @namespace       laster2800
 // @author          Laster2800
 // @description     快速查看与特定用户的共同关注（视频播放页、动态页、用户空间、直播间）
@@ -16,7 +16,7 @@
 // @exclude         *://live.bilibili.com/
 // @exclude         *://live.bilibili.com/?*
 // @exclude         *://www.bilibili.com/watchlater/
-// @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=967122
+// @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=967134
 // @grant           GM_notification
 // @grant           GM_xmlhttpRequest
 // @grant           GM_setValue
