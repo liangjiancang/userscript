@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站封面获取
-// @version         5.3.16.20210904
+// @version         5.3.17.20210904
 // @namespace       laster2800
 // @author          Laster2800
 // @description     获取B站各播放页及直播间封面，支持手动及实时预览等多种模式，支持点击下载、封面预览、快速复制，可高度自定义
@@ -16,7 +16,7 @@
 // @include         *://live.bilibili.com/*
 // @exclude         *://live.bilibili.com/
 // @exclude         *://live.bilibili.com/?*
-// @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=967183
+// @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=967228
 // @grant           GM_download
 // @grant           GM_notification
 // @grant           GM_xmlhttpRequest
@@ -29,7 +29,9 @@
 // @grant           window.onurlchange
 // @grant           unsafeWindow
 // @connect         api.bilibili.com
-// @incompatible    firefox 完全不兼容 Greasemonkey，不完全兼容 Violentmonkey
+// @compatible      edge 版本不小于 85
+// @compatible      chrome 版本不小于 85
+// @compatible      firefox 版本不小于 90
 // ==/UserScript==
 
 (function() {

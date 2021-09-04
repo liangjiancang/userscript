@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            [DEBUG] 信息显式化
-// @version         2.4.6.20210903
+// @version         2.4.7.20210904
 // @namespace       laster2800
 // @author          Laster2800
 // @description     用 alert() 提示符合匹配规则的日志或未捕获异常，帮助开发者在日常使用网页时发现潜藏问题
@@ -14,7 +14,9 @@
 // @grant           GM_getValue
 // @grant           unsafeWindow
 // @run-at          document-start
-// @incompatible    firefox 完全不兼容 Greasemonkey，不完全兼容 Violentmonkey
+// @compatible      edge 版本不小于 85
+// @compatible      chrome 版本不小于 85
+// @compatible      firefox 版本不小于 90
 // ==/UserScript==
 
 (function() {
