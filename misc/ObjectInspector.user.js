@@ -1,11 +1,11 @@
 // ==UserScript==
 // @name            [DEBUG] 对象观察器
-// @version         2.1.7.20210905
+// @version         2.1.8.20210905
 // @namespace       laster2800
 // @author          Laster2800
+// @description     右键菜单激活，向 window 中注入 ObjectInspector 工具类，用于查找特定对象上符合条件的属性；激活无显式提醒，请自行打开控制台获取信息
 // @homepageURL     https://greasyfork.org/zh-CN/scripts/430945
 // @supportURL      https://greasyfork.org/zh-CN/scripts/430945/feedback
-// @description     右键菜单激活，向 window 中注入 ObjectInspector 工具类，用于查找特定对象上符合条件的属性；激活无显式提醒，请自行打开控制台获取信息
 // @license         LGPL-3.0
 // @include         *
 // @grant           none
