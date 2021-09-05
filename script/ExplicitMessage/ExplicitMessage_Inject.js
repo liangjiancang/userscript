@@ -1,7 +1,7 @@
 /**
  * ExplicitMessage_Inject
  * @file [DEBUG] 信息显式化（注入版）
- * @version 1.2.2.20210905
+ * @version 1.2.3.20210905
  * @author Laster2800
  */
 
@@ -9,7 +9,7 @@
   'use strict'
 
   let updateAlerted = false
-  const injectVersion = 20210720
+  const injectVersion = 20210905
   for (const n of ['log', 'warn', 'error']) {
     const log = console[n]
     console[n] = function() {

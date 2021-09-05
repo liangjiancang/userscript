@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            [DEBUG] 信息显式化
-// @version         2.4.7.20210904
+// @version         2.4.8.20210905
 // @namespace       laster2800
 // @author          Laster2800
 // @description     用 alert() 提示符合匹配规则的日志或未捕获异常，帮助开发者在日常使用网页时发现潜藏问题
@@ -24,7 +24,7 @@
 
   const gm = {
     id: 'gm429521',
-    injectUpdate: 20210720,
+    injectUpdate: 20210905,
     config: {},
     fn: {
       /**
