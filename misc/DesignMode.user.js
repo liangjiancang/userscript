@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            [DEBUG] 网页内容编辑模式 (DesignMode)
-// @version         1.0.4.20210817
+// @version         1.0.5.20210905
 // @namespace       laster2800
 // @author          Laster2800
 // @homepageURL     https://greasyfork.org/zh-CN/scripts/430949
@@ -13,6 +13,8 @@
 // ==/UserScript==
 
 (function() {
+  'use strict'
+
   const target = top.document.designMode == 'on' ? 'off' : 'on'
   const executed = []
   const exec = win => {

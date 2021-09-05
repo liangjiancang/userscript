@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name            S1战斗力屏蔽
 // @namespace       laster2800
-// @version         3.5.20.20210905
+// @version         3.5.21.20210905
 // @author          Laster2800
 // @description     屏蔽S1的战斗力系统，眼不见为净
 // @author          Laster2800
@@ -21,6 +21,8 @@
 // ==/UserScript==
 
 (function() {
+  'use strict'
+
   const gmId = 'gm394407'
   const enabledAttr = `${gmId}-enabled`
   const enabledSelector = `body[${enabledAttr}]`

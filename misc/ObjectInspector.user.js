@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            [DEBUG] 对象观察器
-// @version         2.1.6.20210903
+// @version         2.1.7.20210905
 // @namespace       laster2800
 // @author          Laster2800
 // @homepageURL     https://greasyfork.org/zh-CN/scripts/430945
@@ -13,6 +13,8 @@
 // ==/UserScript==
 
 (function() {
+  'use strict'
+
   const getObjectInspector = win => {
     /**
      * 对象观察器
