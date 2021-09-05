@@ -13,7 +13,7 @@
 7. UI：优化布局。
 8. 代码：弃用事件处理器属性。
 9. 代码：引入类字段声明。
-10. 代码：引入逻辑空赋值运算符 `??=`。
+10. 代码：引入逻辑空赋值运算符 `??=`、逻辑或赋值运算符 `||=` 及逻辑与赋值运算符 `&&=`。
 11. API：升级至 V1.8，大幅优化元素等待逻辑，引入网络请求检查、解析、报告功能。详见 [UserscriptAPI 更新日志](https://gitee.com/liangjiancang/userscript/blob/master/lib/UserscriptAPI/changelog.md)。
 
 ## V2.0

@@ -18,7 +18,7 @@
 12. 代码：弃用事件处理器属性。
 13. 代码：对涉及 `undefined` 与 `null` 的判断与比较采取更合理的实践。
 14. 代码：引入类字段声明。
-15. 代码：引入逻辑空赋值运算符 `??=`。
+15. 代码：引入逻辑空赋值运算符 `??=`、逻辑或赋值运算符 `||=` 及逻辑与赋值运算符 `&&=`。
 16. API：升级至 V1.8，引入网络请求检查、解析、报告功能。详见 [UserscriptAPI 更新日志](https://gitee.com/liangjiancang/userscript/blob/master/lib/UserscriptAPI/changelog.md)。
 
 ## V4.18
