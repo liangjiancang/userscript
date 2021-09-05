@@ -10,14 +10,16 @@
 4. 脚本：优化稿件的稍后再看状态判断逻辑。
 5. 脚本：更新兼容性说明。
 6. 顶栏入口：增加快捷功能「打开批量添加管理器」。
-7. 移除记录：优化记录项目生成流程。
-8. 填充缺失状态信息：优化处理流程。
-9. UI：优化文本。
-10. 代码：弃用事件处理器属性。
-11. 代码：对涉及 `undefined` 与 `null` 的判断与比较采取更合理的实践。
-12. 代码：引入类字段声明。
-13. 代码：引入逻辑空赋值运算符 `??=`。
-14. API：升级至 V1.8，引入网络请求检查、解析、报告功能。详见 [UserscriptAPI 更新日志](https://gitee.com/liangjiancang/userscript/blob/master/lib/UserscriptAPI/changelog.md)。
+7. 弹出菜单：修复列表滚动跟随项目位置变化的问题。[#97715-229246](https://greasyfork.org/zh-CN/scripts/395456/discussions/97715#comment-229246)
+8. 列表页面：修复页面滚动跟随项目位置变化的问题。[#97715-229246](https://greasyfork.org/zh-CN/scripts/395456/discussions/97715#comment-229246)
+9. 移除记录：优化记录项目生成流程。
+10. 填充缺失状态信息：优化处理流程。
+11. UI：优化文本。
+12. 代码：弃用事件处理器属性。
+13. 代码：对涉及 `undefined` 与 `null` 的判断与比较采取更合理的实践。
+14. 代码：引入类字段声明。
+15. 代码：引入逻辑空赋值运算符 `??=`。
+16. API：升级至 V1.8，引入网络请求检查、解析、报告功能。详见 [UserscriptAPI 更新日志](https://gitee.com/liangjiancang/userscript/blob/master/lib/UserscriptAPI/changelog.md)。
 
 ## V4.18
 
@@ -357,7 +359,7 @@
 1. 脚本：为脚本提供的功能提供开关，并提供用户友好的设置页。
 2. 功能实现：稍后再看记录功能。
 3. 功能实现：将 [B站「稍后再看」重定向](https://greasyfork.org/zh-CN/scripts/383441) 脚本整合进来。
-4. 功能实现：列表页面内点击视频时，在新标签页中打开视频。[#383441-46595](https://greasyfork.org/zh-CN/scripts/383441/discussions/46595)
+4. 功能实现：列表页面内点击视频时，在新标签页中打开视频。[@383441#46595](https://greasyfork.org/zh-CN/scripts/383441/discussions/46595)
 
 ## V1
 

@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.19.12.20210904
+// @version         4.19.13.20210905
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -4991,6 +4991,7 @@
             position: relative;
             height: 42em;
             overflow-y: auto;
+            overflow-anchor: none;
             padding: 0.2em 0;
           }
           #${gm.id} .gm-entrypopup .gm-entry-list.gm-entry-removed-list {
@@ -5684,6 +5685,7 @@
           .watch-later-list .list-box > span {
             display: flex;
             flex-direction: column;
+            overflow-anchor: none; /* 禁用滚动锚定，避免滚动跟随项目位置变化 */
           }
           .watch-later-list .btn-del {
             display: none;
