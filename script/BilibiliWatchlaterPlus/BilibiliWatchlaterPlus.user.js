@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.19.14.20210905
+// @version         4.20.0.20210906
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -17,7 +17,13 @@
 // @exclude         *://message.bilibili.com/*/*
 // @exclude         *://t.bilibili.com/h5/*
 // @exclude         *://www.bilibili.com/page-proxy/*
-// @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=967450
+// @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=967908
+// @require         https://greasyfork.org/scripts/431998-userscriptapidom/code/UserscriptAPIDom.js?version=967886
+// @require         https://greasyfork.org/scripts/431999-userscriptapilogger/code/UserscriptAPILogger.js?version=967887
+// @require         https://greasyfork.org/scripts/432000-userscriptapimessage/code/UserscriptAPIMessage.js?version=967888
+// @require         https://greasyfork.org/scripts/432001-userscriptapitool/code/UserscriptAPITool.js?version=967889
+// @require         https://greasyfork.org/scripts/432002-userscriptapiwait/code/UserscriptAPIWait.js?version=967890
+// @require         https://greasyfork.org/scripts/432003-userscriptapiweb/code/UserscriptAPIWeb.js?version=967891
 // @grant           GM_registerMenuCommand
 // @grant           GM_xmlhttpRequest
 // @grant           GM_setValue
@@ -1521,7 +1527,7 @@
           gm.menu.setting.openHandler = onOpen
           gm.menu.setting.openedHandler = onOpened
           gm.el.setting.fadeInDisplay = 'flex'
-          el.save.addEventListener('click', onSave) 
+          el.save.addEventListener('click', onSave)
           el.cancel.addEventListener('click', () => _self.closeMenuItem('setting'))
           el.shadow.addEventListener('click', function() {
             if (!this.hasAttribute('disabled')) {
@@ -2584,7 +2590,7 @@
        * 保证 av < 2 ** 27 时正确，同时应该在 av < 2 ** 30 时正确
        * @see {@link https://www.zhihu.com/question/381784377/answer/1099438784 如何看待 2020 年 3 月 23 日哔哩哔哩将稿件的「av 号」变更为「BV 号」？ - 知乎 - mcfx 的回答}
        */
-      bvTool: new class bvTool {
+      bvTool: new class BvTool {
         constructor() {
           const table = 'fZodR9XQDSUm21yCkr6zBqiveYah8bt4xsWpHnJE7jL5VG3guMTKNPAwcF'
           const tr = {}

@@ -2,6 +2,10 @@
 
 本日志只记录用户友好的更新说明，影响不大的问题修复与修改不作记录，具体修改见 [提交记录](https://gitee.com/liangjiancang/userscript/commits/master/script/BilibiliWatchlaterPlus)。
 
+## V4.20
+
+1. API：更新至 V2.0，实现 API 模块化。详见 [UserscriptAPI 更新日志](https://gitee.com/liangjiancang/userscript/blob/master/lib/UserscriptAPI/changelog.md)。
+
 ## V4.19
 
 1. 功能实现：批量添加管理器，用于将投稿批量添加到稍后再看中。在脚本菜单、动态主页、列表页面中增加入口按钮，并增加必要的设置项。[#97715](https://greasyfork.org/zh-CN/scripts/395456/discussions/97715)

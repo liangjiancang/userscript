@@ -6,6 +6,10 @@
 
 1. 「自定义模式」的底层机制为「实时预览模式」。若无特殊说明，针对后者的改动同样会施加到前者上。
 
+## V5.4
+
+1. API：更新至 V2.0，实现 API 模块化。详见 [UserscriptAPI 更新日志](https://gitee.com/liangjiancang/userscript/blob/master/lib/UserscriptAPI/changelog.md)。
+
 ## V5.3
 
 1. 功能实现：快速复制功能——「右键」点击复制封面链接，「Ctrl+右键」点击复制封面内容。相应地，增加一个交换「右键」与「Ctrl+右键」功能选项。
