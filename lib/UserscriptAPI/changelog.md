@@ -2,6 +2,10 @@
 
 本日志只记录用户友好的更新说明，影响不大的问题修复与修改不作记录，具体修改见 [提交记录](https://gitee.com/liangjiancang/userscript/commits/master/lib/UserscriptAPI)。
 
+## V2.0
+
+1. 库：将现有 API 按类型拆分为多个文件，模块化 API。
+
 ## V1.8
 
 1. `web`：重做 `request()`，并新增 `requestXHR()`。现网络请求 API 提供检查、解析、报告等功能。
