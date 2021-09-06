@@ -2,6 +2,7 @@ module.exports = {
   'env': {
     'browser': true,
     'es6': true,
+    'greasemonkey': true,
   },
   'extends': 'eslint:recommended',
   'globals': {
@@ -10,20 +11,6 @@ module.exports = {
     'module': true,
     'ClipboardItem': true,
     'BigInt': true,
-    'unsafeWindow': true,
-    'GM_info': true,
-    'GM_addElement': true,
-    'GM_addStyle': true,
-    'GM_download': true,
-    'GM_notification': true,
-    'GM_setClipboard': true,
-    'GM_xmlhttpRequest': true,
-    'GM_setValue': true,
-    'GM_getValue': true,
-    'GM_deleteValue': true,
-    'GM_listValues': true,
-    'GM_registerMenuCommand': true,
-    'GM_unregisterMenuCommand': true,
   },
   'parser': '@babel/eslint-parser',
   'parserOptions': {
