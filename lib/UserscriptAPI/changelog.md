@@ -1,10 +1,10 @@
 # [UserscriptAPI](https://greasyfork.org/zh-CN/scripts/409641)
 
-本日志只记录用户友好的更新说明，影响不大的问题修复与修改不作记录，具体修改见 [提交记录](https://gitee.com/liangjiancang/userscript/commits/master/lib/UserscriptAPI)。
+本日志只记录用户友好的更新说明，影响不大的问题修复与修改不作记录，具体修改见 [提交记录](https://gitee.com/liangjiancang/userscript/commits/master/lib/UserscriptAPI)。模块更新记录见 [module-changelog](./module-changelog/)。
 
 ## V2.0
 
-1. 库：将现有 API 按类型拆分为多个文件，模块化 API。
+1. 库：将现有 API 按类型拆分为多个文件，模块化 API。以后模块更新记录见 [module-changelog](./module-changelog/)。
 
 ## V1.8
 
@@ -51,7 +51,7 @@
 1. 库：修复在网速极慢的情况下，在 `document-start` 时期运行出错的问题。
 2. `message`：增加 `alert()`、`confirm()`、`prompt()` 方法。
 3. `dom`: `fade()` 增加 `display` 参数，用于控制元素在可视状态下的 `display` 样式。
-4. `dom`: `fade()` 读取 `target` 上的 `fadeInTime` 和 `fadeOutTime` 属性来设定渐显和渐隐时间，它们应为以 `ms` 为单位的 `number`；否则，`target.style.transition` 上关于时间的设定应该与 `api.options.fadeTime` 保持一致。
+4. `dom`: `fade()` 读取 `target` 上的 `fadeInTime` 和 `fadeOutTime` 属性来设定渐显和渐隐时间，它们应为以 `ms` 为单位的 `number`；缺省时，元素的 `transition-duration` 必须与 `api.options.fadeTime` 一致。
 5. `dom`: `fade()` 读取 `target` 上的 `fadeInFunction` 和 `fadeOutFunction` 属性来设定渐变效果（默认 `ease-in-out`），它们应为符合 `transition-timing-function` 的 `string`。
 6. `dom`: `fade()` 读取 `target` 上的 `fadeInNoInteractive` 和 `fadeOutNoInteractive` 属性来设定渐显和渐隐期间是否禁止交互，它们应为 `boolean`。
 7. `dom`：移除 `getElementLeft()` 和 `getElementTop()`。
