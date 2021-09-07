@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            [DEBUG] 对象观察器
-// @version         2.1.8.20210905
+// @version         2.1.9.20210907
 // @namespace       laster2800
 // @author          Laster2800
 // @description     右键菜单激活，向 window 中注入 ObjectInspector 工具类，用于查找特定对象上符合条件的属性；激活无显式提醒，请自行打开控制台获取信息
@@ -35,17 +35,17 @@
       /**
        * @param {Object} obj 默认观察对象
        * @param {RegExp} regex 默认匹配正则表达式
-       * @param {Object} [config] 配置
-       * @param {number} [config.depth=6] 默认观察深度
-       * @param {boolean} [config.inspectKey=true] 观察时是否匹配键名
-       * @param {boolean} [config.inspectValue=true] 观察时是否匹配键值
-       * @param {boolean} [config.noWindows=true] 排除 Window 对象
-       * @param {RegExp} [config.exRegex=null] 用于排除匹配键名的正则表达式
-       * @param {Object[]} [config.exType=[Function, Node, StyleSheet]] 用于排除匹配这些类型的对象
-       * @param {number} [config.exLongStrLen] 超过此长度的字符串移除，设为假值表示无限制
+       * @param {Object} [options] 选项
+       * @param {number} [options.depth=6] 默认观察深度
+       * @param {boolean} [options.inspectKey=true] 观察时是否匹配键名
+       * @param {boolean} [options.inspectValue=true] 观察时是否匹配键值
+       * @param {boolean} [options.noWindows=true] 排除 Window 对象
+       * @param {RegExp} [options.exRegex=null] 用于排除匹配键名的正则表达式
+       * @param {Object[]} [options.exType=[Function, Node, StyleSheet]] 用于排除匹配这些类型的对象
+       * @param {number} [options.exLongStrLen] 超过此长度的字符串移除，设为假值表示无限制
        */
-      constructor(obj, regex, config) {
-        this.config = {
+      constructor(obj, regex, options) {
+        this.options = {
           obj: obj,
           regex: regex,
           depth: 6,
@@ -55,33 +55,33 @@
           exRegex: null,
           exType: [win.Function, win.Node, win.StyleSheet],
           exLongStrLen: null,
-          ...config,
+          ...options,
         }
       }
 
       /**
        * 观察对象，根据 `regex` 在 `depth` 层深度内找到所有键或者值匹配 `regex` 的属性
-       * @param {Object} [config] 配置，没有提供的项使用默认值
-       * @param {Object} [config.obj] 观察对象
-       * @param {RegExp} [config.regex] 匹配正则表达式
-       * @param {number} [config.depth] 观察深度
-       * @param {boolean} [config.inspectKey] 观察时是否匹配键名
-       * @param {boolean} [config.inspectValue] 观察时是否匹配键值
-       * @param {boolean} [config.noWindows=true] 排除 Window 对象
-       * @param {RegExp} [config.exRegex] 用于排除匹配键名的正则表达式
-       * @param {Object[]} [config.exType] 用于排除匹配这些类型的对象
-       * @param {number} [config.exLongStrLen] 超过此长度的字符串移除，设为假值表示无限制
+       * @param {Object} [options] 选项，没有提供的项使用默认值
+       * @param {Object} [options.obj] 观察对象
+       * @param {RegExp} [options.regex] 匹配正则表达式
+       * @param {number} [options.depth] 观察深度
+       * @param {boolean} [options.inspectKey] 观察时是否匹配键名
+       * @param {boolean} [options.inspectValue] 观察时是否匹配键值
+       * @param {boolean} [options.noWindows=true] 排除 Window 对象
+       * @param {RegExp} [options.exRegex] 用于排除匹配键名的正则表达式
+       * @param {Object[]} [options.exType] 用于排除匹配这些类型的对象
+       * @param {number} [options.exLongStrLen] 超过此长度的字符串移除，设为假值表示无限制
        * @returns {Object} 封装匹配 `regex` 属性的对象
        */
-      inspect(config) {
+      inspect(options) {
         console.log('ObjectInspector: 开始观察，可能需要较长时间，请耐心等待...')
-        config = { ...this.config, ...config }
-        const depth = config.depth
+        options = { ...this.options, ...options }
+        const depth = options.depth
         const result = {}
         if (depth > 0) {
           const objSet = new WeakSet()
           const prevKey = ''
-          this._inner(config, depth, result, prevKey, objSet)
+          this._inner(options, depth, result, prevKey, objSet)
         }
         return result
       }

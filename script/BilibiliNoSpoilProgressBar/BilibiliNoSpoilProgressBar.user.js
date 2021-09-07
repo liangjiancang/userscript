@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站防剧透进度条
-// @version         2.2.0.20210906
+// @version         2.2.1.20210907
 // @namespace       laster2800
 // @author          Laster2800
 // @description     看比赛、看番总是被进度条剧透？装上这个脚本再也不用担心这些问题了
@@ -1901,6 +1901,8 @@
           --${gm.id}-warn-color: #e37100;
           --${gm.id}-disabled-color: gray;
           --${gm.id}-opacity-fade-transition: opacity ${gm.const.fadeTime}ms ease-in-out;
+          --${gm.id}-scrollbar-background-color: transparent;
+          --${gm.id}-scrollbar-thumb-color: #0000002b;
         }
 
         .${gm.id}-scriptControl {
