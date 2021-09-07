@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.20.3.20210907
+// @version         4.20.4.20210908
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -1808,7 +1808,7 @@
                   <option value="${3600 * 24}">天</option>
                   <option value="3600" selected>小时</option>
                   <option value="60">分钟</option>
-                </select> 以内<button id="gm-batch-2c" disabled>执行</button></div>
+                </select> 以内；可使用上下方向键（配合 Alt/Shift/Ctrl）调整数值大小<button id="gm-batch-2c" disabled>执行</button></div>
                 <div>第三步：筛选 <input id="gm-batch-3a" type="text" style="width:10em">，过滤 <input id="gm-batch-3b" type="text" style="width:10em">；支持通配符 ( ? * )，使用 | 分隔关键词<button id="gm-batch-3c" disabled>执行</button></div>
                 <div>第四步：将选定稿件添加到稍后再看（平均请求间隔：<input id="gm-batch-4a" type="text" value="300">ms）<button id="gm-batch-4b" disabled>执行</button><button id="gm-batch-4c" disabled>终止</button></div>
               </div>
@@ -1996,7 +1996,8 @@
               api.logger.error(e)
             }
           }
-          el.id2a.addEventListener('input', api.tool.throttle(filterTime, gm.const.inputThrottleWait))
+          const throttledFilterTime = api.tool.throttle(filterTime, gm.const.inputThrottleWait)
+          el.id2a.addEventListener('input', throttledFilterTime)
           el.id2b.addEventListener('change', filterTime)
           el.id2c.addEventListener('click', filterTime)
           el.id2a.addEventListener('input', function() {
@@ -2014,6 +2015,28 @@
           el.id2a.addEventListener('blur', function() {
             if (this.value.endsWith('.')) {
               this.value = this.value.slice(0, -1)
+            }
+          })
+          el.id2a.addEventListener('keyup', function(e) { // 上下键调整范围
+            let val = parseFloat(this.value)
+            if (isNaN(val)) {
+              val = 0
+            }
+            let move = ({ '38': 1, '40': -1 })[e.keyCode]
+            if (move) {
+              if (e.altKey) {
+                move *= 0.1
+              } else if (e.shiftKey) {
+                move *= 10
+              } else if (e.ctrlKey) {
+                move *= 100
+              }
+              val += move
+              if (val < 0) {
+                val = 0
+              }
+              this.value = val.toFixed(1)
+              throttledFilterTime()
             }
           })
 
