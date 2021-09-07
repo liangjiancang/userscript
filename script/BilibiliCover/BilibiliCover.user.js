@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站封面获取
-// @version         5.4.0.20210906
+// @version         5.4.1.20210907
 // @namespace       laster2800
 // @author          Laster2800
 // @description     获取B站各播放页及直播间封面，支持手动及实时预览等多种模式，支持点击下载、封面预览、快速复制，可高度自定义
@@ -16,12 +16,12 @@
 // @include         *://live.bilibili.com/*
 // @exclude         *://live.bilibili.com/
 // @exclude         *://live.bilibili.com/?*
-// @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=967908
-// @require         https://greasyfork.org/scripts/431998-userscriptapidom/code/UserscriptAPIDom.js?version=967886
+// @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=968206
+// @require         https://greasyfork.org/scripts/431998-userscriptapidom/code/UserscriptAPIDom.js?version=968204
 // @require         https://greasyfork.org/scripts/431999-userscriptapilogger/code/UserscriptAPILogger.js?version=967887
-// @require         https://greasyfork.org/scripts/432000-userscriptapimessage/code/UserscriptAPIMessage.js?version=967888
+// @require         https://greasyfork.org/scripts/432000-userscriptapimessage/code/UserscriptAPIMessage.js?version=968205
 // @require         https://greasyfork.org/scripts/432001-userscriptapitool/code/UserscriptAPITool.js?version=967889
-// @require         https://greasyfork.org/scripts/432002-userscriptapiwait/code/UserscriptAPIWait.js?version=967890
+// @require         https://greasyfork.org/scripts/432002-userscriptapiwait/code/UserscriptAPIWait.js?version=968207
 // @require         https://greasyfork.org/scripts/432003-userscriptapiweb/code/UserscriptAPIWeb.js?version=967891
 // @grant           GM_download
 // @grant           GM_notification
@@ -37,7 +37,7 @@
 // @connect         api.bilibili.com
 // @compatible      edge 版本不小于 85
 // @compatible      chrome 版本不小于 85
-// @incompatible    firefox 配置工作模式时显示有问题，不影响功能；版本不小于 90
+// @compatible      firefox 版本不小于 90
 // ==/UserScript==
 
 (function() {
@@ -140,14 +140,15 @@
         }
       } catch (e) {
         api.logger.error(e)
-        const result = api.message.confirm('初始化错误！是否彻底清空内部数据以重置脚本？')
-        if (result) {
-          const gmKeys = GM_listValues()
-          for (const gmKey of gmKeys) {
-            GM_deleteValue(gmKey)
+        api.message.confirm('初始化错误！是否彻底清空内部数据以重置脚本？').then(result => {
+          if (result) {
+            const gmKeys = GM_listValues()
+            for (const gmKey of gmKeys) {
+              GM_deleteValue(gmKey)
+            }
+            location.reload()
           }
-          location.reload()
-        }
+        })
       }
     }
 
@@ -249,8 +250,8 @@
     /**
      * 初始化脚本
      */
-    resetScript() {
-      const result = api.message.confirm('是否要初始化脚本？')
+    async resetScript() {
+      const result = await api.message.confirm('是否要初始化脚本？')
       if (result) {
         const gmKeys = GM_listValues()
         for (const gmKey of gmKeys) {
@@ -270,32 +271,16 @@
       let result = null
       let msg = null
       let val = null
-      let msgbox = null
-      const info = '请查看页面正中的说明'
-      const display = msg => new Promise(resolve => {
-        api.message.create(msg, {
-          onOpened: function() { resolve(this) },
-          autoClose: false,
-          html: true,
-          width: '42em',
-          position: { top: '50%', left: '50%' },
-        })
-      })
-      const close = msgbox => new Promise(resolve => api.message.close(msgbox, resolve))
 
       val = gm.config.mode
       val = val == -1 ? 1 : val
       msg = `
-        <div style="line-height:1.6em">
-          <p style="margin-bottom:0.5em">输入对应序号选择脚本工作模式。输入值应该是一个数字。</p>
-          <p>[ 1 ] - 传统模式。在视频播放器下方添加一个「获取封面」按钮，与该按钮交互以获得封面。</p>
-          <p>[ 2 ] - 实时预览模式。直接在视频播放器右方显示封面，与其交互可进行更多操作。</p>
-          <p>[ ${gm.const.customMode} ] - 自定义模式。底层机制与预览模式相同，但封面位置及显示效果由用户自定义，运行效果仅局限于想象力。</p>
-        </div>
+        <p style="margin-bottom:0.5em">输入对应序号选择脚本工作模式。输入值应该是一个数字。</p>
+        <p>[ 1 ] - 传统模式。在视频播放器下方添加一个「获取封面」按钮，与该按钮交互以获得封面。</p>
+        <p>[ 2 ] - 实时预览模式。直接在视频播放器右方显示封面，与其交互可进行更多操作。</p>
+        <p>[ ${gm.const.customMode} ] - 自定义模式。底层机制与预览模式相同，但封面位置及显示效果由用户自定义，运行效果仅局限于想象力。</p>
       `
-      msgbox = await display(msg)
-      result = api.message.prompt(info, val)
-      await close(msgbox)
+      result = await api.message.prompt(msg, val, { html:true })
       if (result == null) return
       result = parseInt(result)
       if ([1, 2, gm.const.customMode].indexOf(result) >= 0) {
@@ -303,25 +288,22 @@
         GM_setValue('mode', result)
       } else {
         gm.config.mode = -1
-        api.message.alert('设置失败，请填入正确的参数。')
+        await api.message.alert('设置失败，请填入正确的参数。')
         return this.configureMode()
       }
 
       if (gm.config.mode == gm.const.customMode) {
         val = gm.config.customModeSelector
         msg = `
-          <div style="line-height:1.6em">
-            <p style="margin-bottom:0.5em">请认真阅读以下说明：</p>
-            <p>1. 应填入 CSS 选择器，脚本会以此选择定位元素，将封面元素「#${gm.id}-realtime-cover」插入到其附近（相对位置稍后设置）。</p>
-            <p>2. 确保该选择器在「常规播放页」「稍后再看播放页」「番剧播放页」中均有对应元素，否则脚本在对应页面无法工作。PS：逗号「,」以 OR 规则拼接多个选择器。</p>
-            <p>3. 不要选择广告为定位元素，否则封面元素可能会插入失败或被误杀。</p>
-            <p>4. 不要选择时有时无的元素，或第三方插入的元素作为定位元素，否则封面元素可能会插入失败。</p>
-            <p>5. 在 A 时间点插入的图片元素，有可能被 B 时间点插入的新元素 C 挤到目标以外的位置。只要将定位元素选择为 C 再更改相对位置即可解决问题。</p>
-            <p>6. 置空时使用默认设置。</p>
-          </div>
+          <p style="margin-bottom:0.5em">请认真阅读以下说明：</p>
+          <p>1. 应填入 CSS 选择器，脚本会以此选择定位元素，将封面元素「<code>#${gm.id}-realtime-cover</code>」插入到其附近（相对位置稍后设置）。</p>
+          <p>2. 确保该选择器在「常规播放页」「稍后再看播放页」「番剧播放页」中均有对应元素，否则脚本在对应页面无法工作。PS：逗号「<code>,</code>」以 OR 规则拼接多个选择器。</p>
+          <p>3. 不要选择广告为定位元素，否则封面元素可能会插入失败或被误杀。</p>
+          <p>4. 不要选择时有时无的元素，或第三方插入的元素作为定位元素，否则封面元素可能会插入失败。</p>
+          <p>5. 在 A 时间点插入的图片元素，有可能被 B 时间点插入的新元素 C 挤到目标以外的位置。只要将定位元素选择为 C 再更改相对位置即可解决问题。</p>
+          <p>6. 置空时使用默认设置。</p>
         `
-        msgbox = await display(msg)
-        result = api.message.prompt(info, val)
+        result = await api.message.prompt(msg, val, { html:true })
         if (result != null) {
           result = result.trim()
           if (result === '') {
@@ -330,51 +312,45 @@
           gm.config.customModeSelector = result
           GM_setValue('customModeSelector', result)
         }
-        await close(msgbox)
 
         val = gm.config.customModePosition
         msg = `
-          <div style="line-height:1.6em">
-            <p style="margin-bottom:0.5em">设置封面元素相对于定位元素的位置。</p>
-            <p>[ beforebegin ] - 作为兄弟元素插入到定位元素前方</p>
-            <p>[ afterbegin ] - 作为第一个子元素插入到定位元素内</p>
-            <p>[ beforeend ] - 作为最后一个子元素插入到定位元素内</p>
-            <p>[ afterend ] - 作为兄弟元素插入到定位元素后方</p>
-          </div>
+          <p style="margin-bottom:0.5em">设置封面元素相对于定位元素的位置。</p>
+          <p>[ <code>beforebegin</code> ] - 作为兄弟元素插入到定位元素前方</p>
+          <p>[ <code>afterbegin</code> ] - 作为第一个子元素插入到定位元素内</p>
+          <p>[ <code>beforeend</code> ] - 作为最后一个子元素插入到定位元素内</p>
+          <p>[ <code>afterend</code> ] - 作为兄弟元素插入到定位元素后方</p>
         `
-        msgbox = await display(msg)
         result = null
         const loop = () => ['beforebegin', 'afterbegin', 'beforeend', 'afterend'].indexOf(result) < 0
         while (loop()) {
-          result = api.message.prompt(info, val)
+          result = await api.message.prompt(msg, val, { html:true })
           if (result == null) break
           result = result.trim()
           if (loop()) {
-            api.message.alert('设置失败，请填入正确的参数。')
+            await api.message.alert('设置失败，请填入正确的参数。')
           }
         }
         if (result != null) {
           gm.config.customModePosition = result
           GM_setValue('customModePosition', result)
         }
-        await close(msgbox)
 
         val = gm.config.customModeQuality
         msg = `
-          <div style="line-height:1.6em">
-            <p>设置实时预览图片的质量，该项会明显影响页面加载的视觉体验。</p>
-            <p>设置为 [ best ] 加载原图（不推荐），置空时使用默认设置。</p>
-            <p style="margin-bottom:0.5em">PS：B站推荐的视频封面长宽比为 16:10（非强制性标准）。</p>
-            <p>格式：[ ${'${width}w_${height}h_${clip}c_${quality}q'} ]</p>
-            <p>可省略部分参数，如 [ 320w_1q ] 表示「宽度 320 像素，高度自动，拉伸，压缩质量 1」</p>
-            <p>- width - 图片宽度</p>
-            <p>- height - 图片高度</p>
-            <p>- clip - 1 裁剪，0 拉伸；默认 0</p>
-            <p>- quality - 有损压缩参数，100 为无损；默认 100</p>
+          <p>设置实时预览图片的质量，该项会明显影响页面加载的视觉体验。</p>
+          <p>设置为 [ <code>best</code> ] 加载原图（不推荐），置空时使用默认设置。</p>
+          <p style="margin-bottom:0.5em">PS：B站推荐的视频封面长宽比为 16:10（非强制性标准）。</p>
+          <p>格式：[ <code>${'${width}w_${height}h_${clip}c_${quality}q'}</code> ]</p>
+          <p>可省略部分参数，如 [ <code>320w_1q</code> ] 表示「宽度 320 像素，高度自动，拉伸，压缩质量 1」</p>
+          <div style="text-indent:3em">
+            <p><code>width</code>：&emsp;图片宽度</p>
+            <p><code>height</code>：&emsp;图片高度</p>
+            <p><code>clip</code>：&emsp;1 裁剪，0 拉伸；默认 0</p>
+            <p><code>quality</code>：&emsp;有损压缩参数，100 为无损；默认 100</p>
           </div>
         `
-        msgbox = await display(msg)
-        result = api.message.prompt(info, val)
+        result = await api.message.prompt(msg, val, { html:true })
         if (result != null) {
           result = result.trim()
           if (result === '') {
@@ -383,22 +359,18 @@
           gm.config.customModeQuality = result
           GM_setValue('customModeQuality', result)
         }
-        await close(msgbox)
 
         val = gm.config.customModeStyle
         msg = `
-          <div style="line-height:1.6em">
-            <p style="margin-bottom:0.5em">设置封面元素的样式。设置为 [disable] 禁用样式，置空时使用默认设置。</p>
-            <p>这里提供几种目标效果以便拓宽思路：</p>
-            <p>* 鼠标悬浮至封面元素上方时放大封面实现预览效果（图片质量应与放大后的尺寸匹配）。</p>
-            <p>* 将内部 &lt;img&gt; 隐藏，使用 Base64 图片将封面元素改成任何样子。</p>
-            <p>* 将封面元素做成透明层覆盖在视频投稿时间上，实现点击投稿时间下载封面的效果。</p>
-            <p>* 将页面背景替换为视频封面，再加个滤镜也许还会有不错的设计感？</p>
-            <p>* ......</p>
-          </div>
+          <p style="margin-bottom:0.5em">设置封面元素的样式。设置为 [<code>disable</code>] 禁用样式，置空时使用默认设置。</p>
+          <p>这里提供几种目标效果以便拓宽思路：</p>
+          <p>* 鼠标悬浮至封面元素上方时放大封面实现预览效果（图片质量应与放大后的尺寸匹配）。</p>
+          <p>* 将内部 <code>&lt;img&gt;</code> 隐藏，使用 Base64 图片或 SVG 将封面元素改成任何样子。</p>
+          <p>* 将封面元素做成透明层覆盖在视频投稿时间上，实现点击投稿时间下载封面的效果。</p>
+          <p>* 将页面背景替换为视频封面，再加个滤镜也许还会有不错的设计感？</p>
+          <p>* ......</p>
         `
-        msgbox = await display(msg)
-        result = api.message.prompt(info, val)
+        result = await api.message.prompt(msg, val, { html:true })
         if (result != null) {
           result = result.trim()
           if (result === '') {
@@ -409,10 +381,9 @@
           gm.config.customModeStyle = result
           GM_setValue('customModeStyle', result)
         }
-        await close(msgbox)
       }
 
-      if (reload || api.message.confirm('配置工作模式完成，需刷新页面方可生效。是否立即刷新页面？')) {
+      if (reload || await api.message.confirm('配置工作模式完成，需刷新页面方可生效。是否立即刷新页面？')) {
         location.reload()
       }
     }
@@ -431,9 +402,9 @@
        */
       download(url, name) {
         name ||= 'Cover'
-        const onerror = function(error) {
+        const onerror = async function(error) {
           if (error?.error == 'not_whitelisted') {
-            api.message.alert('该封面的文件格式不在下载模式白名单中，从而触发安全限制导致无法直接下载。可修改脚本管理器的「下载模式」或「文件扩展名白名单」设置以放开限制。')
+            await api.message.alert('该封面的文件格式不在下载模式白名单中，从而触发安全限制导致无法直接下载。可修改脚本管理器的「下载模式」或「文件扩展名白名单」设置以放开限制。')
             window.open(url)
           } else {
             GM_notification({
@@ -530,21 +501,21 @@
                   canvas.toBlob(async blob => {
                     try {
                       await navigator.clipboard.write([new ClipboardItem({ [blob.type]: blob })])
-                      api.message.create('已复制封面内容')
+                      api.message.info('已复制封面内容')
                     } catch (e) {
                       api.logger.warn(e)
-                      api.message.create('当前浏览器不支持复制图片')
+                      api.message.info('当前浏览器不支持复制图片')
                     }
                   })
                 })
               } else {
                 try {
                   await navigator.clipboard.writeText(target.href)
-                  api.message.create('已复制封面链接')
+                  api.message.info('已复制封面链接')
                 } catch (e) {
                   // 只要脚本管理器有向浏览器要剪贴板权限就没问题
                   api.logger.warn(e)
-                  api.message.create('当前浏览器不支持剪贴板')
+                  api.message.info('当前浏览器不支持剪贴板')
                 }
               }
             }
@@ -560,7 +531,7 @@
         if (!target._errorEvent) {
           target.addEventListener('mousedown', function() {
             if (!target.loaded) {
-              api.message.create(gm.const.errorMsg)
+              api.message.info(gm.const.errorMsg)
             }
           })
           target._errorEvent = true
@@ -762,9 +733,9 @@
         cover.img.addEventListener('error', function(e) {
           if (this.lossless && this.src != this.lossless) {
             if (gm.config.mode == gm.const.customMode) {
-              api.message.create(`缩略图获取失败，使用原图进行替换！请检查「${gm.runtime.realtimeQuality}」是否为有效的图片质量参数。可能是正常现象，因为年代久远的视频封面有可能不支持缩略图。`, { ms: 4000 })
+              api.message.info(`缩略图获取失败，使用原图进行替换！请检查「${gm.runtime.realtimeQuality}」是否为有效的图片质量参数。可能是正常现象，因为年代久远的视频封面有可能不支持缩略图。`, { ms: 4000 })
             } else {
-              api.message.create('缩略图获取失败，使用原图进行替换！可能是正常现象，因为年代久远的视频封面有可能不支持缩略图。', { ms: 3000 })
+              api.message.info('缩略图获取失败，使用原图进行替换！可能是正常现象，因为年代久远的视频封面有可能不支持缩略图。', { ms: 3000 })
             }
             api.logger.warn(['缩略图获取失败，使用原图进行替换！', this.src, this.lossless])
             this.src = this.lossless
