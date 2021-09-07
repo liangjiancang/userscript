@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.20.0.20210906
+// @version         4.20.1.20210907
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -17,12 +17,12 @@
 // @exclude         *://message.bilibili.com/*/*
 // @exclude         *://t.bilibili.com/h5/*
 // @exclude         *://www.bilibili.com/page-proxy/*
-// @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=967908
-// @require         https://greasyfork.org/scripts/431998-userscriptapidom/code/UserscriptAPIDom.js?version=967886
+// @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=968206
+// @require         https://greasyfork.org/scripts/431998-userscriptapidom/code/UserscriptAPIDom.js?version=968204
 // @require         https://greasyfork.org/scripts/431999-userscriptapilogger/code/UserscriptAPILogger.js?version=967887
-// @require         https://greasyfork.org/scripts/432000-userscriptapimessage/code/UserscriptAPIMessage.js?version=967888
+// @require         https://greasyfork.org/scripts/432000-userscriptapimessage/code/UserscriptAPIMessage.js?version=968205
 // @require         https://greasyfork.org/scripts/432001-userscriptapitool/code/UserscriptAPITool.js?version=967889
-// @require         https://greasyfork.org/scripts/432002-userscriptapiwait/code/UserscriptAPIWait.js?version=967890
+// @require         https://greasyfork.org/scripts/432002-userscriptapiwait/code/UserscriptAPIWait.js?version=968207
 // @require         https://greasyfork.org/scripts/432003-userscriptapiweb/code/UserscriptAPIWeb.js?version=967891
 // @grant           GM_registerMenuCommand
 // @grant           GM_xmlhttpRequest
@@ -547,14 +547,15 @@
         this.readConfig()
       } catch (e) {
         api.logger.error(e)
-        const result = api.message.confirm('初始化错误！是否彻底清空内部数据以重置脚本？')
-        if (result) {
-          const gmKeys = GM_listValues()
-          for (const gmKey of gmKeys) {
-            GM_deleteValue(gmKey)
+        api.message.confirm('初始化错误！是否彻底清空内部数据以重置脚本？').then(result => {
+          if (result) {
+            const gmKeys = GM_listValues()
+            for (const gmKey of gmKeys) {
+              GM_deleteValue(gmKey)
+            }
+            location.reload()
           }
-          location.reload()
-        }
+        })
       }
     }
 
@@ -1273,7 +1274,7 @@
                 <button class="gm-save">保存</button>
                 <button class="gm-cancel">取消</button>
               </div>
-              <div class="gm-reset" title="重置脚本设置及内部数据，也许能解决脚本运行错误的问题。该操作不会清除已保存的稍后再看历史数据，因此不会导致移除记录丢失。无法解决请联系脚本作者：${GM_info.script.supportURL}">初始化脚本</div>
+              <div class="gm-reset" title="重置脚本设置及内部数据（稍后再看历史数据除外），也许能解决脚本运行错误的问题。无法解决请联系脚本作者：${GM_info.script.supportURL}">初始化脚本</div>
               <a class="gm-changelog" title="显示更新日志" href="${gm.url.gm_changelog}" target="_blank">更新日志</a>
             </div>
             <div class="gm-shadow"></div>
@@ -1322,54 +1323,54 @@
 
           // 提示信息
           el.rhspInformation = gm.el.setting.querySelector('#gm-rhspInformation')
-          api.message.advanced(el.rhspInformation, `
+          api.message.advancedInfo(el.rhspInformation, `
             <div style="text-indent:2em;line-height:1.6em">
               <p>选择更多保存时间点能提高移除历史的准确度，但可能会伴随大量无意义的数据比较。无论选择哪一种方式，在同一个 URL 对应的页面下至多保存一次。</p>
               <p>若习惯于从稍后再看列表页面点击视频观看，建议选择第一项或第二项。若习惯于直接在顶栏弹出菜单中点击视频观看，请选择第二项。第三项性价比低，不推荐选择。</p>
             </div>
           `, '💬', { width: '36em', flagSize: '2em', disabled: () => el.rhspInformation.parentElement.hasAttribute('disabled') })
           el.rhfcInformation = gm.el.setting.querySelector('#gm-rhfcInformation')
-          api.message.advanced(el.rhfcInformation, `
+          api.message.advancedInfo(el.rhfcInformation, `
             <div style="text-indent:2em;line-height:1.6em">
               <p>模糊比对模式：设当前时间点获取到的稍后再看列表数据为 A，上一次获取到的数据为 B。若 A 与 B 的前 <b>N</b> 项均一致就认为这段时间没有往稍后再看中添加新视频，直接跳过后续处理。</p>
               <p>其中，<b>N</b> 即为模糊比对深度。注意，<b>深度设置过大反而会降低比对效率</b>，建议先设置较小的值，若后续观察到有记录被误丢弃，再增加该项的值。最佳参数与个人使用习惯相关，请根据自身情况微调。你也可以选择设置 <b>0</b> 以关闭模糊比对模式（不推荐）。</p>
             </div>
           `, '💬', { width: '36em', flagSize: '2em', disabled: () => el.rhfcInformation.parentElement.hasAttribute('disabled') })
           el.rhsInformation = gm.el.setting.querySelector('#gm-rhsInformation')
-          api.message.advanced(el.rhsInformation, `
+          api.message.advancedInfo(el.rhsInformation, `
             <div style="text-indent:2em;line-height:1.6em">
               <p>在脚本限制的取值范围内，稍后再看历史数据的保存与读取对页面加载的影响几乎可以忽略不计（小于 1ms，不含脚本管理器对数据进行预加载的时间）。</p>
               <p>但是打开移除记录时，根据大量数据生成历史的过程较为耗时。不过，只要将「默认历史回溯深度」设置在 100 以下就不会有明显的生成延迟。</p>
             </div>
           `, '💬', { width: '36em', flagSize: '2em', disabled: () => el.rhsInformation.parentElement.hasAttribute('disabled') })
           el.rhtInformation = gm.el.setting.querySelector('#gm-rhtInformation')
-          api.message.advanced(el.rhtInformation, `
+          api.message.advancedInfo(el.rhtInformation, `
             <div style="line-height:1.6em">
               在历史数据记录中添加时间戳，用于改善移除记录中的数据排序，使得排序以「视频『最后一次』被观察到处于稍后再看的时间点」为基准，而非以「视频『第一次』被观察到处于稍后再看的时间点」为基准；同时也利于数据展示与查看。注意，此功能在数据存读及处理上都有额外开销。
             </div>
           `, '💬', { width: '36em', flagSize: '2em', disabled: () => el.rhtInformation.parentElement.hasAttribute('disabled') })
           el.fwsInformation = gm.el.setting.querySelector('#gm-fwsInformation')
-          api.message.advanced(el.fwsInformation, `
+          api.message.advancedInfo(el.fwsInformation, `
             <div style="text-indent:2em;line-height:1.6em">
               <p>在动态页、视频播放页以及其他页面，视频卡片的右下角方存在一个将视频加入或移除出稍后再看的快捷按钮。然而，在刷新页面后，B站不会为之加载稍后再看的状态——即使视频已经在稍后再看中，也不会显示出来。启用该功能后，会自动填充这些缺失的状态信息。</p>
               <p>第三项「所有页面」，会用一套固定的逻辑对脚本能匹配到的所有非特殊页面尝试进行信息填充。脚本本身没有匹配所有B站页面，如果有需要，请在脚本管理器（如 Tampermonkey）中为脚本设置额外的页面匹配规则。由于B站各页面的设计不是很规范，某些页面中视频卡片的设计可能跟其他地方不一致，所以不保证必定能填充成功。</p>
             </div>
           `, '💬', { width: '36em', flagSize: '2em' })
           el.mraInformation = gm.el.setting.querySelector('#gm-mraInformation')
-          api.message.advanced(el.mraInformation, `
+          api.message.advancedInfo(el.mraInformation, `
             <div style="line-height:1.6em">
               <p style="margin-bottom:0.5em"><b>DOMContentLoaded</b>：与页面内容同步加载，避免脚本在页面加载度较高时才对页面作修改。上述情况会给人页面加载时间过长的错觉，并且伴随页面变化突兀的不适感。</p>
               <p><b>load</b>：在页面初步加载完成时运行。从理论上来说这个时间点更为合适，且能保证脚本在网页加载速度极慢时仍可正常工作。但要注意的是，以上所说「网页加载速度极慢」的情况并不常见，以下为常见原因：1. 短时间内（在后台）打开十几乃至数十个网页；2. 网络问题。</p>
             </div>
           `, '💬', { width: '36em', flagSize: '2em' })
           el.dpcInformation = gm.el.setting.querySelector('#gm-dpcInformation')
-          api.message.advanced(el.dpcInformation, `
+          api.message.advancedInfo(el.dpcInformation, `
             <div style="line-height:1.6em">
               <p>部分情况下，在同一个页面中，若一份数据之前已经获取过，则使用页面中缓存的数据。当然，这种情况对数据的实时性没有要求，不建议禁用页面缓存。注意，启用该项不会禁用本地缓存。</p>
             </div>
           `, '💬', { width: '36em', flagSize: '2em' })
           el.wlcvpInformation = gm.el.setting.querySelector('#gm-wlcvpInformation')
-          api.message.advanced(el.wlcvpInformation, `
+          api.message.advancedInfo(el.wlcvpInformation, `
             <div style="text-indent:2em;line-height:1.6em">
               <p>在本地缓存的有效期内脚本将会使用本地缓存来代替网络请求，除非是在有必要确保数据正确性的场合。设置为 <b>0</b> 可以禁止使用本地缓存。</p>
               <p>本地缓存无法确保数据的正确性，设置过长时甚至可能导致各种诡异的现象。请根据个人需要将本地缓存有效期设置为一个合理的值。</p>
@@ -1378,9 +1379,9 @@
           `, '💬', { width: '36em', flagSize: '2em' })
 
           el.hcWarning = gm.el.setting.querySelector('#gm-hcWarning')
-          api.message.advanced(el.hcWarning, '无须兼容第三方顶栏时务必选择「无」，否则脚本无法正常工作！', '⚠')
+          api.message.advancedInfo(el.hcWarning, '无须兼容第三方顶栏时务必选择「无」，否则脚本无法正常工作！', '⚠')
           el.rhWarning = gm.el.setting.querySelector('#gm-rhWarning')
-          api.message.advanced(el.rhWarning, '关闭移除记录，或将稍后再看历史数据保存次数设置为比原来小的值，都会造成对内部过期历史数据的清理！', '⚠')
+          api.message.advancedInfo(el.rhWarning, '关闭移除记录，或将稍后再看历史数据保存次数设置为比原来小的值，都会造成对内部过期历史数据的清理！', '⚠')
 
           el.headerButtonOpL.innerHTML = el.headerButtonOpR.innerHTML = el.headerButtonOpM.innerHTML = `
             <option value="${Enums.headerButtonOp.openListInCurrent}">在当前页面打开列表页面</option>
@@ -1538,12 +1539,15 @@
           el.cleanRemoveHistoryData.addEventListener('click', function() {
             el.removeHistory.checked && _self.cleanRemoveHistoryData()
           })
-          el.watchlaterMediaList.addEventListener('click', function() {
+          el.watchlaterMediaList.addEventListener('click', async function() {
             const uid = webpage.method.getDedeUserID()
-            const mlid = api.message.prompt('指定使用收藏功能时，将视频从稍后再看移动至哪个收藏夹。\n下方应填入目标收藏夹 ID，置空时使用默认收藏夹。\n获取方式：打开目标收藏夹页面，网址为「space.bilibili.com/${uid}/favlist?fid=${mlid}」。其中 ${mlid} 为收藏夹 ID。', GM_getValue(`watchlaterMediaList_${uid}`) ?? undefined)
+            const mlid = await api.message.prompt(`
+              <p>指定使用收藏功能时，将视频从稍后再看移动至哪个收藏夹。</p>
+              <p>下方应填入目标收藏夹 ID，置空时使用默认收藏夹。收藏夹页面网址为「https://space.bilibili.com/\${uid}/favlist?fid=\${mlid}」，mlid 即收藏夹 ID。</p>
+            `, GM_getValue(`watchlaterMediaList_${uid}`) ?? undefined, { html: true })
             if (mlid != null) {
               GM_setValue(`watchlaterMediaList_${uid}`, mlid)
-              api.message.create('已保存稍后再看收藏夹设置')
+              api.message.info('已保存稍后再看收藏夹设置')
             }
           })
           if (type > 0) {
@@ -1921,11 +1925,11 @@
               batchParams[`id${id}`] = el[`id${id}`].value
             }
             GM_setValue('batchParams', batchParams)
-            api.message.create('保存成功，重新加载页面后当前参数会被自动加载')
+            api.message.info('保存成功，重新加载页面后当前参数会被自动加载')
           })
           el.resetParams.addEventListener('click', function() {
             GM_deleteValue('batchParams')
-            api.message.create('重置成功，重新加载页面后参数将加载默认值')
+            api.message.info('重置成功，重新加载页面后参数将加载默认值')
           })
 
           // 加载投稿
@@ -1993,7 +1997,7 @@
               api.logger.error(e)
             } finally {
               if (!error && !stopLoad) {
-                api.message.create('批量添加：稿件加载完成', { ms: 1800 })
+                api.message.info('批量添加：稿件加载完成', { ms: 1800 })
               }
               stopLoad = false
               this.disabled = false
@@ -2125,7 +2129,7 @@
                 available -= 1
                 await new Promise(resolve => setTimeout(resolve, v4a * (Math.random() + 0.5)))
               }
-              api.message.create('批量添加：已将所有选定稿件添加到稍后再看', { ms: 1800 })
+              api.message.info('批量添加：已将所有选定稿件添加到稍后再看', { ms: 1800 })
             } catch (e) {
               api.message.alert('执行失败：可能是因为该稿件不可用或稍后再看不支持该稿件类型（如互动视频），请尝试取消勾选当前列表中第一个选定的稿件后重新执行')
               api.logger.error(e)
@@ -2154,7 +2158,7 @@
     openRemoveHistory() {
       const _self = this
       if (!gm.config.removeHistory) {
-        api.message.create('请在设置中开启稍后再看移除记录')
+        api.message.info('请在设置中开启稍后再看移除记录')
         return
       }
 
@@ -2256,10 +2260,10 @@
               const note = status ? '添加到稍后再看' : '从稍后再看移除'
               const success = await webpage?.method.switchVideoWatchlaterStatus(bvid, status)
               if (success) {
-                api.message.create(`${note}成功`)
+                api.message.info(`${note}成功`)
               } else {
                 box.checked = !status
-                api.message.create(`${note}失败${status ? '，可能是因为该稿件不可用' : ''}`)
+                api.message.info(`${note}失败${status ? '，可能是因为该稿件不可用' : ''}`)
               }
             }
           })
@@ -2383,8 +2387,8 @@
     /**
      * 初始化脚本
      */
-    resetScript() {
-      const result = api.message.confirm('是否要初始化脚本？\n\n注意：本操作不会清理内部保存的稍后再看历史数据，要清理稍后再看历史数据请在用户设置中操作。')
+    async resetScript() {
+      const result = await api.message.confirm('是否要初始化脚本？本操作不会清理稍后再看历史数据，要清理之请在用户设置中操作。')
       if (result) {
         const keyNoReset = { removeHistoryData: true, removeHistorySaves: true }
         const gmKeys = GM_listValues()
@@ -2402,8 +2406,8 @@
     /**
      * 清空 removeHistoryData
      */
-    cleanRemoveHistoryData() {
-      const result = api.message.confirm('是否要清空稍后再看历史数据？')
+    async cleanRemoveHistoryData() {
+      const result = await api.message.confirm('是否要清空稍后再看历史数据？')
       if (result) {
         this.closeMenuItem('setting')
         GM_deleteValue('removeHistoryData')
@@ -3079,10 +3083,10 @@
        */
       async function clearWatchlater() {
         let success = false
-        const result = api.message.confirm('是否清空稍后再看？')
+        const result = await api.message.confirm('是否清空稍后再看？')
         if (result) {
           success = await _self.method.clearWatchlater()
-          api.message.create(`清空稍后再看${success ? '成功' : '失败'}`)
+          api.message.info(`清空稍后再看${success ? '成功' : '失败'}`)
           if (success && api.web.urlMatch(gm.regex.page_watchlaterList)) {
             location.reload()
           }
@@ -3096,10 +3100,10 @@
        */
       async function clearWatchedInWatchlater() {
         let success = false
-        const result = api.message.confirm('是否移除已观看视频？')
+        const result = await api.message.confirm('是否移除已观看视频？')
         if (result) {
           success = await _self.method.clearWatchedInWatchlater()
-          api.message.create(`移除已观看视频${success ? '成功' : '失败'}`)
+          api.message.info(`移除已观看视频${success ? '成功' : '失败'}`)
           if (success && api.web.urlMatch(gm.regex.page_watchlaterList)) {
             location.reload()
           }
@@ -3487,7 +3491,7 @@
               if (cfgAutoRemove == Enums.autoRemove.absoluteNever) {
                 el.entryFn.autoRemoveControl.setAttribute('disabled', '')
                 el.entryFn.autoRemoveControl.addEventListener('click', function() {
-                  api.message.create('当前彻底自动移除功能，无法执行操作')
+                  api.message.info('当前彻底自动移除功能，无法执行操作')
                 })
               } else {
                 if (autoRemove) {
@@ -3496,10 +3500,10 @@
                 el.entryFn.autoRemoveControl.addEventListener('click', function() {
                   if (this.autoRemove) {
                     api.dom.removeClass(this, 'gm-popup-auto-remove')
-                    api.message.create('已临时关闭自动移除功能')
+                    api.message.info('已临时关闭自动移除功能')
                   } else {
                     api.dom.addClass(this, 'gm-popup-auto-remove')
-                    api.message.create('已临时开启自动移除功能')
+                    api.message.info('已临时开启自动移除功能')
                   }
                   this.autoRemove = !this.autoRemove
                 })
@@ -3644,7 +3648,7 @@
                         gm.data.fixedItem(card.bvid, false)
                         api.dom.removeClass(card, 'gm-fixed')
                       }
-                      dispInfo && api.message.create(`${note}成功`)
+                      dispInfo && api.message.info(`${note}成功`)
                       gm.runtime.reloadWatchlaterListData = true
                       window.dispatchEvent(new CustomEvent('reloadWatchlaterListData'))
                     } else {
@@ -3653,7 +3657,7 @@
                       } else {
                         api.dom.addClass(card, 'gm-removed')
                       }
-                      dispInfo && api.message.create(`${note}失败`)
+                      dispInfo && api.message.info(`${note}失败`)
                     }
                   }
 
@@ -3674,12 +3678,12 @@
                       }
                       const success = await _self.method.addToFav(item.aid, mlid)
                       if (success) {
-                        api.message.create(dmlid ? '移动至默认收藏夹成功' : '移动至指定收藏夹成功')
+                        api.message.info(dmlid ? '移动至默认收藏夹成功' : '移动至指定收藏夹成功')
                         if (card.added) {
                           switchStatus(false, false)
                         }
                       } else {
-                        api.message.create(dmlid ? '移动至默认收藏夹失败' : `移动至收藏夹 ${mlid} 失败，请确认该收藏夹是否存在`)
+                        api.message.info(dmlid ? '移动至默认收藏夹失败' : `移动至收藏夹 ${mlid} 失败，请确认该收藏夹是否存在`)
                       }
                     })
                   })
@@ -4134,10 +4138,10 @@
         if (success) {
           btn.added = !btn.added
           cb.checked = btn.added
-          api.message.create(`${note}成功`)
+          api.message.info(`${note}成功`)
         } else {
           cb.checked = btn.added
-          api.message.create(`${note}失败${!btn.added ? '，可能是因为稍后再看不支持该稿件类型（如互动视频）' : ''}`)
+          api.message.info(`${note}失败${!btn.added ? '，可能是因为稍后再看不支持该稿件类型（如互动视频）' : ''}`)
         }
       }
     }
@@ -4166,8 +4170,7 @@
         location.replace(`${gm.url.page_videoNormalMode}/${id}${location.search}${location.hash}`)
       } catch (e) {
         api.logger.error(e)
-        api.message.alert(`重定向错误，如果重新加载页面依然出错请联系脚本作者：${GM_info.script.supportURL}`)
-        const result = api.message.confirm('是否临时关闭模式切换功能？')
+        const result = await api.message.confirm('重定向错误，是否临时关闭此功能？')
         if (result) {
           const url = new URL(location.href)
           url.searchParams.set(`${gmId}_disable_redirect`, 'true')
@@ -4267,7 +4270,7 @@
               gm.data.fixedItem(item.bvid, false)
               api.dom.removeClass(item, 'gm-fixed')
             }
-            dispInfo && api.message.create(`${note}成功`)
+            dispInfo && api.message.info(`${note}成功`)
             setTimeout(() => {
               if (sortable) {
                 _self.sortWatchlaterList()
@@ -4280,7 +4283,7 @@
             } else {
               api.dom.addClass(item, 'gm-removed')
             }
-            dispInfo && api.message.create(`${note}失败`)
+            dispInfo && api.message.info(`${note}失败`)
           }
           switcher.checked = item.added
         }
@@ -4299,12 +4302,12 @@
           }
           const success = await _self.method.addToFav(item.aid, mlid)
           if (success) {
-            api.message.create(dmlid ? '移动至默认收藏夹成功' : '移动至指定收藏夹成功')
+            api.message.info(dmlid ? '移动至默认收藏夹成功' : '移动至指定收藏夹成功')
             if (item.added) {
               switchStatus(false, false)
             }
           } else {
-            api.message.create(dmlid ? '移动至默认收藏夹失败' : `移动至收藏夹 ${mlid} 失败，请确认该收藏夹是否存在`)
+            api.message.info(dmlid ? '移动至默认收藏夹失败' : `移动至收藏夹 ${mlid} 失败，请确认该收藏夹是否存在`)
           }
         })
 
@@ -4543,7 +4546,7 @@
           }
           const success = await _self.method.switchVideoWatchlaterStatus(aid, false)
           if (!success) {
-            api.message.create('从稍后再看移除失败')
+            api.message.info('从稍后再看移除失败')
           }
           return success
         }
@@ -4786,10 +4789,10 @@
         autoRemoveControl.addEventListener('click', function() {
           if (this.autoRemove) {
             autoRemoveControl.removeAttribute('enabled')
-            api.message.create('已临时关闭自动移除功能')
+            api.message.info('已临时关闭自动移除功能')
           } else {
             autoRemoveControl.setAttribute('enabled', '')
-            api.message.create('已临时开启自动移除功能')
+            api.message.info('已临时开启自动移除功能')
           }
           this.autoRemove = !this.autoRemove
         })
