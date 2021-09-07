@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.20.1.20210907
+// @version         4.20.2.20210907
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -20,7 +20,7 @@
 // @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=968206
 // @require         https://greasyfork.org/scripts/431998-userscriptapidom/code/UserscriptAPIDom.js?version=968204
 // @require         https://greasyfork.org/scripts/431999-userscriptapilogger/code/UserscriptAPILogger.js?version=967887
-// @require         https://greasyfork.org/scripts/432000-userscriptapimessage/code/UserscriptAPIMessage.js?version=968205
+// @require         https://greasyfork.org/scripts/432000-userscriptapimessage/code/UserscriptAPIMessage.js?version=968345
 // @require         https://greasyfork.org/scripts/432001-userscriptapitool/code/UserscriptAPITool.js?version=967889
 // @require         https://greasyfork.org/scripts/432002-userscriptapiwait/code/UserscriptAPIWait.js?version=968207
 // @require         https://greasyfork.org/scripts/432003-userscriptapiweb/code/UserscriptAPIWeb.js?version=967891
@@ -217,6 +217,7 @@
    * @property {boolean} headerCompatible 兼容第三方顶栏
    * @property {boolean} removeHistory 稍后再看移除记录
    * @property {removeHistorySavePoint} removeHistorySavePoint 保存稍后再看历史数据的时间点
+   * @property {number} removeHistorySavePeriod 数据保存最小时间间隔
    * @property {number} removeHistoryFuzzyCompare 模糊比对深度
    * @property {number} removeHistorySaves 稍后再看历史数据记录保存数
    * @property {boolean} removeHistoryTimestamp 使用时间戳优化移除记录
@@ -266,7 +267,6 @@
    * @property {boolean} reloadWatchlaterListData 刷新稍后再看列表数据
    * @property {boolean} loadingWatchlaterListData 正在加载稍后再看列表数据
    * @property {boolean} savingRemoveHistoryData 正在存储稍后再看历史数据
-   * @property {boolean} savedRemoveHistoryData 当前 URL 已存储过稍后再看历史数据
    */
   /**
    * @callback removeHistoryData 通过懒加载方式获取稍后再看历史数据
@@ -372,7 +372,7 @@
   const gm = {
     id: gmId,
     configVersion: GM_getValue('configVersion'),
-    configUpdate: 20210902.1,
+    configUpdate: 20210907,
     searchParams: new URL(location.href).searchParams,
     config: {},
     configMap: {
@@ -395,6 +395,7 @@
       headerCompatible: { default: Enums.headerCompatible.none, attr: 'value', configVersion: 20210721 },
       removeHistory: { default: true, attr: 'checked', manual: true, configVersion: 20210628 },
       removeHistorySavePoint: { default: Enums.removeHistorySavePoint.listAndMenu, attr: 'value', configVersion: 20210628 },
+      removeHistorySavePeriod: { default: 60, type: 'int', attr: 'value', max: 600, needNotReload: true, configVersion: 20210907 },
       removeHistoryFuzzyCompare: { default: 1, type: 'int', attr: 'value', max: 5, needNotReload: true, configVersion: 20210722 },
       removeHistorySaves: { default: 100, type: 'int', attr: 'value', manual: true, needNotReload: true, min: 10, max: 500, configVersion: 20210808 },
       removeHistoryTimestamp: { default: true, attr: 'checked', needNotReload: true, configVersion: 20210703 },
@@ -976,7 +977,7 @@
                   </tr>
 
                   <tr class="gm-item" title="保留稍后再看列表中的数据，以查找出一段时间内将哪些视频移除出稍后再看，用于拯救误删操作。关闭该选项会将内部历史数据清除！">
-                    <td rowspan="6"><div>全局功能</div></td>
+                    <td rowspan="7"><div>全局功能</div></td>
                     <td>
                       <label>
                         <span>开启稍后再看移除记录</span>
@@ -985,7 +986,7 @@
                       </label>
                     </td>
                   </tr>
-                  <tr class="gm-subitem" sup="removeHistory" title="选择在何时保存稍后再看历史数据。无论选择哪一种方式，在同一个 URL 对应的页面下至多触发一次保存。">
+                  <tr class="gm-subitem" sup="removeHistory" title="选择在何时保存稍后再看历史数据。">
                       <td>
                         <div>
                           <span>为了生成移除记录，</span>
@@ -994,9 +995,16 @@
                             <option value="${Enums.removeHistorySavePoint.listAndMenu}">在打开列表页面或弹出入口菜单时保存数据</option>
                             <option value="${Enums.removeHistorySavePoint.anypage}">在打开任意相关页面时保存数据</option>
                           </select>
-                          <span id="gm-rhspInformation" class="gm-information" title>💬</span>
                         </div>
                       </td>
+                  </tr>
+                  <tr class="gm-subitem" sup="removeHistory" title="距离上一次保存稍后再看历史数据间隔超过该时间，才会再次进行保存。">
+                    <td>
+                      <div>
+                        <span>数据保存最小时间间隔（单位：秒）</span>
+                        <input id="gm-removeHistorySavePeriod" type="text">
+                      </div>
+                    </td>
                   </tr>
                   <tr class="gm-subitem" sup="removeHistory" title="设置模糊比对深度以快速舍弃重复数据从而降低开销，但可能会造成部分记录遗漏。">
                     <td>
@@ -1322,13 +1330,6 @@
           el.reset = gm.el.setting.querySelector('.gm-reset')
 
           // 提示信息
-          el.rhspInformation = gm.el.setting.querySelector('#gm-rhspInformation')
-          api.message.advancedInfo(el.rhspInformation, `
-            <div style="text-indent:2em;line-height:1.6em">
-              <p>选择更多保存时间点能提高移除历史的准确度，但可能会伴随大量无意义的数据比较。无论选择哪一种方式，在同一个 URL 对应的页面下至多保存一次。</p>
-              <p>若习惯于从稍后再看列表页面点击视频观看，建议选择第一项或第二项。若习惯于直接在顶栏弹出菜单中点击视频观看，请选择第二项。第三项性价比低，不推荐选择。</p>
-            </div>
-          `, '💬', { width: '36em', flagSize: '2em', disabled: () => el.rhspInformation.parentElement.hasAttribute('disabled') })
           el.rhfcInformation = gm.el.setting.querySelector('#gm-rhfcInformation')
           api.message.advancedInfo(el.rhfcInformation, `
             <div style="text-indent:2em;line-height:1.6em">
@@ -1434,91 +1435,35 @@
           el.removeHistory.addEventListener('change', el.removeHistory.init)
 
           // 输入框内容处理
-          el.removeHistoryFuzzyCompare.addEventListener('input', function() {
-            const v0 = this.value.replace(/[^\d]/g, '')
-            if (v0 === '') {
-              this.value = ''
-            } else {
-              let value = parseInt(v0)
-              if (value > gm.configMap.removeHistoryFuzzyCompare.max) {
-                value = gm.configMap.removeHistoryFuzzyCompare.max
+          const positiveIntInputs = ['removeHistorySavePeriod', 'removeHistoryFuzzyCompare', 'removeHistorySaves', 'removeHistorySearchTimes', 'watchlaterListCacheValidPeriod']
+          for (const name of positiveIntInputs) {
+            el[name].addEventListener('input', function() {
+              const v0 = this.value.replace(/[^\d]/g, '')
+              if (v0 === '') {
+                this.value = ''
+              } else if (typeof gm.configMap[name].max == 'number') {
+                let value = parseInt(v0)
+                if (value > gm.configMap[name].max) {
+                  value = gm.configMap[name].max
+                }
+                this.value = value
               }
-              this.value = value
-            }
-          })
-          el.removeHistoryFuzzyCompare.addEventListener('blur', function() {
-            if (this.value === '') {
-              this.value = gm.configMap.removeHistoryFuzzyCompare.default
-            }
-          })
+            })
+            el[name].addEventListener('blur', function() {
+              if (this.value === '') {
+                this.value = gm.configMap[name].default
+              } else if (typeof gm.configMap[name].min == 'number') {
+                let value = parseInt(this.value)
+                if (value < gm.configMap[name].min) {
+                  value = gm.configMap[name].min
+                }
+                this.value = value
+              }
+            })
+          }
 
-          el.removeHistorySaves.addEventListener('input', function() {
-            const v0 = this.value.replace(/[^\d]/g, '')
-            if (v0 === '') {
-              this.value = ''
-            } else {
-              let value = parseInt(v0)
-              if (value > gm.configMap.removeHistorySaves.max) {
-                value = gm.configMap.removeHistorySaves.max
-              }
-              this.value = value
-            }
-            setRhWaring()
-          })
-          el.removeHistorySaves.addEventListener('blur', function() {
-            if (this.value === '') {
-              this.value = gm.configMap.removeHistorySaves.default
-            } else {
-              let value = parseInt(this.value)
-              if (value < gm.configMap.removeHistorySaves.min) {
-                value = gm.configMap.removeHistorySaves.min
-              }
-              this.value = value
-            }
-            setRhWaring()
-          })
-
-          el.removeHistorySearchTimes.addEventListener('input', function() {
-            const v0 = this.value.replace(/[^\d]/g, '')
-            if (v0 === '') {
-              this.value = ''
-            } else {
-              let value = parseInt(v0)
-              if (value > gm.configMap.removeHistorySearchTimes.max) {
-                value = gm.configMap.removeHistorySearchTimes.max
-              }
-              this.value = value
-            }
-          })
-          el.removeHistorySearchTimes.addEventListener('blur', function() {
-            if (this.value === '') {
-              this.value = gm.configMap.removeHistorySearchTimes.default
-            } else {
-              let value = parseInt(this.value)
-              if (value < gm.configMap.removeHistorySearchTimes.min) {
-                value = gm.configMap.removeHistorySearchTimes.min
-              }
-              this.value = value
-            }
-          })
-
-          el.watchlaterListCacheValidPeriod.addEventListener('input', function() {
-            const v0 = this.value.replace(/[^\d]/g, '')
-            if (v0 === '') {
-              this.value = ''
-            } else {
-              let value = parseInt(v0)
-              if (value > gm.configMap.watchlaterListCacheValidPeriod.max) {
-                value = gm.configMap.watchlaterListCacheValidPeriod.max
-              }
-              this.value = value
-            }
-          })
-          el.watchlaterListCacheValidPeriod.addEventListener('blur', function() {
-            if (this.value === '') {
-              this.value = gm.configMap.watchlaterListCacheValidPeriod.default
-            }
-          })
+          el.removeHistorySaves.addEventListener('input', setRhWaring)
+          el.removeHistorySaves.addEventListener('blur', setRhWaring)
         }
 
         /**
@@ -1653,13 +1598,13 @@
           } else {
             el.cleanRemoveHistoryData.textContent = '清空数据(0条)'
           }
-          el.items.scrollTop = 0
         }
 
         /**
          * 设置打开后执行
          */
         const onOpened = () => {
+          el.items.scrollTop = 0
           if (type == 2) {
             const resetSave = () => {
               el.save.title = ''
@@ -1825,6 +1770,16 @@
         script.openMenuItem('batchAddManager')
       } else {
         const el = {}
+        let history = null
+        if (gm.config.removeHistory) {
+          const records = gm.data.removeHistoryData().toArray(50) // 回溯限制到 50 条
+          if (records.length > 0) {
+            history = new Set()
+            for (const record of records) {
+              history.add(webpage.method.bvTool.bv2av(record[0]))
+            }
+          }
+        }
         setTimeout(() => {
           initManager()
           processItem()
@@ -1842,13 +1797,13 @@
             <div class="gm-batchAddManager-page gm-modal">
               <div class="gm-title">批量添加管理器</div>
               <div class="gm-comment">
-                <div>请执行以下步骤以将投稿批量添加到稍后再看（可以跳过部分步骤）。执行过程中可以关闭对话框，但不能关闭页面——且将当前页面置于后台时，大部分浏览器会暂缓甚至暂停任务执行。</div>
+                <div>请执行以下步骤以将投稿批量添加到稍后再看（可以跳过部分步骤）。执行过程中可以关闭对话框，但不能关闭页面——且将当前页面置于后台时，浏览器会暂缓甚至暂停任务执行。</div>
                 <div>脚本会优先添加投稿时间较早的投稿，达到稍后再看容量上限 100 时终止执行。注意，该功能会向后台发起大量请求，滥用可能会导致一段时间内无法正常访问B站，您可以增加平均请求间隔以降低被 BAN 的概率。</div>
                 <div>第一步：加载最近 <input id="gm-batch-1a" type="text" value="24"> <select id="gm-batch-1b" style="border:none;margin: 0 -4px">
                   <option value="${3600 * 24}">天</option>
                   <option value="3600" selected>小时</option>
                   <option value="60">分钟</option>
-                </select> 以内发布的视频投稿<button id="gm-batch-1c">执行</button><button id="gm-batch-1d" disabled>终止</button></div>
+                </select> 以内发布且不存在于稍后再看的视频投稿<button id="gm-batch-1c">执行</button><button id="gm-batch-1d" disabled>终止</button></div>
                 <div>第二步：缩小时间范围到 <input id="gm-batch-2a" type="text"> <select id="gm-batch-2b" style="border:none;margin: 0 -4px">
                   <option value="${3600 * 24}">天</option>
                   <option value="3600" selected>小时</option>
@@ -1984,9 +1939,12 @@
                     el.items.insertAdjacentHTML('afterbegin', html)
                     return // -> finally
                   }
-                  const status = await webpage.method.getVideoWatchlaterStatusByAid(String(info.aid), false, true)
-                  const displayNone = status && el.uncheckedDisplay.hide
-                  html = `<label class="gm-item" aid="${info.aid}" timestamp="${item.desc.timestamp}"${displayNone ? ' style="display:none"' : ''}><input type="checkbox"${status ? '' : ' checked'}> <span>[${info.owner.name}] ${info.title}</span></label>` + html
+                  const aid = String(info.aid)
+                  if (!await webpage.method.getVideoWatchlaterStatusByAid(aid, false, true)) { // 完全跳过存在于稍后再看的视频
+                    const uncheck = history?.has(aid)
+                    const displayNone = uncheck && el.uncheckedDisplay.hide
+                    html = `<label class="gm-item" aid="${info.aid}" timestamp="${item.desc.timestamp}"${displayNone ? ' style="display:none"' : ''}><input type="checkbox"${uncheck ? '' : ' checked'}> <span>[${info.owner.name}] ${info.title}</span></label>` + html
+                  }
                 }
                 el.items.insertAdjacentHTML('afterbegin', html)
                 await new Promise(resolve => setTimeout(resolve, 250 * (Math.random() + 0.5))) // 多让点时间给其他线程，顺便给请求留点间隔
@@ -2161,6 +2119,7 @@
         api.message.info('请在设置中开启稍后再看移除记录')
         return
       }
+      GM_deleteValue('removeHistorySaveTime') // 保险起见，清理一下
 
       const el = {}
       if (gm.el.history) {
@@ -2775,7 +2734,9 @@
        */
       updateRemoveHistoryData(reload) {
         if (gm.config.removeHistory) {
-          if (!gm.runtime.savedRemoveHistoryData || reload) {
+          const removeHistorySaveTime = GM_getValue('removeHistorySaveTime') ?? 0
+          const removeHistorySavePeriod = GM_getValue('updateRemoveHistoryData') ?? gm.configMap.removeHistorySavePeriod.default
+          if (new Date().getTime() - removeHistorySaveTime > removeHistorySavePeriod * 1000) {
             if (!gm.runtime.savingRemoveHistoryData) {
               gm.runtime.savingRemoveHistoryData = true
               return gm.data.watchlaterListData(reload).then(current => {
@@ -2803,7 +2764,7 @@
                       same = false
                     }
                     if (same) {
-                      gm.runtime.savedRemoveHistoryData = true
+                      GM_setValue('removeHistorySaveTime', new Date().getTime())
                       return
                     } else {
                       if (current.length >= gm.config.removeHistoryFuzzyCompare) {
@@ -2853,7 +2814,7 @@
                   if (updated) {
                     GM_setValue('removeHistoryData', data)
                   }
-                  gm.runtime.savedRemoveHistoryData = true
+                  GM_setValue('removeHistorySaveTime', new Date().getTime())
                 }
               }).finally(() => {
                 gm.runtime.savingRemoveHistoryData = false
@@ -3906,11 +3867,6 @@
           default:
             result.target = '_self'
         }
-        if (result.href != gm.url.noop) {
-          const url = new URL(result.href)
-          url.searchParams.set(`${gm.id}_from_header`, 'true')
-          result.href = url.href
-        }
         return result
       }
     }
@@ -4570,15 +4526,11 @@
         case Enums.removeHistorySavePoint.listAndMenu:
         default:
           if (api.web.urlMatch(gm.regex.page_watchlaterList)) {
-            // 从入口打开，而设置为 listAndMenu，则数据必然刚刚刷新过
-            if (gm.searchParams.get(`${gm.id}_from_header`) != 'true') {
-              _self.method.updateRemoveHistoryData()
-            }
+            _self.method.updateRemoveHistoryData()
           }
           break
         case Enums.removeHistorySavePoint.anypage:
           if (!api.web.urlMatch(gm.regex.page_dynamicMenu)) {
-            // anypage 时弹出入口菜单不会引起数据刷新，不必检测 ${gm.id}_from_header
             _self.method.updateRemoveHistoryData()
           }
           break
