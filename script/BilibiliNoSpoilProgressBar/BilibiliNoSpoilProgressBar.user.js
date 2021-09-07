@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站防剧透进度条
-// @version         2.2.1.20210907
+// @version         2.2.2.20210907
 // @namespace       laster2800
 // @author          Laster2800
 // @description     看比赛、看番总是被进度条剧透？装上这个脚本再也不用担心这些问题了
@@ -13,12 +13,12 @@
 // @include         *://www.bilibili.com/medialist/play/watchlater
 // @include         *://www.bilibili.com/medialist/play/watchlater/*
 // @include         *://www.bilibili.com/bangumi/play/*
-// @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=967908
-// @require         https://greasyfork.org/scripts/431998-userscriptapidom/code/UserscriptAPIDom.js?version=967886
+// @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=968206
+// @require         https://greasyfork.org/scripts/431998-userscriptapidom/code/UserscriptAPIDom.js?version=968204
 // @require         https://greasyfork.org/scripts/431999-userscriptapilogger/code/UserscriptAPILogger.js?version=967887
-// @require         https://greasyfork.org/scripts/432000-userscriptapimessage/code/UserscriptAPIMessage.js?version=967888
+// @require         https://greasyfork.org/scripts/432000-userscriptapimessage/code/UserscriptAPIMessage.js?version=968205
 // @require         https://greasyfork.org/scripts/432001-userscriptapitool/code/UserscriptAPITool.js?version=967889
-// @require         https://greasyfork.org/scripts/432002-userscriptapiwait/code/UserscriptAPIWait.js?version=967890
+// @require         https://greasyfork.org/scripts/432002-userscriptapiwait/code/UserscriptAPIWait.js?version=968207
 // @require         https://greasyfork.org/scripts/432003-userscriptapiweb/code/UserscriptAPIWeb.js?version=967891
 // @grant           GM_registerMenuCommand
 // @grant           GM_xmlhttpRequest
@@ -139,7 +139,6 @@
   /**
    * @typedef GMObject_menu
    * @property {GMObject_menu_item} setting 设置
-   * @property {GMObject_menu_item} uploaderList 防剧透UP主名单
    */
   /**
    * @typedef GMObject_menu_item
@@ -201,12 +200,10 @@
     },
     menu: {
       setting: { state: 0, wait: 0, el: null },
-      uploaderList: { state: 0, wait: 0, el: null },
     },
     el: {
       gmRoot: null,
       setting: null,
-      uploaderList: null,
     },
   }
 
@@ -267,14 +264,15 @@
         this.readConfig()
       } catch (e) {
         api.logger.error(e)
-        const result = api.message.confirm('初始化错误！是否彻底清空内部数据以重置脚本？')
-        if (result) {
-          const gmKeys = GM_listValues()
-          for (const gmKey of gmKeys) {
-            GM_deleteValue(gmKey)
+        api.message.confirm('初始化错误！是否彻底清空内部数据以重置脚本？').then(result => {
+          if (result) {
+            const gmKeys = GM_listValues()
+            for (const gmKey of gmKeys) {
+              GM_deleteValue(gmKey)
+            }
+            location.reload()
           }
-          location.reload()
-        }
+        })
       }
     }
 
@@ -339,11 +337,6 @@
      */
     updateVersion() {
       const _self = this
-
-      if ((gm.configVersion ?? 0) < 20210806) {
-        api.message.alert('据说B站近段时间在分批推送 V3 播放器，如果你有幸被选中，那这个脚本也是凭想象力去做了适配的，大概不会出错吧，否则请提供反馈。\n还有一种情况，就是启用了分段进度条的 V3 播放器，脚本必然无法工作，毕竟这东西目前可能还不存在于世界上。\n- 2021年8月6日')
-      }
-
       if (gm.configVersion > 0) {
         if (gm.configVersion < gm.configUpdate) {
           // 必须按从旧到新的顺序写
@@ -390,8 +383,8 @@
           }
         }
         _self.openUserSetting(1)
-        setTimeout(() => {
-          const result = api.message.confirm('脚本有一定使用门槛，如果不理解防剧透机制效果将会剧减，这种情况下用户甚至完全不明白脚本在「干什么」，建议在阅读说明后使用。是否立即打开防剧透机制说明？')
+        setTimeout(async () => {
+          const result = await api.message.confirm('脚本有一定使用门槛，如果不理解防剧透机制效果将会剧减，这种情况下用户甚至完全不明白脚本在「干什么」，建议在阅读说明后使用。是否立即打开防剧透机制说明？')
           if (result) {
             window.open(`${gm.url.gm_readme}#防剧透机制说明`)
           }
@@ -614,7 +607,7 @@
                 <button class="gm-save">保存</button>
                 <button class="gm-cancel">取消</button>
               </div>
-              <div class="gm-reset" title="重置脚本设置及内部数据，也许能解决脚本运行错误的问题。无法解决请联系脚本作者：${GM_info.script.supportURL}">初始化脚本</div>
+              <div class="gm-reset" title="重置脚本设置及内部数据（防剧透UP主名单除外），也许能解决脚本运行错误的问题。无法解决请联系脚本作者：${GM_info.script.supportURL}">初始化脚本</div>
               <a class="gm-changelog" title="显示更新日志" href="${gm.url.gm_changelog}" target="_blank">更新日志</a>
             </div>
             <div class="gm-shadow"></div>
@@ -662,9 +655,9 @@
 
           // 提示信息
           el.offsetTransformFactorInformation = gm.el.setting.querySelector('#gm-offsetTransformFactorInformation')
-          api.message.advanced(el.offsetTransformFactorInformation, `
+          api.message.advancedInfo(el.offsetTransformFactorInformation, `
             <style>
-              .${gm.id}-msgbox ul > li {
+              .${gm.id}-infobox ul > li {
                 list-style: disc;
                 margin-left: 1em;
               }
@@ -679,31 +672,31 @@
             </div>
           `, '💬', { width: '36em', flagSize: '2em' })
           el.offsetLeftInformation = gm.el.setting.querySelector('#gm-offsetLeftInformation')
-          api.message.advanced(el.offsetLeftInformation, `
+          api.message.advancedInfo(el.offsetLeftInformation, `
             <div style="line-height:1.6em">
               极限情况下进度条向左偏移的距离（百分比），该选项用于解决进度条后向剧透问题。设置为 <b>0</b> 可以禁止进度条左偏。更多信息请阅读说明文档。
             </div>
           `, '💬', { width: '36em', flagSize: '2em' })
           el.offsetRightInformation = gm.el.setting.querySelector('#gm-offsetRightInformation')
-          api.message.advanced(el.offsetRightInformation, `
+          api.message.advancedInfo(el.offsetRightInformation, `
             <div style="line-height:1.6em">
               极限情况下进度条向右偏移的距离（百分比），该选项用于解决进度条前向剧透问题。设置为 <b>0</b> 可以禁止进度条右偏。更多信息请阅读说明文档。
             </div>
           `, '💬', { width: '36em', flagSize: '2em' })
           el.reservedLeftInformation = gm.el.setting.querySelector('#gm-reservedLeftInformation')
-          api.message.advanced(el.reservedLeftInformation, `
+          api.message.advancedInfo(el.reservedLeftInformation, `
             <div style="line-height:1.6em">
               进度条左侧预留区间大小（百分比）。若进度条向左偏移后导致滑块进入区间，则调整偏移量使得滑块位于区间最右侧（特别地，若播放进度比偏移量小则不偏移）。该选项是为了保证在任何情况下都能通过点击滑块左侧区域向前调整进度。更多信息请阅读说明文档。
             </div>
           `, '💬', { width: '36em', flagSize: '2em' })
           el.reservedRightInformation = gm.el.setting.querySelector('#gm-reservedRightInformation')
-          api.message.advanced(el.reservedRightInformation, `
+          api.message.advancedInfo(el.reservedRightInformation, `
             <div style="line-height:1.6em">
               进度条右侧预留区间大小（百分比）。若进度条向右偏移后导致滑块进入区间，则调整偏移量使得滑块位于区间最左侧。该选项是为了保证在任何情况下都能通过点击滑块右侧区域向后调整进度。更多信息请阅读说明文档。
             </div>
           `, '💬', { width: '36em', flagSize: '2em' })
           el.postponeOffsetInformation = gm.el.setting.querySelector('#gm-postponeOffsetInformation')
-          api.message.advanced(el.postponeOffsetInformation, `
+          api.message.advancedInfo(el.postponeOffsetInformation, `
             <div style="line-height:1.6em">
               在启用功能或改变播放进度后，不要立即对进度条进行偏移，而是在下次进度条显示出来时偏移。这样可以避免用户观察到处理过程，从而防止用户推测出偏移方向与偏移量。更多信息请阅读说明文档。
             </div>
@@ -813,9 +806,7 @@
             el.reservedRight.value = gm.configMap.reservedRight.default
             el.postponeOffset.checked = gm.configMap.postponeOffset.default
           })
-          el.uploaderList.addEventListener('click', () => {
-            _self.openUploaderList()
-          })
+          el.uploaderList.addEventListener('click', () => _self.openUploaderList())
           if (type > 0) {
             el.cancel.disabled = true
             el.shadow.setAttribute('disabled', '')
@@ -903,84 +894,43 @@
      * 打开防剧透UP主名单
      */
     openUploaderList() {
-      const _self = this
-      const el = {}
-      if (gm.el.uploaderList) {
-        _self.openMenuItem('uploaderList', null, true)
-      } else {
-        setTimeout(() => {
-          initEditor()
-          processItem()
-          _self.openMenuItem('uploaderList', null, true)
-        })
+      const dialog = api.message.dialog(`
+        <div style="color:var(--${gm.id}-hint-text-color);font-size:0.8em;text-indent:2em;line-height:1.6em">
+          当打开名单内UP主的视频时，会自动启用防剧透进度条。在下方文本框内填入UP主的 UID，其中 UID 可在UP主的个人空间中找到。每行必须以 UID 开头，UID 后可以用空格隔开进行注释。<b>第一行以&nbsp;&nbsp;*&nbsp;&nbsp;开头</b>时，匹配所有UP主。<span id="gm-uploader-list-example" class="gm-info">点击填充示例。</span>
+        </div>
+      `, {
+        html: true,
+        title: '防剧透UP主名单',
+        boxInput: true,
+        buttons: ['保存', '取消'],
+        width: '28em',
+      })
+      const list = dialog.interactives[0]
+      const save = dialog.interactives[1]
+      const cancel = dialog.interactives[2]
+      const example = dialog.querySelector('#gm-uploader-list-example')
 
-        /**
-         * 初始化防剧透UP主名单编辑器
-         */
-        const initEditor = () => {
-          gm.el.uploaderList = gm.el.gmRoot.appendChild(document.createElement('div'))
-          gm.menu.uploaderList.el = gm.el.uploaderList
-          gm.el.uploaderList.className = 'gm-uploaderList gm-modal-container'
-          gm.el.uploaderList.innerHTML = `
-            <div class="gm-uploaderList-page gm-modal">
-              <div class="gm-title">防剧透UP主名单</div>
-              <div class="gm-comment">
-                <div>当打开名单内UP主的视频时，会自动启用防剧透进度条。在下方文本框内填入UP主的 UID，其中 UID 可在UP主的个人空间中找到。每行必须以 UID 开头，UID 后可以用空格隔开进行注释。<b>第一行以&nbsp;&nbsp;*&nbsp;&nbsp;开头</b>时，匹配所有UP主。<span id="gm-uploader-list-example" class="gm-info">点击填充示例。</span></div>
-              </div>
-              <div class="gm-list-editor">
-                <textarea id="gm-uploaderList"></textarea>
-              </div>
-              <div class="gm-bottom">
-                <button class="gm-save">保存</button>
-                <button class="gm-cancel">取消</button>
-              </div>
-            </div>
-            <div class="gm-shadow"></div>
-          `
-          el.uploaderListPage = gm.el.uploaderList.querySelector('.gm-uploaderList-page')
-          el.uploaderList = gm.el.uploaderList.querySelector('#gm-uploaderList')
-          el.uploaderListExample = gm.el.uploaderList.querySelector('#gm-uploader-list-example')
-          el.save = gm.el.uploaderList.querySelector('.gm-save')
-          el.cancel = gm.el.uploaderList.querySelector('.gm-cancel')
-          el.shadow = gm.el.uploaderList.querySelector('.gm-shadow')
-        }
-
-        /**
-         * 维护内部元素和数据
-         */
-        const processItem = () => {
-          gm.menu.uploaderList.openHandler = onOpen
-          gm.el.uploaderList.fadeInDisplay = 'flex'
-          el.uploaderListExample.addEventListener('click', () => {
-            el.uploaderList.value = '# 非 UID 起始的行不会影响名单读取\n204335848 # 皇室战争电竞频道\n50329118 # 哔哩哔哩英雄联盟赛事'
-          })
-          el.save.addEventListener('click', onSave)
-          el.cancel.addEventListener('click', () => _self.closeMenuItem('uploaderList'))
-          el.shadow.addEventListener('click', () => _self.closeMenuItem('uploaderList'))
-        }
-
-        /**
-         * 防剧透UP主名单保存时执行
-         */
-        const onSave = () => {
-          gm.data.uploaderList(el.uploaderList.value)
-          _self.closeMenuItem('uploaderList')
-        }
-
-        /**
-         * 防剧透UP主名单打开时执行
-         */
-        const onOpen = () => {
-          el.uploaderList.value = gm.data.uploaderList()
-        }
-      }
+      list.style.height = '15em'
+      list.value = gm.data.uploaderList()
+      save.addEventListener('click', function() {
+        gm.data.uploaderList(list.value)
+        api.message.info('防剧透UP主名单保存成功')
+        dialog.close()
+      })
+      cancel.addEventListener('click', function() {
+        dialog.close()
+      })
+      example.addEventListener('click', () => {
+        list.value = '# 非 UID 起始的行不会影响名单读取\n204335848 # 皇室战争电竞频道\n50329118 # 哔哩哔哩英雄联盟赛事'
+      })
+      dialog.open()
     }
 
     /**
      * 初始化脚本
      */
-    resetScript() {
-      const result = api.message.confirm('是否要初始化脚本？\n\n注意：本操作不会重置「防剧透UP主名单」。')
+    async resetScript() {
+      const result = await api.message.confirm('是否要初始化脚本？本操作不会重置「防剧透UP主名单」。')
       if (result) {
         const keyNoReset = { uploaderList: true }
         const gmKeys = GM_listValues()
@@ -2058,34 +2008,6 @@
           cursor: pointer;
         }
 
-        #${gm.id} .gm-uploaderList {
-          z-index: 1100000;
-        }
-
-        #${gm.id} .gm-uploaderList .gm-uploaderList-page {
-          width: 36em;
-          height: 40em;
-        }
-
-        #${gm.id} .gm-uploaderList .gm-comment {
-          margin: 0 2em;
-          color: var(--${gm.id}-hint-text-color);
-          text-indent: 2em;
-        }
-
-        #${gm.id} .gm-uploaderList .gm-list-editor {
-          margin: 1em 2em 1em 2em;
-        }
-
-        #${gm.id} .gm-uploaderList .gm-list-editor textarea {
-          font-size: 1.3em;
-          width: calc(100% - 2em);
-          height: 15.2em;
-          padding: 1em;
-          resize: none;
-          outline: none;
-        }
-
         #${gm.id} .gm-bottom {
           margin: 1.4em 2em 1em 2em;
           text-align: center;
@@ -2109,14 +2031,16 @@
           background-color: var(--${gm.id}-background-color);
         }
 
-        #${gm.id} .gm-info {
+        #${gm.id} .gm-info,
+        .${gm.id}-dialog .gm-info {
           font-size: 0.8em;
           color: var(--${gm.id}-hint-text-color);
           text-decoration: underline;
           padding: 0 0.2em;
           cursor: pointer;
         }
-        #${gm.id} .gm-info:hover {
+        #${gm.id} .gm-info:hover,
+        .${gm.id}-dialog .gm-info:hover {
           color: var(--${gm.id}-important-color);
         }
         #${gm.id} [disabled] .gm-info {
@@ -2210,19 +2134,16 @@
           color: var(--${gm.id}-disabled-color);
         }
 
-        #${gm.id} .gm-setting .gm-items::-webkit-scrollbar,
-        #${gm.id} .gm-uploaderList .gm-list-editor textarea::-webkit-scrollbar {
+        #${gm.id} .gm-setting .gm-items::-webkit-scrollbar {
           width: 6px;
           height: 6px;
           background-color: var(--${gm.id}-scrollbar-background-color);
         }
-        #${gm.id} .gm-setting .gm-items::-webkit-scrollbar-thumb,
-        #${gm.id} .gm-uploaderList .gm-list-editor textarea::-webkit-scrollbar-thumb {
+        #${gm.id} .gm-setting .gm-items::-webkit-scrollbar-thumb {
           border-radius: 3px;
           background-color: var(--${gm.id}-scrollbar-thumb-color);
         }
-        #${gm.id} .gm-setting .gm-items::-webkit-scrollbar-corner,
-        #${gm.id} .gm-uploaderList .gm-list-editor textarea::-webkit-scrollbar-corner {
+        #${gm.id} .gm-setting .gm-items::-webkit-scrollbar-corner {
           background-color: var(--${gm.id}-scrollbar-background-color);
         }
 
