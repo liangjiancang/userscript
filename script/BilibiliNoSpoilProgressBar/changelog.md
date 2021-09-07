@@ -7,6 +7,7 @@
 1. API：更新至 V2.0，实现 API 模块化。详见 [UserscriptAPI 更新日志](https://gitee.com/liangjiancang/userscript/blob/master/lib/UserscriptAPI/changelog.md)。
 2. API-message：更新至 V1.1，引入对话框组件。
 3. 防剧透UP主名单：改用对话框组件实现防剧透UP主名单配置。
+4. 用户设置：优化内部处理逻辑。
 
 ## V2.1
 

@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站防剧透进度条
-// @version         2.2.2.20210907
+// @version         2.2.3.20210907
 // @namespace       laster2800
 // @author          Laster2800
 // @description     看比赛、看番总是被进度条剧透？装上这个脚本再也不用担心这些问题了
@@ -16,7 +16,7 @@
 // @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=968206
 // @require         https://greasyfork.org/scripts/431998-userscriptapidom/code/UserscriptAPIDom.js?version=968204
 // @require         https://greasyfork.org/scripts/431999-userscriptapilogger/code/UserscriptAPILogger.js?version=967887
-// @require         https://greasyfork.org/scripts/432000-userscriptapimessage/code/UserscriptAPIMessage.js?version=968205
+// @require         https://greasyfork.org/scripts/432000-userscriptapimessage/code/UserscriptAPIMessage.js?version=968345
 // @require         https://greasyfork.org/scripts/432001-userscriptapitool/code/UserscriptAPITool.js?version=967889
 // @require         https://greasyfork.org/scripts/432002-userscriptapiwait/code/UserscriptAPIWait.js?version=968207
 // @require         https://greasyfork.org/scripts/432003-userscriptapiweb/code/UserscriptAPIWeb.js?version=967891
@@ -746,42 +746,25 @@
             }
             this.value = parseFloat(value).toFixed(2)
           })
-          const onInput = function() {
-            const v0 = this.value.replace(/[^\d]/g, '')
-            if (v0 === '') {
-              this.value = ''
-            } else {
-              let value = parseInt(v0)
-              if (value > 100) { // 不能大于 100%
-                value = 100
+          for (const name of ['offsetLeft', 'offsetRight', 'reservedLeft', 'reservedRight']) {
+            el[name].addEventListener('input', function() {
+              const v0 = this.value.replace(/[^\d]/g, '')
+              if (v0 === '') {
+                this.value = ''
+              } else {
+                let value = parseInt(v0)
+                if (value > 100) { // 不能大于 100%
+                  value = 100
+                }
+                this.value = value
               }
-              this.value = value
-            }
+            })
+            el[name].addEventListener('blur', function() {
+              if (this.value === '') {
+                this.value = gm.configMap[name].default
+              }
+            })
           }
-          el.offsetLeft.addEventListener('input', onInput)
-          el.offsetRight.addEventListener('input', onInput)
-          el.reservedLeft.addEventListener('input', onInput)
-          el.reservedRight.addEventListener('input', onInput)
-          el.offsetLeft.addEventListener('blur', function() {
-            if (this.value === '') {
-              this.value = gm.configMap.offsetLeft.default
-            }
-          })
-          el.offsetRight.addEventListener('blur', function() {
-            if (this.value === '') {
-              this.value = gm.configMap.offsetRight.default
-            }
-          })
-          el.reservedLeft.addEventListener('blur', function() {
-            if (this.value === '') {
-              this.value = gm.configMap.reservedLeft.default
-            }
-          })
-          el.reservedRight.addEventListener('blur', function() {
-            if (this.value === '') {
-              this.value = gm.configMap.reservedRight.default
-            }
-          })
         }
 
         /**
