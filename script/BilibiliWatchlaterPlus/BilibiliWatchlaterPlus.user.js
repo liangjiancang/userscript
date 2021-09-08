@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.20.4.20210908
+// @version         4.20.5.20210908
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -224,19 +224,20 @@
    * @property {number} removeHistorySearchTimes 历史回溯深度
    * @property {fillWatchlaterStatus} fillWatchlaterStatus 填充稍后再看状态
    * @property {autoSort} autoSort 自动排序
-   * @property {boolean} dynamicBatchAddManagerButton 动态主页批量添加管理器入口按钮
    * @property {boolean} videoButton 视频播放页稍后再看状态快速切换
    * @property {autoRemove} autoRemove 自动将视频从播放列表移除
    * @property {boolean} redirect 稍后再看模式重定向至常规模式播放
+   * @property {boolean} dynamicBatchAddManagerButton 动态主页批量添加管理器按钮
+   * @property {boolean} listBatchAddManagerButton 列表页面批量添加管理器按钮
    * @property {boolean} listSearch 列表页面搜索框
    * @property {boolean} listSortControl 列表页面排序控制器
+   * @property {boolean} listAutoRemoveControl 列表页面自动移除控制器
    * @property {openListVideo} openListVideo 列表页面视频点击行为
    * @property {boolean} removeButton_removeAll 移除「一键清空」按钮
    * @property {boolean} removeButton_removeWatched 移除「移除已观看视频」按钮
    * @property {menuScrollbarSetting} menuScrollbarSetting 弹出菜单的滚动条设置
    * @property {boolean} hideWatchlaterInCollect 隐藏「收藏」中的「稍后再看」
    * @property {mainRunAt} mainRunAt 主要逻辑运行时期
-   * @property {boolean} disablePageCache 禁用页面缓存
    * @property {number} watchlaterListCacheValidPeriod 稍后再看列表数据本地缓存有效期（单位：秒）
    * @property {boolean} hideDisabledSubitems 设置页隐藏被禁用项的子项
    * @property {boolean} reloadAfterSetting 设置生效后刷新页面
@@ -372,7 +373,7 @@
   const gm = {
     id: gmId,
     configVersion: GM_getValue('configVersion'),
-    configUpdate: 20210907,
+    configUpdate: 20210908,
     searchParams: new URL(location.href).searchParams,
     config: {},
     configMap: {
@@ -395,27 +396,28 @@
       headerCompatible: { default: Enums.headerCompatible.none, attr: 'value', configVersion: 20210721 },
       removeHistory: { default: true, attr: 'checked', manual: true, configVersion: 20210628 },
       removeHistorySavePoint: { default: Enums.removeHistorySavePoint.listAndMenu, attr: 'value', configVersion: 20210628 },
-      removeHistorySavePeriod: { default: 60, type: 'int', attr: 'value', max: 600, needNotReload: true, configVersion: 20210907 },
+      removeHistorySavePeriod: { default: 60, type: 'int', attr: 'value', max: 600, needNotReload: true, configVersion: 20210908 },
       removeHistoryFuzzyCompare: { default: 1, type: 'int', attr: 'value', max: 5, needNotReload: true, configVersion: 20210722 },
       removeHistorySaves: { default: 100, type: 'int', attr: 'value', manual: true, needNotReload: true, min: 10, max: 500, configVersion: 20210808 },
       removeHistoryTimestamp: { default: true, attr: 'checked', needNotReload: true, configVersion: 20210703 },
       removeHistorySearchTimes: { default: 100, type: 'int', attr: 'value', manual: true, needNotReload: true, min: 1, max: 500, configVersion: 20210819 },
       fillWatchlaterStatus: { default: Enums.fillWatchlaterStatus.dynamic, attr: 'value', configVersion: 20200819 },
       autoSort: { default: Enums.autoSort.default, attr: 'value', configVersion: 20210819 },
-      dynamicBatchAddManagerButton: { default: true, attr: 'checked', configVersion: 20210902 },
       videoButton: { default: true, attr: 'checked' },
       autoRemove: { default: Enums.autoRemove.openFromList, attr: 'value', configVersion: 20210612 },
       redirect: { default: false, attr: 'checked', configVersion: 20210322.1 },
+      dynamicBatchAddManagerButton: { default: true, attr: 'checked', configVersion: 20210902 },
+      listBatchAddManagerButton: { default: true, attr: 'checked', configVersion: 20210908 },
       listSearch: { default: true, attr: 'checked', configVersion: 20210810.1 },
       listSortControl: { default: true, attr: 'checked', configVersion: 20210810 },
+      listAutoRemoveControl:  { default: true, attr: 'checked', configVersion: 20210908 },
       openListVideo: { default: Enums.openListVideo.openInCurrent, attr: 'value', configVersion: 20200717 },
       removeButton_removeAll: { default: false, attr: 'checked', configVersion: 20200722 },
       removeButton_removeWatched: { default: false, attr: 'checked', configVersion: 20200722 },
       menuScrollbarSetting: { default: Enums.menuScrollbarSetting.beautify, attr: 'value', configVersion: 20210808.1 },
       hideWatchlaterInCollect: { default: false, attr: 'checked', configVersion: 20210808.1 },
       mainRunAt: { default: Enums.mainRunAt.DOMContentLoaded, attr: 'value', needNotReload: true, configVersion: 20210726 },
-      disablePageCache: { default: false, attr: 'checked', configVersion: 20210322 },
-      watchlaterListCacheValidPeriod: { default: 15, type: 'int', attr: 'value', needNotReload: true, max: 600, configVersion: 20210722 },
+      watchlaterListCacheValidPeriod: { default: 15, type: 'int', attr: 'value', needNotReload: true, min: 8, max: 600, configVersion: 20210908 },
       hideDisabledSubitems: { default: true, attr: 'checked', configVersion: 20210505 },
       reloadAfterSetting: { default: true, attr: 'checked', needNotReload: true, configVersion: 20200715 },
     },
@@ -505,19 +507,25 @@
        * @returns {*} 通过校验时是配置值，不能通过校验时是默认值
        */
       gmValidate(gmKey, defaultValue, writeback = true) {
-        const value = GM_getValue(gmKey)
+        let invalid = false
+        let value = GM_getValue(gmKey)
         if (Enums && gmKey in Enums) {
-          if (Object.values(Enums[gmKey]).indexOf(value) >= 0) {
-            return value
+          if (Object.values(Enums[gmKey]).indexOf(value) < 0) {
+            invalid = true
           }
-        } else if (typeof value == typeof defaultValue) { // typeof null == 'object'，对象默认值赋 null 无需额外处理
-          return value
+        } else if (typeof value == typeof defaultValue) { // 对象默认赋 null 无需额外处理
+          const type = gm.configMap[gmKey].type
+          if (type == 'int' || type == 'float') {
+            invalid = gm.configMap[gmKey].min > value || gm.configMap[gmKey].max < value
+          }
         }
-
-        if (writeback) {
-          GM_setValue(gmKey, defaultValue)
+        if (invalid) {
+          value = defaultValue
+          if (writeback) {
+            GM_setValue(gmKey, value)
+          }
         }
-        return defaultValue
+        return value
       },
     }
 
@@ -603,7 +611,7 @@
             reload = true
             gm.runtime.reloadWatchlaterListData = false
           }
-          if ($data.watchlaterListData == null || reload || !pageCache || gm.config.disablePageCache) {
+          if ($data.watchlaterListData == null || reload || !pageCache) {
             if (gm.runtime.loadingWatchlaterListData) {
               // 一旦数据已在加载中，那么直接等待该次加载完成
               // 无论加载成功与否，所有被阻塞的数据请求均都使用该次加载的结果，完全保持一致
@@ -727,14 +735,6 @@
             GM_deleteValue('removeHistoryFuzzyCompare')
           }
 
-          // 4.11.7.20210701
-          if (gm.configVersion < 20210701) {
-            const cvp = GM_getValue('watchlaterListCacheValidPeriod')
-            if (cvp > 0 && cvp <= 2) {
-              GM_setValue('watchlaterListCacheValidPeriod', 5)
-            }
-          }
-
           // 4.16.23.20210808
           if (gm.configVersion < 20210808) {
             GM_deleteValue('removeHistoryData')
@@ -759,8 +759,13 @@
             GM_deleteValue('watchlaterListCache')
           }
 
+          // 4.20.5.20210908
+          if (gm.configVersion < 20210908) {
+            GM_deleteValue('disablePageCache')
+          }
+
           // 功能性更新后更新此处配置版本
-          if (gm.configVersion < 20210902.1) {
+          if (gm.configVersion < 20210908) {
             _self.openUserSetting(2)
           } else {
             gm.configVersion = gm.configUpdate
@@ -1089,16 +1094,6 @@
                     </td>
                   </tr>
 
-                  <tr class="gm-item" title="批量添加管理器可以将投稿批量添加到稍后再看。">
-                    <td><div>动态主页</div></td>
-                    <td>
-                      <label>
-                        <span>加入批量添加管理器入口按钮</span>
-                        <input id="gm-dynamicBatchAddManagerButton" type="checkbox">
-                      </label>
-                    </td>
-                  </tr>
-
                   <tr class="gm-item" title="在播放页面中加入能将视频快速切换添加或移除出稍后再看列表的按钮。">
                     <td><div>播放页面</div></td>
                     <td>
@@ -1117,7 +1112,7 @@
                         <select id="gm-autoRemove">
                           <option value="${Enums.autoRemove.always}">若视频在稍后再看中，则移除出稍后再看</option>
                           <option value="${Enums.autoRemove.openFromList}">若是从列表页面或弹出菜单列表点击进入，则移除出稍后再看</option>
-                          <option value="${Enums.autoRemove.never}">不执行自动移除功能，但可临时开启功能</option>
+                          <option value="${Enums.autoRemove.never}">不执行自动移除功能（可通过自动移除控制器临时开启功能）</option>
                           <option value="${Enums.autoRemove.absoluteNever}">彻底禁用自动移除功能</option>
                         </select>
                       </div>
@@ -1130,6 +1125,26 @@
                       <label>
                         <span>从稍后再看模式强制切换到常规模式播放（重定向）</span>
                         <input id="gm-redirect" type="checkbox">
+                      </label>
+                    </td>
+                  </tr>
+
+                  <tr class="gm-item" title="批量添加管理器可以将投稿批量添加到稍后再看。">
+                    <td><div>动态主页</div></td>
+                    <td>
+                      <label>
+                        <span>显示批量添加管理器按钮</span>
+                        <input id="gm-dynamicBatchAddManagerButton" type="checkbox">
+                      </label>
+                    </td>
+                  </tr>
+
+                  <tr class="gm-item" title="批量添加管理器可以将投稿批量添加到稍后再看。">
+                    <td><div>列表页面</div></td>
+                    <td>
+                      <label>
+                        <span>显示批量添加管理器按钮</span>
+                        <input id="gm-listBatchAddManagerButton" type="checkbox">
                       </label>
                     </td>
                   </tr>
@@ -1150,6 +1165,16 @@
                       <label>
                         <span>显示排序控制器</span>
                         <input id="gm-listSortControl" type="checkbox">
+                      </label>
+                    </td>
+                  </tr>
+
+                  <tr class="gm-item" title="在列表页面显示自动移除控制器。">
+                    <td><div>列表页面</div></td>
+                    <td>
+                      <label>
+                        <span>显示自动移除控制器</span>
+                        <input id="gm-listAutoRemoveControl" type="checkbox">
                       </label>
                     </td>
                   </tr>
@@ -1232,17 +1257,6 @@
                         </select>
                         <span id="gm-mraInformation" class="gm-information" title>💬</span>
                       </div>
-                    </td>
-                  </tr>
-
-                  <tr class="gm-item" title="禁用页面缓存">
-                    <td><div>脚本设置</div></td>
-                    <td>
-                      <label>
-                        <span>禁用页面缓存</span>
-                        <span id="gm-dpcInformation" class="gm-information" title>💬</span>
-                        <input id="gm-disablePageCache" type="checkbox">
-                      </label>
                     </td>
                   </tr>
 
@@ -1364,18 +1378,10 @@
               <p><b>load</b>：在页面初步加载完成时运行。从理论上来说这个时间点更为合适，且能保证脚本在网页加载速度极慢时仍可正常工作。但要注意的是，以上所说「网页加载速度极慢」的情况并不常见，以下为常见原因：1. 短时间内（在后台）打开十几乃至数十个网页；2. 网络问题。</p>
             </div>
           `, '💬', { width: '36em', flagSize: '2em' })
-          el.dpcInformation = gm.el.setting.querySelector('#gm-dpcInformation')
-          api.message.advancedInfo(el.dpcInformation, `
-            <div style="line-height:1.6em">
-              <p>部分情况下，在同一个页面中，若一份数据之前已经获取过，则使用页面中缓存的数据。当然，这种情况对数据的实时性没有要求，不建议禁用页面缓存。注意，启用该项不会禁用本地缓存。</p>
-            </div>
-          `, '💬', { width: '36em', flagSize: '2em' })
           el.wlcvpInformation = gm.el.setting.querySelector('#gm-wlcvpInformation')
           api.message.advancedInfo(el.wlcvpInformation, `
-            <div style="text-indent:2em;line-height:1.6em">
-              <p>在本地缓存的有效期内脚本将会使用本地缓存来代替网络请求，除非是在有必要确保数据正确性的场合。设置为 <b>0</b> 可以禁止使用本地缓存。</p>
-              <p>本地缓存无法确保数据的正确性，设置过长时甚至可能导致各种诡异的现象。请根据个人需要将本地缓存有效期设置为一个合理的值。</p>
-              <p>不推荐设置为 0 将其完全禁用，而是设置为一个较小值（如 5）。这样几乎不会影响正确性，同时避免大量无意义的网络请求。</p>
+            <div style="line-height:1.6em">
+              在有效期内使用本地缓存代替网络请求——除非是须确保数据正确性的场合。有效期过大会导致各种诡异现象，取值最好能匹配自身的B站使用习惯。
             </div>
           `, '💬', { width: '36em', flagSize: '2em' })
 
@@ -3475,7 +3481,7 @@
               if (cfgAutoRemove == Enums.autoRemove.absoluteNever) {
                 el.entryFn.autoRemoveControl.setAttribute('disabled', '')
                 el.entryFn.autoRemoveControl.addEventListener('click', function() {
-                  api.message.info('当前彻底自动移除功能，无法执行操作')
+                  api.message.info('当前彻底禁用自动移除功能，无法执行操作')
                 })
               } else {
                 if (autoRemove) {
@@ -4583,10 +4589,12 @@
         ob.observe(playAll, { attributeFilter: ['href'] })
       }
       // 加入「批量添加」
-      const batchButton = r_con.appendChild(document.createElement('div'))
-      batchButton.textContent = '批量添加'
-      batchButton.className = 's-btn'
-      batchButton.addEventListener('click', () => script.openBatchAddManager())
+      if (gm.config.listBatchAddManagerButton) {
+        const batchButton = r_con.appendChild(document.createElement('div'))
+        batchButton.textContent = '批量添加'
+        batchButton.className = 's-btn'
+        batchButton.addEventListener('click', () => script.openBatchAddManager())
+      }
       // 加入「移除记录」
       if (gm.config.removeHistory) {
         const removeHistoryButton = r_con.appendChild(document.createElement('div'))
@@ -4702,10 +4710,10 @@
         if (gm.config.listSortControl) {
           /*
            * 在 control 外套一层，借助这层给 control 染色的原因是：
-           * 如果不这样做，那么点击 control 弹出的下拉框与 control 之间有几个像素的距离，鼠标从 control 移动到下拉框
-           * 的过程中，若鼠标移动速度较慢，会使 control 脱离 hover 状态。
-           * 不管是标准还是浏览器的的锅：凭什么鼠标移动到 option 上 select「不一定」是 hover 状态——哪怕设计成「一定不」
-           * 都是合理的。
+           * 如果不这样做，那么点击 control 弹出的下拉框与 control 之间有几个像素的距离，鼠标从 control 移动到
+           * 下拉框的过程中，若鼠标移动速度较慢，会使 control 脱离 hover 状态。
+           * 不管是标准还是浏览器的的锅：凭什么鼠标移动到 option 上 select「不一定」是 hover 状态——哪怕设计成
+           * 「一定不」都是合理的。
            */
           api.dom.addStyle(`
             .gm-list-sort-control-container {
@@ -4726,7 +4734,7 @@
               color: var(--${gm.id}-text-color);
             }
           `)
-          control.className = 's-btn gm-s-btn'
+          control.className = 's-btn'
 
           control.addEventListener('change', function() {
             if (gm.config.autoSort == Enums.autoSort.auto) {
@@ -4740,37 +4748,49 @@
       }
 
       // 增加自动移除控制器
-      if (gm.config.autoRemove != Enums.autoRemove.absoluteNever) {
-        api.dom.addStyle(`
-          #gm-list-auto-remove-control {
-            background: #fff;
-            color: #00a1d6;
-          }
-          #gm-list-auto-remove-control[enabled] {
-            background: #00a1d6;
-            color: #fff;
-          }
-        `)
-        const autoRemove = gm.config.autoRemove == Enums.autoRemove.always || gm.config.autoRemove == Enums.autoRemove.openFromList
-        const autoRemoveControl = r_con.insertAdjacentElement('afterbegin', document.createElement('div'))
+      {
+        const autoRemoveControl = document.createElement('div')
         autoRemoveControl.id = 'gm-list-auto-remove-control'
         autoRemoveControl.textContent = '自动移除'
-        autoRemoveControl.title = '临时切换在当前页面打开视频后是否将其自动移除出「稍后再看」。若要默认开启/关闭自动移除功能，请在「用户设置」中配置。'
-        autoRemoveControl.className = 's-btn gm-s-btn'
-        autoRemoveControl.autoRemove = autoRemove
-        if (autoRemove) {
-          autoRemoveControl.setAttribute('enabled', '')
+        if (!gm.config.listAutoRemoveControl) {
+          autoRemoveControl.style.display = 'none'
         }
-        autoRemoveControl.addEventListener('click', function() {
-          if (this.autoRemove) {
-            autoRemoveControl.removeAttribute('enabled')
-            api.message.info('已临时关闭自动移除功能')
-          } else {
+        r_con.insertAdjacentElement('afterbegin', autoRemoveControl)
+        if (gm.config.autoRemove != Enums.autoRemove.absoluteNever) {
+          api.dom.addStyle(`
+            #gm-list-auto-remove-control {
+              background: #fff;
+              color: #00a1d6;
+            }
+            #gm-list-auto-remove-control[enabled] {
+              background: #00a1d6;
+              color: #fff;
+            }
+          `)
+          const autoRemove = gm.config.autoRemove == Enums.autoRemove.always || gm.config.autoRemove == Enums.autoRemove.openFromList
+          autoRemoveControl.className = 's-btn'
+          autoRemoveControl.title = '临时切换在当前页面打开视频后是否将其自动移除出「稍后再看」。若要默认开启/关闭自动移除功能，请在「用户设置」中配置。'
+          autoRemoveControl.autoRemove = autoRemove
+          if (autoRemove) {
             autoRemoveControl.setAttribute('enabled', '')
-            api.message.info('已临时开启自动移除功能')
           }
-          this.autoRemove = !this.autoRemove
-        })
+          autoRemoveControl.addEventListener('click', function() {
+            if (this.autoRemove) {
+              autoRemoveControl.removeAttribute('enabled')
+              api.message.info('已临时关闭自动移除功能')
+            } else {
+              autoRemoveControl.setAttribute('enabled', '')
+              api.message.info('已临时开启自动移除功能')
+            }
+            this.autoRemove = !this.autoRemove
+          })
+        } else {
+          autoRemoveControl.className = 'd-btn'
+          autoRemoveControl.style.cursor = 'not-allowed'
+          autoRemoveControl.addEventListener('click', function() {
+            api.message.info('当前彻底禁用自动移除功能，无法执行操作')
+          })
+        }
       }
     }
 
@@ -5348,7 +5368,7 @@
             margin-left: 0.5em;
           }
           #${gm.id} .gm-setting .gm-warning:not(.gm-trailing) {
-            right: -1.1em;
+            right: -1em;
           }
 
           #${gm.id} .gm-hideDisabledSubitems .gm-setting-page:not([setting-type]) [disabled] {
