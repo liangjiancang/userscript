@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.20.8.20210908
+// @version         4.20.9.20210908
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -20,7 +20,7 @@
 // @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=968206
 // @require         https://greasyfork.org/scripts/431998-userscriptapidom/code/UserscriptAPIDom.js?version=968204
 // @require         https://greasyfork.org/scripts/431999-userscriptapilogger/code/UserscriptAPILogger.js?version=968360
-// @require         https://greasyfork.org/scripts/432000-userscriptapimessage/code/UserscriptAPIMessage.js?version=968641
+// @require         https://greasyfork.org/scripts/432000-userscriptapimessage/code/UserscriptAPIMessage.js?version=968668
 // @require         https://greasyfork.org/scripts/432001-userscriptapitool/code/UserscriptAPITool.js?version=968361
 // @require         https://greasyfork.org/scripts/432002-userscriptapiwait/code/UserscriptAPIWait.js?version=968207
 // @require         https://greasyfork.org/scripts/432003-userscriptapiweb/code/UserscriptAPIWeb.js?version=967891
@@ -1903,8 +1903,8 @@
           // 加载投稿
           let stopLoad = false
           el.id1c.addEventListener('click', async function() {
-            let error = false
             if (executing) return
+            let error = false
             try {
               executing = true
               const v1a = parseFloat(el.id1a.value)
@@ -1965,6 +1965,8 @@
                 el.items.insertAdjacentHTML('afterbegin', html)
                 await new Promise(resolve => setTimeout(resolve, 250 * (Math.random() + 0.5))) // 多让点时间给其他线程，顺便给请求留点间隔
               }
+              // 执行到这里只有一个原因：stopLoad 导致任务终止
+              api.message.info('批量添加：任务终止', { ms: 1800 })
             } catch (e) {
               error = true
               api.message.alert('执行失败')
@@ -1972,8 +1974,6 @@
             } finally {
               if (!error && !stopLoad) {
                 api.message.info('批量添加：稿件加载完成', { ms: 1800 })
-              } else if (stopLoad) {
-                api.message.info('批量添加：任务终止', { ms: 1800 })
               }
               executing = false
               stopLoad = false
@@ -1992,7 +1992,7 @@
             stopLoad = true
           })
           el.id1a.addEventListener('keyup', function(e) {
-            if (e.code == 'Enter' || e.code == 'NumpadEnter') {
+            if (e.key == 'Enter') {
               const target = el[executing ? 'id1d' : 'id1c']
               if (!target.disabled) {
                 target.dispatchEvent(new Event('click'))
@@ -2060,7 +2060,7 @@
             if (isNaN(val)) {
               val = this.maxVal ?? 0
             }
-            let move = ({ ArrowUp: 1, ArrowDown: -1 })[e.code]
+            let move = ({ ArrowUp: 1, ArrowDown: -1 })[e.key]
             if (move) {
               if (e.altKey) {
                 move *= 0.1
@@ -2146,7 +2146,7 @@
               let available = 100 - (await gm.data.watchlaterListData()).length
               const checks = el.items.querySelectorAll('label:not([class*=gm-filtered-]) input')
               for (const check of checks) {
-                if (stopAdd) return // -> finally
+                if (stopAdd) return api.message.info('批量添加：任务终止', { ms: 1800 }) // -> finally
                 if (available <= 0) break
                 if (!check.checked) continue
                 const item = check.parentElement
@@ -2164,9 +2164,6 @@
               api.message.alert('执行失败：可能是因为该稿件不可用或稍后再看不支持该稿件类型（如互动视频），请尝试取消勾选当前列表中第一个选定的稿件后重新执行')
               api.logger.error(e)
             } finally {
-              if (stopAdd) {
-                api.message.info('批量添加：任务终止', { ms: 1800 })
-              }
               executing = false
               stopAdd = false
               this.disabled = false
@@ -2183,7 +2180,7 @@
             stopAdd = true
           })
           el.id4a.addEventListener('keyup', function(e) {
-            if (e.code == 'Enter' || e.code == 'NumpadEnter') {
+            if (e.key == 'Enter') {
               const target = el[executing ? 'id4c' : 'id4b']
               if (!target.disabled) {
                 target.dispatchEvent(new Event('click'))
@@ -2291,7 +2288,7 @@
             }
           })
           el.searchTimes.addEventListener('keyup', function(e) {
-            if (e.code == 'Enter' || e.code == 'NumpadEnter') {
+            if (e.key == 'Enter') {
               this.dispatchEvent(new Event('blur'))
             }
           })
