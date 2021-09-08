@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站封面获取
-// @version         5.4.3.20210907
+// @version         5.4.4.20210908
 // @namespace       laster2800
 // @author          Laster2800
 // @description     获取B站各播放页及直播间封面，支持手动及实时预览等多种模式，支持点击下载、封面预览、快速复制，可高度自定义
@@ -1131,7 +1131,9 @@
     }
   }
 
-  window.addEventListener('load', async function() {
+  document.readyState != 'complete' ? window.addEventListener('load', main) : main()
+
+  async function main() {
     if (GM_info.scriptHandler != 'Tampermonkey') {
       api.dom.initUrlchangeEvent()
     }
@@ -1149,5 +1151,5 @@
     } else if (api.web.urlMatch(gm.regex.page_live)) {
       webpage.initLive()
     }
-  })
+  }
 })()

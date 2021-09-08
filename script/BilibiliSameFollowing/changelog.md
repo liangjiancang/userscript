@@ -6,6 +6,7 @@
 
 1. API：更新至 V2.0，实现 API 模块化。详见 [UserscriptAPI 更新日志](https://gitee.com/liangjiancang/userscript/blob/master/lib/UserscriptAPI/changelog.md)。
 2. API-message：更新至 V1.1，引入对话框组件。
+3. 脚本：修复在 Firefox 上有概率无法正常执行的问题。
 
 ## V1.5
 

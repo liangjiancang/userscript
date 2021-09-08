@@ -11,6 +11,7 @@
 1. API：更新至 V2.0，实现 API 模块化。详见 [UserscriptAPI 更新日志](https://gitee.com/liangjiancang/userscript/blob/master/lib/UserscriptAPI/changelog.md)。
 2. API-message：更新至 V1.1，引入对话框组件。
 3. 工作模式：改用对话框组件实现工作模式配置，实现对 Firefox 的兼容。
+4. 脚本：修复在 Firefox 上有概率无法正常执行的问题。
 
 ## V5.3
 
@@ -74,8 +75,8 @@
 > 如果没记错的话，我当时应该是装过 [b站封面替换右侧广告 bilibili 哔哩哔哩](https://greasyfork.org/zh-CN/scripts/390792) 的。
 >
 > 现在我知道了，那个脚本不行是因为作为广告被广告拦截器干掉了……如果没有这个意外，那就没我什么事了。
->
-> 而且怎么都 V5.0 了，搞得好像大版本更新不值钱一样，都怪当初乱升大版本，悔不当初啊。
+
+> 而且怎么都 `v5` 了，搞得好像大版本更新不值钱一样，都怪当初乱升大版本，悔不当初啊。
 
 ## V4.12
 

@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站防剧透进度条
-// @version         2.2.5.20210908
+// @version         2.2.6.20210908
 // @namespace       laster2800
 // @author          Laster2800
 // @description     看比赛、看番总是被进度条剧透？装上这个脚本再也不用担心这些问题了
@@ -2174,7 +2174,9 @@
     }
   }
 
-  window.addEventListener('load', function() {
+  document.readyState != 'complete' ? window.addEventListener('load', main) : main()
+
+  function main() {
     if (GM_info.scriptHandler != 'Tampermonkey') {
       api.dom.initUrlchangeEvent()
     }
@@ -2188,5 +2190,5 @@
     webpage.initNoSpoil().then(() => {
       webpage.initSwitch()
     })
-  })
+  }
 })()

@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.20.5.20210908
+// @version         4.20.6.20210908
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -5999,9 +5999,9 @@
     webpage.method.cleanSearchParams()
     webpage.addStyle()
     if (gm.config.mainRunAt == Enums.mainRunAt.DOMContentLoaded) {
-      document.addEventListener('DOMContentLoaded', main)
+      document.readyState == 'loading' ? document.addEventListener('DOMContentLoaded', main) : main()
     } else {
-      window.addEventListener('load', main)
+      document.readyState != 'complete' ? window.addEventListener('load', main) : main()
     }
 
     function main() {
