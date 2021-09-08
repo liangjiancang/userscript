@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站封面获取
-// @version         5.4.4.20210908
+// @version         5.4.5.20210908
 // @namespace       laster2800
 // @author          Laster2800
 // @description     获取B站各播放页及直播间封面，支持手动及实时预览等多种模式，支持点击下载、封面预览、快速复制，可高度自定义
@@ -19,7 +19,7 @@
 // @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=968206
 // @require         https://greasyfork.org/scripts/431998-userscriptapidom/code/UserscriptAPIDom.js?version=968204
 // @require         https://greasyfork.org/scripts/431999-userscriptapilogger/code/UserscriptAPILogger.js?version=968360
-// @require         https://greasyfork.org/scripts/432000-userscriptapimessage/code/UserscriptAPIMessage.js?version=968345
+// @require         https://greasyfork.org/scripts/432000-userscriptapimessage/code/UserscriptAPIMessage.js?version=968641
 // @require         https://greasyfork.org/scripts/432001-userscriptapitool/code/UserscriptAPITool.js?version=968361
 // @require         https://greasyfork.org/scripts/432002-userscriptapiwait/code/UserscriptAPIWait.js?version=968207
 // @require         https://greasyfork.org/scripts/432003-userscriptapiweb/code/UserscriptAPIWeb.js?version=967891
@@ -730,7 +730,7 @@
         cover.img.addEventListener('load', function() {
           cover.error.style.display = ''
         })
-        cover.img.addEventListener('error', function(e) {
+        cover.img.addEventListener('error', function(/** @type {Event} */ e) {
           if (this.lossless && this.src != this.lossless) {
             if (gm.config.mode == gm.const.customMode) {
               api.message.info(`缩略图获取失败，使用原图进行替换！请检查「${gm.runtime.realtimeQuality}」是否为有效的图片质量参数。可能是正常现象，因为年代久远的视频封面有可能不支持缩略图。`, { ms: 4000 })
@@ -753,7 +753,7 @@
           this.disableContextMenu(cover)
         } else if (gm.runtime.realtimeQuality != 'best') {
           // 将缩略图替换为原图，以便右键菜单获取到正确的图像
-          cover.img.addEventListener('mousedown', function(e) {
+          cover.img.addEventListener('mousedown', function(/** @type {MouseEvent} */ e) {
             if (e.button == 2 && this.lossless && this.src != this.lossless) {
               this.src = this.lossless
               this.lossless = null
