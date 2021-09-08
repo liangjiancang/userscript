@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站防剧透进度条
-// @version         2.2.4.20210907
+// @version         2.2.5.20210908
 // @namespace       laster2800
 // @author          Laster2800
 // @description     看比赛、看番总是被进度条剧透？装上这个脚本再也不用担心这些问题了
@@ -238,19 +238,25 @@
        * @returns {*} 通过校验时是配置值，不能通过校验时是默认值
        */
       gmValidate(gmKey, defaultValue, writeback = true) {
-        const value = GM_getValue(gmKey)
+        let invalid = false
+        let value = GM_getValue(gmKey)
         if (Enums && gmKey in Enums) {
-          if (Object.values(Enums[gmKey]).indexOf(value) >= 0) {
-            return value
+          if (Object.values(Enums[gmKey]).indexOf(value) < 0) {
+            invalid = true
           }
-        } else if (typeof value == typeof defaultValue) { // typeof null == 'object'，对象默认值赋 null 无需额外处理
-          return value
+        } else if (typeof value == typeof defaultValue) { // 对象默认赋 null 无需额外处理
+          const type = gm.configMap[gmKey].type
+          if (type == 'int' || type == 'float') {
+            invalid = gm.configMap[gmKey].min > value || gm.configMap[gmKey].max < value
+          }
         }
-
-        if (writeback) {
-          GM_setValue(gmKey, defaultValue)
+        if (invalid) {
+          value = defaultValue
+          if (writeback) {
+            GM_setValue(gmKey, value)
+          }
         }
-        return defaultValue
+        return value
       },
     }
 
