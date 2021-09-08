@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.20.7.20210908
+// @version         4.20.8.20210908
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -20,7 +20,7 @@
 // @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=968206
 // @require         https://greasyfork.org/scripts/431998-userscriptapidom/code/UserscriptAPIDom.js?version=968204
 // @require         https://greasyfork.org/scripts/431999-userscriptapilogger/code/UserscriptAPILogger.js?version=968360
-// @require         https://greasyfork.org/scripts/432000-userscriptapimessage/code/UserscriptAPIMessage.js?version=968345
+// @require         https://greasyfork.org/scripts/432000-userscriptapimessage/code/UserscriptAPIMessage.js?version=968641
 // @require         https://greasyfork.org/scripts/432001-userscriptapitool/code/UserscriptAPITool.js?version=968361
 // @require         https://greasyfork.org/scripts/432002-userscriptapiwait/code/UserscriptAPIWait.js?version=968207
 // @require         https://greasyfork.org/scripts/432003-userscriptapiweb/code/UserscriptAPIWeb.js?version=967891
@@ -410,7 +410,7 @@
       listBatchAddManagerButton: { default: true, attr: 'checked', configVersion: 20210908 },
       listSearch: { default: true, attr: 'checked', configVersion: 20210810.1 },
       listSortControl: { default: true, attr: 'checked', configVersion: 20210810 },
-      listAutoRemoveControl:  { default: true, attr: 'checked', configVersion: 20210908 },
+      listAutoRemoveControl: { default: true, attr: 'checked', configVersion: 20210908 },
       openListVideo: { default: Enums.openListVideo.openInCurrent, attr: 'value', configVersion: 20200717 },
       removeButton_removeAll: { default: false, attr: 'checked', configVersion: 20200722 },
       removeButton_removeWatched: { default: false, attr: 'checked', configVersion: 20200722 },
@@ -462,6 +462,7 @@
       textFadeTime: 100,
       updateHighlightColor: '#4cff9c',
       inputThrottleWait: 250,
+      batchAddRequestInterval: 300,
     },
     menu: {
       setting: { state: 0, wait: 0, el: null },
@@ -829,6 +830,7 @@
       if (gm.el.setting) {
         _self.openMenuItem('setting')
       } else {
+        /** @type {{[n: string]: HTMLElement}} */
         const el = {}
         setTimeout(() => {
           initSetting()
@@ -1777,6 +1779,7 @@
       if (gm.el.batchAddManager) {
         script.openMenuItem('batchAddManager')
       } else {
+        /** @type {{[n: string]: HTMLElement}} */
         const el = {}
         let history = null
         if (gm.config.removeHistory) {
@@ -1818,7 +1821,7 @@
                   <option value="60">分钟</option>
                 </select> 以内；可使用上下方向键（配合 Alt/Shift/Ctrl）调整数值大小<button id="gm-batch-2c" disabled>执行</button></div>
                 <div>第三步：筛选 <input id="gm-batch-3a" type="text" style="width:10em">，过滤 <input id="gm-batch-3b" type="text" style="width:10em">；支持通配符 ( ? * )，使用 | 分隔关键词<button id="gm-batch-3c" disabled>执行</button></div>
-                <div>第四步：将选定稿件添加到稍后再看（平均请求间隔：<input id="gm-batch-4a" type="text" value="300">ms）<button id="gm-batch-4b" disabled>执行</button><button id="gm-batch-4c" disabled>终止</button></div>
+                <div>第四步：将选定稿件添加到稍后再看（平均请求间隔：<input id="gm-batch-4a" type="text" value="${gm.const.batchAddRequestInterval}">ms）<button id="gm-batch-4b" disabled>执行</button><button id="gm-batch-4c" disabled>终止</button></div>
               </div>
               <div class="gm-items"></div>
               <div class="gm-bottom">
@@ -1895,11 +1898,15 @@
             api.message.info('重置成功，重新加载页面后参数将加载默认值')
           })
 
+          let executing = false
+
           // 加载投稿
           let stopLoad = false
           el.id1c.addEventListener('click', async function() {
             let error = false
+            if (executing) return
             try {
+              executing = true
               const v1a = parseFloat(el.id1a.value)
               if (isNaN(v1a)) throw 'v1a is NaN'
               el.id1a.value = v1a
@@ -1909,6 +1916,7 @@
               el.id2c.disabled = true
               el.id3c.disabled = true
               el.id4b.disabled = true
+              el.id2a.maxVal = v1a
               el.items.textContent = ''
               const uid = webpage.method.getDedeUserID()
               let dynamicOffset = await (async () => {
@@ -1964,7 +1972,10 @@
             } finally {
               if (!error && !stopLoad) {
                 api.message.info('批量添加：稿件加载完成', { ms: 1800 })
+              } else if (stopLoad) {
+                api.message.info('批量添加：任务终止', { ms: 1800 })
               }
+              executing = false
               stopLoad = false
               this.disabled = false
               this.textContent = '重新执行'
@@ -1972,22 +1983,39 @@
               el.id2c.disabled = false
               el.id3c.disabled = false
               el.id4b.disabled = false
+              if (!el.id2a.value) {
+                el.id2a.value = el.id2a.maxVal ?? 0
+              }
             }
           })
           el.id1d.addEventListener('click', function() {
             stopLoad = true
           })
+          el.id1a.addEventListener('keyup', function(e) {
+            if (e.code == 'Enter' || e.code == 'NumpadEnter') {
+              const target = el[executing ? 'id1d' : 'id1c']
+              if (!target.disabled) {
+                target.dispatchEvent(new Event('click'))
+              }
+            }
+          })
 
           // 时间过滤
           const filterTime = function() {
+            if (executing) return
             try {
+              executing = true
               el.id2c.disabled = true
-              const v2a = parseFloat(el.id2a.value)
+              let v2a = parseFloat(el.id2a.value)
               if (isNaN(v2a)) {
                 for (let i = 0; i < el.items.childElementCount; i++) {
                   api.dom.removeClass(el.items.children[i], 'gm-filtered-time')
                 }
               } else {
+                if (el.id2a.maxVal < v2a) {
+                  v2a = el.id2a.maxVal
+                  el.id2a.value = v2a
+                }
                 const newEnd = new Date().getTime() - v2a * el.id2b.value * 1000
                 for (let i = 0; i < el.items.childElementCount; i++) {
                   const item = el.items.children[i]
@@ -2002,6 +2030,8 @@
             } catch (e) {
               api.message.alert('执行失败')
               api.logger.error(e)
+            } finally {
+              executing = false
             }
           }
           const throttledFilterTime = api.tool.throttle(filterTime, gm.const.inputThrottleWait)
@@ -2025,12 +2055,12 @@
               this.value = this.value.slice(0, -1)
             }
           })
-          el.id2a.addEventListener('keyup', function(e) { // 上下键调整范围
+          el.id2a.addEventListener('keydown', api.tool.throttle(function(/** @type {KeyboardEvent} */ e) {
             let val = parseFloat(this.value)
             if (isNaN(val)) {
-              val = 0
+              val = this.maxVal ?? 0
             }
-            let move = ({ '38': 1, '40': -1 })[e.keyCode]
+            let move = ({ ArrowUp: 1, ArrowDown: -1 })[e.code]
             if (move) {
               if (e.altKey) {
                 move *= 0.1
@@ -2042,14 +2072,17 @@
               val += move
               if (val < 0) {
                 val = 0
+              } else if (this.maxVal < val) {
+                val = this.maxVal
               }
               this.value = val.toFixed(1)
               throttledFilterTime()
             }
-          })
+          }, 100))
 
           // 正则过滤
           const filterRegex = function() {
+            if (executing) return
             const getRegex = str => {
               let result = null
               str = str.trim()
@@ -2063,6 +2096,7 @@
               return result
             }
             try {
+              executing = true
               el.id3c.disabled = true
               el.id3a.value = el.id3a.value.trim()
               el.id3b.value = el.id3b.value.trim()
@@ -2080,6 +2114,8 @@
             } catch (e) {
               api.message.alert('执行失败')
               api.logger.error(e)
+            } finally {
+              executing = false
             }
           }
           const throttledFilterRegex = api.tool.throttle(filterRegex, gm.const.inputThrottleWait)
@@ -2090,10 +2126,15 @@
           // 添加到稍后再看
           let stopAdd = false
           el.id4b.addEventListener('click', async function() {
+            if (executing) return
             try {
+              executing = true
               let v4a = parseFloat(el.id4a.value)
-              if (isNaN(v4a)) throw 'v4a is NaN'
-              v4a = Math.max(v4a, 200)
+              if (isNaN(v4a)) {
+                v4a = gm.const.batchAddRequestInterval
+              } else {
+                v4a = Math.max(v4a, 200)
+              }
               el.id4a.value = v4a
               this.disabled = true
               this.textContent = '执行中'
@@ -2123,6 +2164,10 @@
               api.message.alert('执行失败：可能是因为该稿件不可用或稍后再看不支持该稿件类型（如互动视频），请尝试取消勾选当前列表中第一个选定的稿件后重新执行')
               api.logger.error(e)
             } finally {
+              if (stopAdd) {
+                api.message.info('批量添加：任务终止', { ms: 1800 })
+              }
+              executing = false
               stopAdd = false
               this.disabled = false
               this.textContent = '重新执行'
@@ -2136,6 +2181,14 @@
           })
           el.id4c.addEventListener('click', function() {
             stopAdd = true
+          })
+          el.id4a.addEventListener('keyup', function(e) {
+            if (e.code == 'Enter' || e.code == 'NumpadEnter') {
+              const target = el[executing ? 'id4c' : 'id4b']
+              if (!target.disabled) {
+                target.dispatchEvent(new Event('click'))
+              }
+            }
           })
         }
       }
@@ -2152,6 +2205,7 @@
       }
       GM_deleteValue('removeHistorySaveTime') // 保险起见，清理一下
 
+      /** @type {{[n: string]: HTMLElement}} */
       const el = {}
       if (gm.el.history) {
         el.searchTimes = gm.el.history.querySelector('#gm-search-times')
@@ -2237,7 +2291,7 @@
             }
           })
           el.searchTimes.addEventListener('keyup', function(e) {
-            if (e.keyCode == 13) {
+            if (e.code == 'Enter' || e.code == 'NumpadEnter') {
               this.dispatchEvent(new Event('blur'))
             }
           })
@@ -3253,6 +3307,7 @@
         if (gm.el.entryPopup) {
           script.openMenuItem('entryPopup')
         } else {
+          /** @type {{[n: string]: HTMLElement}} */
           const el = {}
           setTimeout(() => {
             initPopup()
@@ -3457,7 +3512,7 @@
                   control.selecting = false
                   api.dom.fade(false, options)
                 })
-                options.addEventListener('click', function(e) {
+                options.addEventListener('click', function(/** @type {MouseEvent} */ e) {
                   control.selecting = false
                   api.dom.fade(false, this)
                   const val = e.target.getAttribute('value')
