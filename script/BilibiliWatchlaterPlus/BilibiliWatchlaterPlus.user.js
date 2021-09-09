@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.20.9.20210908
+// @version         4.20.10.20210909
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -20,7 +20,7 @@
 // @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=968206
 // @require         https://greasyfork.org/scripts/431998-userscriptapidom/code/UserscriptAPIDom.js?version=968204
 // @require         https://greasyfork.org/scripts/431999-userscriptapilogger/code/UserscriptAPILogger.js?version=968360
-// @require         https://greasyfork.org/scripts/432000-userscriptapimessage/code/UserscriptAPIMessage.js?version=968668
+// @require         https://greasyfork.org/scripts/432000-userscriptapimessage/code/UserscriptAPIMessage.js?version=968842
 // @require         https://greasyfork.org/scripts/432001-userscriptapitool/code/UserscriptAPITool.js?version=968361
 // @require         https://greasyfork.org/scripts/432002-userscriptapiwait/code/UserscriptAPIWait.js?version=968207
 // @require         https://greasyfork.org/scripts/432003-userscriptapiweb/code/UserscriptAPIWeb.js?version=967891
@@ -1349,50 +1349,50 @@
 
           // 提示信息
           el.rhfcInformation = gm.el.setting.querySelector('#gm-rhfcInformation')
-          api.message.advancedInfo(el.rhfcInformation, `
+          api.message.hoverInfo(el.rhfcInformation, `
             <div style="text-indent:2em;line-height:1.6em">
               <p>模糊比对模式：设当前时间点获取到的稍后再看列表数据为 A，上一次获取到的数据为 B。若 A 与 B 的前 <b>N</b> 项均一致就认为这段时间没有往稍后再看中添加新视频，直接跳过后续处理。</p>
               <p>其中，<b>N</b> 即为模糊比对深度。注意，<b>深度设置过大反而会降低比对效率</b>，建议先设置较小的值，若后续观察到有记录被误丢弃，再增加该项的值。最佳参数与个人使用习惯相关，请根据自身情况微调。你也可以选择设置 <b>0</b> 以关闭模糊比对模式（不推荐）。</p>
             </div>
-          `, '💬', { width: '36em', flagSize: '2em', disabled: () => el.rhfcInformation.parentElement.hasAttribute('disabled') })
+          `, null, { width: '36em', flagSize: '2em', disabled: () => el.rhfcInformation.parentElement.hasAttribute('disabled') })
           el.rhsInformation = gm.el.setting.querySelector('#gm-rhsInformation')
-          api.message.advancedInfo(el.rhsInformation, `
+          api.message.hoverInfo(el.rhsInformation, `
             <div style="text-indent:2em;line-height:1.6em">
               <p>在脚本限制的取值范围内，稍后再看历史数据的保存与读取对页面加载的影响几乎可以忽略不计（小于 1ms，不含脚本管理器对数据进行预加载的时间）。</p>
               <p>但是打开移除记录时，根据大量数据生成历史的过程较为耗时。不过，只要将「默认历史回溯深度」设置在 100 以下就不会有明显的生成延迟。</p>
             </div>
-          `, '💬', { width: '36em', flagSize: '2em', disabled: () => el.rhsInformation.parentElement.hasAttribute('disabled') })
+          `, null, { width: '36em', flagSize: '2em', disabled: () => el.rhsInformation.parentElement.hasAttribute('disabled') })
           el.rhtInformation = gm.el.setting.querySelector('#gm-rhtInformation')
-          api.message.advancedInfo(el.rhtInformation, `
+          api.message.hoverInfo(el.rhtInformation, `
             <div style="line-height:1.6em">
               在历史数据记录中添加时间戳，用于改善移除记录中的数据排序，使得排序以「视频『最后一次』被观察到处于稍后再看的时间点」为基准，而非以「视频『第一次』被观察到处于稍后再看的时间点」为基准；同时也利于数据展示与查看。注意，此功能在数据存读及处理上都有额外开销。
             </div>
-          `, '💬', { width: '36em', flagSize: '2em', disabled: () => el.rhtInformation.parentElement.hasAttribute('disabled') })
+          `, null, { width: '36em', flagSize: '2em', disabled: () => el.rhtInformation.parentElement.hasAttribute('disabled') })
           el.fwsInformation = gm.el.setting.querySelector('#gm-fwsInformation')
-          api.message.advancedInfo(el.fwsInformation, `
+          api.message.hoverInfo(el.fwsInformation, `
             <div style="text-indent:2em;line-height:1.6em">
               <p>在动态页、视频播放页以及其他页面，视频卡片的右下角方存在一个将视频加入或移除出稍后再看的快捷按钮。然而，在刷新页面后，B站不会为之加载稍后再看的状态——即使视频已经在稍后再看中，也不会显示出来。启用该功能后，会自动填充这些缺失的状态信息。</p>
               <p>第三项「所有页面」，会用一套固定的逻辑对脚本能匹配到的所有非特殊页面尝试进行信息填充。脚本本身没有匹配所有B站页面，如果有需要，请在脚本管理器（如 Tampermonkey）中为脚本设置额外的页面匹配规则。由于B站各页面的设计不是很规范，某些页面中视频卡片的设计可能跟其他地方不一致，所以不保证必定能填充成功。</p>
             </div>
-          `, '💬', { width: '36em', flagSize: '2em' })
+          `, null, { width: '36em', flagSize: '2em' })
           el.mraInformation = gm.el.setting.querySelector('#gm-mraInformation')
-          api.message.advancedInfo(el.mraInformation, `
+          api.message.hoverInfo(el.mraInformation, `
             <div style="line-height:1.6em">
               <p style="margin-bottom:0.5em"><b>DOMContentLoaded</b>：与页面内容同步加载，避免脚本在页面加载度较高时才对页面作修改。上述情况会给人页面加载时间过长的错觉，并且伴随页面变化突兀的不适感。</p>
               <p><b>load</b>：在页面初步加载完成时运行。从理论上来说这个时间点更为合适，且能保证脚本在网页加载速度极慢时仍可正常工作。但要注意的是，以上所说「网页加载速度极慢」的情况并不常见，以下为常见原因：1. 短时间内（在后台）打开十几乃至数十个网页；2. 网络问题。</p>
             </div>
-          `, '💬', { width: '36em', flagSize: '2em' })
+          `, null, { width: '36em', flagSize: '2em' })
           el.wlcvpInformation = gm.el.setting.querySelector('#gm-wlcvpInformation')
-          api.message.advancedInfo(el.wlcvpInformation, `
+          api.message.hoverInfo(el.wlcvpInformation, `
             <div style="line-height:1.6em">
               在有效期内使用本地缓存代替网络请求——除非是须确保数据正确性的场合。有效期过大会导致各种诡异现象，取值最好能匹配自身的B站使用习惯。
             </div>
-          `, '💬', { width: '36em', flagSize: '2em' })
+          `, null, { width: '36em', flagSize: '2em' })
 
           el.hcWarning = gm.el.setting.querySelector('#gm-hcWarning')
-          api.message.advancedInfo(el.hcWarning, '无须兼容第三方顶栏时务必选择「无」，否则脚本无法正常工作！', '⚠')
+          api.message.hoverInfo(el.hcWarning, '无须兼容第三方顶栏时务必选择「无」，否则脚本无法正常工作！', '⚠')
           el.rhWarning = gm.el.setting.querySelector('#gm-rhWarning')
-          api.message.advancedInfo(el.rhWarning, '关闭移除记录，或将稍后再看历史数据保存次数设置为比原来小的值，都会造成对内部过期历史数据的清理！', '⚠')
+          api.message.hoverInfo(el.rhWarning, '关闭移除记录，或将稍后再看历史数据保存次数设置为比原来小的值，都会造成对内部过期历史数据的清理！', '⚠')
 
           el.headerButtonOpL.innerHTML = el.headerButtonOpR.innerHTML = el.headerButtonOpM.innerHTML = `
             <option value="${Enums.headerButtonOp.openListInCurrent}">在当前页面打开列表页面</option>

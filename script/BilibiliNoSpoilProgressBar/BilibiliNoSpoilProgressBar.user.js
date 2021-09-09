@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站防剧透进度条
-// @version         2.2.9.20210908
+// @version         2.2.10.20210909
 // @namespace       laster2800
 // @author          Laster2800
 // @description     看比赛、看番总是被进度条剧透？装上这个脚本再也不用担心这些问题了
@@ -16,7 +16,7 @@
 // @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=968206
 // @require         https://greasyfork.org/scripts/431998-userscriptapidom/code/UserscriptAPIDom.js?version=968204
 // @require         https://greasyfork.org/scripts/431999-userscriptapilogger/code/UserscriptAPILogger.js?version=968360
-// @require         https://greasyfork.org/scripts/432000-userscriptapimessage/code/UserscriptAPIMessage.js?version=968668
+// @require         https://greasyfork.org/scripts/432000-userscriptapimessage/code/UserscriptAPIMessage.js?version=968842
 // @require         https://greasyfork.org/scripts/432001-userscriptapitool/code/UserscriptAPITool.js?version=968361
 // @require         https://greasyfork.org/scripts/432002-userscriptapiwait/code/UserscriptAPIWait.js?version=968207
 // @require         https://greasyfork.org/scripts/432003-userscriptapiweb/code/UserscriptAPIWeb.js?version=967891
@@ -664,7 +664,7 @@
 
           // 提示信息
           el.offsetTransformFactorInformation = gm.el.setting.querySelector('#gm-offsetTransformFactorInformation')
-          api.message.advancedInfo(el.offsetTransformFactorInformation, `
+          api.message.hoverInfo(el.offsetTransformFactorInformation, `
             <style>
               .${gm.id}-infobox ul > li {
                 list-style: disc;
@@ -679,37 +679,37 @@
                 <li>因子取值为 <b>1</b> 时，偏移量的概率会在整个区间平滑分布。</li>
               </ul>
             </div>
-          `, '💬', { width: '36em', flagSize: '2em' })
+          `, null, { width: '36em', flagSize: '2em' })
           el.offsetLeftInformation = gm.el.setting.querySelector('#gm-offsetLeftInformation')
-          api.message.advancedInfo(el.offsetLeftInformation, `
+          api.message.hoverInfo(el.offsetLeftInformation, `
             <div style="line-height:1.6em">
               极限情况下进度条向左偏移的距离（百分比），该选项用于解决进度条后向剧透问题。设置为 <b>0</b> 可以禁止进度条左偏。更多信息请阅读说明文档。
             </div>
-          `, '💬', { width: '36em', flagSize: '2em' })
+          `, null, { width: '36em', flagSize: '2em' })
           el.offsetRightInformation = gm.el.setting.querySelector('#gm-offsetRightInformation')
-          api.message.advancedInfo(el.offsetRightInformation, `
+          api.message.hoverInfo(el.offsetRightInformation, `
             <div style="line-height:1.6em">
               极限情况下进度条向右偏移的距离（百分比），该选项用于解决进度条前向剧透问题。设置为 <b>0</b> 可以禁止进度条右偏。更多信息请阅读说明文档。
             </div>
-          `, '💬', { width: '36em', flagSize: '2em' })
+          `, null, { width: '36em', flagSize: '2em' })
           el.reservedLeftInformation = gm.el.setting.querySelector('#gm-reservedLeftInformation')
-          api.message.advancedInfo(el.reservedLeftInformation, `
+          api.message.hoverInfo(el.reservedLeftInformation, `
             <div style="line-height:1.6em">
               进度条左侧预留区间大小（百分比）。若进度条向左偏移后导致滑块进入区间，则调整偏移量使得滑块位于区间最右侧（特别地，若播放进度比偏移量小则不偏移）。该选项是为了保证在任何情况下都能通过点击滑块左侧区域向前调整进度。更多信息请阅读说明文档。
             </div>
-          `, '💬', { width: '36em', flagSize: '2em' })
+          `, null, { width: '36em', flagSize: '2em' })
           el.reservedRightInformation = gm.el.setting.querySelector('#gm-reservedRightInformation')
-          api.message.advancedInfo(el.reservedRightInformation, `
+          api.message.hoverInfo(el.reservedRightInformation, `
             <div style="line-height:1.6em">
               进度条右侧预留区间大小（百分比）。若进度条向右偏移后导致滑块进入区间，则调整偏移量使得滑块位于区间最左侧。该选项是为了保证在任何情况下都能通过点击滑块右侧区域向后调整进度。更多信息请阅读说明文档。
             </div>
-          `, '💬', { width: '36em', flagSize: '2em' })
+          `, null, { width: '36em', flagSize: '2em' })
           el.postponeOffsetInformation = gm.el.setting.querySelector('#gm-postponeOffsetInformation')
-          api.message.advancedInfo(el.postponeOffsetInformation, `
+          api.message.hoverInfo(el.postponeOffsetInformation, `
             <div style="line-height:1.6em">
               在启用功能或改变播放进度后，不要立即对进度条进行偏移，而是在下次进度条显示出来时偏移。这样可以避免用户观察到处理过程，从而防止用户推测出偏移方向与偏移量。更多信息请阅读说明文档。
             </div>
-          `, '💬', { width: '36em', flagSize: '2em' })
+          `, null, { width: '36em', flagSize: '2em' })
         }
 
         /**
