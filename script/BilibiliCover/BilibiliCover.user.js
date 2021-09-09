@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站封面获取
-// @version         5.4.7.20210909
+// @version         5.4.8.20210909
 // @namespace       laster2800
 // @author          Laster2800
 // @description     获取B站各播放页及直播间封面，支持手动及实时预览等多种模式，支持点击下载、封面预览、快速复制，可高度自定义
@@ -19,7 +19,7 @@
 // @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=968206
 // @require         https://greasyfork.org/scripts/431998-userscriptapidom/code/UserscriptAPIDom.js?version=968204
 // @require         https://greasyfork.org/scripts/431999-userscriptapilogger/code/UserscriptAPILogger.js?version=968360
-// @require         https://greasyfork.org/scripts/432000-userscriptapimessage/code/UserscriptAPIMessage.js?version=968881
+// @require         https://greasyfork.org/scripts/432000-userscriptapimessage/code/UserscriptAPIMessage.js?version=968897
 // @require         https://greasyfork.org/scripts/432001-userscriptapitool/code/UserscriptAPITool.js?version=968361
 // @require         https://greasyfork.org/scripts/432002-userscriptapiwait/code/UserscriptAPIWait.js?version=968207
 // @require         https://greasyfork.org/scripts/432003-userscriptapiweb/code/UserscriptAPIWeb.js?version=967891
@@ -100,11 +100,11 @@
     },
     const: {
       hintText: `
-        <div style="display:grid;grid-template-columns:auto auto;grid-column-gap:1.5em;font-size:0.8em">
-          <div>左键：下载/在新标签页打开</div>
-          <div>右键：复制链接/内容</div>
+        <div style="display:grid;grid-template-columns:auto auto;column-gap:1.5em;font-size:0.8em">
+          <div>左键：下载 / 在新标签页打开</div>
+          <div>右键：复制链接 / 内容</div>
           <div>中键：在新标签页打开</div>
-          <div>Ctrl+右键：复制内容/链接</div>
+          <div>Ctrl+右键：复制内容 / 链接</div>
         </div>
       `,
       errorMsg: '获取失败，请尝试在页面加载完成后获取',
