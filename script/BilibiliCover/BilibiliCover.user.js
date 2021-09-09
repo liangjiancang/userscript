@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站封面获取
-// @version         5.4.8.20210909
+// @version         5.4.9.20210909
 // @namespace       laster2800
 // @author          Laster2800
 // @description     获取B站各播放页及直播间封面，支持手动及实时预览等多种模式，支持点击下载、封面预览、快速复制，可高度自定义
@@ -593,6 +593,7 @@
           if (target.img) {
             target.img.removeAttribute('src')
             target.img.lossless = null
+            target.error.style.display = 'block'
           }
           if (preview) {
             preview.removeAttribute('src')
@@ -673,9 +674,13 @@
         const cover = ref.insertAdjacentElement(gm.runtime.realtimePosition, document.createElement('a'))
         cover.id = `${gm.id}-realtime-cover`
         cover.img = cover.appendChild(document.createElement('img'))
+        // 首次加载待完成再显示，避免观察到加载过程；后续加载浏览器会做优化，无需再手动处理
+        // 不要写进样式表，避免被不清楚原理的用户用样式覆盖掉
+        cover.img.style.display = 'none'
         cover.error = cover.appendChild(document.createElement('div'))
         cover.error.textContent = '封面获取失败'
         cover.img.addEventListener('load', function() {
+          cover.img.style.display = ''
           cover.error.style.display = ''
         })
         cover.img.addEventListener('error', function(/** @type {Event} */ e) {
