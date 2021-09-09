@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站防剧透进度条
-// @version         2.2.10.20210909
+// @version         2.2.11.20210909
 // @namespace       laster2800
 // @author          Laster2800
 // @description     看比赛、看番总是被进度条剧透？装上这个脚本再也不用担心这些问题了
@@ -679,7 +679,7 @@
                 <li>因子取值为 <b>1</b> 时，偏移量的概率会在整个区间平滑分布。</li>
               </ul>
             </div>
-          `, null, { width: '36em', flagSize: '2em' })
+          `, null, { width: '36em', flagSize: '2em', position: { top: '80%' } })
           el.offsetLeftInformation = gm.el.setting.querySelector('#gm-offsetLeftInformation')
           api.message.hoverInfo(el.offsetLeftInformation, `
             <div style="line-height:1.6em">
