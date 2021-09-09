@@ -10,8 +10,11 @@
 
 1. API：更新至 V2.0，实现 API 模块化。详见 [UserscriptAPI 更新日志](https://gitee.com/liangjiancang/userscript/blob/master/lib/UserscriptAPI/changelog.md)。
 2. API-message：更新至 V1.1，引入对话框组件。
-3. 工作模式：改用对话框组件实现工作模式配置，实现对 Firefox 的兼容。
-4. 脚本：修复在 Firefox 上有概率无法正常执行的问题。
+3. 封面预览：改用更合理的实现方案，彻底解决与封面预览元素进行交互时可能会出现的种种诡异现象。
+4. 封面预览：传统模式+封面预览的情况下，鼠标移动至按钮上时隐藏指针。
+5. 工作模式：改用对话框组件实现工作模式配置，实现对 Firefox 的兼容。
+6. 脚本：优化提示信息的显示。
+7. 脚本：修复在 Firefox 上有概率无法正常执行的问题。
 
 ## V5.3
 

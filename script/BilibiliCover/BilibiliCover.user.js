@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站封面获取
-// @version         5.4.6.20210908
+// @version         5.4.7.20210909
 // @namespace       laster2800
 // @author          Laster2800
 // @description     获取B站各播放页及直播间封面，支持手动及实时预览等多种模式，支持点击下载、封面预览、快速复制，可高度自定义
@@ -19,7 +19,7 @@
 // @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=968206
 // @require         https://greasyfork.org/scripts/431998-userscriptapidom/code/UserscriptAPIDom.js?version=968204
 // @require         https://greasyfork.org/scripts/431999-userscriptapilogger/code/UserscriptAPILogger.js?version=968360
-// @require         https://greasyfork.org/scripts/432000-userscriptapimessage/code/UserscriptAPIMessage.js?version=968668
+// @require         https://greasyfork.org/scripts/432000-userscriptapimessage/code/UserscriptAPIMessage.js?version=968881
 // @require         https://greasyfork.org/scripts/432001-userscriptapitool/code/UserscriptAPITool.js?version=968361
 // @require         https://greasyfork.org/scripts/432002-userscriptapiwait/code/UserscriptAPIWait.js?version=968207
 // @require         https://greasyfork.org/scripts/432003-userscriptapiweb/code/UserscriptAPIWeb.js?version=967891
@@ -99,7 +99,14 @@
       page_live: /live\.bilibili\.com\/\d+([/?#]|$)/, // 只含具体的直播间页面
     },
     const: {
-      hintText: '左键：下载或在新标签页中打开封面\n中键：在新标签页中打开封面\n右键：复制封面链接/内容\nCtrl+右键：复制封面内容/链接',
+      hintText: `
+        <div style="display:grid;grid-template-columns:auto auto;grid-column-gap:1.5em;font-size:0.8em">
+          <div>左键：下载/在新标签页打开</div>
+          <div>右键：复制链接/内容</div>
+          <div>中键：在新标签页打开</div>
+          <div>Ctrl+右键：复制内容/链接</div>
+        </div>
+      `,
       errorMsg: '获取失败，请尝试在页面加载完成后获取',
       customMode: 32767,
       fadeTime: 200,
@@ -280,7 +287,7 @@
         <p>[ 2 ] - 实时预览模式。直接在视频播放器右方显示封面，与其交互可进行更多操作。</p>
         <p>[ ${gm.const.customMode} ] - 自定义模式。底层机制与预览模式相同，但封面位置及显示效果由用户自定义，运行效果仅局限于想象力。</p>
       `
-      result = await api.message.prompt(msg, val, { html:true })
+      result = await api.message.prompt(msg, val, { html: true })
       if (result == null) return
       result = parseInt(result)
       if ([1, 2, gm.const.customMode].indexOf(result) >= 0) {
@@ -303,7 +310,7 @@
           <p>5. 在 A 时间点插入的图片元素，有可能被 B 时间点插入的新元素 C 挤到目标以外的位置。只要将定位元素选择为 C 再更改相对位置即可解决问题。</p>
           <p>6. 置空时使用默认设置。</p>
         `
-        result = await api.message.prompt(msg, val, { html:true })
+        result = await api.message.prompt(msg, val, { html: true })
         if (result != null) {
           result = result.trim()
           if (result === '') {
@@ -324,7 +331,7 @@
         result = null
         const loop = () => ['beforebegin', 'afterbegin', 'beforeend', 'afterend'].indexOf(result) < 0
         while (loop()) {
-          result = await api.message.prompt(msg, val, { html:true })
+          result = await api.message.prompt(msg, val, { html: true })
           if (result == null) break
           result = result.trim()
           if (loop()) {
@@ -350,7 +357,7 @@
             <p><code>quality</code>：&emsp;有损压缩参数，100 为无损；默认 100</p>
           </div>
         `
-        result = await api.message.prompt(msg, val, { html:true })
+        result = await api.message.prompt(msg, val, { html: true })
         if (result != null) {
           result = result.trim()
           if (result === '') {
@@ -370,7 +377,7 @@
           <p>* 将页面背景替换为视频封面，再加个滤镜也许还会有不错的设计感？</p>
           <p>* ......</p>
         `
-        result = await api.message.prompt(msg, val, { html:true })
+        result = await api.message.prompt(msg, val, { html: true })
         if (result != null) {
           result = result.trim()
           if (result === '') {
@@ -539,19 +546,33 @@
       },
 
       /**
+       * 设置提示信息
+       * @param {HTMLElement} target 目标元素
+       * @param {string} hintText 提示信息
+       */
+      setHintText(target, hintText) {
+        if (target.hoverInfo) {
+          target.hoverInfo.msg = hintText
+        } else {
+          api.message.hoverInfo(target, hintText, null, { position: { top: '94%' } })
+        }
+      },
+
+      /**
        * 设置封面
        * @param {HTMLElement} target 封面元素
        * @param {HTMLElement} preview 预览元素，无预览元素时传空值即可
        * @param {string} url 封面 URL
        */
       setCover(target, preview, url) {
+        const _self = this
         if (url) {
-          target.title = gm.const.hintText
           target.href = url
           target.target = '_blank'
           target.loaded = true
-          this.addDownloadEvent(target)
-          this.addCopyEvent(target)
+          _self.setHintText(target, gm.const.hintText)
+          _self.addDownloadEvent(target)
+          _self.addCopyEvent(target)
           if (target.img) {
             if (gm.runtime.realtimeQuality != 'best') {
               target.img.src = `${url}@${gm.runtime.realtimeQuality}.webp`
@@ -564,11 +585,11 @@
             preview._src = url
           }
         } else {
-          target.title = gm.const.errorMsg
           target.href = gm.url.noop
           target.target = '_self'
           target.loaded = false
-          this.addErrorEvent(target)
+          _self.setHintText(target, gm.const.errorMsg)
+          _self.addErrorEvent(target)
           if (target.img) {
             target.img.removeAttribute('src')
             target.img.lossless = null
@@ -612,7 +633,7 @@
         }, 200)
         const onMouseleave = api.tool.debounce(function() {
           if (gm.runtime.preview) {
-            !preview.mouseOver && fade(false)
+            fade(false)
           }
         }, 200)
         target.addEventListener('mouseenter', function() {
@@ -624,70 +645,6 @@
           onMouseleave.call(this)
         })
 
-        // 在链接上左键打开链接，和中键在新标签页打开链接，都要求：
-        // 鼠标点击与松开时都在链接元素上，也就是说链接元素上不能有覆盖物，需让 preview 回避一下
-        // 不做这个处理，将鼠标快速移动至按钮/实时预览上点击时，操作有概率会被吞掉
-        target.addEventListener('mousedown', function() {
-          preview.style.pointerEvents = 'none'
-        })
-        target.addEventListener('mouseup', function() {
-          setTimeout(() => {
-            preview.style.pointerEvents = ''
-          }, 10)
-        })
-
-        let startPos = null // 鼠标进入预览时的初始坐标
-        preview.addEventListener('mouseenter', function() {
-          this.mouseOver = true
-          startPos = null
-        })
-        preview.addEventListener('mouseleave', function() {
-          this.mouseOver = false
-          if (this.style.pointerEvents == 'none') return
-          setTimeout(() => {
-            if (!target.mouseOver) {
-              startPos = null
-              fade(false)
-            }
-          }, 200)
-        })
-        preview.addEventListener('mousedown', function(e) {
-          if (this.src) {
-            if (e.button == 0 || e.button == 1) {
-              if (e.button == 0) {
-                if (gm.config.download) {
-                  _self.download(this.src, document.title)
-                } else {
-                  window.open(this.src)
-                }
-              } else {
-                window.open(this.src)
-              }
-            }
-          }
-        })
-        preview.addEventListener('mousemove', function(e) {
-          // 鼠标移动一段距离关闭预览，优化用户体验
-          if (startPos) {
-            const dSquare = (startPos.x - e.clientX) ** 2 + (startPos.y - e.clientY) ** 2
-            if (dSquare > 20 ** 2) { // 20px
-              // 鼠标需已移出触发元素范围方可
-              const rect = target.getBoundingClientRect()
-              if (!(e.clientX > rect.left && e.clientX < rect.right && e.clientY > rect.top && e.clientY < rect.bottom)) {
-                fade(false)
-              }
-            }
-          } else {
-            startPos = {
-              x: e.clientX,
-              y: e.clientY,
-            }
-          }
-        })
-        // 滚动时关闭预览，优化用户体验
-        preview.addEventListener('wheel', api.tool.throttle(function() {
-          fade(false)
-        }, 200))
         // 根据宽高比设置不同样式
         preview.addEventListener('load', function() {
           if (this.width > this.height) {
@@ -703,15 +660,6 @@
           }
         })
 
-        // 快速复制相关
-        preview.addEventListener('mousedown', function(e) {
-          if (e.button == 2) {
-            target.dispatchEvent(_self.cloneEvent(e, ['button', 'ctrlKey']))
-          }
-        })
-        if (gm.config.disableContextMenu) {
-          _self.disableContextMenu(preview)
-        }
         return preview
       },
 
@@ -861,6 +809,9 @@
         cover = document.createElement('a')
         cover.textContent = '获取封面'
         cover.className = 'appeal-text'
+        if (gm.runtime.preview) {
+          cover.style.cursor = 'none'
+        }
         // 确保与其他脚本配合时相关 UI 排列顺序不会乱
         const gm395456 = atr.querySelector('[id|=gm395456]')
         if (gm395456) {
@@ -873,7 +824,7 @@
         cover = await _self.method.createRealtimeCover()
       }
       const preview = gm.runtime.preview && _self.method.createPreview(cover)
-      cover.title = gm.const.hintText
+      _self.method.setHintText(cover, gm.const.hintText)
 
       if (api.web.urlMatch(gm.regex.page_videoNormalMode)) {
         api.wait.executeAfterElementLoaded({
@@ -950,13 +901,16 @@
         cover = document.createElement('a')
         cover.textContent = '获取封面'
         cover.className = `${gm.id}-bangumi-cover-btn`
+        if (gm.runtime.preview) {
+          cover.style.cursor = 'none'
+        }
         tm.appendChild(cover)
         _self.method.disableContextMenu(cover)
       } else {
         cover = await _self.method.createRealtimeCover()
       }
       const preview = gm.runtime.preview && _self.method.createPreview(cover)
-      cover.title = gm.const.hintText
+      _self.method.setHintText(cover, gm.const.hintText)
 
       if (gm.config.bangumiSeries) {
         const setCover = img => _self.method.setCover(cover, preview, img.src.replace(/@[^@]*$/, ''))
@@ -1051,10 +1005,13 @@
       const cover = doc.createElement('a')
       cover.textContent = '获取封面'
       cover.className = `${gm.id}-live-cover-btn`
+      if (gm.runtime.preview) {
+        cover.style.cursor = 'none'
+      }
       container.insertAdjacentElement('afterbegin', cover)
       _self.method.disableContextMenu(cover)
       const preview = gm.runtime.preview && _self.method.createPreview(cover)
-      cover.title = gm.const.hintText
+      _self.method.setHintText(cover, gm.const.hintText)
 
       _self.method.proxyCoverInteraction(cover, async event => {
         try {
@@ -1111,13 +1068,13 @@
           transform: translate(-50%, -50%);
           z-index: 1000000;
           max-width: 65vw; /* 自适应宽度和高度 */
-          max-height: 95vh;
+          max-height: 80vh;
           border-radius: 8px;
           display: none;
           opacity: 0;
           transition: opacity ${gm.const.fadeTime}ms ease-in-out;
-          cursor: pointer;
           box-shadow: #000000AA 0px 3px 6px;
+          pointer-events: none;
         }
 
         #${gmId}-realtime-cover div {
