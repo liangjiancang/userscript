@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name            S1战斗力屏蔽
 // @namespace       laster2800
-// @version         3.7.0.20210910
+// @version         3.7.1.20210910
 // @author          Laster2800
 // @description     屏蔽S1的战斗力系统，眼不见为净
 // @author          Laster2800
@@ -54,7 +54,7 @@
         <span>战斗力系统</span>
         <input type="checkbox" style="vertical-align:middle">
       `
-      sw.style = 'float:right;padding:0 15px;height:33px;line-height:33px;font-weight:bold;font-size:1.2em'
+      sw.style = 'float:right;padding:0 15px;height:33px;line-height:33px;font-weight:bold;font-size:1.2em;user-select:none'
       nv.append(sw)
 
       sw.enabled = true
