@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站防剧透进度条
-// @version         2.2.15.20210910
+// @version         2.3.0.20210910
 // @namespace       laster2800
 // @author          Laster2800
 // @description     看比赛、看番总是被进度条剧透？装上这个脚本再也不用担心这些问题了
@@ -13,13 +13,11 @@
 // @include         *://www.bilibili.com/medialist/play/watchlater
 // @include         *://www.bilibili.com/medialist/play/watchlater/*
 // @include         *://www.bilibili.com/bangumi/play/*
-// @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=968206
-// @require         https://greasyfork.org/scripts/431998-userscriptapidom/code/UserscriptAPIDom.js?version=968204
-// @require         https://greasyfork.org/scripts/431999-userscriptapilogger/code/UserscriptAPILogger.js?version=968360
-// @require         https://greasyfork.org/scripts/432000-userscriptapimessage/code/UserscriptAPIMessage.js?version=968897
-// @require         https://greasyfork.org/scripts/432001-userscriptapitool/code/UserscriptAPITool.js?version=968361
-// @require         https://greasyfork.org/scripts/432002-userscriptapiwait/code/UserscriptAPIWait.js?version=968207
-// @require         https://greasyfork.org/scripts/432003-userscriptapiweb/code/UserscriptAPIWeb.js?version=967891
+// @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=969309
+// @require         https://greasyfork.org/scripts/431998-userscriptapidom/code/UserscriptAPIDom.js?version=969308
+// @require         https://greasyfork.org/scripts/432000-userscriptapimessage/code/UserscriptAPIMessage.js?version=969307
+// @require         https://greasyfork.org/scripts/432002-userscriptapiwait/code/UserscriptAPIWait.js?version=969306
+// @require         https://greasyfork.org/scripts/432003-userscriptapiweb/code/UserscriptAPIWeb.js?version=969305
 // @grant           GM_registerMenuCommand
 // @grant           GM_xmlhttpRequest
 // @grant           GM_setValue
@@ -191,9 +189,9 @@
       noop: 'javascript:void(0)',
     },
     regex: {
-      page_videoNormalMode: /\.com\/video([/?#]|$)/,
-      page_videoWatchlaterMode: /\.com\/medialist\/play\/watchlater([/?#]|$)/,
-      page_bangumi: /\.com\/bangumi\/play([/?#]|$)/,
+      page_videoNormalMode: /\.com\/video([#/?]|$)/,
+      page_videoWatchlaterMode: /\.com\/medialist\/play\/watchlater([#/?]|$)/,
+      page_bangumi: /\.com\/bangumi\/play([#/?]|$)/,
     },
     const: {
       fadeTime: 400,
@@ -241,7 +239,7 @@
         let invalid = false
         let value = GM_getValue(gmKey)
         if (Enums && gmKey in Enums) {
-          if (Object.values(Enums[gmKey]).indexOf(value) < 0) {
+          if (!Object.values(Enums[gmKey]).includes(value)) {
             invalid = true
           }
         } else if (typeof value == typeof defaultValue) { // 对象默认赋 null 无需额外处理
@@ -649,7 +647,7 @@
                         if (!element) break
                       }
                       if (element?.firstElementChild) {
-                        api.dom.addClass(element.firstElementChild, 'gm-updated')
+                        element.firstElementChild.classList.add('gm-updated')
                       }
                     }
                   }
@@ -728,7 +726,7 @@
                 } else {
                   value = v0
                 }
-                if (parseFloat(value) >= gm.configMap.offsetTransformFactor.max) {
+                if (Number.parseFloat(value) >= gm.configMap.offsetTransformFactor.max) {
                   if (value.endsWith('.')) {
                     value = `${gm.configMap.offsetTransformFactor.max.toFixed(0)}.`
                   } else {
@@ -736,7 +734,7 @@
                   }
                 }
               } else {
-                value = parseFloat(v0)
+                value = Number.parseFloat(v0)
                 if (value > gm.configMap.offsetTransformFactor.max) {
                   value = gm.configMap.offsetTransformFactor.max // 此处不要设置小数点
                 }
@@ -753,15 +751,15 @@
             if (value === '') {
               value = gm.configMap.offsetTransformFactor.default
             }
-            this.value = parseFloat(value).toFixed(2)
+            this.value = Number.parseFloat(value).toFixed(2)
           })
           for (const name of ['offsetLeft', 'offsetRight', 'reservedLeft', 'reservedRight']) {
             el[name].addEventListener('input', function() {
-              const v0 = this.value.replace(/[^\d]/g, '')
+              const v0 = this.value.replace(/\D/g, '')
               if (v0 === '') {
                 this.value = ''
               } else {
-                let value = parseInt(v0)
+                let value = Number.parseInt(v0)
                 if (value > 100) { // 不能大于 100%
                   value = 100
                 }
@@ -866,9 +864,9 @@
           const type = gm.configMap[name].type
           if (type == 'int' || type == 'float') {
             if (typeof val != 'number') {
-              val = type == 'int' ? parseInt(val) : parseFloat(val)
+              val = type == 'int' ? Number.parseInt(val) : Number.parseFloat(val)
             }
-            if (isNaN(val)) {
+            if (Number.isNaN(val)) {
               val = gm.configMap[name].default
             }
           }
@@ -1142,9 +1140,9 @@
        */
       getVid(url = location.pathname) {
         let m = null
-        if ((m = /\/bv([0-9a-z]+)([/?#]|$)/i.exec(url))) {
+        if ((m = /\/bv([\da-z]+)([#/?]|$)/i.exec(url))) {
           return { id: 'BV' + m[1], type: 'bvid' }
-        } else if ((m = /\/(av)?(\d+)([/?#]|$)/i.exec(url))) { // 兼容 URL 中 BV 号被第三方修改为 AV 号的情况
+        } else if ((m = /\/(av)?(\d+)([#/?]|$)/i.exec(url))) { // 兼容 URL 中 BV 号被第三方修改为 AV 号的情况
           return { id: m[2], type: 'aid' }
         }
       },
@@ -1248,7 +1246,7 @@
       _self.progress.preview = await api.wait.$(selector.preview, _self.control)
       _self.progress.dispEl = []
       for (const elSelector of selector.dispEl) {
-        if (elSelector.indexOf('<select-all>') >= 0) {
+        if (elSelector.includes('<select-all>')) {
           await api.wait.$(elSelector, _self.control)
           _self.control.querySelectorAll(elSelector).forEach(el => _self.progress.dispEl.push(el))
         } else {
@@ -1292,7 +1290,7 @@
      */
     async detectEnabled() {
       const _self = this
-      if (api.web.urlMatch([gm.regex.page_videoNormalMode, gm.regex.page_videoWatchlaterMode], 'OR')) {
+      if (api.base.urlMatch([gm.regex.page_videoNormalMode, gm.regex.page_videoWatchlaterMode])) {
         try {
           const ulSet = gm.data.uploaderListSet()
           if (ulSet.has('*')) {
@@ -1308,7 +1306,7 @@
         } catch (e) {
           api.logger.error(e)
         }
-      } else if (api.web.urlMatch(gm.regex.page_bangumi) && gm.config.bangumiEnabled) {
+      } else if (api.base.urlMatch(gm.regex.page_bangumi) && gm.config.bangumiEnabled) {
         return true
       }
       return false
@@ -1332,7 +1330,7 @@
           if (!currentPoint._fake) {
             currentPoint._fake = currentPoint.insertAdjacentElement('afterend', currentPoint.cloneNode(true))
             currentPoint._fake.textContent = '???'
-            api.dom.addClass(currentPoint._fake, 'fake')
+            currentPoint._fake.classList.add('fake')
           }
           currentPoint.style.display = 'none'
           currentPoint._fake.style.display = 'unset'
@@ -1358,7 +1356,7 @@
           if (!duration._fake) {
             duration._fake = duration.insertAdjacentElement('afterend', duration.cloneNode(true))
             duration._fake.textContent = '???'
-            api.dom.addClass(duration._fake, 'fake')
+            duration._fake.classList.add('fake')
           }
           duration.style.display = 'none'
           duration._fake.style.display = 'unset'
@@ -1389,7 +1387,7 @@
       }).catch(() => {})
 
       // 隐藏分P信息（番剧没有必要隐藏）
-      if (gm.config.disablePartInformation && !api.web.urlMatch(gm.regex.page_bangumi)) {
+      if (gm.config.disablePartInformation && !api.base.urlMatch(gm.regex.page_bangumi)) {
         // 全屏播放时的分P选择（即使没有分P也存在）
         if (_self.enabled) {
           api.wait.$('.bilibili-player-video-btn-menu').then(menu => {
@@ -1403,7 +1401,7 @@
           el.style.visibility = _self.enabled ? 'hidden' : 'visible'
         })
         // 播放页右侧分P选择（可能存在）
-        if (api.web.urlMatch(gm.regex.page_videoNormalMode)) {
+        if (api.base.urlMatch(gm.regex.page_videoNormalMode)) {
           api.wait.$('#multi_page', document, true).then(multiPage => {
             multiPage.querySelectorAll('.clickitem .part, .clickitem .duration').forEach(el => {
               el.style.visibility = _self.enabled ? 'hidden' : 'visible'
@@ -1412,12 +1410,12 @@
               multiPage.querySelectorAll('[title]').forEach(el => el.title = '') // 隐藏提示信息
             }
           }).catch(() => {})
-        } else if (api.web.urlMatch(gm.regex.page_videoWatchlaterMode)) {
+        } else if (api.base.urlMatch(gm.regex.page_videoWatchlaterMode)) {
           api.wait.$('.player-auxiliary-playlist-list').then(list => {
             const exec = () => {
               if (_self.enabled) {
                 list.querySelectorAll('.player-auxiliary-playlist-item-p-item').forEach(item => {
-                  const m = /^(P\d+)\D/i.exec(item.textContent)
+                  const m = /^(p\d+)\D/i.exec(item.textContent)
                   if (m) {
                     item.textContent = m[1]
                   }
@@ -1480,7 +1478,7 @@
 
         const addObserver = target => {
           if (!target._obPlayRate) {
-            target._obPlayRate = new MutationObserver(api.tool.throttle(() => {
+            target._obPlayRate = new MutationObserver(api.base.throttle(() => {
               _self.processFakePlayed()
             }, 500))
             target._obPlayRate.observe(_self.progress.thumb, { attributeFilter: ['style'] })
@@ -1520,7 +1518,7 @@
             playerArea._obControlShow = new MutationObserver(records => {
               if (records[0].oldValue == playerArea.className) return // 不能去，有个东西一直在原地修改 class……
               const before = new RegExp(String.raw`(^|\s)${clzControlShow}(\s|$)`).test(records[0].oldValue)
-              const current = api.dom.containsClass(playerArea, clzControlShow)
+              const current = playerArea.classList.contains(clzControlShow)
               if (before != current) {
                 if (current) {
                   if (_self.enabled) {
@@ -1538,7 +1536,7 @@
               attributeOldValue: true,
             })
           }
-          if (api.dom.containsClass(playerArea, clzControlShow)) {
+          if (playerArea.classList.contains(clzControlShow)) {
             addObserver(playerArea)
           }
         }
@@ -1609,14 +1607,14 @@
           }
         }
 
-        if (api.web.urlMatch([gm.regex.page_videoNormalMode, gm.regex.page_videoWatchlaterMode], 'OR')) {
+        if (api.base.urlMatch([gm.regex.page_videoNormalMode, gm.regex.page_videoWatchlaterMode])) {
           if (_self.uploaderEnabled) {
             _self.scriptControl.uploaderEnabled.setAttribute('enabled', '')
           } else {
             _self.scriptControl.uploaderEnabled.removeAttribute('enabled')
           }
         }
-        if (api.web.urlMatch(gm.regex.page_bangumi)) {
+        if (api.base.urlMatch(gm.regex.page_bangumi)) {
           if (gm.config.bangumiEnabled) {
             _self.scriptControl.bangumiEnabled.setAttribute('enabled', '')
           } else {
@@ -1722,7 +1720,7 @@
         })
 
         if (!gm.config.simpleScriptControl) {
-          if (api.web.urlMatch([gm.regex.page_videoNormalMode, gm.regex.page_videoWatchlaterMode], 'OR')) {
+          if (api.base.urlMatch([gm.regex.page_videoNormalMode, gm.regex.page_videoWatchlaterMode])) {
             if (!gm.data.uploaderListSet().has('*')) { // * 匹配所有UP主不显示该按钮
               _self.scriptControl.uploaderEnabled.style.display = 'unset'
               _self.scriptControl.uploaderEnabled.addEventListener('click', async function() {
@@ -1750,7 +1748,7 @@
             }
           }
 
-          if (api.web.urlMatch(gm.regex.page_bangumi)) {
+          if (api.base.urlMatch(gm.regex.page_bangumi)) {
             _self.scriptControl.bangumiEnabled.style.display = 'unset'
             _self.scriptControl.bangumiEnabled.addEventListener('click', function() {
               gm.config.bangumiEnabled = !gm.config.bangumiEnabled
@@ -1821,7 +1819,7 @@
      * 添加脚本样式
      */
     addStyle() {
-      api.dom.addStyle(`
+      api.base.addStyle(`
         :root {
           --${gm.id}-progress-track-color: hsla(0, 0%, 100%, .3);
           --${gm.id}-progress-played-color: rgba(35, 173, 229, 1);
@@ -2181,7 +2179,7 @@
 
   function main() {
     if (GM_info.scriptHandler != 'Tampermonkey') {
-      api.dom.initUrlchangeEvent()
+      api.base.initUrlchangeEvent()
     }
     script = new Script()
     webpage = new Webpage()

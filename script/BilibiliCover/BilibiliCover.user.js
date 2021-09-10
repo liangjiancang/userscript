@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站封面获取
-// @version         5.4.9.20210909
+// @version         5.5.0.20210910
 // @namespace       laster2800
 // @author          Laster2800
 // @description     获取B站各播放页及直播间封面，支持手动及实时预览等多种模式，支持点击下载、封面预览、快速复制，可高度自定义
@@ -16,13 +16,11 @@
 // @include         *://live.bilibili.com/*
 // @exclude         *://live.bilibili.com/
 // @exclude         *://live.bilibili.com/?*
-// @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=968206
-// @require         https://greasyfork.org/scripts/431998-userscriptapidom/code/UserscriptAPIDom.js?version=968204
-// @require         https://greasyfork.org/scripts/431999-userscriptapilogger/code/UserscriptAPILogger.js?version=968360
-// @require         https://greasyfork.org/scripts/432000-userscriptapimessage/code/UserscriptAPIMessage.js?version=968897
-// @require         https://greasyfork.org/scripts/432001-userscriptapitool/code/UserscriptAPITool.js?version=968361
-// @require         https://greasyfork.org/scripts/432002-userscriptapiwait/code/UserscriptAPIWait.js?version=968207
-// @require         https://greasyfork.org/scripts/432003-userscriptapiweb/code/UserscriptAPIWeb.js?version=967891
+// @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=969309
+// @require         https://greasyfork.org/scripts/431998-userscriptapidom/code/UserscriptAPIDom.js?version=969308
+// @require         https://greasyfork.org/scripts/432000-userscriptapimessage/code/UserscriptAPIMessage.js?version=969307
+// @require         https://greasyfork.org/scripts/432002-userscriptapiwait/code/UserscriptAPIWait.js?version=969306
+// @require         https://greasyfork.org/scripts/432003-userscriptapiweb/code/UserscriptAPIWeb.js?version=969305
 // @grant           GM_download
 // @grant           GM_notification
 // @grant           GM_xmlhttpRequest
@@ -93,10 +91,10 @@
       noop: 'javascript:void(0)',
     },
     regex: {
-      page_videoNormalMode: /\.com\/video([/?#]|$)/,
-      page_videoWatchlaterMode: /\.com\/medialist\/play\/watchlater([/?#]|$)/,
-      page_bangumi: /\/bangumi\/play([/?#]|$)/,
-      page_live: /live\.bilibili\.com\/\d+([/?#]|$)/, // 只含具体的直播间页面
+      page_videoNormalMode: /\.com\/video([#/?]|$)/,
+      page_videoWatchlaterMode: /\.com\/medialist\/play\/watchlater([#/?]|$)/,
+      page_bangumi: /\/bangumi\/play([#/?]|$)/,
+      page_live: /live\.bilibili\.com\/\d+([#/?]|$)/, // 只含具体的直播间页面
     },
     const: {
       hintText: `
@@ -166,7 +164,7 @@
       const rt = gm.runtime
       const mode = gm.config.mode
       rt.layer = mode > 1 ? 'realtime' : 'legacy'
-      rt.preview = api.web.urlMatch(gm.regex.page_live) ? gm.config.previewLive : gm.config.preview
+      rt.preview = api.base.urlMatch(gm.regex.page_live) ? gm.config.previewLive : gm.config.preview
       rt.modeName = { '-1': '初始化', '1': '传统', '2': '实时预览', [gm.const.customMode]: '自定义' }[mode] ?? '未知'
       if (rt.layer == 'realtime') {
         for (const s of ['Selector', 'Position', 'Style']) {
@@ -219,7 +217,7 @@
      * 版本更新处理
      */
     updateVersion() {
-      if (isNaN(gm.configVersion) || gm.configVersion < 0) {
+      if (Number.isNaN(gm.configVersion) || gm.configVersion < 0) {
         gm.configVersion = gm.configUpdate
         GM_setValue('configVersion', gm.configVersion)
       } else if (gm.configVersion < gm.configUpdate) {
@@ -289,8 +287,8 @@
       `
       result = await api.message.prompt(msg, val, { html: true })
       if (result == null) return
-      result = parseInt(result)
-      if ([1, 2, gm.const.customMode].indexOf(result) >= 0) {
+      result = Number.parseInt(result)
+      if ([1, 2, gm.const.customMode].includes(result)) {
         gm.config.mode = result
         GM_setValue('mode', result)
       } else {
@@ -329,7 +327,7 @@
           <p>[ <code>afterend</code> ] - 作为兄弟元素插入到定位元素后方</p>
         `
         result = null
-        const loop = () => ['beforebegin', 'afterbegin', 'beforeend', 'afterend'].indexOf(result) < 0
+        const loop = () => !['beforebegin', 'afterbegin', 'beforeend', 'afterend'].includes(result)
         while (loop()) {
           result = await api.message.prompt(msg, val, { html: true })
           if (result == null) break
@@ -437,9 +435,9 @@
        */
       getVid(url = location.pathname) {
         let m = null
-        if ((m = /\/bv([0-9a-z]+)([/?#]|$)/i.exec(url))) {
+        if ((m = /\/bv([\da-z]+)([#/?]|$)/i.exec(url))) {
           return { id: 'BV' + m[1], type: 'bvid' }
-        } else if ((m = /\/(av)?(\d+)([/?#]|$)/i.exec(url))) { // 兼容 URL 中 BV 号被第三方修改为 AV 号的情况
+        } else if ((m = /\/(av)?(\d+)([#/?]|$)/i.exec(url))) { // 兼容 URL 中 BV 号被第三方修改为 AV 号的情况
           return { id: m[2], type: 'aid' }
         }
       },
@@ -451,9 +449,9 @@
        */
       getBgmid(url = location.pathname) {
         let m = null
-        if ((m = /\/(ss\d+)([/?#]|$)/.exec(url))) {
+        if ((m = /\/(ss\d+)([#/?]|$)/.exec(url))) {
           return { id: m[1], type: 'ssid' }
-        } else if ((m = /\/(ep\d+)([/?#]|$)/.exec(url))) {
+        } else if ((m = /\/(ep\d+)([#/?]|$)/.exec(url))) {
           return { id: m[1], type: 'epid' }
         }
       },
@@ -613,7 +611,7 @@
         preview.fadeOutNoInteractive = true
         const fade = inOut => api.dom.fade(inOut, preview)
 
-        const onMouseenter = api.tool.debounce(async function() {
+        const onMouseenter = api.base.debounce(async function() {
           if (gm.runtime.preview) {
             if (preview._src) {
               try {
@@ -632,7 +630,7 @@
             this.mouseOver && preview.src && fade(true)
           }
         }, 200)
-        const onMouseleave = api.tool.debounce(function() {
+        const onMouseleave = api.base.debounce(function() {
           if (gm.runtime.preview) {
             fade(false)
           }
@@ -700,7 +698,7 @@
           }
         })
         if (gm.runtime.realtimeStyle != 'disable') {
-          api.dom.addStyle(gm.runtime.realtimeStyle)
+          api.base.addStyle(gm.runtime.realtimeStyle)
         }
         if (gm.config.disableContextMenu) {
           this.disableContextMenu(cover)
@@ -814,15 +812,16 @@
         cover = document.createElement('a')
         cover.textContent = '获取封面'
         cover.className = 'appeal-text'
+        cover.style.userSelect = 'none'
         if (gm.runtime.preview) {
           cover.style.cursor = 'none'
         }
         // 确保与其他脚本配合时相关 UI 排列顺序不会乱
         const gm395456 = atr.querySelector('[id|=gm395456]')
         if (gm395456) {
-          atr.insertBefore(cover, gm395456)
+          gm395456.before(cover)
         } else {
-          atr.appendChild(cover)
+          atr.append(cover)
         }
         _self.method.disableContextMenu(cover)
       } else {
@@ -831,7 +830,7 @@
       const preview = gm.runtime.preview && _self.method.createPreview(cover)
       _self.method.setHintText(cover, gm.const.hintText)
 
-      if (api.web.urlMatch(gm.regex.page_videoNormalMode)) {
+      if (api.base.urlMatch(gm.regex.page_videoNormalMode)) {
         api.wait.executeAfterElementLoaded({
           selector: 'meta[itemprop=image]',
           base: document.head,
@@ -906,10 +905,11 @@
         cover = document.createElement('a')
         cover.textContent = '获取封面'
         cover.className = `${gm.id}-bangumi-cover-btn`
+        cover.style.userSelect = 'none'
         if (gm.runtime.preview) {
           cover.style.cursor = 'none'
         }
-        tm.appendChild(cover)
+        tm.append(cover)
         _self.method.disableContextMenu(cover)
       } else {
         cover = await _self.method.createRealtimeCover()
@@ -1010,10 +1010,11 @@
       const cover = doc.createElement('a')
       cover.textContent = '获取封面'
       cover.className = `${gm.id}-live-cover-btn`
+      cover.style.userSelect = 'none'
       if (gm.runtime.preview) {
         cover.style.cursor = 'none'
       }
-      container.insertAdjacentElement('afterbegin', cover)
+      container.prepend(cover)
       _self.method.disableContextMenu(cover)
       const preview = gm.runtime.preview && _self.method.createPreview(cover)
       _self.method.setHintText(cover, gm.const.hintText)
@@ -1045,7 +1046,7 @@
     }
 
     addStyle(doc = document) {
-      api.dom.addStyle(`
+      api.base.addStyle(`
         .${gm.id}-bangumi-cover-btn {
           float: right;
           cursor: pointer;
@@ -1055,7 +1056,7 @@
           color: #505050;
         }
         .${gm.id}-bangumi-cover-btn:hover {
-          color: #0075ff;
+          color: #00a1d6;
         }
 
         .${gm.id}-live-cover-btn {
@@ -1097,7 +1098,7 @@
 
   async function main() {
     if (GM_info.scriptHandler != 'Tampermonkey') {
-      api.dom.initUrlchangeEvent()
+      api.base.initUrlchangeEvent()
     }
     script = new Script()
     webpage = new Webpage()
@@ -1106,11 +1107,11 @@
     script.initScriptMenu()
     webpage.addStyle()
 
-    if (api.web.urlMatch([gm.regex.page_videoNormalMode, gm.regex.page_videoWatchlaterMode], 'OR')) {
+    if (api.base.urlMatch([gm.regex.page_videoNormalMode, gm.regex.page_videoWatchlaterMode])) {
       webpage.initVideo()
-    } else if (api.web.urlMatch(gm.regex.page_bangumi)) {
+    } else if (api.base.urlMatch(gm.regex.page_bangumi)) {
       webpage.initBangumi()
-    } else if (api.web.urlMatch(gm.regex.page_live)) {
+    } else if (api.base.urlMatch(gm.regex.page_live)) {
       webpage.initLive()
     }
   }

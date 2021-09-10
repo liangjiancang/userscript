@@ -2,6 +2,11 @@
 
 本日志只记录用户友好的更新说明，影响不大的问题修复与修改不作记录，具体修改见 [提交记录](https://gitee.com/liangjiancang/userscript/commits/master/script/BilibiliWatchlaterPlus)。
 
+## V4.21
+
+1. API：更新至 V2.1。详见 [UserscriptAPI 更新日志](https://gitee.com/liangjiancang/userscript/blob/master/lib/UserscriptAPI/changelog.md)。
+2. 代码：使用增强的代码规则。
+
 ## V4.20
 
 1. API：更新至 V2.0，实现 API 模块化。详见 [UserscriptAPI 更新日志](https://gitee.com/liangjiancang/userscript/blob/master/lib/UserscriptAPI/changelog.md)。
@@ -351,7 +356,7 @@
 4. 顶栏入口：点击弹出菜单中的稍后再看视频时，可选择在当前页面或新标签页打开。
 5. 移除记录：增加默认历史回溯深度的设置，并对移除记录功能进行优化。
 6. 重置脚本：重置时会清理 GM 数据库。
-7. 代码：引入 eslint 对代码风格化。
+7. 代码：引入 ESLint 对代码风格化。
 
 ## V2.4
 

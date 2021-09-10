@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站共同关注快速查看
-// @version         1.6.11.20210909
+// @version         1.7.0.20210910
 // @namespace       laster2800
 // @author          Laster2800
 // @description     快速查看与特定用户的共同关注（视频播放页、动态页、用户空间、直播间）
@@ -16,13 +16,9 @@
 // @exclude         *://live.bilibili.com/
 // @exclude         *://live.bilibili.com/?*
 // @exclude         *://www.bilibili.com/watchlater/
-// @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=968206
-// @require         https://greasyfork.org/scripts/431998-userscriptapidom/code/UserscriptAPIDom.js?version=968204
-// @require         https://greasyfork.org/scripts/431999-userscriptapilogger/code/UserscriptAPILogger.js?version=968360
-// @require         https://greasyfork.org/scripts/432000-userscriptapimessage/code/UserscriptAPIMessage.js?version=968897
-// @require         https://greasyfork.org/scripts/432001-userscriptapitool/code/UserscriptAPITool.js?version=968361
-// @require         https://greasyfork.org/scripts/432002-userscriptapiwait/code/UserscriptAPIWait.js?version=968207
-// @require         https://greasyfork.org/scripts/432003-userscriptapiweb/code/UserscriptAPIWeb.js?version=967891
+// @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=969309
+// @require         https://greasyfork.org/scripts/432002-userscriptapiwait/code/UserscriptAPIWait.js?version=969306
+// @require         https://greasyfork.org/scripts/432003-userscriptapiweb/code/UserscriptAPIWeb.js?version=969305
 // @grant           GM_notification
 // @grant           GM_xmlhttpRequest
 // @grant           GM_setValue
@@ -72,11 +68,11 @@
       gm_changelog: 'https://gitee.com/liangjiancang/userscript/blob/master/script/BilibiliSameFollowing/changelog.md',
     },
     regex: {
-      page_videoNormalMode: /\.com\/video([/?#]|$)/,
-      page_videoWatchlaterMode: /\.com\/medialist\/play\/watchlater([/?#]|$)/,
+      page_videoNormalMode: /\.com\/video([#/?]|$)/,
+      page_videoWatchlaterMode: /\.com\/medialist\/play\/watchlater([#/?]|$)/,
       page_dynamic: /\/t\.bilibili\.com(\/|$)/,
-      page_space: /space\.bilibili\.com\/\d+([/?#]|$)/,
-      page_live: /live\.bilibili\.com\/\d+([/?#]|$)/, // 只含具体的直播间页面
+      page_space: /space\.bilibili\.com\/\d+([#/?]|$)/,
+      page_live: /live\.bilibili\.com\/\d+([#/?]|$)/, // 只含具体的直播间页面
     },
     const: {
       noticeTimeout: 5600,
@@ -163,7 +159,7 @@
      * 版本更新处理
      */
     updateVersion() {
-      if (isNaN(gm.configVersion) || gm.configVersion < 0) {
+      if (Number.isNaN(gm.configVersion) || gm.configVersion < 0) {
         gm.configVersion = gm.configUpdate
         GM_setValue('configVersion', gm.configVersion)
       } else if (gm.configVersion < gm.configUpdate) {
@@ -219,7 +215,7 @@
        * @returns {string} UID
        */
       getUid(url = location.pathname) {
-        return /\/(\d+)([/?#]|$)/.exec(url)?.[1]
+        return /\/(\d+)([#/?]|$)/.exec(url)?.[1]
       },
 
       /**
@@ -431,7 +427,7 @@
     }
 
     addStyle(doc = document) {
-      api.dom.addStyle(`
+      api.base.addStyle(`
         .${gm.id} > * {
           display: inline-block;
         }
@@ -517,7 +513,7 @@
         lazy: false,
       })
     }
-    if (api.web.urlMatch(gm.regex.page_videoNormalMode)) {
+    if (api.base.urlMatch(gm.regex.page_videoNormalMode)) {
       if (gm.config.commonCard) {
         // 常规播放页中的UP主头像
         webpage.cardLogic({
@@ -527,7 +523,7 @@
           info: '.info',
         })
       }
-    } else if (api.web.urlMatch(gm.regex.page_videoWatchlaterMode)) {
+    } else if (api.base.urlMatch(gm.regex.page_videoWatchlaterMode)) {
       if (gm.config.commonCard) {
         // 稍后再看播放页中的UP主头像
         webpage.cardLogic({
@@ -537,7 +533,7 @@
           info: '.info',
         })
       }
-    } else if (api.web.urlMatch(gm.regex.page_dynamic)) {
+    } else if (api.base.urlMatch(gm.regex.page_dynamic)) {
       if (gm.config.commonCard) {
         // 1. 动态页左边「正在直播」主播的用户卡片
         // 2. 动态页中，被转发动态的所有者的用户卡片
@@ -548,7 +544,7 @@
           ancestor: true,
         })
       }
-    } else if (api.web.urlMatch(gm.regex.page_space)) {
+    } else if (api.base.urlMatch(gm.regex.page_space)) {
       if (gm.config.userSpace) {
         // 用户空间顶部显示
         webpage.generalLogic({
@@ -572,7 +568,7 @@
           info: '.idc-info',
         })
       }
-    } else if (api.web.urlMatch(gm.regex.page_live)) {
+    } else if (api.base.urlMatch(gm.regex.page_live)) {
       if (gm.config.live) {
         // 直播间点击弹幕弹出的信息卡片
         webpage.initLive()

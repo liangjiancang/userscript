@@ -6,6 +6,11 @@
 
 1. 「自定义模式」的底层机制为「实时预览模式」。若无特殊说明，针对后者的改动同样会施加到前者上。
 
+## V5.5
+
+1. API：更新至 V2.1。详见 [UserscriptAPI 更新日志](https://gitee.com/liangjiancang/userscript/blob/master/lib/UserscriptAPI/changelog.md)。
+2. 代码：使用增强的代码规则。
+
 ## V5.4
 
 1. API：更新至 V2.0，实现 API 模块化。详见 [UserscriptAPI 更新日志](https://gitee.com/liangjiancang/userscript/blob/master/lib/UserscriptAPI/changelog.md)。
