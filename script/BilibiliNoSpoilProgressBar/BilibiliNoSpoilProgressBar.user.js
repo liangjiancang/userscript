@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站防剧透进度条
-// @version         2.2.14.20210909
+// @version         2.2.15.20210910
 // @namespace       laster2800
 // @author          Laster2800
 // @description     看比赛、看番总是被进度条剧透？装上这个脚本再也不用担心这些问题了
@@ -1798,7 +1798,7 @@
       // 注意，一旦离开这种特殊状态，就再也不可能进入该特殊状态了，因为这样反而会暴露信息
       if (offset !== 0) {
         let reservedZone = false
-        let offsetPlayRate = offset + playRate * 100
+        const offsetPlayRate = offset + playRate * 100
         const reservedLeft = gm.config.reservedLeft
         const reservedRight = 100 - gm.config.reservedRight
         // 当实际播放进度小于左侧保留区时，不作特殊处理，因为这样反而会暴露信息

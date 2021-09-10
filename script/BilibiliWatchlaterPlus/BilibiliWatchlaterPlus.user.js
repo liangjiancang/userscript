@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.20.14.20210909
+// @version         4.20.15.20210910
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -2659,7 +2659,7 @@
           function enc(x) {
             x = parseInt(x)
             x = (x ^ xor) + add
-            let r = 'BV1  4 1 7  '.split('')
+            const r = 'BV1  4 1 7  '.split('')
             for (let i = 0; i < 6; i++) {
               r[s[i]] = table[Math.floor(x / 58 ** i) % 58]
             }
@@ -3466,7 +3466,7 @@
               const selected = control.selected = control.children[0]
               const options = control.options = control.children[1]
 
-              let defaultSelect = options.querySelector('.gm-option-selected') ?? options.firstElementChild
+              const defaultSelect = options.querySelector('.gm-option-selected') ?? options.firstElementChild
               if (gm.config.autoSort != Enums.autoSort.default) {
                 let type = gm.config.autoSort
                 if (type == Enums.autoSort.auto) {
@@ -3880,7 +3880,7 @@
             } else {
               el.entryList.removeAttribute('sort-type-fixed')
             }
-            let reverse = type.endsWith(':R')
+            const reverse = type.endsWith(':R')
             const k = type.replace(/:R$/, '')
 
             const lists = []
@@ -4192,18 +4192,17 @@
      * 稍后再看模式重定向至正常模式播放
      */
     async redirect() {
-      window.stop() // 停止原页面的加载
-      // 这里必须从 URL 反推，其他方式都比这个慢
+      window.stop() // 停止加载
       try {
         let id = null
-        let vid = this.method.getVid()
+        const vid = this.method.getVid() // 必须从 URL 直接反推 bvid，其他方式都比这个慢
         if (vid) {
           if (vid.type == 'aid') {
             id = 'av' + vid.id
           } else {
             id = vid.id
           }
-        } else { // 如果为空就是以 watchlater/ 直接结尾，等同于稍后再看中的第一个视频
+        } else { // pathname 以 watchlater/ 结尾，等同于稍后再看中的第一个视频
           const resp = await api.web.request({
             url: gm.url.api_queryWatchlaterList,
           }, { check: r => r.code === 0 })
@@ -4494,7 +4493,7 @@
       } else {
         listBox.firstElementChild.removeAttribute('sort-type-fixed')
       }
-      let reverse = type.endsWith(':R')
+      const reverse = type.endsWith(':R')
       const k = type.replace(/:R$/, '')
 
       const lists = [
@@ -6049,7 +6048,7 @@
       const disableRedirect = gm.searchParams.get(`${gm.id}_disable_redirect`) == 'true'
       if (gm.config.redirect && !disableRedirect) { // 重定向，document-start 就执行，尽可能快地将原页面掩盖过去
         webpage.redirect()
-        return // 必须 return，否则后面的内容还会执行使得加载速度超级慢
+        return
       }
     }
 
