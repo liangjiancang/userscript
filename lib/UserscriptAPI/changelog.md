@@ -5,6 +5,7 @@
 ## V2.0
 
 1. 库：将现有 API 按类型拆分为多个文件，模块化 API。以后模块更新记录见 [module-changelog](./module-changelog/)。
+2. 代码：使用增强的代码规则。
 
 ## V1.8
 
