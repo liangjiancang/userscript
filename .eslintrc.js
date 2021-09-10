@@ -6,11 +6,9 @@ module.exports = {
   },
   'extends': 'eslint:recommended',
   'globals': {
-    'Atomics': 'readonly',
-    'SharedArrayBuffer': 'readonly',
-    'module': true,
-    'ClipboardItem': true,
-    'BigInt': true,
+    'module': 'readonly',
+    'ClipboardItem': 'readonly',
+    'BigInt': 'readonly',
   },
   'parser': '@babel/eslint-parser',
   'parserOptions': {
@@ -18,14 +16,15 @@ module.exports = {
     'sourceType': 'script',
   },
   'rules': {
+    'comma-dangle': ['warn', 'only-multiline'],
     'indent': ['warn', 2, {
       'SwitchCase': 1,
     }],
-    'semi': ['warn', 'never'],
-    'quotes': ['warn', 'single'],
-    'comma-dangle': ['warn', 'only-multiline'],
+    'no-debugger': 'warn',
     'no-unused-vars': 'warn',
     'no-useless-call': 'error',
-    'no-debugger': 'warn',
+    'prefer-const': 'warn',
+    'quotes': ['warn', 'single'],
+    'semi': ['warn', 'never'],
   },
 }
