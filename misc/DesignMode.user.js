@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            [DEBUG] 网页内容编辑模式 (DesignMode)
-// @version         1.0.6.20210905
+// @version         1.0.7.20210910
 // @namespace       laster2800
 // @author          Laster2800
 // @description     通过右键菜单快速切换 designMode 状态 - https://developer.mozilla.org/zh-CN/docs/Web/API/Document/designMode
@@ -18,14 +18,14 @@
   const target = top.document.designMode == 'on' ? 'off' : 'on'
   const executed = []
   const exec = win => {
-    if (executed.indexOf(win) >= 0) return
+    if (executed.includes(win)) return
     try {
       executed.push(win)
       win.document.designMode = target
       for (let i = 0; i < win.frames.length; i++) {
         exec(win.frames[i])
       }
-    } catch (e) { /* cross-origin frame */ }
+    } catch { /* cross-origin frame */ }
   }
   exec(top)
 })()

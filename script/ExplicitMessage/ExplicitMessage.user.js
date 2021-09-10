@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            [DEBUG] 信息显式化
-// @version         2.4.8.20210905
+// @version         2.4.9.20210910
 // @namespace       laster2800
 // @author          Laster2800
 // @description     用 alert() 提示符合匹配规则的日志或未捕获异常，帮助开发者在日常使用网页时发现潜藏问题
@@ -112,7 +112,7 @@
                 } else if (regex.test(String(value))) {
                   return true
                 }
-              } catch (e) { /* value that cannot be accessed */ }
+              } catch { /* value that cannot be accessed */ }
             }
           }
           return false

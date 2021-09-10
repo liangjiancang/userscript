@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            [DEBUG] 对象观察器
-// @version         2.1.9.20210907
+// @version         2.1.10.20210910
 // @namespace       laster2800
 // @author          Laster2800
 // @description     右键菜单激活，向 window 中注入 ObjectInspector 工具类，用于查找特定对象上符合条件的属性；激活无显式提醒，请自行打开控制台获取信息
@@ -122,7 +122,7 @@
                         this._inner({ obj: json, regex, inspectKey, inspectValue, exRegex, exType, exLongStrLen }, depth - 1, result, `${prevKey + key}{JSON-PARSE}:`, objSet)
                         continue
                       }
-                    } catch (e) { /* nothing to do */ }
+                    } catch {}
                   }
                   if (exLongStrLen && value.length > exLongStrLen) continue
                 } else if (typeof value == 'symbol') {
@@ -132,7 +132,7 @@
                   result[prevKey + key] = value
                 }
               }
-            } catch (e) { /* value that cannot be accessed */ }
+            } catch { /* value that cannot be accessed */ }
           }
         }
       }
@@ -141,7 +141,7 @@
 
   const executed = []
   const exec = win => {
-    if (executed.indexOf(win) >= 0) return
+    if (executed.includes(win)) return
     try {
       executed.push(win)
       if (!win.ObjectInspector) {
@@ -150,7 +150,7 @@
       for (let i = 0; i < win.frames.length; i++) {
         exec(win.frames[i])
       }
-    } catch (e) { /* cross-origin frame */ }
+    } catch { /* cross-origin frame */ }
   }
   exec(top)
   console.log('已向 window 注入 ObjectInspector。\n用法请查看脚本中的文档注释。')
