@@ -15,9 +15,9 @@
 
 * 日志
 
-  * 可用 `LOG` / `WARN` / `ERROR` 作为匹配目标。
+  * 可用 `LOG` / `DEBUG` / `INFO` / `WARN` / `ERROR` 作为匹配目标，匹配对应方法打印出来的日志。
 
-    如用 `^LOG$` 作为排除过滤器排除所有 INFO 级别日志，用 `^(LOG|WARN|ERROR)$` 作为排除过滤器排除所有日志。
+    如用 `^LOG$` 作为排除过滤器排除所有用 `console.log()` 打印出来的日志，用 `^(LOG|DEBUG|INFO|WARN|ERROR)$` 作为排除过滤器排除所有日志。
 
   * 无法捕获到非直接通过 `console` 对象打印出来的日志。
 

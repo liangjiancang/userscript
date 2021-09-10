@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            [DEBUG] 信息显式化
-// @version         2.4.9.20210910
+// @version         2.5.0.20210910
 // @namespace       laster2800
 // @author          Laster2800
 // @description     用 alert() 提示符合匹配规则的日志或未捕获异常，帮助开发者在日常使用网页时发现潜藏问题
@@ -24,7 +24,7 @@
 
   const gm = {
     id: 'gm429521',
-    injectUpdate: 20210905,
+    injectUpdate: 20210910,
     config: {},
     fn: {
       /**
@@ -39,7 +39,7 @@
         const config = gm.config
         const fn = gm.fn
         return function() {
-          log.apply(console, arguments)
+          Reflect.apply(log, console, arguments)
           try {
             if (config.enabled) {
               const m = [arguments, type]
@@ -147,7 +147,7 @@
 
     // 日志
     const console = unsafeWindow.console
-    for (const n of ['log', 'warn', 'error']) {
+    for (const n of ['log', 'debug', 'info', 'warn', 'error']) {
       console[n] = gm.fn.wrappedLog(console, console[n], n.toUpperCase())
     }
 

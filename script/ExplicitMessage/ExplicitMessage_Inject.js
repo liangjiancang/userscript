@@ -1,7 +1,7 @@
 /**
  * ExplicitMessage_Inject
  * @file [DEBUG] 信息显式化（注入版）
- * @version 1.2.3.20210905
+ * @version 1.3.0.20210910
  * @author Laster2800
  */
 
@@ -9,8 +9,8 @@
   'use strict'
 
   let updateAlerted = false
-  const injectVersion = 20210905
-  for (const n of ['log', 'warn', 'error']) {
+  const injectVersion = 20210910
+  for (const n of ['log', 'debug', 'info', 'warn', 'error']) {
     const log = console[n]
     console[n] = function() {
       if (unsafeWindow.gm429521?.fn?.wrappedLog) {
@@ -24,9 +24,9 @@
         } else {
           console[n] = gm.fn.wrappedLog(console, log, n.toUpperCase(), GM_info.script.name)
         }
-        console[n].apply(console, arguments)
+        Reflect.apply(console[n], console, arguments)
       } else {
-        log.apply(console, arguments)
+        Reflect.apply(log, console, arguments)
       }
     }
   }

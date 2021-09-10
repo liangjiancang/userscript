@@ -2,6 +2,11 @@
 
 本日志只记录用户友好的更新说明，影响不大的问题修复与修改不作记录，具体修改见 [提交记录](https://gitee.com/liangjiancang/userscript/commits/master/script/ExplicitMessage)。
 
+## V2.5
+
+1. 脚本：支持 `console.debug()`、`console.info()`。
+2. 注入版 `v1.3`：支持 `console.debug()`、`console.info()`。
+
 ## V2.4
 
 1. 过滤器：修复无法检查深层属性的严重 BUG！
