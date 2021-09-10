@@ -2,6 +2,12 @@
 
 本日志只记录用户友好的更新说明，影响不大的问题修复与修改不作记录，具体修改见 [提交记录](https://gitee.com/liangjiancang/userscript/commits/master/lib/UserscriptAPI)。模块更新记录见 [module-changelog](./module-changelog/)。
 
+## V2.1
+
+1. 库：新增模块 `base`，内建于 `UserscriptAPI` 中。
+2. 库：将模块 `logger` 内建于 `UserscriptAPI` 中。
+3. 库：移除模块 `tool`。
+
 ## V2.0
 
 1. 库：将现有 API 按类型拆分为多个文件，模块化 API。以后模块更新记录见 [module-changelog](./module-changelog/)。

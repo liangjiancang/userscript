@@ -8,11 +8,11 @@ My API for userscripts.
 
 | 模块      | 依赖模块 | Greasy Fork                                           |
 | --------- | -------- | ----------------------------------------------------- |
+| `base`    |          | BuiltIn                                               |
 | `dom`     |          | [431998](https://greasyfork.org/zh-CN/scripts/431998) |
-| `logger`  |          | [431999](https://greasyfork.org/zh-CN/scripts/431999) |
+| `logger`  |          | BuiltIn                                               |
 | `message` | `dom`    | [432000](https://greasyfork.org/zh-CN/scripts/432000) |
-| `tool`    |          | [432001](https://greasyfork.org/zh-CN/scripts/432001) |
-| `wait`    | `tool`   | [432002](https://greasyfork.org/zh-CN/scripts/432002) |
+| `wait`    |          | [432002](https://greasyfork.org/zh-CN/scripts/432002) |
 | `web`     |          | [432003](https://greasyfork.org/zh-CN/scripts/432003) |
 
 **Source: [Gitee](https://gitee.com/liangjiancang/userscript/tree/master/lib/UserscriptAPI) / [GitHub](https://github.com/liangjiancang/userscript/tree/master/lib/UserscriptAPI)** - *by Laster2800*
