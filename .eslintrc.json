@@ -1,0 +1,46 @@
+{
+  "env": {
+    "browser": true,
+    "es6": true,
+    "greasemonkey": true
+  },
+  "extends": ["eslint:recommended", "plugin:unicorn/recommended"],
+  "globals": {
+    "module": "readonly",
+    "ClipboardItem": "readonly",
+    "BigInt": "readonly"
+  },
+  "parser": "@babel/eslint-parser",
+  "parserOptions": {
+    "requireConfigFile": false,
+    "sourceType": "script"
+  },
+  "rules": {
+    "comma-dangle": ["warn", "only-multiline"],
+    "indent": ["warn", 2, { "SwitchCase": 1 }],
+    "no-empty": ["error", { "allowEmptyCatch": true }],
+    "no-debugger": "warn",
+    "no-unused-vars": "error",
+    "no-useless-call": "error",
+    "prefer-const": "error",
+    "quotes": ["warn", "single"],
+    "semi": ["warn", "never"],
+
+    "unicorn/catch-error-name": "off",
+    "unicorn/consistent-function-scoping": "off",
+    "unicorn/filename-case": "off",
+    "unicorn/no-array-for-each": "off",
+    "unicorn/no-lonely-if": "off",
+    "unicorn/no-new-array": "off",
+    "unicorn/no-null": "off",
+    "unicorn/no-this-assignment": "off",
+    "unicorn/no-zero-fractions": "off",
+    "unicorn/numeric-separators-style": "off",
+    "unicorn/prefer-add-event-listener": "off",
+    "unicorn/prefer-dom-node-append": "off",
+    "unicorn/prefer-module": "off",
+    "unicorn/prefer-switch": "off",
+    "unicorn/prefer-ternary": "off",
+    "unicorn/prevent-abbreviations": "off"
+  }
+}
