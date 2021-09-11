@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.21.2.20210911
+// @version         4.21.3.20210911
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -420,7 +420,7 @@
       reloadAfterSetting: { default: true, attr: 'checked', needNotReload: true, configVersion: 20200715 },
     },
     infoMap: {
-      cleanRemoveHistoryData: {},
+      clearRemoveHistoryData: {},
       watchlaterMediaList: { configVersion: 20210822 },
       fixHeader: { configVersion: 20210810.1 },
     },
@@ -461,6 +461,7 @@
       updateHighlightColor: '#4cff9c',
       inputThrottleWait: 250,
       batchAddRequestInterval: 300,
+      fixerHint: '固定在列表最后，并禁用自动移除及排序功能。\n右键点击可取消所有固定项。',
     },
     menu: {
       setting: { state: 0, wait: 0, el: null },
@@ -809,8 +810,6 @@
       if (gm.config.removeHistory) {
         // 稍后再看移除记录
         GM_registerMenuCommand('稍后再看移除记录', () => _self.openRemoveHistory())
-        // 清空稍后再看历史数据
-        GM_registerMenuCommand('清空稍后再看历史数据', () => _self.cleanRemoveHistoryData())
       }
       // 强制初始化
       GM_registerMenuCommand('初始化脚本', () => _self.resetScript())
@@ -1024,7 +1023,7 @@
                       <div>
                         <span>不重复数据记录保存数</span>
                         <span id="gm-rhsInformation" class="gm-information" title>💬</span>
-                        <span id="gm-cleanRemoveHistoryData" class="gm-info" title="清理已保存的稍后再看历史数据，不可恢复！">清空数据(0条)</span>
+                        <span id="gm-clearRemoveHistoryData" class="gm-info" title="清理已保存的稍后再看历史数据，不可恢复！">清空数据(0条)</span>
                         <input id="gm-removeHistorySaves" type="text">
                       </div>
                     </td>
@@ -1485,8 +1484,8 @@
             }
           })
           el.reset.addEventListener('click', () => _self.resetScript())
-          el.cleanRemoveHistoryData.addEventListener('click', function() {
-            el.removeHistory.checked && _self.cleanRemoveHistoryData()
+          el.clearRemoveHistoryData.addEventListener('click', function() {
+            el.removeHistory.checked && _self.clearRemoveHistoryData()
           })
           el.watchlaterMediaList.addEventListener('click', async function() {
             const uid = webpage.method.getDedeUserID()
@@ -1598,9 +1597,9 @@
             el[name].init?.()
           }
           if (gm.config.removeHistory) {
-            el.cleanRemoveHistoryData.textContent = `清空数据(${gm.data.removeHistoryData().size}条)`
+            el.clearRemoveHistoryData.textContent = `清空数据(${gm.data.removeHistoryData().size}条)`
           } else {
-            el.cleanRemoveHistoryData.textContent = '清空数据(0条)'
+            el.clearRemoveHistoryData.textContent = '清空数据(0条)'
           }
         }
 
@@ -2423,19 +2422,24 @@
     /**
      * 清空 removeHistoryData
      */
-    async cleanRemoveHistoryData() {
+    async clearRemoveHistoryData() {
       const result = await api.message.confirm('是否要清空稍后再看历史数据？')
       if (result) {
-        this.closeMenuItem('setting')
         GM_deleteValue('removeHistoryData')
         GM_deleteValue('removeHistoryFuzzyCompareReference')
-        if (gm.config.reloadAfterSetting) {
-          location.reload()
-        } else {
-          if (gm.config.removeHistory) {
-            gm.data.removeHistoryData(true)
-          }
-        }
+        location.reload()
+      }
+    }
+
+    /**
+     * 取消所有固定项
+     */
+    async clearFixedItems() {
+      const result = await api.message.confirm('是否要取消所有固定项？')
+      if (result) {
+        GM_setValue('fixedItems', [])
+        document.querySelectorAll('.gm-fixed').forEach(item => item.classList?.remove('gm-fixed'))
+        api.message.info('已取消所有固定项')
       }
     }
 
@@ -3105,9 +3109,10 @@
         const result = await api.message.confirm('是否清空稍后再看？')
         if (result) {
           success = await _self.method.clearWatchlater()
-          api.message.info(`清空稍后再看${success ? '成功' : '失败'}`)
           if (success && api.base.urlMatch(gm.regex.page_watchlaterList)) {
             location.reload()
+          } else {
+            api.message.info(`清空稍后再看${success ? '成功' : '失败'}`)
           }
         }
         return success
@@ -3122,9 +3127,10 @@
         const result = await api.message.confirm('是否移除已观看视频？')
         if (result) {
           success = await _self.method.clearWatchedInWatchlater()
-          api.message.info(`移除已观看视频${success ? '成功' : '失败'}`)
           if (success && api.base.urlMatch(gm.regex.page_watchlaterList)) {
             location.reload()
+          } else {
+            api.message.info(`移除已观看视频${success ? '成功' : '失败'}`)
           }
         }
         return success
@@ -3646,7 +3652,7 @@
                       <a class="gm-card-uploader" target="_blank" href="${gm.url.page_userSpace(item.owner.mid)}">${card.uploader}</a>
                       <div class="gm-card-corner">
                         <span class="gm-card-progress">${progress}</span>
-                        <span class="gm-card-fixer gm-hover" title="将视频固定在列表最后，并对其禁用自动移除及排序功能">固定</span>
+                        <span class="gm-card-fixer gm-hover" title="${gm.const.fixerHint}">固定</span>
                         <span class="gm-card-collector gm-hover" title="将视频移动至指定收藏夹">收藏</span>
                       </div>
                     </div>
@@ -3688,6 +3694,7 @@
                     e.preventDefault()
                     switchStatus(!card.added)
                   })
+
                   card.querySelector('.gm-card-collector').addEventListener('click', function(e) {
                     e.preventDefault() // 不能放到 async 中
                     setTimeout(async () => {
@@ -3709,7 +3716,9 @@
                       }
                     })
                   })
-                  card.querySelector('.gm-card-fixer').addEventListener('click', function(e) {
+
+                  const fixer = card.querySelector('.gm-card-fixer')
+                  fixer.addEventListener('click', function(e) {
                     e.preventDefault()
                     if (card.fixed) {
                       card.classList.remove('gm-fixed')
@@ -3718,6 +3727,10 @@
                     }
                     card.fixed = !card.fixed
                     gm.data.fixedItem(card.bvid, card.fixed)
+                  })
+                  fixer.addEventListener('contextmenu', function(e) {
+                    e.preventDefault()
+                    script.clearFixedItems()
                   })
                 }
                 const fixedIdx = fixedItems.indexOf(card.bvid)
@@ -4252,7 +4265,7 @@
         const state = item.querySelector('.info .state')
         state.insertAdjacentHTML('beforeend', `
           <span class="gm-list-item-tools">
-            <span class="gm-list-item-fixer" title="将视频固定在列表最后，并对其禁用自动移除及排序功能">固定</span>
+            <span class="gm-list-item-fixer" title="${gm.const.fixerHint}">固定</span>
             <span class="gm-list-item-collector" title="将视频移动至指定收藏夹">收藏</span>
             <input class="gm-list-item-switcher" type="checkbox" checked>
           </span>
@@ -4335,6 +4348,10 @@
           }
           item.fixed = !item.fixed
           gm.data.fixedItem(item.bvid, item.fixed)
+        })
+        fixer.addEventListener('contextmenu', function(e) {
+          e.preventDefault()
+          script.clearFixedItems()
         })
 
         if (item.state < 0) {
