@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.21.0.20210910
+// @version         4.21.1.20210911
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -20,7 +20,7 @@
 // @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=969309
 // @require         https://greasyfork.org/scripts/431998-userscriptapidom/code/UserscriptAPIDom.js?version=969308
 // @require         https://greasyfork.org/scripts/432000-userscriptapimessage/code/UserscriptAPIMessage.js?version=969307
-// @require         https://greasyfork.org/scripts/432002-userscriptapiwait/code/UserscriptAPIWait.js?version=969306
+// @require         https://greasyfork.org/scripts/432002-userscriptapiwait/code/UserscriptAPIWait.js?version=969564
 // @require         https://greasyfork.org/scripts/432003-userscriptapiweb/code/UserscriptAPIWeb.js?version=969305
 // @grant           GM_registerMenuCommand
 // @grant           GM_xmlhttpRequest
@@ -371,7 +371,7 @@
   const gm = {
     id: gmId,
     configVersion: GM_getValue('configVersion'),
-    configUpdate: 20210908,
+    configUpdate: 20210911,
     searchParams: new URL(location.href).searchParams,
     config: {},
     configMap: {
@@ -392,7 +392,7 @@
       headerMenuFnShowAll: { default: false, attr: 'checked', configVersion: 20210322 },
       headerMenuFnPlayAll: { default: true, attr: 'checked', configVersion: 20210322 },
       headerCompatible: { default: Enums.headerCompatible.none, attr: 'value', configVersion: 20210721 },
-      removeHistory: { default: true, attr: 'checked', manual: true, configVersion: 20210628 },
+      removeHistory: { default: true, attr: 'checked', manual: true, configVersion: 20210911 },
       removeHistorySavePoint: { default: Enums.removeHistorySavePoint.listAndMenu, attr: 'value', configVersion: 20210628 },
       removeHistorySavePeriod: { default: 60, type: 'int', attr: 'value', max: 600, needNotReload: true, configVersion: 20210908 },
       removeHistoryFuzzyCompare: { default: 1, type: 'int', attr: 'value', max: 5, needNotReload: true, configVersion: 20210722 },
@@ -591,11 +591,17 @@
               let data = GM_getValue('removeHistoryData')
               if (data && typeof data == 'object') {
                 Reflect.setPrototypeOf(data, PushQueue.prototype) // 初始化替换原型不会影响内联缓存
-                if (data.maxSize != gm.config.removeHistorySaves) {
-                  data.setMaxSize(gm.config.removeHistorySaves)
-                }
+                let updated = false
                 if (data.capacity != gm.config.removeHistorySaves) {
                   data.setCapacity(gm.config.removeHistorySaves)
+                  updated = true
+                }
+                if (data.maxSize != gm.config.removeHistorySaves) {
+                  data.setMaxSize(gm.config.removeHistorySaves)
+                  updated = true
+                }
+                if (updated) {
+                  GM_setValue('removeHistoryData', data)
                 }
               } else {
                 data = new PushQueue(gm.config.removeHistorySaves)
@@ -705,11 +711,12 @@
         },
       }
 
-      gm.el = {
-        ...gm.el,
-        gmRoot: document.body.appendChild(document.createElement('div')),
-      }
+      gm.el.gmRoot = document.createElement('div')
       gm.el.gmRoot.id = gm.id
+      api.wait.executeAfterElementLoaded({ // body 已存在时无异步
+        selector: 'body',
+        callback: body => body.append(gm.el.gmRoot),
+      })
     }
 
     /**
@@ -722,24 +729,8 @@
           // 必须按从旧到新的顺序写
           // 内部不能使用 gm.configUpdate，必须手写更新后的配置版本号！
 
-          // 4.9.0.20210322
-          if (gm.configVersion < 20210322) {
-            GM_deleteValue('forceConsistentVideo')
-          }
-
-          // 4.11.0a.20210628
-          if (gm.configVersion < 20210628) {
-            GM_deleteValue('openSettingAfterConfigUpdate')
-            // reset everything about history
-            GM_deleteValue('removeHistory')
-            GM_deleteValue('removeHistorySavePoint')
-            GM_deleteValue('removeHistoryFuzzyCompare')
-          }
-
           // 4.16.23.20210808
           if (gm.configVersion < 20210808) {
-            GM_deleteValue('removeHistoryData')
-            GM_deleteValue('removeHistoryFuzzyCompareReference')
             GM_deleteValue('removeHistorySaves')
           }
 
@@ -765,8 +756,14 @@
             GM_deleteValue('disablePageCache')
           }
 
+          // 4.21.1.20210911
+          if (gm.configVersion < 20210911) {
+            GM_deleteValue('removeHistoryData')
+            GM_deleteValue('removeHistoryFuzzyCompareReference')
+          }
+
           // 功能性更新后更新此处配置版本
-          if (gm.configVersion < 20210908) {
+          if (gm.configVersion < 20210911) {
             _self.openUserSetting(2)
           } else {
             gm.configVersion = gm.configUpdate
@@ -1355,9 +1352,8 @@
           `, null, { width: '36em', flagSize: '2em', position: { top: '80%' }, disabled: () => el.rhfcInformation.parentElement.hasAttribute('disabled') })
           el.rhsInformation = gm.el.setting.querySelector('#gm-rhsInformation')
           api.message.hoverInfo(el.rhsInformation, `
-            <div style="text-indent:2em;line-height:1.6em">
-              <p>在脚本限制的取值范围内，稍后再看历史数据的保存与读取对页面加载的影响几乎可以忽略不计（小于 1ms，不含脚本管理器对数据进行预加载的时间）。</p>
-              <p>但是打开移除记录时，根据大量数据生成历史的过程较为耗时。不过，只要将「默认历史回溯深度」设置在 100 以下就不会有明显的生成延迟。</p>
+            <div style="line-height:1.6em">
+              即使突破限制将该项设置为最大限制值的两倍，保存与读取对页面加载的影响仍可忽略不计（毫秒级），最坏情况下生成移除记录的耗时也能被控制在 1 秒以内。但仍不建议取太大的值，原因是移除记录本质上是一种误删后的挽回手段，非常近期的历史足以达到效果。
             </div>
           `, null, { width: '36em', flagSize: '2em', position: { top: '80%' }, disabled: () => el.rhsInformation.parentElement.hasAttribute('disabled') })
           el.rhtInformation = gm.el.setting.querySelector('#gm-rhtInformation')
@@ -1544,8 +1540,8 @@
               // 因：removeHistorySaves
               // 果：removeHistorySaves & removeHistoryData
               const data = gm.data.removeHistoryData()
-              data.setMaxSize(rhsV)
               data.setCapacity(rhsV)
+              data.setMaxSize(rhsV)
               gm.config.removeHistorySaves = rhsV
               GM_setValue('removeHistorySaves', rhsV)
               GM_setValue('removeHistoryData', data)
@@ -2345,41 +2341,22 @@
               data = rhd.toArray(depth, rhd.size - depth)
             }
             el.saveTimes.textContent = data.length
-            let history = []
+            const history = []
             const result = []
             for (const record of data) {
               if (!map.has(record[0])) {
                 history.push(record)
               }
             }
-            if (gm.config.removeHistoryTimestamp) {
-              // 万恶的标准并没有对 Array.prototype.sort() 的稳定性作规定
-              // 尽管目前 Chromium 上的 sort() 似乎是稳定排序，但还是手动处理一下吧
-              const tsMap = new Map()
-              for (const record of history) {
-                const ts = record[2] ?? 0
-                if (tsMap.has(ts)) {
-                  const ar = tsMap.get(ts)
-                  ar.push(record)
-                } else {
-                  const ar = []
-                  ar.push(record)
-                  tsMap.set(ts, ar)
-                }
-              }
-              const tsIdx = [...tsMap.keys()]
-              tsIdx.sort()
-              history = []
-              if (el.historySort.type < 1) {
-                for (let i = tsIdx.length - 1; i >= 0; i--) {
-                  history = [...history, ...tsMap.get(tsIdx[i])]
-                }
-              } else {
-                for (const idx of tsIdx) {
-                  history = [...history, ...tsMap.get(idx).reverse()]
-                }
-              }
 
+            if (gm.config.removeHistoryTimestamp) { // 两种情况有大量同类项，但合并后处理速度会降不少
+              if (history.length > 1) {
+                // ES2019 后 Array.prototype.sort() 为稳定排序
+                history.sort((a, b) => (b[2] ?? 0) - (a[2] ?? 0))
+                if (el.historySort.type >= 1) {
+                  history.reverse()
+                }
+              }
               for (const rm of history) {
                 result.push(`
                   <div>
@@ -2390,7 +2367,7 @@
                 `)
               }
             } else {
-              if (history.length > 1 && el.historySort.type == 1) {
+              if (history.length > 1 && el.historySort.type >= 1) {
                 history.reverse()
               }
               for (const rm of history) {
@@ -2406,6 +2383,7 @@
 
             if (result.length > 0) {
               el.content.innerHTML = result.join('')
+              el.content.scrollTop = 0
             } else {
               setEmptyContent('没有找到移除记录，请尝试增大历史回溯深度')
             }
@@ -4189,7 +4167,7 @@
      * 稍后再看模式重定向至正常模式播放
      */
     async redirect() {
-      window.stop() // 停止加载
+      // stop() 并不能带来有效的重定向速度改善，反而可能会引起已加载脚本执行错误，也许会造成意外的不良影响
       try {
         let id = null
         const vid = this.method.getVid() // 必须从 URL 直接反推 bvid，其他方式都比这个慢
@@ -4384,9 +4362,12 @@
        * @param {HTMLElement} [arc] 自动移除按钮，为 `null` 时表示彻底禁用自动移除功能
        */
       function processLink(base, link, arc) {
-        link.target = gm.config.openListVideo == Enums.openListVideo.openInCurrent ? '_self' : '_blank'
-        if (arc) {
-          if (base.state >= 0) { // 视频被和谐或其他特殊情况
+        if (base.state >= 0) { // 视频被和谐或其他特殊情况
+          link.target = gm.config.openListVideo == Enums.openListVideo.openInCurrent ? '_self' : '_blank'
+          if (gm.config.redirect) {
+            link.href = `${gm.url.page_videoNormalMode}/${base.bvid}`
+          }
+          if (arc) {
             link.addEventListener('mousedown', function(e) {
               if (e.button == 0 || e.button == 1) { // 左键或中键
                 if (base.fixed) return
@@ -4429,10 +4410,10 @@
                 }
               }
             })
-          } else {
-            link.href = gm.url.noop
-            link.target = '_self'
           }
+        } else {
+          link.href = gm.url.noop
+          link.target = '_self'
         }
       }
     }
@@ -5148,6 +5129,7 @@
             word-break: break-all;
             text-align: justify;
             height: 2.8em;
+            line-height: 1.4em;
           }
           #${gm.id} .gm-entrypopup .gm-entry-list .gm-entry-list-item.gm-removed .gm-card-title {
             text-decoration: line-through;
@@ -5155,7 +5137,7 @@
           #${gm.id} .gm-entrypopup .gm-entry-list .gm-entry-list-item .gm-card-uploader {
             font-size: 0.8em;
             text-overflow: ellipsis;
-            white-space: nowrap;
+            word-break: keep-all;
             overflow: hidden;
             width: fit-content;
             max-width: 15em;
@@ -5455,9 +5437,10 @@
             margin: 0.6em 0.2em 2em 0.2em;
             padding: 0 1.8em;
             font-size: 1.2em;
-            text-align: center;
             line-height: 1.6em;
+            text-align: center;
             overflow-y: auto;
+            overflow-wrap: break-word;
             height: 60vh;
             max-height: 60em;
             user-select: text;
@@ -5848,7 +5831,8 @@
     setMaxSize(maxSize) {
       if (maxSize > this.capacity) {
         maxSize = this.capacity
-      } else if (maxSize < this.size) {
+      }
+      if (maxSize < this.size) {
         this.size = maxSize
       }
       this.maxSize = maxSize
@@ -5862,12 +5846,13 @@
     setCapacity(capacity) {
       if (this.maxSize > capacity) {
         this.maxSize = capacity
-        if (this.size > capacity) {
-          this.size = capacity
-        }
-        // no need to gc() here
       }
+      if (this.size > capacity) {
+        this.size = capacity
+      }
+      // no need to gc() here
       const data = this.toArray().reverse()
+      this.capacity = capacity
       this.index = data.length
       data.length = capacity
       this.data = data
@@ -6019,7 +6004,7 @@
           for (let i = start + 1; i < this.capacity; i++) {
             this.data[i] = null
           }
-        } else if (start < end) {
+        } else {
           for (let i = start + 1; i < end; i++) {
             this.data[i] = null
           }

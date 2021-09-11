@@ -4,8 +4,17 @@
 
 ## V4.21
 
-1. API：更新至 V2.1。详见 [UserscriptAPI 更新日志](https://gitee.com/liangjiancang/userscript/blob/master/lib/UserscriptAPI/changelog.md)。
-2. 代码：使用增强的代码规则。
+1. API：更新至 V2.1（`dom` 更新至 V1.1，`logger` 更新至 V1.1，`web` 更新至 V1.1）。详见 [UserscriptAPI 更新日志](https://gitee.com/liangjiancang/userscript/blob/master/lib/UserscriptAPI/changelog.md)。
+2. API-wait：更新至 V1.1，使得 `executeAfterElementLoaded()` 在对应元素已存在时具备同步性。
+3. 移除记录：优化生成流程，大幅提高生成效率。理论上可以大幅放宽稍后再看历史数据保存数限制，但基于该功能的设计目的（作为误删后的挽回手段），决定不放宽限制。
+4. 移除记录：修复稍后再看历史数据容量无法更新，导致无法有效修改实际保存数修改的问题。
+5. 移除记录：修复不开启时间戳时，无法正确按「完全升序」排序的问题。
+6. 移除记录：零碎的问题修复及改进。
+7. 重定向：开启后，列表页面中的稍后再看页链接会被替换为常规播放页链接。
+8. 重定向：不再停止原页面加载，因为这可能会引起已加载脚本执行错误，也许会造成意外的不良影响。
+9. 弹出菜单：优化特殊情况下的排版。
+10. 脚本：优化初始化流程，避免页面停止加载导致的初始化错误。
+11. 代码：使用增强的代码规则。
 
 ## V4.20
 
