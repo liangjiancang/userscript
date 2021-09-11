@@ -4,8 +4,10 @@
 
 ## V2.3
 
-1. API：更新至 V2.1。详见 [UserscriptAPI 更新日志](https://gitee.com/liangjiancang/userscript/blob/master/lib/UserscriptAPI/changelog.md)。
-2. 代码：使用增强的代码规则。
+1. API：更新至 V2.1（`dom` 更新至 V1.1，`logger` 更新至 V1.1，`web` 更新至 V1.1）。详见 [UserscriptAPI 更新日志](https://gitee.com/liangjiancang/userscript/blob/master/lib/UserscriptAPI/changelog.md)。
+2. API-wait：更新至 V1.1，使得 `executeAfterElementLoaded()` 在对应元素已存在时具备同步性。
+3. 脚本：优化初始化流程，避免页面停止加载导致的初始化错误。
+4. 代码：使用增强的代码规则。
 
 ## V2.2
 

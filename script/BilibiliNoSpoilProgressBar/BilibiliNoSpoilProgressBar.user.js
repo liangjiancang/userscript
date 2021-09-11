@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站防剧透进度条
-// @version         2.3.0.20210910
+// @version         2.3.1.20210911
 // @namespace       laster2800
 // @author          Laster2800
 // @description     看比赛、看番总是被进度条剧透？装上这个脚本再也不用担心这些问题了
@@ -16,7 +16,7 @@
 // @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=969309
 // @require         https://greasyfork.org/scripts/431998-userscriptapidom/code/UserscriptAPIDom.js?version=969308
 // @require         https://greasyfork.org/scripts/432000-userscriptapimessage/code/UserscriptAPIMessage.js?version=969307
-// @require         https://greasyfork.org/scripts/432002-userscriptapiwait/code/UserscriptAPIWait.js?version=969306
+// @require         https://greasyfork.org/scripts/432002-userscriptapiwait/code/UserscriptAPIWait.js?version=969564
 // @require         https://greasyfork.org/scripts/432003-userscriptapiweb/code/UserscriptAPIWeb.js?version=969305
 // @grant           GM_registerMenuCommand
 // @grant           GM_xmlhttpRequest
@@ -331,11 +331,12 @@
         },
       }
 
-      gm.el = {
-        ...gm.el,
-        gmRoot: document.body.appendChild(document.createElement('div')),
-      }
+      gm.el.gmRoot = document.createElement('div')
       gm.el.gmRoot.id = gm.id
+      api.wait.executeAfterElementLoaded({ // body 已存在时无异步
+        selector: 'body',
+        callback: body => body.append(gm.el.gmRoot),
+      })
     }
 
     /**
