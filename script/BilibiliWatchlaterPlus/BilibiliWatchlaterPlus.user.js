@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.21.3.20210911
+// @version         4.21.4.20210912
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -535,7 +535,6 @@
      * document-start 级别初始化
      */
     initAtDocumentStart() {
-      // document-start 级用户配置读取
       if (gm.configVersion > 0) {
         for (const name of gm.configDocumentStart) {
           gm.config[name] = this.method.gmValidate(name, gm.configMap[name].default)
