@@ -18,11 +18,11 @@
   "rules": {
     "comma-dangle": ["warn", "only-multiline"],
     "indent": ["warn", 2, { "SwitchCase": 1 }],
-    "no-empty": ["error", { "allowEmptyCatch": true }],
+    "no-empty": ["warn", { "allowEmptyCatch": true }],
     "no-debugger": "warn",
-    "no-unused-vars": "error",
-    "no-useless-call": "error",
-    "prefer-const": "error",
+    "no-unused-vars": "warn",
+    "no-useless-call": "warn",
+    "prefer-const": "warn",
     "quotes": ["warn", "single"],
     "semi": ["warn", "never"],
 
