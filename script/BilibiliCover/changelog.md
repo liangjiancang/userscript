@@ -8,7 +8,7 @@
 
 ## V5.5
 
-1. API：更新至 V2.1。详见 [UserscriptAPI 更新日志](https://gitee.com/liangjiancang/userscript/blob/master/lib/UserscriptAPI/changelog.md)。
+1. API：更新至 V2.1（`dom` 更新至 V1.1，`logger` 更新至 V1.1，`wait` 更新至 V1.1，`web` 更新至 V1.1）。详见 [UserscriptAPI 更新日志](https://gitee.com/liangjiancang/userscript/blob/master/lib/UserscriptAPI/changelog.md)。
 2. 代码：使用增强的代码规则。
 
 ## V5.4
