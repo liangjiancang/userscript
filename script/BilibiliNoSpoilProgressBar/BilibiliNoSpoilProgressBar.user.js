@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站防剧透进度条
-// @version         2.3.1.20210911
+// @version         2.3.2.20210912
 // @namespace       laster2800
 // @author          Laster2800
 // @description     看比赛、看番总是被进度条剧透？装上这个脚本再也不用担心这些问题了
@@ -24,6 +24,7 @@
 // @grant           GM_getValue
 // @grant           GM_deleteValue
 // @grant           GM_listValues
+// @grant           unsafeWindow
 // @grant           window.onurlchange
 // @connect         api.bilibili.com
 // @compatible      edge 版本不小于 85
@@ -1664,7 +1665,7 @@
     }
 
     /**
-     * 切换分P、页面内切换视频、播放器刷新等各种情况下，重新初始化
+     * 切换分P、页面内切换视频、播放器刷新等各种情况下，重新初始化防剧透流程
      */
     initSwitch() {
       const _self = this
@@ -1680,14 +1681,21 @@
         })
       } else {
         // V2 在这些情况下会自动刷新
-        api.wait.executeAfterElementLoaded({
-          selector: '.bilibili-player-video-control',
-          exclude: [_self.control],
-          repeat: true,
-          throttleWait: 2000,
-          timeout: 0,
-          callback: () => _self.initNoSpoil(),
-        })
+        if (unsafeWindow.player) {
+          unsafeWindow.player.addEventListener('video_destroy', async () => {
+            await _self.initNoSpoil()
+            _self.initSwitch()
+          })
+        } else {
+          api.wait.executeAfterElementLoaded({
+            selector: '.bilibili-player-video-control',
+            exclude: [_self.control],
+            repeat: true,
+            throttleWait: 2000,
+            timeout: 0,
+            callback: () => _self.initNoSpoil(),
+          })
+        }
       }
     }
 
