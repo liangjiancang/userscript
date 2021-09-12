@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.21.4.20210912
+// @version         4.21.5.20210913
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -3647,7 +3647,7 @@
                       </div>
                     </div>
                     <div class="gm-card-right">
-                      <div class="gm-card-title">${valid ? card.vTitle : `<b>[${_self.method.getItemStateDesc(item.state)}]</b> ${card.vTitle}`}</div>
+                      <div class="gm-card-title" title="${card.vTitle}">${valid ? card.vTitle : `<b>[${_self.method.getItemStateDesc(item.state)}]</b> ${card.vTitle}`}</div>
                       <a class="gm-card-uploader" target="_blank" href="${gm.url.page_userSpace(item.owner.mid)}">${card.uploader}</a>
                       <div class="gm-card-corner">
                         <span class="gm-card-progress">${progress}</span>
