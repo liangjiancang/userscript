@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.21.5.20210913
+// @version         4.21.6.20210913
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -461,7 +461,7 @@
       updateHighlightColor: '#4cff9c',
       inputThrottleWait: 250,
       batchAddRequestInterval: 300,
-      fixerHint: '固定在列表最后，并禁用自动移除及排序功能。\n右键点击可取消所有固定项。',
+      fixerHint: '固定在列表最后，并禁用自动移除及排序功能\n右键点击可取消所有固定项',
     },
     menu: {
       setting: { state: 0, wait: 0, el: null },
