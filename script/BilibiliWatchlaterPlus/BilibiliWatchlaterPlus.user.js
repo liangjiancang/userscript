@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.21.6.20210913
+// @version         4.21.7.20210915
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -371,7 +371,7 @@
   const gm = {
     id: gmId,
     configVersion: GM_getValue('configVersion'),
-    configUpdate: 20210911,
+    configUpdate: 20210915,
     searchParams: new URL(location.href).searchParams,
     config: {},
     configMap: {
@@ -760,6 +760,11 @@
           if (gm.configVersion < 20210911) {
             GM_deleteValue('removeHistoryData')
             GM_deleteValue('removeHistoryFuzzyCompareReference')
+          }
+
+          // 4.21.7.20210915
+          if (gm.configVersion < 20210915) {
+            GM_deleteValue('batchParams')
           }
 
           // 功能性更新后更新此处配置版本
@@ -1834,7 +1839,7 @@
           el.resetParams = gm.el.batchAddManager.querySelector('#gm-reset-batch-params')
           el.shadow = gm.el.batchAddManager.querySelector('.gm-shadow')
 
-          el.saveParams.paramIds = ['1a', '1b', '2a', '2b', '3a', '3b', '4a']
+          el.saveParams.paramIds = ['1a', '1b', '3a', '3b', '4a']
           const batchParams = GM_getValue('batchParams')
           if (batchParams) {
             for (const id of el.saveParams.paramIds) {
@@ -1909,6 +1914,7 @@
               el.id3c.disabled = true
               el.id4b.disabled = true
               el.id2a.maxVal = v1a
+              el.id2b.syncVal = el.id1b.value
               el.items.textContent = ''
               const uid = webpage.method.getDedeUserID()
               let dynamicOffset = await (async () => {
@@ -1975,8 +1981,10 @@
               el.id2c.disabled = false
               el.id3c.disabled = false
               el.id4b.disabled = false
-              if (!el.id2a.value) {
-                el.id2a.value = el.id2a.maxVal ?? 0
+              if (el.id2a.maxVal != null && el.id2b.syncVal != null) {
+                el.id2a.value = el.id2a.maxVal
+                el.id2b.value = el.id2b.syncVal // 非用户操作不会触发 change 事件
+                el.id2b.prevVal = el.id2b.value
               }
             }
           })
@@ -2004,9 +2012,12 @@
                   el.items.children[i].classList.remove('gm-filtered-time')
                 }
               } else {
-                if (el.id2a.maxVal < v2a) {
-                  v2a = el.id2a.maxVal
-                  el.id2a.value = v2a
+                if (el.id2a.maxVal) {
+                  const max = el.id2a.maxVal * el.id2b.syncVal
+                  if (max < v2a * el.id2b.value) {
+                    el.id2a.value = (max / el.id2b.value).toFixed(1)
+                    v2a = Number.parseFloat(el.id2a.value)
+                  }
                 }
                 const newEnd = Date.now() - v2a * el.id2b.value * 1000
                 for (let i = 0; i < el.items.childElementCount; i++) {
@@ -2064,8 +2075,11 @@
               val += move
               if (val < 0) {
                 val = 0
-              } else if (this.maxVal < val) {
-                val = this.maxVal
+              } else if (this.maxVal && el.id2b.syncVal) {
+                const max = this.maxVal * el.id2b.syncVal
+                if (max < val * el.id2b.value) {
+                  val = max / el.id2b.value
+                }
               }
               this.value = val.toFixed(1)
               throttledFilterTime()
@@ -2179,6 +2193,19 @@
               }
             }
           })
+
+          // 时间单位转换
+          const syncTimeUnit = (unitEl, valEl) => {
+            unitEl.prevVal = unitEl.value
+            unitEl.addEventListener('change', function() {
+              if (valEl.value) {
+                valEl.value = (valEl.value * this.prevVal / this.value).toFixed(1)
+                this.prevVal = this.value
+              }
+            }, true)
+          }
+          syncTimeUnit(el.id1b, el.id1a)
+          syncTimeUnit(el.id2b, el.id2a)
         }
       }
     }
