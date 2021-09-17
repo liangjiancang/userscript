@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name            S1战斗力屏蔽
 // @namespace       laster2800
-// @version         3.7.2.20210911
+// @version         3.7.3.20210917
 // @author          Laster2800
 // @description     屏蔽S1的战斗力系统，眼不见为净
 // @author          Laster2800
@@ -36,7 +36,7 @@
 
   function replaceTitle() {
     // eslint-disable-next-line no-irregular-whitespace
-    const reg = /^【新提醒】|【　　　】/
+    const reg = /^(【新提醒】|【　　　】)/
     if (reg.test(document.title)) {
       document.title = document.title.replace(reg, '')
     }
@@ -104,15 +104,9 @@
           menu_button.className = 'a showmenu'
           api.wait.$('title', document.head).then(title => {
             // 常规情况下，此时 title 仍未被改变，添加一个 ob 来跟踪变化
-            const obCfg = { childList: true }
-            const ob = new MutationObserver((mutations, observer) => {
-              observer.disconnect()
-              replaceTitle()
-              observer.observe(title, obCfg)
-            })
-            ob.observe(title, obCfg)
-
-            // 若在后台打开新标签页后很长时间都不切换过去，则切换过去时才会执行到这里，此时 title 可能已发生变化需立即处理
+            const ob = new MutationObserver(replaceTitle)
+            ob.observe(title,  { childList: true })
+            // 若在后台打开新标签页后很长时间都不切换过去，则切换过去时 title 可能已发生变化需立即处理
             replaceTitle()
           })
         }
