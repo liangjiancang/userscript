@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.21.8.20210917
+// @version         4.21.9.20210917
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -1870,7 +1870,7 @@
           el.shadow.addEventListener('click', () => script.closeMenuItem('batchAddManager'))
 
           // 时间同步
-          const setLastAddTime = (time) => {
+          const setLastAddTime = time => {
             time ??= null
             GM_setValue('batchLastAddTime', time)
             el.lastAddTime.val = time
