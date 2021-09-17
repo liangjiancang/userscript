@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.21.7.20210915
+// @version         4.21.8.20210917
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -220,6 +220,7 @@
    * @property {number} removeHistorySaves 稍后再看历史数据记录保存数
    * @property {boolean} removeHistoryTimestamp 使用时间戳优化移除记录
    * @property {number} removeHistorySearchTimes 历史回溯深度
+   * @property {boolean} batchAddLoadAfterTimeSync 批量添加：执行时间同步后是否自动加载稿件
    * @property {fillWatchlaterStatus} fillWatchlaterStatus 填充稍后再看状态
    * @property {autoSort} autoSort 自动排序
    * @property {boolean} videoButton 视频播放页稍后再看状态快速切换
@@ -371,7 +372,7 @@
   const gm = {
     id: gmId,
     configVersion: GM_getValue('configVersion'),
-    configUpdate: 20210915,
+    configUpdate: 20210917,
     searchParams: new URL(location.href).searchParams,
     config: {},
     configMap: {
@@ -399,6 +400,7 @@
       removeHistorySaves: { default: 100, type: 'int', attr: 'value', manual: true, needNotReload: true, min: 10, max: 500, configVersion: 20210808 },
       removeHistoryTimestamp: { default: true, attr: 'checked', needNotReload: true, configVersion: 20210703 },
       removeHistorySearchTimes: { default: 100, type: 'int', attr: 'value', manual: true, needNotReload: true, min: 1, max: 500, configVersion: 20210819 },
+      batchAddLoadAfterTimeSync: { default: true, attr: 'checked', configVersion: 20210917, needNotReload: true },
       fillWatchlaterStatus: { default: Enums.fillWatchlaterStatus.dynamic, attr: 'value', configVersion: 20200819 },
       autoSort: { default: Enums.autoSort.default, attr: 'value', configVersion: 20210819 },
       videoButton: { default: true, attr: 'checked' },
@@ -768,7 +770,7 @@
           }
 
           // 功能性更新后更新此处配置版本
-          if (gm.configVersion < 20210911) {
+          if (gm.configVersion < 20210917) {
             _self.openUserSetting(2)
           } else {
             gm.configVersion = gm.configUpdate
@@ -1047,6 +1049,16 @@
                         <span>默认历史回溯深度</span>
                         <input id="gm-removeHistorySearchTimes" type="text">
                       </div>
+                    </td>
+                  </tr>
+
+                  <tr class="gm-item" title="在批量添加管理器中，执行时间同步后，是否自动执行稿件加载步骤？">
+                    <td><div>全局功能</div></td>
+                    <td>
+                      <label>
+                        <span>批量添加：执行时间同步后是否自动加载稿件</span>
+                        <input id="gm-batchAddLoadAfterTimeSync" type="checkbox">
+                      </label>
                     </td>
                   </tr>
 
@@ -1822,6 +1834,7 @@
               </div>
               <div class="gm-items"></div>
               <div class="gm-bottom">
+                <button id="gm-last-add-time">时间同步</button>
                 <button id="gm-unchecked-display"></button>
                 <button id="gm-save-batch-params">保存参数</button>
                 <button id="gm-reset-batch-params">重置参数</button>
@@ -1834,6 +1847,7 @@
             el[`id${id}`] = gm.el.batchAddManager.querySelector(`#gm-batch-${id}`)
           }
           el.items = gm.el.batchAddManager.querySelector('.gm-items')
+          el.lastAddTime = gm.el.batchAddManager.querySelector('#gm-last-add-time')
           el.uncheckedDisplay = gm.el.batchAddManager.querySelector('#gm-unchecked-display')
           el.saveParams = gm.el.batchAddManager.querySelector('#gm-save-batch-params')
           el.resetParams = gm.el.batchAddManager.querySelector('#gm-reset-batch-params')
@@ -1854,6 +1868,27 @@
         const processItem = () => {
           gm.el.batchAddManager.fadeInDisplay = 'flex'
           el.shadow.addEventListener('click', () => script.closeMenuItem('batchAddManager'))
+
+          // 时间同步
+          const setLastAddTime = (time) => {
+            time ??= null
+            GM_setValue('batchLastAddTime', time)
+            el.lastAddTime.val = time
+            el.lastAddTime.title = `将上一次成功执行添加步骤的时间同步到加载步骤中${time ? `\n上次添加时间：${new Date(time).toLocaleString()}` : ''}`
+            el.lastAddTime.disabled = !time
+          }
+          setLastAddTime(GM_getValue('batchLastAddTime'))
+          el.lastAddTime.addEventListener('click', function() {
+            if (executing) return api.message.info('执行中，无法同步')
+            if (this.val == null) return
+            const secInterval = (Date.now() - this.val) / 1000
+            el.id1a.value = secInterval / el.id1b.value // 取精确时间要比向上取整好
+            if (gm.config.batchAddLoadAfterTimeSync) {
+              el.id1c.dispatchEvent(new Event('click'))
+            } else {
+              api.message.info(`已同步到 ${new Date(this.val).toLocaleString()}`)
+            }
+          })
 
           // 非选显示
           const setUncheckedDisplayText = () => {
@@ -1888,11 +1923,11 @@
               batchParams[`id${id}`] = el[`id${id}`].value
             }
             GM_setValue('batchParams', batchParams)
-            api.message.info('保存成功，重新加载页面后当前参数会被自动加载')
+            api.message.info('保存成功，重新加载页面后当前参数会被自动加载', { ms: 1800 })
           })
           el.resetParams.addEventListener('click', function() {
             GM_deleteValue('batchParams')
-            api.message.info('重置成功，重新加载页面后参数将加载默认值')
+            api.message.info('重置成功，重新加载页面后参数将加载默认值', { ms: 1800 })
           })
 
           let executing = false
@@ -2165,6 +2200,7 @@
                 available -= 1
                 await new Promise(resolve => setTimeout(resolve, v4a * (Math.random() + 0.5)))
               }
+              setLastAddTime(Date.now())
               api.message.info('批量添加：已将所有选定稿件添加到稍后再看', { ms: 1800 })
             } catch (e) {
               api.message.alert('执行失败：可能是因为该稿件不可用或稍后再看不支持该稿件类型（如互动视频），请尝试取消勾选当前列表中第一个选定的稿件后重新执行')
