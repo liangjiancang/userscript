@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.21.9.20210917
+// @version         4.21.10.20210917
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -2050,8 +2050,8 @@
                 if (el.id2a.maxVal) {
                   const max = el.id2a.maxVal * el.id2b.syncVal
                   if (max < v2a * el.id2b.value) {
-                    el.id2a.value = (max / el.id2b.value).toFixed(1)
-                    v2a = Number.parseFloat(el.id2a.value)
+                    v2a = max / el.id2b.value
+                    el.id2a.value = v2a
                   }
                 }
                 const newEnd = Date.now() - v2a * el.id2b.value * 1000
@@ -2077,16 +2077,7 @@
           el.id2b.addEventListener('change', filterTime)
           el.id2c.addEventListener('click', filterTime)
           el.id2a.addEventListener('input', function() {
-            const val = Number.parseFloat(this.value)
-            if (Number.isNaN(val)) {
-              this.value = ''
-            } else {
-              let valStr = String(val)
-              if (!valStr.includes('.') && this.value.includes('.')) {
-                valStr += '.'
-              }
-              this.value = valStr
-            }
+            this.value = /\d+(\.\d*)?/.exec(this.value)?.[0] ?? ''
           })
           el.id2a.addEventListener('blur', function() {
             if (this.value.endsWith('.')) {
@@ -2108,15 +2099,18 @@
                 move *= 100
               }
               val += move
+
+              let truncate = true
               if (val < 0) {
                 val = 0
               } else if (this.maxVal && el.id2b.syncVal) {
                 const max = this.maxVal * el.id2b.syncVal
                 if (max < val * el.id2b.value) {
                   val = max / el.id2b.value
+                  truncate = false
                 }
               }
-              this.value = val.toFixed(1)
+              this.value = truncate ? val.toFixed(1) : val
               throttledFilterTime()
             }
           }, 100))
