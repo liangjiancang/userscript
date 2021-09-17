@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            Greasy Fork URL 脚本名称清理
-// @version         1.0.0.20210905
+// @version         1.0.1.20210918
 // @namespace       laster2800
 // @author          Laster2800
 // @description     清理 Greasy Fork URL 中的脚本名称
@@ -9,7 +9,7 @@
 // @supportURL      https://greasyfork.org/zh-CN/scripts/431940/feedback
 // @license         LGPL-3.0
 // @noframes
-// @include         /^https?:\/\/greasyfork\.org\/[^/]+\/scripts\/\d+-[^/]+([/?#]|$)/
+// @include         /^https?:\/\/(greasy|sleazy)fork\.org\/[^/]+\/scripts\/\d+-[^/]+([/?#]|$)/
 // @grant           none
 // @run-at          document-start
 // ==/UserScript==
