@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.21.10.20210917
+// @version         4.21.11.20210918
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -400,7 +400,7 @@
       removeHistorySaves: { default: 100, type: 'int', attr: 'value', manual: true, needNotReload: true, min: 10, max: 500, configVersion: 20210808 },
       removeHistoryTimestamp: { default: true, attr: 'checked', needNotReload: true, configVersion: 20210703 },
       removeHistorySearchTimes: { default: 100, type: 'int', attr: 'value', manual: true, needNotReload: true, min: 1, max: 500, configVersion: 20210819 },
-      batchAddLoadAfterTimeSync: { default: true, attr: 'checked', configVersion: 20210917, needNotReload: true },
+      batchAddLoadAfterTimeSync: { default: false, attr: 'checked', configVersion: 20210917, needNotReload: true },
       fillWatchlaterStatus: { default: Enums.fillWatchlaterStatus.dynamic, attr: 'value', configVersion: 20200819 },
       autoSort: { default: Enums.autoSort.default, attr: 'value', configVersion: 20210819 },
       videoButton: { default: true, attr: 'checked' },
