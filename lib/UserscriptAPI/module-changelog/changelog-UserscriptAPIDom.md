@@ -1,5 +1,9 @@
 # UserscriptAPIDom
 
+## V1.2
+
+1. 新增：`findAncestor()`，用于查找符合条件的祖先元素。
+
 ## V1.1
 
 1. 迁移：`addStyle()`、`initUrlchangeEvent()` 移动至 `base` 模块。
