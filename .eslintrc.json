@@ -16,7 +16,7 @@
     "sourceType": "script"
   },
   "rules": {
-    "comma-dangle": ["warn", "only-multiline"],
+    "comma-dangle": ["warn", "always-multiline"],
     "indent": ["warn", 2, { "SwitchCase": 1 }],
     "no-empty": ["warn", { "allowEmptyCatch": true }],
     "no-debugger": "warn",
