@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站封面获取
-// @version         5.5.1.20210911
+// @version         5.5.2.20210919
 // @namespace       laster2800
 // @author          Laster2800
 // @description     获取B站各播放页及直播间封面，支持手动及实时预览等多种模式，支持点击下载、封面预览、快速复制，可高度自定义
@@ -17,9 +17,9 @@
 // @exclude         *://live.bilibili.com/
 // @exclude         *://live.bilibili.com/?*
 // @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=969309
-// @require         https://greasyfork.org/scripts/431998-userscriptapidom/code/UserscriptAPIDom.js?version=969308
-// @require         https://greasyfork.org/scripts/432000-userscriptapimessage/code/UserscriptAPIMessage.js?version=969307
-// @require         https://greasyfork.org/scripts/432002-userscriptapiwait/code/UserscriptAPIWait.js?version=969564
+// @require         https://greasyfork.org/scripts/431998-userscriptapidom/code/UserscriptAPIDom.js?version=971986
+// @require         https://greasyfork.org/scripts/432000-userscriptapimessage/code/UserscriptAPIMessage.js?version=971987
+// @require         https://greasyfork.org/scripts/432002-userscriptapiwait/code/UserscriptAPIWait.js?version=971988
 // @require         https://greasyfork.org/scripts/432003-userscriptapiweb/code/UserscriptAPIWeb.js?version=969305
 // @grant           GM_download
 // @grant           GM_notification
@@ -684,9 +684,9 @@
         cover.img.addEventListener('error', function(/** @type {Event} */ e) {
           if (this.lossless && this.src != this.lossless) {
             if (gm.config.mode == gm.const.customMode) {
-              api.message.info(`缩略图获取失败，使用原图进行替换！请检查「${gm.runtime.realtimeQuality}」是否为有效的图片质量参数。可能是正常现象，因为年代久远的视频封面有可能不支持缩略图。`, { ms: 4000 })
+              api.message.info(`缩略图获取失败，使用原图进行替换！请检查「${gm.runtime.realtimeQuality}」是否为有效的图片质量参数。可能是正常现象，因为年代久远的视频封面有可能不支持缩略图。`, 4000)
             } else {
-              api.message.info('缩略图获取失败，使用原图进行替换！可能是正常现象，因为年代久远的视频封面有可能不支持缩略图。', { ms: 3000 })
+              api.message.info('缩略图获取失败，使用原图进行替换！可能是正常现象，因为年代久远的视频封面有可能不支持缩略图。', 3000)
             }
             api.logger.warn(['缩略图获取失败，使用原图进行替换！', this.src, this.lossless])
             this.src = this.lossless
