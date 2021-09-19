@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            [DEBUG] 信息显式化
-// @version         2.5.0.20210910
+// @version         2.5.1.20210919
 // @namespace       laster2800
 // @author          Laster2800
 // @description     用 alert() 提示符合匹配规则的日志或未捕获异常，帮助开发者在日常使用网页时发现潜藏问题
@@ -131,7 +131,7 @@
           this.explicit(`您需要更新「[DEBUG] 信息显式化（注入版）」。请在稍后弹出的新标签页中获取最新版 URL 并更新「${source}」中的「@require」属性值。\n若弹出页被浏览器阻止，请手动查看浏览器的「已阻止弹出窗口」，前往注入版主页进行更新。`, 'UPDATE', source)
           window.open('https://greasyfork.org/zh-CN/scripts/429525')
         }
-      }
+      },
     },
   }
   unsafeWindow.gm429521 = gm
