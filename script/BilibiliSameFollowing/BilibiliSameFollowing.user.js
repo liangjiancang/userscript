@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站共同关注快速查看
-// @version         1.7.3.20210920
+// @version         1.7.4.20210920
 // @namespace       laster2800
 // @author          Laster2800
 // @description     快速查看与特定用户的共同关注（视频播放页、动态页、用户空间、直播间）
@@ -244,7 +244,7 @@
     /**
      * 卡片处理逻辑
      * @param {Object} options 选项
-     * @param {string} [options.container='body'] 卡片父元素选择器
+     * @param {string} [options.container] 卡片父元素选择器，缺省时取 `document.body`
      * @param {string} options.card 卡片元素选择器
      * @param {string} options.user 用户元素选择器
      * @param {string} options.info 信息元素选择器
@@ -254,10 +254,7 @@
     async cardLogic(options) {
       options = { lazy: true, ancestor: false, ...options }
       const _self = this
-      let container = document.body
-      if (options.container) {
-        container = await api.wait.$(options.container)
-      }
+      const container = options.container ? await api.wait.$(options.container) : (document.body ?? await api.wait.$('body'))
       api.wait.executeAfterElementLoaded({
         selector: options.card,
         base: container,
