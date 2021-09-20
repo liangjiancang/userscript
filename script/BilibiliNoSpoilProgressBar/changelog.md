@@ -2,6 +2,12 @@
 
 本日志只记录用户友好的更新说明，影响不大的问题修复与修改不作记录，具体修改见 [提交记录](https://gitee.com/liangjiancang/userscript/commits/master/script/BilibiliNoSpoilProgressBar)。
 
+## V2.4
+
+1. 用户设置：重构。
+2. 脚本：优化版本更新机制和配置读取流程。
+3. API-dom：更新至 V1.1。
+
 ## V2.3
 
 1. API：更新至 V2.1（`dom` 更新至 V1.1，`logger` 更新至 V1.1，`web` 更新至 V1.1）。详见 [UserscriptAPI 更新日志](https://gitee.com/liangjiancang/userscript/blob/master/lib/UserscriptAPI/changelog.md)。

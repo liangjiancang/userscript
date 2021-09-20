@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站防剧透进度条
-// @version         2.3.2.20210912
+// @version         2.4.0.20210920
 // @namespace       laster2800
 // @author          Laster2800
 // @description     看比赛、看番总是被进度条剧透？装上这个脚本再也不用担心这些问题了
@@ -14,9 +14,9 @@
 // @include         *://www.bilibili.com/medialist/play/watchlater/*
 // @include         *://www.bilibili.com/bangumi/play/*
 // @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=969309
-// @require         https://greasyfork.org/scripts/431998-userscriptapidom/code/UserscriptAPIDom.js?version=969308
-// @require         https://greasyfork.org/scripts/432000-userscriptapimessage/code/UserscriptAPIMessage.js?version=969307
-// @require         https://greasyfork.org/scripts/432002-userscriptapiwait/code/UserscriptAPIWait.js?version=969564
+// @require         https://greasyfork.org/scripts/431998-userscriptapidom/code/UserscriptAPIDom.js?version=971986
+// @require         https://greasyfork.org/scripts/432000-userscriptapimessage/code/UserscriptAPIMessage.js?version=971987
+// @require         https://greasyfork.org/scripts/432002-userscriptapiwait/code/UserscriptAPIWait.js?version=971988
 // @require         https://greasyfork.org/scripts/432003-userscriptapiweb/code/UserscriptAPIWeb.js?version=969305
 // @grant           GM_registerMenuCommand
 // @grant           GM_xmlhttpRequest
@@ -236,7 +236,7 @@
        * @param {boolean} [writeback=true] 配置出错时是否将默认值回写入配置中
        * @returns {*} 通过校验时是配置值，不能通过校验时是默认值
        */
-      gmValidate(gmKey, defaultValue, writeback = true) {
+      getConfig(gmKey, defaultValue, writeback = true) {
         let invalid = false
         let value = GM_getValue(gmKey)
         if (Enums && gmKey in Enums) {
@@ -259,24 +259,32 @@
         }
         return value
       },
+
+      /**
+       * 重置脚本
+       */
+      reset() {
+        const gmKeys = GM_listValues()
+        for (const gmKey of gmKeys) {
+          GM_deleteValue(gmKey)
+        }
+      },
     }
 
     /**
      * 初始化
      */
     init() {
+      const _self = this
       try {
-        this.initGMObject()
-        this.updateVersion()
-        this.readConfig()
+        _self.initGMObject()
+        _self.updateVersion()
+        _self.readConfig()
       } catch (e) {
         api.logger.error(e)
         api.message.confirm('初始化错误！是否彻底清空内部数据以重置脚本？').then(result => {
           if (result) {
-            const gmKeys = GM_listValues()
-            for (const gmKey of gmKeys) {
-              GM_deleteValue(gmKey)
-            }
+            _self.method.reset()
             location.reload()
           }
         })
@@ -287,10 +295,6 @@
      * 初始化全局对象
      */
     initGMObject() {
-      for (const name in gm.configMap) {
-        gm.config[name] = gm.configMap[name].default
-      }
-
       gm.data = {
         ...gm.data,
         uploaderList: updateData => {
@@ -345,29 +349,25 @@
      */
     updateVersion() {
       const _self = this
-      if (gm.configVersion > 0) {
+      if (gm.configVersion >= 20210627) { // 1.5.5.20210627
         if (gm.configVersion < gm.configUpdate) {
           // 必须按从旧到新的顺序写
           // 内部不能使用 gm.configUpdate，必须手写更新后的配置版本号！
-
-          // 1.5.5.20210627
-          if (gm.configVersion < 20210627) {
-            GM_deleteValue('openSettingAfterConfigUpdate')
-          }
 
           // 2.0.0.20210806
           if (gm.configVersion < 20210806) {
             GM_deleteValue('disablePbp')
           }
 
-          // 功能性更新后更新此处配置版本
-          if (gm.configVersion < 20210806) {
-            _self.openUserSetting(2)
-          } else {
+          // 功能性更新后更新此处配置版本，通过时跳过功能性更新设置，否则转至 readConfig() 中处理
+          if (gm.configVersion >= 20210806) {
             gm.configVersion = gm.configUpdate
             GM_setValue('configVersion', gm.configVersion)
           }
         }
+      } else {
+        _self.method.reset()
+        gm.configVersion = null
       }
     }
 
@@ -378,19 +378,21 @@
       const _self = this
       if (gm.configVersion > 0) {
         // 对配置进行校验
-        for (const name in gm.config) {
-          gm.config[name] = _self.method.gmValidate(name, gm.config[name])
+        for (const name in gm.configMap) {
+          gm.config[name] = _self.method.getConfig(name, gm.configMap[name].default)
+        }
+        if (gm.configVersion != gm.configUpdate) {
+          _self.openUserSetting(2)
         }
       } else {
-        // 用户强制初始化，或者第一次安装脚本
+        // 用户强制初始化，或第一次安装脚本，或版本过旧
         gm.configVersion = 0
-        const cfgManual = {}
-        for (const name in gm.config) {
-          if (!cfgManual[name]) {
-            GM_setValue(name, gm.config[name])
-          }
+        for (const name in gm.configMap) {
+          gm.config[name] = gm.configMap[name].default
+          GM_setValue(name, gm.configMap[name].default)
         }
         _self.openUserSetting(1)
+
         setTimeout(async () => {
           const result = await api.message.confirm('脚本有一定使用门槛，如果不理解防剧透机制效果将会剧减，这种情况下用户甚至完全不明白脚本在「干什么」，建议在阅读说明后使用。是否立即打开防剧透机制说明？')
           if (result) {
@@ -438,6 +440,137 @@
           gm.el.setting = gm.el.gmRoot.appendChild(document.createElement('div'))
           gm.menu.setting.el = gm.el.setting
           gm.el.setting.className = 'gm-setting gm-modal-container'
+
+          const getItemHTML = (label, ...items) => {
+            let html = `<div class="gm-item-container"><div class="gm-item-label">${label}</div><div class="gm-item-content">`
+            for (const item of items) {
+              html += `<div class="${item.className ? `${item.className}` : 'gm-item'}"${item.desc ? ` title="${item.desc}"` : ''}>${item.html}</div>`
+            }
+            html += '</div></div>'
+            return html
+          }
+          let itemsHTML = ''
+          itemsHTML += getItemHTML('说明', {
+            desc: '查看脚本防剧透机制的实现原理。',
+            html: `<div>
+              <span>防剧透机制说明</span>
+              <a id="gm-help" class="gm-info" href="${gm.url.gm_readme}#防剧透机制说明" target="_blank"">查看</a>
+            </div>`,
+          })
+          itemsHTML += getItemHTML('自动化', {
+            desc: '加入防剧透名单UP主的视频，会在打开视自动开启防剧透进度条。',
+            html: `<div>
+              <span>防剧透UP主名单</span>
+              <span id="gm-uploaderList" class="gm-info">编辑</span>
+            </div>`,
+          })
+          itemsHTML += getItemHTML('自动化', {
+            desc: '番剧是否自动打开防剧透进度条？',
+            html: `<label>
+              <span>番剧自动启用防剧透进度条</span>
+              <input id="gm-bangumiEnabled" type="checkbox">
+            </label>`,
+          })
+          itemsHTML += getItemHTML('用户接口', {
+            desc: '是否简化进度条上方的脚本控制？',
+            html: `<label>
+              <span>简化进度条上方的脚本控制</span>
+              <input id="gm-simpleScriptControl" type="checkbox">
+            </label>`,
+          })
+          itemsHTML += getItemHTML('用户接口', {
+            desc: '这些功能可能会造成剧透，根据需要在防剧透进度条中进行隐藏。',
+            html: `<div>
+              <span>启用功能时</span>
+            </div>`,
+          }, {
+            desc: '是否在防剧透进度条中隐藏当前播放时间？该功能可能会造成剧透。',
+            html: `<label>
+              <span>隐藏当前播放时间</span>
+              <input id="gm-disableCurrentPoint" type="checkbox">
+            </label>`,
+          }, {
+            desc: '是否在防剧透进度条中隐藏视频时长？该功能可能会造成剧透。',
+            html: `<label>
+              <span>隐藏视频时长</span>
+              <input id="gm-disableDuration" type="checkbox">
+            </label>`,
+          }, {
+            desc: '是否在防剧透进度条中隐藏进度条预览？该功能可能会造成剧透。',
+            html: `<label>
+              <span>隐藏进度条预览</span>
+              <input id="gm-disablePreview" type="checkbox">
+            </label>`,
+          }, {
+            desc: '是否隐藏视频分P信息？它们可能会造成剧透。该功能对番剧无效。',
+            html: `<label>
+              <span>隐藏分P信息</span>
+              <input id="gm-disablePartInformation" type="checkbox">
+            </label>`,
+          }, {
+            desc: '是否隐藏视频分段信息？它们可能会造成剧透。',
+            html: `<label>
+              <span>隐藏分段信息</span>
+              <input id="gm-disableSegmentInformation" type="checkbox">
+            </label>`,
+          })
+          itemsHTML += getItemHTML('高级设置', {
+            desc: '防剧透参数设置，请务必在理解参数作用的前提下修改！',
+            html: `<div>
+              <span>防剧透参数</span>
+              <span id="gm-resetParam" class="gm-info" title="重置防剧透参数。">重置</span>
+            </div>`,
+          }, {
+            desc: '进度条极端偏移因子设置。',
+            html: `<div>
+              <span>进度条极端偏移因子</span>
+              <span id="gm-offsetTransformFactorInformation" class="gm-information" title="">💬</span>
+              <input id="gm-offsetTransformFactor" type="text">
+            </div>`,
+          }, {
+            desc: '进度条偏移极左值设置。',
+            html: `<div>
+              <span>进度条偏移极左值</span>
+              <span id="gm-offsetLeftInformation" class="gm-information" title="">💬</span>
+              <input id="gm-offsetLeft" type="text">
+            </div>`,
+          }, {
+            desc: '进度条偏移极右值设置。',
+            html: `<div>
+              <span>进度条偏移极右值</span>
+              <span id="gm-offsetRightInformation" class="gm-information" title="">💬</span>
+              <input id="gm-offsetRight" type="text">
+            </div>`,
+          }, {
+            desc: '进度条左侧预留区设置。',
+            html: `<div>
+              <span>进度条左侧预留区</span>
+              <span id="gm-reservedLeftInformation" class="gm-information" title="">💬</span>
+              <input id="gm-reservedLeft" type="text">
+            </div>`,
+          }, {
+            desc: '进度条右侧预留区设置。',
+            html: `<div>
+              <span>进度条右侧预留区</span>
+              <span id="gm-reservedRightInformation" class="gm-information" title="">💬</span>
+              <input id="gm-reservedRight" type="text">
+            </div>`,
+          }, {
+            desc: '是否延后进度条偏移的时间点，使得在启用功能或改变播放进度后立即进行进度条偏移？',
+            html: `<label>
+              <span>延后进度条偏移的时间点</span>
+              <span id="gm-postponeOffsetInformation" class="gm-information" title="">💬</span>
+              <input id="gm-postponeOffset" type="checkbox">
+            </label>`,
+          })
+          itemsHTML += getItemHTML('用户设置', {
+            desc: '如果更改的配置需要重新加载才能生效，那么在设置完成后重新加载页面。',
+            html: `<label>
+              <span>必要时在设置完成后重新加载页面</span>
+              <input id="gm-reloadAfterSetting" type="checkbox">
+            </label>`,
+          })
+
           gm.el.setting.innerHTML = `
             <div class="gm-setting-page gm-modal">
               <div class="gm-title">
@@ -446,172 +579,7 @@
                 </a>
                 <div class="gm-subtitle">V${GM_info.script.version} by ${GM_info.script.author}</div>
               </div>
-              <div class="gm-items">
-                <table>
-                  <tr class="gm-item" title="查看脚本防剧透机制的实现原理。">
-                    <td><div>说明</div></td>
-                    <td>
-                      <div>
-                        <span>防剧透机制说明</span>
-                        <a id="gm-help" class="gm-info" href="${gm.url.gm_readme}#防剧透机制说明" target="_blank"">查看</a>
-                      </div>
-                    </td>
-                  </tr>
-
-                  <tr class="gm-item" title="加入防剧透名单UP主的视频，会在打开视自动开启防剧透进度条。">
-                    <td><div>自动化</div></td>
-                    <td>
-                      <div>
-                        <span>防剧透UP主名单</span>
-                        <span id="gm-uploaderList" class="gm-info">编辑</span>
-                      </div>
-                    </td>
-                  </tr>
-
-                  <tr class="gm-item" title="番剧是否自动打开防剧透进度条？">
-                    <td><div>自动化</div></td>
-                    <td>
-                      <label>
-                        <span>番剧自动启用防剧透进度条</span>
-                        <input id="gm-bangumiEnabled" type="checkbox">
-                      </label>
-                    </td>
-                  </tr>
-
-                  <tr class="gm-item" title="是否简化进度条上方的脚本控制？">
-                    <td><div>用户接口</div></td>
-                    <td>
-                      <label>
-                        <span>简化进度条上方的脚本控制</span>
-                        <input id="gm-simpleScriptControl" type="checkbox">
-                      </label>
-                    </td>
-                  </tr>
-
-                  <tr class="gm-item" title="这些功能可能会造成剧透，根据需要在防剧透进度条中进行隐藏。">
-                    <td rowspan="6"><div>用户接口</div></td>
-                    <td>
-                      <div>
-                        <span>启用功能时</span>
-                      </div>
-                    </td>
-                  </tr>
-                  <tr class="gm-subitem" title="是否在防剧透进度条中隐藏当前播放时间？该功能可能会造成剧透。">
-                    <td>
-                      <label>
-                        <span>隐藏当前播放时间</span>
-                        <input id="gm-disableCurrentPoint" type="checkbox">
-                      </label>
-                    </td>
-                  </tr>
-                  <tr class="gm-subitem" title="是否在防剧透进度条中隐藏视频时长？该功能可能会造成剧透。">
-                    <td>
-                      <label>
-                        <span>隐藏视频时长</span>
-                        <input id="gm-disableDuration" type="checkbox">
-                      </label>
-                    </td>
-                  </tr>
-                  <tr class="gm-subitem" title="是否在防剧透进度条中隐藏进度条预览？该功能可能会造成剧透。">
-                    <td>
-                      <label>
-                        <span>隐藏进度条预览</span>
-                        <input id="gm-disablePreview" type="checkbox">
-                      </label>
-                    </td>
-                  </tr>
-                  <tr class="gm-subitem" title="是否隐藏视频分P信息？它们可能会造成剧透。该功能对番剧无效。">
-                    <td>
-                      <label>
-                        <span>隐藏分P信息</span>
-                        <input id="gm-disablePartInformation" type="checkbox">
-                      </label>
-                    </td>
-                  </tr>
-                  <tr class="gm-subitem" title="是否隐藏视频分段信息？它们可能会造成剧透。">
-                    <td>
-                      <label>
-                        <span>隐藏分段信息</span>
-                        <input id="gm-disableSegmentInformation" type="checkbox">
-                      </label>
-                    </td>
-                  </tr>
-
-                  <tr class="gm-item" title="防剧透参数设置，请务必在理解参数作用的前提下修改！">
-                    <td rowspan="7"><div>高级设置</div></td>
-                    <td>
-                      <div>
-                        <span>防剧透参数</span>
-                        <span id="gm-resetParam" class="gm-info" title="重置防剧透参数。">重置</span>
-                      </div>
-                    </td>
-                  </tr>
-                  <tr class="gm-subitem" title="进度条极端偏移因子设置。">
-                    <td>
-                      <div>
-                        <span>进度条极端偏移因子</span>
-                        <span id="gm-offsetTransformFactorInformation" class="gm-information" title="">💬</span>
-                        <input id="gm-offsetTransformFactor" type="text">
-                      </div>
-                    </td>
-                  </tr>
-                  <tr class="gm-subitem" title="进度条偏移极左值设置。">
-                    <td>
-                      <div>
-                        <span>进度条偏移极左值</span>
-                        <span id="gm-offsetLeftInformation" class="gm-information" title="">💬</span>
-                        <input id="gm-offsetLeft" type="text">
-                      </div>
-                    </td>
-                  </tr>
-                  <tr class="gm-subitem" title="进度条偏移极右值设置。">
-                    <td>
-                      <div>
-                        <span>进度条偏移极右值</span>
-                        <span id="gm-offsetRightInformation" class="gm-information" title="">💬</span>
-                        <input id="gm-offsetRight" type="text">
-                      </div>
-                    </td>
-                  </tr>
-                  <tr class="gm-subitem" title="进度条左侧预留区设置。">
-                    <td>
-                      <div>
-                        <span>进度条左侧预留区</span>
-                        <span id="gm-reservedLeftInformation" class="gm-information" title="">💬</span>
-                        <input id="gm-reservedLeft" type="text">
-                      </div>
-                    </td>
-                  </tr>
-                  <tr class="gm-subitem" title="进度条右侧预留区设置。">
-                    <td>
-                      <div>
-                        <span>进度条右侧预留区</span>
-                        <span id="gm-reservedRightInformation" class="gm-information" title="">💬</span>
-                        <input id="gm-reservedRight" type="text">
-                      </div>
-                    </td>
-                  </tr>
-                  <tr class="gm-subitem" title="是否延后进度条偏移的时间点，使得在启用功能或改变播放进度后立即进行进度条偏移？">
-                    <td>
-                      <label>
-                        <span>延后进度条偏移的时间点</span>
-                        <span id="gm-postponeOffsetInformation" class="gm-information" title="">💬</span>
-                        <input id="gm-postponeOffset" type="checkbox">
-                      </label>
-                    </td>
-                  </tr>
-
-                  <tr class="gm-item" title="勾选后，如果更改的配置需要重新加载才能生效，那么会在设置完成后重新加载页面。">
-                    <td><div>用户设置</div></td>
-                    <td>
-                      <label>
-                        <span>必要时在设置完成后重新加载页面</span>
-                        <input id="gm-reloadAfterSetting" type="checkbox">
-                      </label>
-                    </td>
-                  </tr>
-                </table>
-              </div>
+              <div class="gm-items">${itemsHTML}</div>
               <div class="gm-bottom">
                 <button class="gm-save">保存</button>
                 <button class="gm-cancel">取消</button>
@@ -641,16 +609,9 @@
               {
                 (function(map) {
                   for (const name in map) {
-                    const configVersion = map[name].configVersion
-                    if (configVersion && configVersion > gm.configVersion) {
-                      let element = el[name]
-                      while (element.nodeName != 'TD') {
-                        element = element.parentElement
-                        if (!element) break
-                      }
-                      if (element?.firstElementChild) {
-                        element.firstElementChild.classList.add('gm-updated')
-                      }
+                    if (map[name].configVersion > gm.configVersion) {
+                      const item = api.dom.findAncestor(el[name], el => el.classList.contains('gm-item'))
+                      item?.classList.add('gm-updated')
                     }
                   }
                 })({ ...gm.configMap, ...gm.infoMap })
@@ -1847,7 +1808,6 @@
           --${gm.id}-shadow-color: #000000bf;
           --${gm.id}-hightlight-color: #0075FF;
           --${gm.id}-important-color: red;
-          --${gm.id}-warn-color: #e37100;
           --${gm.id}-disabled-color: gray;
           --${gm.id}-opacity-fade-transition: opacity ${gm.const.fadeTime}ms ease-in-out;
           --${gm.id}-scrollbar-background-color: transparent;
@@ -1934,45 +1894,41 @@
         }
 
         #${gm.id} .gm-setting .gm-items {
+          position: relative;
+          display: flex;
+          flex-direction: column;
+          gap: 0.2em;
           margin: 0 0.2em;
           padding: 0 1.8em 0 2.2em;
           font-size: 1.2em;
           max-height: 66vh;
           overflow-y: auto;
         }
-
-        #${gm.id} .gm-setting table {
-          width: 100%;
-          border-collapse: separate;
+        #${gm.id} .gm-setting .gm-item-container {
+          display: flex;
+          gap: 1em;
         }
-        #${gm.id} .gm-setting td {
-          position: relative;
-        }
-        #${gm.id} .gm-setting .gm-item td:first-child {
-          vertical-align: top;
-          padding-right: 0.6em;
+        #${gm.id} .gm-setting .gm-item-label {
+          flex: none;
           font-weight: bold;
           color: var(--${gm.id}-text-bold-color);
-          word-break: keep-all;
+          width: 4em;
+          margin-top: 0.2em;
         }
-        #${gm.id} .gm-setting .gm-item:not(:first-child) td {
-          padding-top: 0.5em;
+        #${gm.id} .gm-setting .gm-item-content {
+          display: flex;
+          flex-direction: column;
+          width: 100%;
         }
-        #${gm.id} .gm-setting td > * {
+        #${gm.id} .gm-setting .gm-item {
+          padding: 0.2em;
+          border-radius: 2px;
+        }
+        #${gm.id} .gm-setting .gm-item > * {
           display: flex;
           align-items: center;
-          padding: 0.2em;
-          border-radius: 0.2em;
         }
-
         #${gm.id} .gm-setting .gm-item:hover {
-          color: var(--${gm.id}-hightlight-color);
-        }
-
-        #${gm.id} .gm-setting .gm-subitem[disabled] {
-          color: var(--${gm.id}-disabled-color);
-        }
-        #${gm.id} .gm-setting .gm-subitem:hover:not([disabled]) {
           color: var(--${gm.id}-hightlight-color);
         }
 
@@ -1989,21 +1945,6 @@
 
         #${gm.id} .gm-setting .gm-information {
           margin: 0 0.4em;
-          cursor: pointer;
-        }
-        #${gm.id} .gm-setting [disabled] .gm-information {
-          cursor: not-allowed;
-        }
-
-        #${gm.id} .gm-setting .gm-warning {
-          position: absolute;
-          right: -1.1em;
-          color: var(--${gm.id}-warn-color);
-          font-size: 1.4em;
-          line-height: 1em;
-          transition: var(--${gm.id}-opacity-fade-transition);
-          opacity: 0;
-          display: none;
           cursor: pointer;
         }
 
@@ -2025,7 +1966,6 @@
           background-color: var(--${gm.id}-background-hightlight-color);
         }
         #${gm.id} .gm-bottom button[disabled] {
-          cursor: not-allowed;
           border-color: var(--${gm.id}-disabled-color);
           background-color: var(--${gm.id}-background-color);
         }
@@ -2041,10 +1981,6 @@
         #${gm.id} .gm-info:hover,
         .${gm.id}-dialog .gm-info:hover {
           color: var(--${gm.id}-important-color);
-        }
-        #${gm.id} [disabled] .gm-info {
-          color: var(--${gm.id}-disabled-color);
-          cursor: not-allowed;
         }
 
         #${gm.id} .gm-reset {
@@ -2079,7 +2015,7 @@
         #${gm.id} [setting-type=updated] .gm-updated option {
           background-color: var(--${gm.id}-background-color);
         }
-        #${gm.id} [setting-type=updated] tr:hover .gm-updated {
+        #${gm.id} [setting-type=updated] .gm-item.gm-updated:hover {
           color: var(--${gm.id}-update-hightlight-hover-color);
           font-weight: bold;
         }
@@ -2110,7 +2046,7 @@
           height: 100%;
         }
         #${gm.id} .gm-shadow[disabled] {
-          cursor: auto;
+          cursor: unset !important;
         }
 
         #${gm.id} label {
@@ -2127,10 +2063,9 @@
         }
 
         #${gm.id} [disabled],
-        #${gm.id} [disabled] input,
-        #${gm.id} [disabled] select {
-          cursor: not-allowed;
-          color: var(--${gm.id}-disabled-color);
+        #${gm.id} [disabled] * {
+          cursor: not-allowed !important;
+          color: var(--${gm.id}-disabled-color) !important;
         }
 
         #${gm.id} .gm-setting .gm-items::-webkit-scrollbar {
