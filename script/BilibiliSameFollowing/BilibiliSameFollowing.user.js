@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站共同关注快速查看
-// @version         1.7.2.20210919
+// @version         1.7.3.20210920
 // @namespace       laster2800
 // @author          Laster2800
 // @description     快速查看与特定用户的共同关注（视频播放页、动态页、用户空间、直播间）
@@ -94,12 +94,26 @@
    * 脚本运行的抽象，为脚本本身服务的核心功能
    */
   class Script {
+    /** 通用方法 */
+    method = {
+      /**
+       * 重置脚本
+       */
+      reset() {
+        const gmKeys = GM_listValues()
+        for (const gmKey of gmKeys) {
+          GM_deleteValue(gmKey)
+        }
+      },
+    }
+
     /**
      * 初始化脚本
      */
     init() {
+      const _self = this
       try {
-        this.updateVersion()
+        _self.updateVersion()
         for (const name in gm.config) {
           const eb = GM_getValue(name)
           gm.config[name] = typeof eb == 'boolean' ? eb : gm.config[name]
@@ -108,10 +122,7 @@
         api.logger.error(e)
         api.message.confirm('初始化错误！是否彻底清空内部数据以重置脚本？').then(result => {
           if (result) {
-            const gmKeys = GM_listValues()
-            for (const gmKey of gmKeys) {
-              GM_deleteValue(gmKey)
-            }
+            _self.method.reset()
             location.reload()
           }
         })
@@ -159,28 +170,25 @@
      * 版本更新处理
      */
     updateVersion() {
-      if (Number.isNaN(gm.configVersion) || gm.configVersion < 0) {
-        gm.configVersion = gm.configUpdate
-        GM_setValue('configVersion', gm.configVersion)
-      } else if (gm.configVersion < gm.configUpdate) {
-        // 必须按从旧到新的顺序写
-        // 内部不能使用 gm.configUpdate，必须手写更新后的配置版本号！
+      if (gm.configVersion >= 20210829) { // 1.5.0.20210829
+        if (gm.configVersion < gm.configUpdate) {
+          // 必须按从旧到新的顺序写
+          // 内部不能使用 gm.configUpdate，必须手写更新后的配置版本号！
 
-        // 1.5.0.20210829
-        if (gm.configVersion < 20210829) {
-          const gmKeys = GM_listValues()
-          for (const gmKey of gmKeys) {
-            GM_deleteValue(gmKey)
+          // 功能性更新后更新此处配置版本
+          if (gm.configVersion < 0) {
+            GM_notification({
+              text: '功能性更新完毕，您可能需要重新设置脚本。点击查看更新日志。',
+              onclick: () => window.open(gm.url.gm_changelog),
+            })
           }
         }
-
-        // 功能性更新后更新此处配置版本
-        if (gm.configVersion < 20210829) {
-          GM_notification({
-            text: '功能性更新完毕，您可能需要重新设置脚本。点击查看更新日志。',
-            onclick: () => window.open(gm.url.gm_changelog),
-          })
+        if (gm.configVersion != gm.configUpdate) {
+          gm.configVersion = gm.configUpdate
+          GM_setValue('configVersion', gm.configVersion)
         }
+      } else {
+        this.method.reset()
         gm.configVersion = gm.configUpdate
         GM_setValue('configVersion', gm.configVersion)
       }
