@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站封面获取
-// @version         5.5.2.20210919
+// @version         5.5.3.20210920
 // @namespace       laster2800
 // @author          Laster2800
 // @description     获取B站各播放页及直播间封面，支持手动及实时预览等多种模式，支持点击下载、封面预览、快速复制，可高度自定义
@@ -127,30 +127,41 @@
    * 脚本运行的抽象，为脚本本身服务的核心功能
    */
   class Script {
+    /** 通用方法 */
+    method = {
+      /**
+       * 重置脚本
+       */
+      reset() {
+        const gmKeys = GM_listValues()
+        for (const gmKey of gmKeys) {
+          GM_deleteValue(gmKey)
+        }
+      },
+    }
+
     /**
      * 初始化脚本
      */
     init() {
+      const _self = this
       try {
-        this.updateVersion()
+        _self.updateVersion()
         for (const name in gm.configMap) {
           const v = GM_getValue(name)
           const dv = gm.configMap[name].default
           gm.config[name] = typeof v == typeof dv ? v : dv
         }
-        this.initRuntime()
+        _self.initRuntime()
 
         if (gm.config.mode == gm.configMap.mode.default) {
-          this.configureMode(true)
+          _self.configureMode(true)
         }
       } catch (e) {
         api.logger.error(e)
         api.message.confirm('初始化错误！是否彻底清空内部数据以重置脚本？').then(result => {
           if (result) {
-            const gmKeys = GM_listValues()
-            for (const gmKey of gmKeys) {
-              GM_deleteValue(gmKey)
-            }
+            _self.method.reset()
             location.reload()
           }
         })
@@ -217,36 +228,36 @@
      * 版本更新处理
      */
     updateVersion() {
-      if (Number.isNaN(gm.configVersion) || gm.configVersion < 0) {
-        gm.configVersion = gm.configUpdate
-        GM_setValue('configVersion', gm.configVersion)
-      } else if (gm.configVersion < gm.configUpdate) {
-        // 必须按从旧到新的顺序写
-        // 内部不能使用 gm.configUpdate，必须手写更新后的配置版本号！
+      if (gm.configVersion >= 20210811) { // 5.0.0.20210811
+        if (gm.configVersion < gm.configUpdate) {
+          // 必须按从旧到新的顺序写
+          // 内部不能使用 gm.configUpdate，必须手写更新后的配置版本号！
 
-        // 5.0.0.20210811
-        if (gm.configVersion < 20210811) {
-          GM_deleteValue('liveKeyFrame')
-        }
+          // 5.0.5.20210812
+          if (gm.configVersion < 20210812) {
+            GM_deleteValue('mode')
+            GM_deleteValue('customModeStyle')
+          }
 
-        // 5.0.5.20210812
-        if (gm.configVersion < 20210812) {
-          GM_deleteValue('mode')
-          GM_deleteValue('customModeStyle')
-        }
+          // 5.2.0.20210813
+          if (gm.configVersion < 20210813) {
+            GM_deleteValue('preview')
+          }
 
-        // 5.2.0.20210813
-        if (gm.configVersion < 20210813) {
-          GM_deleteValue('preview')
+          // 功能性更新后更新此处配置版本
+          if (gm.configVersion < 20210815) {
+            GM_notification({
+              text: '功能性更新完毕，您可能需要重新设置脚本。点击查看更新日志。',
+              onclick: () => window.open(gm.url.gm_changelog),
+            })
+          }
         }
-
-        // 功能性更新后更新此处配置版本
-        if (gm.configVersion < 20210815) {
-          GM_notification({
-            text: '功能性更新完毕，您可能需要重新设置脚本。点击查看更新日志。',
-            onclick: () => window.open(gm.url.gm_changelog),
-          })
+        if (gm.configVersion != gm.configUpdate) {
+          gm.configVersion = gm.configUpdate
+          GM_setValue('configVersion', gm.configVersion)
         }
+      } else {
+        this.method.reset()
         gm.configVersion = gm.configUpdate
         GM_setValue('configVersion', gm.configVersion)
       }
