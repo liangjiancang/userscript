@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.22.0.20210920
+// @version         4.22.1.20210921
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -1849,6 +1849,7 @@
                 return BigInt(items[0].desc.dynamic_id_str) + 1n // +1 才能获取到当前首项
               })()
               const end = Date.now() - v1a * el.id1b.value * 1000
+              const avSet = new Set()
               gm.runtime.reloadWatchlaterListData = true
               while (!stopLoad) {
                 const data = new URLSearchParams()
@@ -1872,6 +1873,8 @@
                   }
                   const aid = String(info.aid)
                   if (!await webpage.method.getVideoWatchlaterStatusByAid(aid, false, true)) { // 完全跳过存在于稍后再看的视频
+                    if (avSet.has(aid)) continue
+                    avSet.add(aid)
                     const uncheck = history?.has(aid)
                     const displayNone = uncheck && el.uncheckedDisplay.hide
                     html = `<label class="gm-item" aid="${info.aid}" timestamp="${item.desc.timestamp}"${displayNone ? ' style="display:none"' : ''}><input type="checkbox"${uncheck ? '' : ' checked'}> <span>[${info.owner.name}] ${info.title}</span></label>` + html
