@@ -15,4 +15,14 @@ My API for userscripts.
 | `wait`    |          | [432002](https://greasyfork.org/zh-CN/scripts/432002) |
 | `web`     |          | [432003](https://greasyfork.org/zh-CN/scripts/432003) |
 
+必须先引用 `UserscriptAPI` 再引入模块，如：
+
+```js
+// @require     https://www.example.com/UserscriptAPI.js
+// @require     https://www.example.com/UserscriptAPIDom.js
+// @require     https://www.example.com/UserscriptAPIMessage.js
+// @require     https://www.example.com/UserscriptAPIWait.js
+// @require     https://www.example.com/UserscriptAPIWeb.js
+```
+
 **Source: [Gitee](https://gitee.com/liangjiancang/userscript/tree/master/lib/UserscriptAPI) / [GitHub](https://github.com/liangjiancang/userscript/tree/master/lib/UserscriptAPI)** - *by Laster2800*
