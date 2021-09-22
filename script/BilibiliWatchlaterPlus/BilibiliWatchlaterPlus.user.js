@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.22.2.20210921
+// @version         4.22.3.20210922
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -17,11 +17,12 @@
 // @exclude         *://message.bilibili.com/*/*
 // @exclude         *://t.bilibili.com/h5/*
 // @exclude         *://www.bilibili.com/page-proxy/*
-// @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=972566
-// @require         https://greasyfork.org/scripts/431998-userscriptapidom/code/UserscriptAPIDom.js?version=971986
+// @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=972855
+// @require         https://greasyfork.org/scripts/431998-userscriptapidom/code/UserscriptAPIDom.js?version=972856
 // @require         https://greasyfork.org/scripts/432000-userscriptapimessage/code/UserscriptAPIMessage.js?version=971987
 // @require         https://greasyfork.org/scripts/432002-userscriptapiwait/code/UserscriptAPIWait.js?version=971988
 // @require         https://greasyfork.org/scripts/432003-userscriptapiweb/code/UserscriptAPIWeb.js?version=969305
+// @require         https://greasyfork.org/scripts/432807-inputnumber/code/InputNumber.js?version=972863
 // @grant           GM_registerMenuCommand
 // @grant           GM_xmlhttpRequest
 // @grant           GM_setValue
@@ -968,14 +969,14 @@
             desc: '距离上一次保存稍后再看历史数据间隔超过该时间，才会再次进行保存。',
             html: `<div>
               <span>数据保存最小时间间隔（单位：秒）</span>
-              <input id="gm-removeHistorySavePeriod" type="text">
+              <input is="laster2800-input-number" id="gm-removeHistorySavePeriod" value="${gm.configMap.removeHistorySavePeriod.default}" max="${gm.configMap.removeHistorySavePeriod.max}">
             </div>`,
           }, {
             desc: '设置模糊比对深度以快速舍弃重复数据从而降低开销，但可能会造成部分记录遗漏。',
             html: `<div>
               <span>模糊比对模式深度</span>
               <span id="gm-rhfcInformation" class="gm-information" title>💬</span>
-              <input id="gm-removeHistoryFuzzyCompare" type="text">
+              <input is="laster2800-input-number" id="gm-removeHistoryFuzzyCompare" value="${gm.configMap.removeHistoryFuzzyCompare.default}" max="${gm.configMap.removeHistoryFuzzyCompare.max}">
             </div>`,
           }, {
             desc: '较大的数值可能会带来较大的开销（具体参考右侧弹出说明）。将该项修改为比原来小的值会清理过期数据，无法恢复！',
@@ -983,7 +984,7 @@
               <span>不重复数据记录保存数</span>
               <span id="gm-rhsInformation" class="gm-information" title>💬</span>
               <span id="gm-clearRemoveHistoryData" class="gm-info" title="清理已保存的稍后再看历史数据，不可恢复！">清空数据(0条)</span>
-              <input id="gm-removeHistorySaves" type="text">
+              <input is="laster2800-input-number" id="gm-removeHistorySaves" value="${gm.configMap.removeHistorySaves.default}" min="${gm.configMap.removeHistorySaves.min}" max="${gm.configMap.removeHistorySaves.max}">
             </div>`,
           }, {
             desc: '在稍后再看历史数据记录中保存时间戳，以其优化对数据记录的排序及展示。',
@@ -996,7 +997,7 @@
             desc: '搜寻时在最近多少条数据记录中查找，设置较小的值能较好地定位最近被添加到稍后再看的视频。',
             html: `<div>
               <span>默认历史回溯深度</span>
-              <input id="gm-removeHistorySearchTimes" type="text">
+              <input is="laster2800-input-number" id="gm-removeHistorySearchTimes" value="${gm.configMap.removeHistorySearchTimes.default}" min="${gm.configMap.removeHistorySearchTimes.min}" max="${gm.configMap.removeHistorySearchTimes.max}">
             </div>`,
           })
           itemsHTML += getItemHTML('全局功能', {
@@ -1169,7 +1170,7 @@
             html: `<div>
               <span>稍后再看列表数据本地缓存有效期（单位：秒）</span>
               <span id="gm-wlcvpInformation" class="gm-information" title>💬</span>
-              <input id="gm-watchlaterListCacheValidPeriod" type="text">
+              <input is="laster2800-input-number" id="gm-watchlaterListCacheValidPeriod" value="${gm.configMap.watchlaterListCacheValidPeriod.default}" min="${gm.configMap.watchlaterListCacheValidPeriod.min}" max="${gm.configMap.watchlaterListCacheValidPeriod.max}">
             </div>`,
           })
           itemsHTML += getItemHTML('用户设置', {
@@ -1227,7 +1228,7 @@
                 (function(map) {
                   for (const name in map) {
                     if (map[name].configVersion > gm.configVersion) {
-                      const item = api.dom.findAncestor(el[name], el => api.dom.containsClass(el, ['gm-item', 'gm-lineitem']))
+                      const item = api.dom.findAncestor(el[name], el => el.matches('.gm-item, .gm-lineitem'))
                       item?.classList.add('gm-updated')
                     }
                   }
@@ -1335,35 +1336,6 @@
             setRhWaring()
           }
           el.removeHistory.addEventListener('change', el.removeHistory.init)
-
-          // 输入框内容处理
-          const positiveIntInputs = ['removeHistorySavePeriod', 'removeHistoryFuzzyCompare', 'removeHistorySaves', 'removeHistorySearchTimes', 'watchlaterListCacheValidPeriod']
-          for (const name of positiveIntInputs) {
-            el[name].addEventListener('input', function() {
-              const v0 = this.value.replace(/\D/g, '')
-              if (v0 === '') {
-                this.value = ''
-              } else if (typeof gm.configMap[name].max == 'number') {
-                let value = Number.parseInt(v0)
-                if (value > gm.configMap[name].max) {
-                  value = gm.configMap[name].max
-                }
-                this.value = value
-              }
-            })
-            el[name].addEventListener('blur', function() {
-              if (this.value === '') {
-                this.value = gm.configMap[name].default
-              } else if (typeof gm.configMap[name].min == 'number') {
-                let value = Number.parseInt(this.value)
-                if (value < gm.configMap[name].min) {
-                  value = gm.configMap[name].min
-                }
-                this.value = value
-              }
-            })
-          }
-
           el.removeHistorySaves.addEventListener('input', setRhWaring)
           el.removeHistorySaves.addEventListener('blur', setRhWaring)
         }
@@ -1701,18 +1673,18 @@
               <div class="gm-comment">
                 <div>请执行以下步骤以将投稿批量添加到稍后再看（可以跳过部分步骤）。执行过程中可以关闭对话框，但不能关闭页面——且将当前页面置于后台时，浏览器会暂缓甚至暂停任务执行。</div>
                 <div>脚本会优先添加投稿时间较早的投稿，达到稍后再看容量上限 100 时终止执行。注意，该功能会向后台发起大量请求，滥用可能会导致一段时间内无法正常访问B站，您可以增加平均请求间隔以降低被 BAN 的概率。</div>
-                <div>第一步：加载最近 <input id="gm-batch-1a" type="text" value="24"> <select id="gm-batch-1b" style="border:none;margin: 0 -4px">
+                <div>第一步：加载最近 <input is="laster2800-input-number" id="gm-batch-1a" value="24" digits="Infinity"> <select id="gm-batch-1b" style="border:none;margin: 0 -4px">
                   <option value="${3600 * 24}">天</option>
                   <option value="3600" selected>小时</option>
                   <option value="60">分钟</option>
                 </select> 以内发布且不存在于稍后再看的视频投稿<button id="gm-batch-1c">执行</button><button id="gm-batch-1d" disabled>终止</button></div>
-                <div>第二步：缩小时间范围到 <input id="gm-batch-2a" type="text"> <select id="gm-batch-2b" style="border:none;margin: 0 -4px">
+                <div>第二步：缩小时间范围到 <input is="laster2800-input-number" id="gm-batch-2a" digits="Infinity"> <select id="gm-batch-2b" style="border:none;margin: 0 -4px">
                   <option value="${3600 * 24}">天</option>
                   <option value="3600" selected>小时</option>
                   <option value="60">分钟</option>
                 </select> 以内；可使用上下方向键（配合 Alt/Shift/Ctrl）调整数值大小<button id="gm-batch-2c" disabled>执行</button></div>
                 <div>第三步：筛选 <input id="gm-batch-3a" type="text" style="width:10em">，过滤 <input id="gm-batch-3b" type="text" style="width:10em">；支持通配符 ( ? * )，使用 | 分隔关键词<button id="gm-batch-3c" disabled>执行</button></div>
-                <div>第四步：将选定稿件添加到稍后再看（平均请求间隔：<input id="gm-batch-4a" type="text" value="${gm.const.batchAddRequestInterval}">ms）<button id="gm-batch-4b" disabled>执行</button><button id="gm-batch-4c" disabled>终止</button></div>
+                <div>第四步：将选定稿件添加到稍后再看（平均请求间隔：<input is="laster2800-input-number" id="gm-batch-4a" value="${gm.const.batchAddRequestInterval}" min="200">ms）<button id="gm-batch-4b" disabled>执行</button><button id="gm-batch-4c" disabled>终止</button></div>
               </div>
               <div class="gm-items"></div>
               <div class="gm-bottom">
@@ -1830,7 +1802,7 @@
               el.id2c.disabled = true
               el.id3c.disabled = true
               el.id4b.disabled = true
-              el.id2a.maxVal = v1a
+              el.id2a.defaultValue = el.id2a.max = v1a
               el.id2b.syncVal = el.id1b.value
               el.items.textContent = ''
               const uid = webpage.method.getDedeUserID()
@@ -1901,8 +1873,8 @@
               el.id2c.disabled = false
               el.id3c.disabled = false
               el.id4b.disabled = false
-              if (el.id2a.maxVal != null && el.id2b.syncVal != null) {
-                el.id2a.value = el.id2a.maxVal
+              if (el.id2a.defaultValue && el.id2b.syncVal) {
+                el.id2a.value = el.id2a.defaultValue
                 el.id2b.value = el.id2b.syncVal // 非用户操作不会触发 change 事件
                 el.id2b.prevVal = el.id2b.value
               }
@@ -1926,19 +1898,12 @@
             try {
               executing = true
               el.id2c.disabled = true
-              let v2a = Number.parseFloat(el.id2a.value)
+              const v2a = Number.parseFloat(el.id2a.value)
               if (Number.isNaN(v2a)) {
                 for (let i = 0; i < el.items.childElementCount; i++) {
                   el.items.children[i].classList.remove('gm-filtered-time')
                 }
               } else {
-                if (el.id2a.maxVal) {
-                  const max = el.id2a.maxVal * el.id2b.syncVal
-                  if (max < v2a * el.id2b.value) {
-                    v2a = max / el.id2b.value
-                    el.id2a.value = v2a
-                  }
-                }
                 const newEnd = Date.now() - v2a * el.id2b.value * 1000
                 for (let i = 0; i < el.items.childElementCount; i++) {
                   const item = el.items.children[i]
@@ -1959,46 +1924,9 @@
           }
           const throttledFilterTime = api.base.throttle(filterTime, gm.const.inputThrottleWait)
           el.id2a.addEventListener('input', throttledFilterTime)
+          el.id2a.addEventListener('change', throttledFilterTime)
           el.id2b.addEventListener('change', filterTime)
           el.id2c.addEventListener('click', filterTime)
-          el.id2a.addEventListener('input', function() {
-            this.value = /\d+(\.\d*)?/.exec(this.value)?.[0] ?? ''
-          })
-          el.id2a.addEventListener('blur', function() {
-            if (this.value.endsWith('.')) {
-              this.value = this.value.slice(0, -1)
-            }
-          })
-          el.id2a.addEventListener('keydown', api.base.throttle(function(/** @type {KeyboardEvent} */ e) {
-            let val = Number.parseFloat(this.value)
-            if (Number.isNaN(val)) {
-              val = this.maxVal ?? 0
-            }
-            let move = ({ ArrowUp: 1, ArrowDown: -1 })[e.key]
-            if (move) {
-              if (e.altKey) {
-                move *= 0.1
-              } else if (e.shiftKey) {
-                move *= 10
-              } else if (e.ctrlKey) {
-                move *= 100
-              }
-              val += move
-
-              let truncate = true
-              if (val < 0) {
-                val = 0
-              } else if (this.maxVal && el.id2b.syncVal) {
-                const max = this.maxVal * el.id2b.syncVal
-                if (max < val * el.id2b.value) {
-                  val = max / el.id2b.value
-                  truncate = false
-                }
-              }
-              this.value = truncate ? val.toFixed(1) : val
-              throttledFilterTime()
-            }
-          }, 100))
 
           // 正则过滤
           const filterRegex = function() {
@@ -2064,11 +1992,10 @@
               el.id3c.disabled = true
 
               let available = 100 - (await gm.data.watchlaterListData()).length
-              const checks = el.items.querySelectorAll('label:not([class*=gm-filtered-]) input')
+              const checks = el.items.querySelectorAll('label:not([class*=gm-filtered-]) input:checked')
               for (const check of checks) {
                 if (stopAdd) return api.message.info('批量添加：任务终止', 1800) // -> finally
                 if (available <= 0) break
-                if (!check.checked) continue
                 const item = check.parentElement
                 const success = await webpage.method.switchVideoWatchlaterStatus(item.getAttribute('aid'))
                 if (!success) throw 'add request error'
@@ -2113,6 +2040,9 @@
           const syncTimeUnit = (unitEl, valEl) => {
             unitEl.prevVal = unitEl.value
             unitEl.addEventListener('change', function() {
+              if (valEl.max != Number.POSITIVE_INFINITY) {
+                valEl.defaultValue = valEl.max = (valEl.max * this.prevVal / this.value).toFixed(1)
+              }
               if (valEl.value) {
                 valEl.value = (valEl.value * this.prevVal / this.value).toFixed(1)
                 this.prevVal = this.value
@@ -2140,14 +2070,12 @@
       const el = {}
       if (gm.el.history) {
         el.searchTimes = gm.el.history.querySelector('#gm-search-times')
-        el.searchTimes.current = gm.config.removeHistorySearchTimes
-        el.searchTimes.value = el.searchTimes.current
-
+        el.searchTimes.value = gm.config.removeHistorySearchTimes
+        el.searchTimes.current = el.searchTimes.value
         el.historySort = gm.el.history.querySelector('#gm-history-sort')
         if (el.historySort.type !== 0) {
           el.historySort.setType(0) // 降序
         }
-
         _self.openMenuItem('history')
       } else {
         setTimeout(() => {
@@ -2170,7 +2098,7 @@
                 <div>根据最近<span id="gm-save-times">0</span>条不重复数据记录生成，共筛选出<span id="gm-removed-num">0</span>条移除记录。排序由视频<span id="gm-history-time-point"></span>被观察到处于稍后再看的时间决定，与被移除出稍后再看的时间无关。如果记录太少请设置增加历史回溯深度；记录太多则减少之，并善用浏览器搜索功能辅助定位。</div>
                 <div style="text-align:right;font-weight:bold">
                   <span id="gm-history-sort" style="text-decoration:underline;cursor:pointer">降序</span>
-                  <span title="搜寻时在最近保存的多少条稍后再看历史数据记录中查找。按下回车键或输入框失去焦点时刷新数据，设置较小的值能较好地定位最近被添加到稍后再看的视频。">历史回溯深度：<input type="text" id="gm-search-times" value="0"></span>
+                  <span title="搜寻时在最近保存的多少条稍后再看历史数据记录中查找。按下回车键或输入框失去焦点时刷新数据，设置较小的值能较好地定位最近被添加到稍后再看的视频。">历史回溯深度：<input is="laster2800-input-number" id="gm-search-times" value="${gm.config.removeHistorySearchTimes}" min="${gm.configMap.removeHistorySearchTimes.min}" max="${gm.configMap.removeHistorySearchTimes.max}"></span>
                 </div>
               </div>
               <div class="gm-content"></div>
@@ -2194,28 +2122,8 @@
           el.content.fadeOutDisplay = 'block'
           el.content.fadeInTime = gm.const.textFadeTime
           el.content.fadeOutTime = gm.const.textFadeTime
-          el.searchTimes.current = gm.config.removeHistorySearchTimes
-          el.searchTimes.value = el.searchTimes.current
-          const stMin = gm.configMap.removeHistorySearchTimes.min
-          el.searchTimes.addEventListener('input', function() {
-            const v0 = this.value.replace(/\D/g, '')
-            if (v0 === '') {
-              this.value = ''
-            } else {
-              const stMax = gm.configMap.removeHistorySearchTimes.max
-              let value = Number.parseInt(v0)
-              if (value > stMax) {
-                value = stMax
-              } else if (value < stMin) {
-                value = stMin
-              }
-              this.value = value
-            }
-          })
+          el.searchTimes.current = el.searchTimes.value
           el.searchTimes.addEventListener('blur', function() {
-            if (this.value === '') {
-              this.value = gm.config.removeHistorySearchTimes
-            }
             if (this.value != el.searchTimes.current) {
               el.searchTimes.current = this.value
               gm.menu.history.openHandler()
@@ -2272,7 +2180,7 @@
 
           try {
             const map = await webpage.method.getWatchlaterDataMap(item => item.bvid, 'bvid', true)
-            const depth = Number.parseInt(el.searchTimes.current)
+            const depth = Number.parseInt(el.searchTimes.value)
             let data = null
             if (el.historySort.type < 2) {
               data = gm.data.removeHistoryData().toArray(depth)
@@ -3688,12 +3596,12 @@
                     card.href = `${gm.url.page_videoWatchlaterMode}/${card.bvid}`
                   }
                   if (gm.config.autoRemove != Enums.autoRemove.absoluteNever) {
-                    const excludes = ['gm-card-switcher', 'gm-card-uploader', 'gm-card-fixer', 'gm-card-collector']
+                    const excludes = '.gm-card-switcher, .gm-card-uploader, .gm-card-fixer, .gm-card-collector'
                     card._originalHref = card.href
                     card.addEventListener('mousedown', function(e) {
                       if (e.button == 0 || e.button == 1) { // 左键或中键
                         if (card.fixed) return
-                        if (!simplePopup && api.dom.containsClass(e.target, excludes)) return
+                        if (!simplePopup && e.target.matches(excludes)) return
                         if (autoRemoveControl.autoRemove) {
                           if (gm.config.autoRemove != Enums.autoRemove.always) {
                             const url = new URL(this.href)
@@ -3718,7 +3626,7 @@
                         if (card.fixed) return
                         if (!simplePopup) {
                           if (!card.added) return
-                          if (api.dom.containsClass(e.target, excludes)) return
+                          if (e.target.matches(excludes)) return
                         }
                         if (autoRemoveControl.autoRemove) {
                           card.classList.add('gm-removed')
@@ -5311,7 +5219,7 @@
             margin-top: 0.2em;
             margin-left: auto;
           }
-          #${gm.id} .gm-setting input[type=text] {
+          #${gm.id} .gm-setting input[is=laster2800-input-number] {
             border-width: 0 0 1px 0;
             width: 3.4em;
             text-align: right;
@@ -5604,7 +5512,6 @@
           #${gm.id}-video-btn input[type=checkbox] {
             margin-right: 2px;
             cursor: pointer;
-            appearance: auto;
           }
 
           #${gm.id} .gm-items::-webkit-scrollbar,
