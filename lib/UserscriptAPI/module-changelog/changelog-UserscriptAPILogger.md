@@ -1,4 +1,4 @@
-# UserscriptAPILogger
+# UserscriptAPILogger 更新日志
 
 ## V1.1
 
