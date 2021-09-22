@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站防剧透进度条
-// @version         2.4.1.20210921
+// @version         2.4.2.20210922
 // @namespace       laster2800
 // @author          Laster2800
 // @description     看比赛、看番总是被进度条剧透？装上这个脚本再也不用担心这些问题了
@@ -13,11 +13,12 @@
 // @include         *://www.bilibili.com/medialist/play/watchlater
 // @include         *://www.bilibili.com/medialist/play/watchlater/*
 // @include         *://www.bilibili.com/bangumi/play/*
-// @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=972566
-// @require         https://greasyfork.org/scripts/431998-userscriptapidom/code/UserscriptAPIDom.js?version=971986
+// @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=972855
+// @require         https://greasyfork.org/scripts/431998-userscriptapidom/code/UserscriptAPIDom.js?version=972856
 // @require         https://greasyfork.org/scripts/432000-userscriptapimessage/code/UserscriptAPIMessage.js?version=971987
 // @require         https://greasyfork.org/scripts/432002-userscriptapiwait/code/UserscriptAPIWait.js?version=971988
 // @require         https://greasyfork.org/scripts/432003-userscriptapiweb/code/UserscriptAPIWeb.js?version=969305
+// @require         https://greasyfork.org/scripts/432807-inputnumber/code/InputNumber.js?version=972863
 // @grant           GM_registerMenuCommand
 // @grant           GM_xmlhttpRequest
 // @grant           GM_setValue
@@ -428,7 +429,6 @@
         const el = {}
         setTimeout(() => {
           initSetting()
-          processConfigItem()
           processSettingItem()
           _self.openMenuItem('setting')
         })
@@ -525,35 +525,35 @@
             html: `<div>
               <span>进度条极端偏移因子</span>
               <span id="gm-offsetTransformFactorInformation" class="gm-information" title="">💬</span>
-              <input id="gm-offsetTransformFactor" type="text">
+              <input is="laster2800-input-number" id="gm-offsetTransformFactor" value="${gm.configMap.offsetTransformFactor.default}" max="${gm.configMap.offsetTransformFactor.max}" digits="1">
             </div>`,
           }, {
             desc: '进度条偏移极左值设置。',
             html: `<div>
               <span>进度条偏移极左值</span>
               <span id="gm-offsetLeftInformation" class="gm-information" title="">💬</span>
-              <input id="gm-offsetLeft" type="text">
+              <input is="laster2800-input-number" id="gm-offsetLeft" value="${gm.configMap.offsetLeft.default}" max="100">
             </div>`,
           }, {
             desc: '进度条偏移极右值设置。',
             html: `<div>
               <span>进度条偏移极右值</span>
               <span id="gm-offsetRightInformation" class="gm-information" title="">💬</span>
-              <input id="gm-offsetRight" type="text">
+              <input is="laster2800-input-number" id="gm-offsetRight" value="${gm.configMap.offsetRight.default}" max="100">
             </div>`,
           }, {
             desc: '进度条左侧预留区设置。',
             html: `<div>
               <span>进度条左侧预留区</span>
               <span id="gm-reservedLeftInformation" class="gm-information" title="">💬</span>
-              <input id="gm-reservedLeft" type="text">
+              <input is="laster2800-input-number" id="gm-reservedLeft" value="${gm.configMap.reservedLeft.default}" max="100">
             </div>`,
           }, {
             desc: '进度条右侧预留区设置。',
             html: `<div>
               <span>进度条右侧预留区</span>
               <span id="gm-reservedRightInformation" class="gm-information" title="">💬</span>
-              <input id="gm-reservedRight" type="text">
+              <input is="laster2800-input-number" id="gm-reservedRight" value="${gm.configMap.reservedRight.default}" max="100">
             </div>`,
           }, {
             desc: '是否延后进度条偏移的时间点，使得在启用功能或改变播放进度后立即进行进度条偏移？',
@@ -671,70 +671,6 @@
               在启用功能或改变播放进度后，不要立即对进度条进行偏移，而是在下次进度条显示出来时偏移。这样可以避免用户观察到处理过程，从而防止用户推测出偏移方向与偏移量。更多信息请阅读说明文档。
             </div>
           `, null, { width: '36em', flagSize: '2em' })
-        }
-
-        /**
-         * 维护与设置项相关的数据和元素
-         */
-        const processConfigItem = () => {
-          el.offsetTransformFactor.addEventListener('input', function() {
-            const v0 = this.value.replace(/[^\d.]/g, '')
-            if (v0 === '') {
-              this.value = ''
-            } else {
-              let value = null
-              if (/^\d+\./.test(v0)) {
-                if (!/^\d+\.\d+$/.test(v0)) {
-                  value = v0.replace(/(?<=^\d+\.\d*).*/, '')
-                } else {
-                  value = v0
-                }
-                if (Number.parseFloat(value) >= gm.configMap.offsetTransformFactor.max) {
-                  if (value.endsWith('.')) {
-                    value = `${gm.configMap.offsetTransformFactor.max.toFixed(0)}.`
-                  } else {
-                    value = gm.configMap.offsetTransformFactor.max.toFixed(2)
-                  }
-                }
-              } else {
-                value = Number.parseFloat(v0)
-                if (value > gm.configMap.offsetTransformFactor.max) {
-                  value = gm.configMap.offsetTransformFactor.max // 此处不要设置小数点
-                }
-                value = String(value)
-              }
-              if (/\.\d{3,}$/.test(value)) {
-                value = value.replace(/(?<=\.\d{2}).*/, '')
-              }
-              this.value = value
-            }
-          })
-          el.offsetTransformFactor.addEventListener('blur', function() {
-            let value = this.value
-            if (value === '') {
-              value = gm.configMap.offsetTransformFactor.default
-            }
-            this.value = Number.parseFloat(value).toFixed(2)
-          })
-          for (const name of ['offsetLeft', 'offsetRight', 'reservedLeft', 'reservedRight']) {
-            el[name].addEventListener('input', function() {
-              const v0 = this.value.replace(/\D/g, '')
-              if (v0 === '') {
-                this.value = ''
-              } else {
-                let value = Number.parseInt(v0)
-                if (value > 100) { // 不能大于 100%
-                  value = 100
-                }
-                this.value = value
-              }
-            })
-            el[name].addEventListener('blur', function() {
-              if (this.value === '') {
-                this.value = gm.configMap[name].default
-              }
-            })
-          }
         }
 
         /**
@@ -1819,16 +1755,24 @@
           left: 0;
           bottom: 100%;
           color: var(--${gm.id}-light-text-color);
-          margin-bottom: 1em;
+          margin-bottom: 0.3em;
           font-size: 13px;
           z-index: 1; /* 需保证不被 pbp 等元素遮盖 */
           display: flex;
           opacity: 0;
           transition: opacity ${gm.const.fadeTime}ms ease-in-out;
         }
+        .mode-fullscreen .${gm.id}-scriptControl,
+        .mode-webfullscreen .${gm.id}-scriptControl {
+          margin-bottom: 1em;
+        }
         .${gm.id}-scriptControl.gm-v3 {
           left: 1em;
-          margin-bottom: 0.5em;
+          margin-bottom: 0.4em;
+        }
+        [data-screen=full] .${gm.id}-scriptControl.gm-v3,
+        [data-screen=web] .${gm.id}-scriptControl.gm-v3 {
+          margin-bottom: 0.2em;
         }
 
         .${gm.id}-scriptControl > * {
@@ -1935,7 +1879,7 @@
         #${gm.id} .gm-setting input[type=checkbox] {
           margin-left: auto;
         }
-        #${gm.id} .gm-setting input[type=text] {
+        #${gm.id} .gm-setting input[is=laster2800-input-number] {
           border-width: 0 0 1px 0;
           width: 2.4em;
           text-align: right;
