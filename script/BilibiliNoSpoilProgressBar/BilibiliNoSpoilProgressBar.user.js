@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站防剧透进度条
-// @version         2.4.2.20210922
+// @version         2.4.3.20210922
 // @namespace       laster2800
 // @author          Laster2800
 // @description     看比赛、看番总是被进度条剧透？装上这个脚本再也不用担心这些问题了
@@ -18,7 +18,7 @@
 // @require         https://greasyfork.org/scripts/432000-userscriptapimessage/code/UserscriptAPIMessage.js?version=971987
 // @require         https://greasyfork.org/scripts/432002-userscriptapiwait/code/UserscriptAPIWait.js?version=971988
 // @require         https://greasyfork.org/scripts/432003-userscriptapiweb/code/UserscriptAPIWeb.js?version=969305
-// @require         https://greasyfork.org/scripts/432807-inputnumber/code/InputNumber.js?version=972863
+// @require         https://greasyfork.org/scripts/432807-inputnumber/code/InputNumber.js?version=972880
 // @grant           GM_registerMenuCommand
 // @grant           GM_xmlhttpRequest
 // @grant           GM_setValue
