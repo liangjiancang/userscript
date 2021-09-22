@@ -3,11 +3,12 @@
 ## V1.2
 
 1. 新增：`findAncestor()`，用于查找符合条件的祖先元素。
+2. 移除：`containsClass()`。`Element.matches()` 是更好的替代方案。
 
 ## V1.1
 
 1. 迁移：`addStyle()`、`initUrlchangeEvent()` 移动至 `base` 模块。
-2. 移除：`addClass()`、`removeClass()`。
+2. 移除：`addClass()`、`removeClass()`。`Element.classList` 是更好的替代方案。
 
 ## V1.0
 
