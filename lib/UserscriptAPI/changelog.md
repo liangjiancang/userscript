@@ -2,6 +2,11 @@
 
 本日志只记录用户友好的更新说明，影响不大的问题修复与修改不作记录，具体修改见 [提交记录](https://gitee.com/liangjiancang/userscript/commits/master/lib/UserscriptAPI)。模块更新记录见 [module-changelog](./module-changelog/)。
 
+## V2.2
+
+1. 代码：扩充代码规则至 `["eslint:all", "plugin:unicorn/all"]`，然后在此基础上做减法。
+2. 脚本：不再是单例（Singleton），以降低维护难度。
+
 ## V2.1
 
 1. 库：新增模块 `base`，内建于 `UserscriptAPI` 中。

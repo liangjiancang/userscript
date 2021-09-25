@@ -1,5 +1,9 @@
 # UserscriptAPIBase 更新日志
 
+## V1.1
+
+1. 代码：扩充代码规则至 `["eslint:all", "plugin:unicorn/all"]`，然后在此基础上做减法。
+
 ## V1.0
 
 1. 模块：作为基础方法集合，于 `UserscriptAPI` `v2.1` 建立。

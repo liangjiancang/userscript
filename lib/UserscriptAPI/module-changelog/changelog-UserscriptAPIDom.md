@@ -4,6 +4,7 @@
 
 1. 新增：`findAncestor()`，用于查找符合条件的祖先元素。
 2. 移除：`containsClass()`。`Element.matches()` 是更好的替代方案。
+3. 代码：扩充代码规则至 `["eslint:all", "plugin:unicorn/all"]`，然后在此基础上做减法。
 
 ## V1.1
 

@@ -1,5 +1,12 @@
 # UserscriptAPIMessage 更新日志
 
+## V1.2
+
+1. `info`：回调函数以参数而非 `this` 回传 `infobox` 元素。
+2. `dialog`：回调函数不再以 `this` 回传 `dialog` 元素。
+3. `close`：回调函数以参数而非 `this` 回传信息元素。
+4. 代码：扩充代码规则至 `["eslint:all", "plugin:unicorn/all"]`，然后在此基础上做减法。
+
 ## V1.1
 
 1. 新增：`dialog()`，用于创建对话框。
