@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name                  [DEBUG] Log Exception Cause
 // @name:zh-CN            [DEBUG] 异常诱因日志
-// @version               1.0.3.20210925
+// @version               1.0.4.20210925
 // @namespace             laster2800
 // @author                Laster2800
 // @description           Log exception cause, see https://github.com/tc39/proposal-error-cause
@@ -23,7 +23,7 @@
   function log(event) {
     const cause = (event.error ?? event.reason)?.cause
     if (cause !== undefined) {
-      console.error('↓ Error is caused by', cause)
+      console.error('↓ Error is caused by %o', cause)
     }
   }
 })()
