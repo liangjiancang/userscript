@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站SEO页面重定向
-// @version         1.0.5.20210905
+// @version         1.0.6.20210925
 // @namespace       laster2800
 // @author          Laster2800
 // @description     从B站 SEO 页面重定向至常规页面
