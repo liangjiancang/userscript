@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name            S1战斗力屏蔽
 // @namespace       laster2800
-// @version         3.7.6.20210922
+// @version         3.7.7.20210925
 // @author          Laster2800
 // @description     屏蔽S1的战斗力系统，眼不见为净
 // @author          Laster2800
@@ -58,9 +58,9 @@
       nv.append(sw)
 
       sw.enabled = true
-      sw.lastElementChild.addEventListener('click', function() {
+      sw.lastElementChild.addEventListener('click', () => {
         const enabled = !sw.enabled
-        const body = document.body
+        const { body } = document
         if (enabled) {
           body.setAttribute(enabledAttr, '')
         } else {
@@ -87,12 +87,10 @@
       // 有系统提醒时，每次打开页面时都会弹出一个通知菜单
       // 点击网页提供的关闭按键后，此菜单在有新提醒前不会再次弹出
       // 注意，需在 menu.initialized 为 true 后点击关闭按键
-      const p1 = api.wait.$('.ignore_notice', document, true).then(ignore_notice => {
-        return api.wait.waitForConditionPassed({
-          condition: () => menu.getAttribute('initialized') == 'true' && ignore_notice,
-          interval: 25,
-        })
-      }).then(ignore_notice => ignore_notice.click()).catch(() => {}) // 没有通知时，没有捕获到是正常的
+      const p1 = api.wait.$('.ignore_notice', document, true).then(ignore_notice => api.wait.waitForConditionPassed({
+        condition: () => menu.getAttribute('initialized') === 'true' && ignore_notice,
+        interval: 25,
+      })).then(ignore_notice => ignore_notice.click()).catch(() => {}) // 没有通知时，没有捕获到是正常的
 
       // 有系统提醒处于未读状态时，相关位置会有高亮显示，网页标题也会有所不同
       // 将这些差异化显示，在用户没有反应出来之前去除
@@ -105,7 +103,7 @@
           api.wait.$('title', document.head).then(title => {
             // 常规情况下，此时 title 仍未被改变，添加一个 ob 来跟踪变化
             const ob = new MutationObserver(replaceTitle)
-            ob.observe(title,  { childList: true })
+            ob.observe(title, { childList: true })
             // 若在后台打开新标签页后很长时间都不切换过去，则切换过去时 title 可能已发生变化需立即处理
             replaceTitle()
           })
