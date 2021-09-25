@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name                  [DEBUG] Web Content Editing Mode (DesignMode)
 // @name:zh-CN            [DEBUG] 网页内容编辑模式 (DesignMode)
-// @version               1.1.0.20210925
+// @version               1.1.1.20210925
 // @namespace             laster2800
 // @author                Laster2800
 // @description           Quickly turn designMode on/off via the context menu, see https://developer.mozilla.org/en-US/docs/Web/API/Document/designMode
