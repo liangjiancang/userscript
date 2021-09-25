@@ -4,7 +4,7 @@
 
 ## V2.6
 
-1. 代码：代码规则基于 `["eslint:all", "plugin:unicorn/all"]`。
+1. 代码：扩充代码规则至 `["eslint:all", "plugin:unicorn/all"]`，然后在此基础上做减法。
 2. 脚本：优化内部错误处理机制。
 
 ## V2.5
