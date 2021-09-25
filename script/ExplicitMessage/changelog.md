@@ -2,6 +2,11 @@
 
 本日志只记录用户友好的更新说明，影响不大的问题修复与修改不作记录，具体修改见 [提交记录](https://gitee.com/liangjiancang/userscript/commits/master/script/ExplicitMessage)。
 
+## V2.6
+
+1. 代码：代码规则基于 `["eslint:all", "plugin:unicorn/all"]`。
+2. 脚本：优化内部错误处理机制。
+
 ## V2.5
 
 1. 脚本：支持 `console.debug()`、`console.info()`。

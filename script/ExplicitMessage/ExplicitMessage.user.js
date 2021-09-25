@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            [DEBUG] 信息显式化
-// @version         2.5.1.20210919
+// @version         2.6.0.20210925
 // @namespace       laster2800
 // @author          Laster2800
 // @description     用 alert() 提示符合匹配规则的日志或未捕获异常，帮助开发者在日常使用网页时发现潜藏问题
@@ -22,9 +22,11 @@
 (function() {
   'use strict'
 
+  const errorLog = console.error
+
   const gm = {
     id: 'gm429521',
-    injectUpdate: 20210910,
+    injectUpdate: 20210925,
     config: {},
     fn: {
       /**
@@ -36,8 +38,7 @@
        * @returns {Function} 封装日志函数
        */
       wrappedLog(console, log, type, source) {
-        const config = gm.config
-        const fn = gm.fn
+        const { config, fn } = gm
         return function() {
           Reflect.apply(log, console, arguments)
           try {
@@ -45,8 +46,8 @@
               const m = [arguments, type]
               if (fn.match(m, config.include) && !fn.match(m, config.exclude)) {
                 let msg = null
-                if (arguments.length == 1) {
-                  if (arguments[0] && typeof arguments[0] == 'object') {
+                if (arguments.length === 1) {
+                  if (arguments[0] && typeof arguments[0] === 'object') {
                     msg = JSON.stringify(arguments[0], null, 2)
                   } else {
                     msg = arguments[0]
@@ -79,24 +80,24 @@
        */
       match(obj, regex, depth = 5) {
         if (obj && regex && depth > 0) {
-          return _inner(obj, depth, new WeakSet())
+          return inner(obj, depth, new WeakSet())
         } else {
           return false
         }
 
-        function _inner(obj, depth, objSet) {
+        function inner(obj, depth, objSet) {
           if (!obj) return false
-          _innerLoop: for (const key in obj) {
+          innerLoop: for (const key in obj) {
             if (regex.test(key)) {
               return true
             } else {
               try {
                 const value = obj[key]
-                if (value && (typeof value == 'object' || typeof value == 'function')) {
-                  if (value == obj) continue
-                  if (value == value.window) continue // exclude Window
+                if (value && (typeof value === 'object' || typeof value === 'function')) {
+                  if (value === obj) continue
+                  if (value === value.window) continue // exclude Window
                   for (const type of [Function, Node, StyleSheet]) {
-                    if (value instanceof type) continue _innerLoop
+                    if (value instanceof type) continue innerLoop
                   }
 
                   if (regex.test(value.toString())) {
@@ -104,7 +105,7 @@
                   } else if (depth > 1) {
                     if (!objSet.has(value)) {
                       objSet.add(value)
-                      if (_inner(value, depth - 1, objSet)) {
+                      if (inner(value, depth - 1, objSet)) {
                         return true
                       }
                     }
@@ -146,13 +147,13 @@
     gm.config.exclude = gmExclude ? new RegExp(gmExclude) : null
 
     // 日志
-    const console = unsafeWindow.console
+    const { console } = unsafeWindow
     for (const n of ['log', 'debug', 'info', 'warn', 'error']) {
       console[n] = gm.fn.wrappedLog(console, console[n], n.toUpperCase())
     }
 
     // 未捕获异常
-    unsafeWindow.addEventListener('error', function(event) { // 正常
+    unsafeWindow.addEventListener('error', event => { // 正常
       try {
         if (!gm.config.enabled) return
         const m = [event.message, event.filename, 'Uncaught Exception (Normal)']
@@ -163,7 +164,7 @@
         innerError(e)
       }
     })
-    unsafeWindow.addEventListener('unhandledrejection', function(event) { // from Promise
+    unsafeWindow.addEventListener('unhandledrejection', event => { // from Promise
       try {
         if (!gm.config.enabled) return
         const m = [event.reason, 'Uncaught Exception (in Promise)']
@@ -176,7 +177,7 @@
     })
 
     // 菜单
-    if (self == top) { // frame 中不要执行
+    if (self === top) { // frame 中不要执行
       const initScriptMenu = () => {
         const menuId = {}
         menuId.enabled = GM_registerMenuCommand(`当前${gm.config.enabled ? '开启' : '关闭'}`, () => {
@@ -194,12 +195,12 @@
         menuId.filter = GM_registerMenuCommand('设置过滤器', () => {
           try {
             const sInclude = prompt(`${GM_info.script.name}\n\n设置匹配过滤器：`, gm.config.include?.source ?? df.include)
-            if (typeof sInclude == 'string') {
+            if (typeof sInclude === 'string') {
               gm.config.include = sInclude ? new RegExp(sInclude) : null
               GM_setValue('include', sInclude)
             }
             const sExclude = prompt(`${GM_info.script.name}\n\n设置排除过滤器：`, gm.config.exclude?.source ?? df.exclude)
-            if (typeof sExclude == 'string') {
+            if (typeof sExclude === 'string') {
               gm.config.exclude = sExclude ? new RegExp(sExclude) : null
               GM_setValue('exclude', sExclude)
             }
@@ -222,5 +223,6 @@
    */
   function innerError(e) {
     gm.fn.explicit(e, 'UNKNOWN', GM_info.script.name)
+    errorLog('[UNKNOWN ERROR] %s: %o', GM_info.script.name, e)
   }
 })()
