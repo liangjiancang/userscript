@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站共同关注快速查看
-// @version         1.7.6.20210922
+// @version         1.7.7.20210925
 // @namespace       laster2800
 // @author          Laster2800
 // @description     快速查看与特定用户的共同关注（视频播放页、动态页、用户空间、直播间）
@@ -16,9 +16,9 @@
 // @exclude         *://live.bilibili.com/
 // @exclude         *://live.bilibili.com/?*
 // @exclude         *://www.bilibili.com/watchlater/
-// @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=972855
-// @require         https://greasyfork.org/scripts/432002-userscriptapiwait/code/UserscriptAPIWait.js?version=971988
-// @require         https://greasyfork.org/scripts/432003-userscriptapiweb/code/UserscriptAPIWeb.js?version=969305
+// @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=973747
+// @require         https://greasyfork.org/scripts/432002-userscriptapiwait/code/UserscriptAPIWait.js?version=973745
+// @require         https://greasyfork.org/scripts/432003-userscriptapiweb/code/UserscriptAPIWeb.js?version=973746
 // @grant           GM_notification
 // @grant           GM_xmlhttpRequest
 // @grant           GM_setValue
@@ -111,18 +111,17 @@
      * 初始化脚本
      */
     init() {
-      const _self = this
       try {
-        _self.updateVersion()
+        this.updateVersion()
         for (const name in gm.config) {
           const eb = GM_getValue(name)
-          gm.config[name] = typeof eb == 'boolean' ? eb : gm.config[name]
+          gm.config[name] = typeof eb === 'boolean' ? eb : gm.config[name]
         }
       } catch (e) {
         api.logger.error(e)
         api.message.confirm('初始化错误！是否彻底清空内部数据以重置脚本？').then(result => {
           if (result) {
-            _self.method.reset()
+            this.method.reset()
             location.reload()
           }
         })
@@ -135,8 +134,7 @@
     initScriptMenu() {
       const _self = this
       const cfgName = id => `[ ${config[id] ? '✓' : '✗'} ] ${configMap[id].name}`
-      const config = gm.config
-      const configMap = gm.configMap
+      const { config, configMap } = gm
       const menuId = {}
       for (const id in config) {
         menuId[id] = createMenuItem(id)
@@ -183,7 +181,7 @@
             })
           }
         }
-        if (gm.configVersion != gm.configUpdate) {
+        if (gm.configVersion !== gm.configUpdate) {
           gm.configVersion = gm.configUpdate
           GM_setValue('configVersion', gm.configVersion)
         }
@@ -237,7 +235,7 @@
           url: gm.url.api_relation(uid),
         }, { check: r => r.code === 0 })
         const relation = resp.data.be_relation
-        return { code: relation.attribute, special: relation.special == 1 }
+        return { code: relation.attribute, special: relation.special === 1 }
       },
     }
 
@@ -253,7 +251,6 @@
      */
     async cardLogic(options) {
       options = { lazy: true, ancestor: false, ...options }
-      const _self = this
       const container = options.container ? await api.wait.$(options.container) : (document.body ?? await api.wait.$('body'))
       api.wait.executeAfterElementLoaded({
         selector: options.card,
@@ -272,8 +269,8 @@
           }
           if (userLink) {
             const info = await api.wait.$(options.info, card)
-            await _self.generalLogic({
-              uid: _self.method.getUid(userLink.href),
+            await this.generalLogic({
+              uid: this.method.getUid(userLink.href),
               target: info,
               className: `${gm.id} card-same-followings`,
             })
@@ -305,7 +302,7 @@
           url: gm.url.api_sameFollowings(options.uid),
         })
         if (resp.code === 0) {
-          const data = resp.data
+          const { data } = resp
           let sameFollowings = null
           if (gm.config.dispInText) {
             sameFollowings = data.list?.map(item => item.uname) ?? []
@@ -323,10 +320,10 @@
                 let innerHTML = '<div class="gm-pre" title="加粗：特别关注；下划线：互粉">共同关注</div><div>'
                 for (const item of sameFollowings) {
                   let className = 'same-following'
-                  if (item.special == 1) { // 特别关注
+                  if (item.special === 1) { // 特别关注
                     className += ' gm-special'
                   }
-                  if (item.attribute == 6) { // 互粉
+                  if (item.attribute === 6) { // 互粉
                     className += ' gm-mutual'
                   }
                   innerHTML += `<a href="${gm.url.page_space(item.mid)}" target="_blank" class="${className}">${item.uname}</a><span>，&nbsp;</span>`
@@ -390,7 +387,7 @@
     async initLive() {
       let frame = null
       let container = await api.wait.$('.danmaku-menu, #player-ctnr iframe')
-      if (container.tagName == 'IFRAME') {
+      if (container.tagName === 'IFRAME') {
         frame = container
         let doc = frame.contentDocument
         // 依执行至此的页面加载进度（与网络正相关、与 CPU 负相关），这里 doc 有以下三种情况：
@@ -400,7 +397,7 @@
         if (!doc?.documentElement.textContent) { // 可应对以上状态的条件
           api.logger.info('Waiting for live room iframe document...')
           await new Promise(resolve => {
-            frame.addEventListener('load', function() {
+            frame.addEventListener('load', () => {
               doc = frame.contentDocument
               resolve()
             })
@@ -412,7 +409,7 @@
       const userLink = await api.wait.$('.go-space a', container)
       container.style.maxWidth = frame ? '264px' : '300px'
 
-      const ob = new MutationObserver(async records => {
+      const ob = new MutationObserver(records => {
         const uid = webpage.method.getUid(records[0].target.href)
         if (uid) {
           webpage.generalLogic({
@@ -499,7 +496,7 @@
     }
   }
 
-  document.readyState != 'complete' ? window.addEventListener('load', main) : main()
+  document.readyState !== 'complete' ? window.addEventListener('load', main) : main()
 
   async function main() {
     script = new Script()
@@ -540,8 +537,7 @@
       }
     } else if (api.base.urlMatch(gm.regex.page_dynamic)) {
       if (gm.config.commonCard) {
-        // 1. 动态页左边「正在直播」主播的用户卡片
-        // 2. 动态页中，被转发动态的所有者的用户卡片
+        // 动态页中，被转发动态的所有者的用户卡片
         webpage.cardLogic({
           card: '.userinfo-wrapper',
           user: '.face',
