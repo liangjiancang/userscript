@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            [DEBUG] 信息显式化
-// @version         2.6.0.20210925
+// @version         2.6.1.20210926
 // @namespace       laster2800
 // @author          Laster2800
 // @description     用 alert() 提示符合匹配规则的日志或未捕获异常，帮助开发者在日常使用网页时发现潜藏问题
@@ -153,7 +153,7 @@
     }
 
     // 未捕获异常
-    unsafeWindow.addEventListener('error', event => { // 正常
+    unsafeWindow.addEventListener('error', /** @param {ErrorEvent} event */ event => { // 常规
       try {
         if (!gm.config.enabled) return
         const m = [event.message, event.filename, 'Uncaught Exception (Normal)']
@@ -164,7 +164,7 @@
         innerError(e)
       }
     })
-    unsafeWindow.addEventListener('unhandledrejection', event => { // from Promise
+    unsafeWindow.addEventListener('unhandledrejection', /** @param {PromiseRejectionEvent} event */ event => { // Promise
       try {
         if (!gm.config.enabled) return
         const m = [event.reason, 'Uncaught Exception (in Promise)']
