@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.22.4.20210922
+// @version         4.23.0.20210926
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -17,12 +17,13 @@
 // @exclude         *://message.bilibili.com/*/*
 // @exclude         *://t.bilibili.com/h5/*
 // @exclude         *://www.bilibili.com/page-proxy/*
-// @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=972855
-// @require         https://greasyfork.org/scripts/431998-userscriptapidom/code/UserscriptAPIDom.js?version=972856
-// @require         https://greasyfork.org/scripts/432000-userscriptapimessage/code/UserscriptAPIMessage.js?version=971987
-// @require         https://greasyfork.org/scripts/432002-userscriptapiwait/code/UserscriptAPIWait.js?version=971988
-// @require         https://greasyfork.org/scripts/432003-userscriptapiweb/code/UserscriptAPIWeb.js?version=969305
-// @require         https://greasyfork.org/scripts/432807-inputnumber/code/InputNumber.js?version=972880
+// @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=973747
+// @require         https://greasyfork.org/scripts/431998-userscriptapidom/code/UserscriptAPIDom.js?version=973743
+// @require         https://greasyfork.org/scripts/432000-userscriptapimessage/code/UserscriptAPIMessage.js?version=973744
+// @require         https://greasyfork.org/scripts/432002-userscriptapiwait/code/UserscriptAPIWait.js?version=973745
+// @require         https://greasyfork.org/scripts/432003-userscriptapiweb/code/UserscriptAPIWeb.js?version=973746
+// @require         https://greasyfork.org/scripts/432936-pushqueue/code/PushQueue.js?version=973688
+// @require         https://greasyfork.org/scripts/432807-inputnumber/code/InputNumber.js?version=973690
 // @grant           GM_registerMenuCommand
 // @grant           GM_xmlhttpRequest
 // @grant           GM_setValue
@@ -39,11 +40,12 @@
 // @compatible      firefox 版本不小于 90
 // ==/UserScript==
 
+/* global UserscriptAPI, PushQueue */
 (function() {
   'use strict'
 
-  if (GM_info.scriptHandler != 'Tampermonkey') {
-    const script = GM_info.script
+  if (GM_info.scriptHandler !== 'Tampermonkey') {
+    const { script } = GM_info
     script.author ??= 'Laster2800'
     script.homepage ??= 'https://greasyfork.org/zh-CN/scripts/395456'
     script.supportURL ??= 'https://greasyfork.org/zh-CN/scripts/395456/feedback'
@@ -333,18 +335,17 @@
    * @property {string} api_dynamicNew 动态列表（首次）
    * @property {string} api_dynamicHistory 动态列表（后续）
    * @property {string} page_watchlaterList 列表页面
-   * @property {string} page_videoNormalMode 正常模式播放页
-   * @property {string} page_videoWatchlaterMode 稍后再看模式播放页
+   * @property {string} page_videoNormalMode 常规播放页
+   * @property {string} page_videoWatchlaterMode 稍后再看播放页
    * @property {string} page_watchlaterPlayAll 稍后再看播放全部（临时禁用重定向）
    * @property {page_userSpace} page_userSpace 用户空间
    * @property {string} gm_changelog 更新日志
-   * @property {string} noop 无操作
    */
   /**
    * @typedef GMObject_regex
    * @property {RegExp} page_watchlaterList 匹配列表页面
-   * @property {RegExp} page_videoNormalMode 匹配正常模式播放页
-   * @property {RegExp} page_videoWatchlaterMode 匹配稍后再看模式播放页
+   * @property {RegExp} page_videoNormalMode 匹配常规播放页
+   * @property {RegExp} page_videoWatchlaterMode 匹配稍后再看播放页
    * @property {RegExp} page_dynamic 匹配动态页面
    * @property {RegExp} page_dynamicMenu 匹配顶栏动态入口菜单
    * @property {RegExp} page_userSpace 匹配用户空间
@@ -446,7 +447,6 @@
       page_userSpace: uid => `https://space.bilibili.com/${uid}`,
       gm_changelog: 'https://gitee.com/liangjiancang/userscript/blob/master/script/BilibiliWatchlaterPlus/changelog.md',
       external_fixHeader: 'https://greasyfork.org/zh-CN/scripts/430292',
-      noop: 'javascript:void(0)',
     },
     regex: {
       // 只要第一个「#」后是「/list([/?#]|$)」即被视为列表页面
@@ -479,7 +479,6 @@
     },
   }
 
-  /* global UserscriptAPI */
   const api = new UserscriptAPI({
     id: gm.id,
     label: GM_info.script.name,
@@ -516,9 +515,9 @@
           if (!Object.values(Enums[gmKey]).includes(value)) {
             invalid = true
           }
-        } else if (typeof value == typeof defaultValue) { // 对象默认赋 null 无需额外处理
-          const type = gm.configMap[gmKey].type
-          if (type == 'int' || type == 'float') {
+        } else if (typeof value === typeof defaultValue) { // 对象默认赋 null 无需额外处理
+          const { type } = gm.configMap[gmKey]
+          if (type === 'int' || type === 'float') {
             invalid = gm.configMap[gmKey].min > value || gm.configMap[gmKey].max < value
           }
         } else {
@@ -559,16 +558,15 @@
      * 初始化
      */
     init() {
-      const _self = this
       try {
-        _self.initGMObject()
-        _self.updateVersion()
-        _self.readConfig()
+        this.initGMObject()
+        this.updateVersion()
+        this.readConfig()
       } catch (e) {
         api.logger.error(e)
         api.message.confirm('初始化错误！是否彻底清空内部数据以重置脚本？').then(result => {
           if (result) {
-            _self.method.reset()
+            this.method.reset()
             location.reload()
           }
         })
@@ -589,14 +587,14 @@
             if ($data.removeHistoryData == null) {
               /** @type {PushQueue<GMObject_data_item>} */
               let data = GM_getValue('removeHistoryData')
-              if (data && typeof data == 'object') {
+              if (data && typeof data === 'object') {
                 Reflect.setPrototypeOf(data, PushQueue.prototype) // 初始化替换原型不会影响内联缓存
                 let updated = false
-                if (data.capacity != gm.config.removeHistorySaves) {
+                if (data.capacity !== gm.config.removeHistorySaves) {
                   data.setCapacity(gm.config.removeHistorySaves)
                   updated = true
                 }
-                if (data.maxSize != gm.config.removeHistorySaves) {
+                if (data.maxSize !== gm.config.removeHistorySaves) {
                   data.setMaxSize(gm.config.removeHistorySaves)
                   updated = true
                 }
@@ -660,22 +658,20 @@
               const current = resp.data.list ?? []
               if (gm.config.watchlaterListCacheValidPeriod > 0) {
                 GM_setValue('watchlaterListCacheTime', Date.now())
-                GM_setValue('watchlaterListCache', current.map(item => {
-                  return {
-                    aid: item.aid,
-                    bvid: item.bvid,
-                    title: item.title,
-                    state: item.state,
-                    pic: item.pic,
-                    owner: {
-                      mid: item.owner.mid,
-                      name: item.owner.name,
-                    },
-                    progress: item.progress,
-                    duration: item.duration,
-                    videos: item.videos,
-                  }
-                }))
+                GM_setValue('watchlaterListCache', current.map(item => ({
+                  aid: item.aid,
+                  bvid: item.bvid,
+                  title: item.title,
+                  state: item.state,
+                  pic: item.pic,
+                  owner: {
+                    mid: item.owner.mid,
+                    name: item.owner.name,
+                  },
+                  progress: item.progress,
+                  duration: item.duration,
+                  videos: item.videos,
+                })))
               }
               $data.watchlaterListData = current
               return current
@@ -723,7 +719,6 @@
      * 版本更新处理
      */
     updateVersion() {
-      const _self = this
       if (gm.configVersion >= 20210810.1) { // 4.17.4.20210810
         if (gm.configVersion < gm.configUpdate) {
           // 必须按从旧到新的顺序写
@@ -759,7 +754,7 @@
           }
         }
       } else {
-        _self.method.reset()
+        this.method.reset()
         gm.configVersion = null
       }
     }
@@ -768,16 +763,14 @@
      * 用户配置读取
      */
     readConfig() {
-      const _self = this
       if (gm.configVersion > 0) {
-        // 对配置进行校验
         for (const name in gm.configMap) {
           if (!gm.configDocumentStart.includes(name)) {
-            gm.config[name] = _self.method.getConfig(name, gm.configMap[name].default)
+            gm.config[name] = this.method.getConfig(name, gm.configMap[name].default)
           }
         }
-        if (gm.configVersion != gm.configUpdate) {
-          _self.openUserSetting(2)
+        if (gm.configVersion !== gm.configUpdate) {
+          this.openUserSetting(2)
         }
       } else {
         // 用户强制初始化，或第一次安装脚本，或版本过旧
@@ -786,7 +779,7 @@
           gm.config[name] = gm.configMap[name].default
           GM_setValue(name, gm.configMap[name].default)
         }
-        _self.openUserSetting(1)
+        this.openUserSetting(1)
       }
     }
 
@@ -794,17 +787,16 @@
      * 添加脚本菜单
      */
     addScriptMenu() {
-      const _self = this
       // 用户配置设置
-      GM_registerMenuCommand('用户设置', () => _self.openUserSetting())
+      GM_registerMenuCommand('用户设置', () => this.openUserSetting())
       // 批量添加管理器
-      GM_registerMenuCommand('批量添加管理器', () => _self.openBatchAddManager())
+      GM_registerMenuCommand('批量添加管理器', () => this.openBatchAddManager())
       if (gm.config.removeHistory) {
         // 稍后再看移除记录
-        GM_registerMenuCommand('稍后再看移除记录', () => _self.openRemoveHistory())
+        GM_registerMenuCommand('稍后再看移除记录', () => this.openRemoveHistory())
       }
       // 强制初始化
-      GM_registerMenuCommand('初始化脚本', () => _self.resetScript())
+      GM_registerMenuCommand('初始化脚本', () => this.resetScript())
     }
 
     /**
@@ -812,9 +804,8 @@
      * @param {number} [type=0] 常规 `0` | 初始化 `1` | 功能性更新 `2`
      */
     openUserSetting(type = 0) {
-      const _self = this
       if (gm.el.setting) {
-        _self.openMenuItem('setting')
+        this.openMenuItem('setting')
       } else {
         /** @type {{[n: string]: HTMLElement}} */
         const el = {}
@@ -822,7 +813,7 @@
           initSetting()
           processConfigItem()
           processSettingItem()
-          _self.openMenuItem('setting')
+          this.openMenuItem('setting')
         })
 
         /**
@@ -1218,22 +1209,23 @@
           el.changelog = gm.el.setting.querySelector('.gm-changelog')
           switch (type) {
             case 1:
-              el.settingPage.setAttribute('setting-type', 'init')
+              el.settingPage.dataset.type = 'init'
               el.maintitle.innerHTML += '<br><span style="font-size:0.8em">(初始化设置)</span>'
               break
             case 2:
-              el.settingPage.setAttribute('setting-type', 'updated')
+              el.settingPage.dataset.type = 'updated'
               el.maintitle.innerHTML += '<br><span style="font-size:0.8em">(功能性更新设置)</span>'
               {
-                (function(map) {
-                  for (const name in map) {
-                    if (map[name].configVersion > gm.configVersion) {
-                      const item = api.dom.findAncestor(el[name], el => el.matches('.gm-item, .gm-lineitem'))
-                      item?.classList.add('gm-updated')
-                    }
+                const map = { ...gm.configMap, ...gm.infoMap }
+                for (const name in map) {
+                  if (map[name].configVersion > gm.configVersion) {
+                    const item = api.dom.findAncestor(el[name], el => el.matches('.gm-item, .gm-lineitem'))
+                    item?.classList.add('gm-updated')
                   }
-                })({ ...gm.configMap, ...gm.infoMap })
+                }
               }
+              break
+            default:
               break
           }
           el.save = gm.el.setting.querySelector('.gm-save')
@@ -1308,11 +1300,11 @@
           // 子项与父项相关联
           const subitemChange = (target, disabled) => {
             const content = api.dom.findAncestor(target, el => el.classList.contains('gm-item-content'))
-            content.querySelectorAll('[id|=gm]:not(:first-child)').forEach(option => {
+            for (const option of content.querySelectorAll('[id|=gm]:not(:first-child)')) {
               if (!target.contains(option)) {
                 option.disabled = disabled
               }
-            })
+            }
             for (let i = 1; i < content.childElementCount; i++) {
               const item = content.children[i]
               if (disabled) {
@@ -1323,16 +1315,16 @@
             }
           }
           el.headerMenuFn = el.headerMenuFnSetting.parentElement.parentElement
-          el.headerButton.init = function() {
-            subitemChange(this, !this.checked)
+          el.headerButton.init = () => {
+            const target = el.headerButton
+            subitemChange(target, !target.checked)
           }
           el.headerButton.addEventListener('change', el.headerButton.init)
-          el.headerCompatible.init = function() {
-            setHcWarning()
-          }
+          el.headerCompatible.init = () => setHcWarning()
           el.headerCompatible.addEventListener('change', el.headerCompatible.init)
-          el.removeHistory.init = function() {
-            subitemChange(this, !this.checked)
+          el.removeHistory.init = () => {
+            const target = el.removeHistory
+            subitemChange(target, !target.checked)
             setRhWaring()
           }
           el.removeHistory.addEventListener('change', el.removeHistory.init)
@@ -1348,17 +1340,17 @@
           gm.menu.setting.openedHandler = onOpened
           gm.el.setting.fadeInDisplay = 'flex'
           el.save.addEventListener('click', onSave)
-          el.cancel.addEventListener('click', () => _self.closeMenuItem('setting'))
-          el.shadow.addEventListener('click', function() {
-            if (!this.hasAttribute('disabled')) {
-              _self.closeMenuItem('setting')
+          el.cancel.addEventListener('click', () => this.closeMenuItem('setting'))
+          el.shadow.addEventListener('click', () => {
+            if (!el.shadow.hasAttribute('disabled')) {
+              this.closeMenuItem('setting')
             }
           })
-          el.reset.addEventListener('click', () => _self.resetScript())
-          el.clearRemoveHistoryData.addEventListener('click', function() {
-            el.removeHistory.checked && _self.clearRemoveHistoryData()
+          el.reset.addEventListener('click', () => this.resetScript())
+          el.clearRemoveHistoryData.addEventListener('click', () => {
+            el.removeHistory.checked && this.clearRemoveHistoryData()
           })
-          el.watchlaterMediaList.addEventListener('click', async function() {
+          el.watchlaterMediaList.addEventListener('click', async () => {
             const uid = webpage.method.getDedeUserID()
             const mlid = await api.message.prompt(`
               <p>指定使用收藏功能时，将视频从稍后再看移动至哪个收藏夹。</p>
@@ -1370,7 +1362,7 @@
             }
           })
           if (type > 0) {
-            if (type == 2) {
+            if (type === 2) {
               el.save.title = '向下滚动……'
               el.save.disabled = true
             }
@@ -1397,7 +1389,7 @@
 
           let shutDownRemoveHistory = false
           // removeHistory
-          if (gm.config.removeHistory != el.removeHistory.checked) {
+          if (gm.config.removeHistory !== el.removeHistory.checked) {
             gm.config.removeHistory = el.removeHistory.checked
             GM_setValue('removeHistory', gm.config.removeHistory)
             shutDownRemoveHistory = true
@@ -1406,7 +1398,7 @@
           // 「因」中无 removeHistory，就说明 needReload 需要设置为 true，除非「果」不需要刷新页面就能生效
           if (gm.config.removeHistory) {
             const rhsV = Number.parseInt(el.removeHistorySaves.value)
-            if (rhsV != gm.config.removeHistorySaves && !Number.isNaN(rhsV)) {
+            if (rhsV !== gm.config.removeHistorySaves && !Number.isNaN(rhsV)) {
               // 因：removeHistorySaves
               // 果：removeHistorySaves & removeHistoryData
               const data = gm.data.removeHistoryData()
@@ -1420,7 +1412,7 @@
             // 因：removeHistorySearchTimes
             // 果：removeHistorySearchTimes
             const rhstV = Number.parseInt(el.removeHistorySearchTimes.value)
-            if (rhstV != gm.config.removeHistorySearchTimes && !Number.isNaN(rhstV)) {
+            if (rhstV !== gm.config.removeHistorySearchTimes && !Number.isNaN(rhstV)) {
               gm.config.removeHistorySearchTimes = rhstV
               GM_setValue('removeHistorySearchTimes', rhstV)
               // 不需要修改 needReload
@@ -1435,14 +1427,14 @@
             GM_deleteValue('removeHistorySaves')
           }
 
-          _self.closeMenuItem('setting')
+          this.closeMenuItem('setting')
           if (type > 0) {
             // 更新配置版本
             gm.configVersion = gm.configUpdate
             GM_setValue('configVersion', gm.configVersion)
             // 关闭特殊状态
             setTimeout(() => {
-              el.settingPage.removeAttribute('setting-type')
+              delete el.settingPage.dataset.type
               el.maintitle.textContent = GM_info.script.name
               el.cancel.disabled = false
               el.shadow.removeAttribute('disabled')
@@ -1460,7 +1452,7 @@
          */
         const onOpen = () => {
           for (const name in gm.configMap) {
-            const attr = gm.configMap[name].attr
+            const { attr } = gm.configMap[name]
             el[name][attr] = gm.config[name]
           }
           for (const name in gm.configMap) {
@@ -1479,7 +1471,7 @@
          */
         const onOpened = () => {
           el.items.scrollTop = 0
-          if (type == 2) {
+          if (type === 2) {
             const resetSave = () => {
               el.save.title = ''
               el.save.disabled = false
@@ -1501,7 +1493,7 @@
               } else {
                 const offset = (actualRange - range) / 2
                 for (let i = 0; i < points.length; i++) {
-                  points[i] = points[i] + offset
+                  points[i] += offset
                 }
                 realRange = range + offset
               }
@@ -1534,20 +1526,21 @@
               linear = linear.slice(2)
 
               api.base.addStyle(`
-                #${gm.id} [setting-type=updated] .gm-items::-webkit-scrollbar {
+                #${gm.id} [data-type=updated] .gm-items::-webkit-scrollbar {
                   background: linear-gradient(${linear})
                 }
               `)
 
-              if (el.items.scrollHeight == el.items.clientHeight) {
+              if (el.items.scrollHeight === el.items.clientHeight) {
                 resetSave()
               } else {
                 const last = Math.min((points.pop() + realRange) / 100, 0.95) // 给计算误差留点余地
-                const onScroll = api.base.throttle(function() {
-                  const bottom = (this.scrollTop + this.clientHeight) / this.scrollHeight
+                const onScroll = api.base.throttle(() => {
+                  const { items } = el
+                  const bottom = (items.scrollTop + items.clientHeight) / items.scrollHeight
                   if (bottom > last) { // 可视区底部超过最后一个更新点
                     resetSave()
-                    this.removeEventListener('scroll', onScroll)
+                    items.removeEventListener('scroll', onScroll)
                   }
                 }, 200)
                 el.items.addEventListener('scroll', onScroll)
@@ -1567,16 +1560,16 @@
          */
         const saveConfig = (name, attr) => {
           let val = el[name][attr]
-          const type = gm.configMap[name].type
-          if (type == 'int' || type == 'float') {
-            if (typeof val != 'number') {
-              val = type == 'int' ? Number.parseInt(val) : Number.parseFloat(val)
+          const { type } = gm.configMap[name]
+          if (type === 'int' || type === 'float') {
+            if (typeof val !== 'number') {
+              val = type === 'int' ? Number.parseInt(val) : Number.parseFloat(val)
             }
             if (Number.isNaN(val)) {
               val = gm.configMap[name].default
             }
           }
-          if (gm.config[name] != val) {
+          if (gm.config[name] !== val) {
             gm.config[name] = val
             GM_setValue(name, gm.config[name])
             return true
@@ -1588,7 +1581,7 @@
          * 设置 headerCompatible 警告项
          */
         const setHcWarning = () => {
-          const warn = el.headerCompatible.value != Enums.headerCompatible.none
+          const warn = el.headerCompatible.value !== Enums.headerCompatible.none
           if (el.hcWarning.show) {
             if (!warn) {
               api.dom.fade(false, el.hcWarning)
@@ -1732,29 +1725,31 @@
             el.lastAddTime.disabled = !time
           }
           setLastAddTime(GM_getValue('batchLastAddTime'))
-          el.lastAddTime.addEventListener('click', function() {
+          el.lastAddTime.addEventListener('click', () => {
             if (executing) return api.message.info('执行中，无法同步')
-            if (this.val == null) return
-            const secInterval = (Date.now() - this.val) / 1000
+            const target = el.lastAddTime
+            if (target.val == null) return
+            const secInterval = (Date.now() - target.val) / 1000
             el.id1a.value = secInterval / el.id1b.value // 取精确时间要比向上取整好
             if (gm.config.batchAddLoadAfterTimeSync) {
               el.id1c.dispatchEvent(new Event('click'))
             } else {
-              api.message.info(`已同步到 ${new Date(this.val).toLocaleString()}`)
+              api.message.info(`已同步到 ${new Date(target.val).toLocaleString()}`)
             }
           })
 
           // 非选显示
           const setUncheckedDisplayText = () => {
-            el.uncheckedDisplay.textContent = el.uncheckedDisplay.hide ? '显示非选' : '隐藏非选'
+            el.uncheckedDisplay.textContent = el.uncheckedDisplay._hide ? '显示非选' : '隐藏非选'
           }
-          el.uncheckedDisplay.hide = GM_getValue('batchUncheckedDisplay') ?? false
+          el.uncheckedDisplay._hide = GM_getValue('batchUncheckedDisplay') ?? false
           setUncheckedDisplayText()
-          el.uncheckedDisplay.addEventListener('click', function() {
-            this.hide = !this.hide
-            GM_setValue('batchUncheckedDisplay', this.hide)
+          el.uncheckedDisplay.addEventListener('click', () => {
+            const target = el.uncheckedDisplay
+            target._hide = !target._hide
+            GM_setValue('batchUncheckedDisplay', target._hide)
             setUncheckedDisplayText()
-            const display = this.hide ? 'none' : ''
+            const display = target._hide ? 'none' : ''
             for (let i = 0; i < el.items.childElementCount; i++) {
               const item = el.items.children[i]
               if (!item.firstElementChild.checked) {
@@ -1762,8 +1757,8 @@
               }
             }
           })
-          el.items.addEventListener('click', function(e) {
-            if (e.target.type == 'checkbox' && el.uncheckedDisplay.hide) {
+          el.items.addEventListener('click', e => {
+            if (e.target.type === 'checkbox' && el.uncheckedDisplay._hide) {
               if (!e.target.checked) {
                 e.target.parentElement.style.display = 'none'
               }
@@ -1771,7 +1766,7 @@
           })
 
           // 参数
-          el.saveParams.addEventListener('click', function() {
+          el.saveParams.addEventListener('click', () => {
             const batchParams = {}
             for (const id of el.saveParams.paramIds) {
               batchParams[`id${id}`] = el[`id${id}`].value
@@ -1779,7 +1774,7 @@
             GM_setValue('batchParams', batchParams)
             api.message.info('保存成功，重新加载页面后当前参数会被自动加载', 1800)
           })
-          el.resetParams.addEventListener('click', function() {
+          el.resetParams.addEventListener('click', () => {
             GM_deleteValue('batchParams')
             api.message.info('重置成功，重新加载页面后参数将加载默认值', 1800)
           })
@@ -1788,16 +1783,16 @@
 
           // 加载投稿
           let stopLoad = false
-          el.id1c.addEventListener('click', async function() {
+          el.id1c.addEventListener('click', async () => {
             if (executing) return
             let error = false
             try {
               executing = true
               const v1a = Number.parseFloat(el.id1a.value)
-              if (Number.isNaN(v1a)) throw 'v1a is NaN'
+              if (Number.isNaN(v1a)) throw new TypeError('v1a is NaN')
               el.id1a.value = v1a
-              this.disabled = true
-              this.textContent = '执行中'
+              el.id1c.disabled = true
+              el.id1c.textContent = '执行中'
               el.id1d.disabled = false
               el.id2c.disabled = true
               el.id3c.disabled = true
@@ -1823,6 +1818,7 @@
               const end = Date.now() - v1a * el.id1b.value * 1000
               const avSet = new Set()
               gm.runtime.reloadWatchlaterListData = true
+              // eslint-disable-next-line no-unmodified-loop-condition
               while (!stopLoad) {
                 const data = new URLSearchParams()
                 data.append('uid', uid)
@@ -1835,7 +1831,7 @@
                 if (items.length === 0) return // -> finally
                 // 不要用 json.data.next_offset，会丢失精度
                 // offset 本身不会被获取，末项 offset 即下次查询 offset
-                dynamicOffset = items[items.length - 1].desc.dynamic_id_str
+                dynamicOffset = items.at(-1).desc.dynamic_id_str
                 let html = ''
                 for (const item of items) {
                   const info = JSON.parse(item.card)
@@ -1848,7 +1844,7 @@
                     if (avSet.has(aid)) continue
                     avSet.add(aid)
                     const uncheck = history?.has(aid)
-                    const displayNone = uncheck && el.uncheckedDisplay.hide
+                    const displayNone = uncheck && el.uncheckedDisplay._hide
                     html = `<label class="gm-item" aid="${info.aid}" timestamp="${item.desc.timestamp}"${displayNone ? ' style="display:none"' : ''}><input type="checkbox"${uncheck ? '' : ' checked'}> <span>[${info.owner.name}] ${info.title}</span></label>` + html
                   }
                 }
@@ -1867,8 +1863,8 @@
               }
               executing = false
               stopLoad = false
-              this.disabled = false
-              this.textContent = '重新执行'
+              el.id1c.disabled = false
+              el.id1c.textContent = '重新执行'
               el.id1d.disabled = true
               el.id2c.disabled = false
               el.id3c.disabled = false
@@ -1880,11 +1876,11 @@
               }
             }
           })
-          el.id1d.addEventListener('click', function() {
+          el.id1d.addEventListener('click', () => {
             stopLoad = true
           })
-          el.id1a.addEventListener('keyup', function(e) {
-            if (e.key == 'Enter') {
+          el.id1a.addEventListener('keyup', e => {
+            if (e.key === 'Enter') {
               const target = el[executing ? 'id1d' : 'id1c']
               if (!target.disabled) {
                 target.dispatchEvent(new Event('click'))
@@ -1893,7 +1889,7 @@
           })
 
           // 时间过滤
-          const filterTime = function() {
+          function filterTime() {
             if (executing) return
             try {
               executing = true
@@ -1929,7 +1925,7 @@
           el.id2c.addEventListener('click', filterTime)
 
           // 正则过滤
-          const filterRegex = function() {
+          function filterRegex() {
             if (executing) return
             try {
               const getRegex = str => {
@@ -1973,7 +1969,7 @@
 
           // 添加到稍后再看
           let stopAdd = false
-          el.id4b.addEventListener('click', async function() {
+          el.id4b.addEventListener('click', async () => {
             if (executing) return
             try {
               executing = true
@@ -1984,8 +1980,8 @@
                 v4a = Math.max(v4a, 200)
               }
               el.id4a.value = v4a
-              this.disabled = true
-              this.textContent = '执行中'
+              el.id4b.disabled = true
+              el.id4b.textContent = '执行中'
               el.id4c.disabled = false
               el.id1c.disabled = true
               el.id2c.disabled = true
@@ -1998,9 +1994,9 @@
                 if (available <= 0) break
                 const item = check.parentElement
                 const success = await webpage.method.switchVideoWatchlaterStatus(item.getAttribute('aid'))
-                if (!success) throw 'add request error'
+                if (!success) throw new Error('add request error')
                 check.checked = false
-                if (el.uncheckedDisplay.hide) {
+                if (el.uncheckedDisplay._hide) {
                   item.style.display = 'none'
                 }
                 available -= 1
@@ -2014,8 +2010,8 @@
             } finally {
               executing = false
               stopAdd = false
-              this.disabled = false
-              this.textContent = '重新执行'
+              el.id4b.disabled = false
+              el.id4b.textContent = '重新执行'
               el.id4c.disabled = true
               el.id1c.disabled = false
               el.id2c.disabled = false
@@ -2024,11 +2020,11 @@
               window.dispatchEvent(new CustomEvent('reloadWatchlaterListData'))
             }
           })
-          el.id4c.addEventListener('click', function() {
+          el.id4c.addEventListener('click', () => {
             stopAdd = true
           })
-          el.id4a.addEventListener('keyup', function(e) {
-            if (e.key == 'Enter') {
+          el.id4a.addEventListener('keyup', e => {
+            if (e.key === 'Enter') {
               const target = el[executing ? 'id4c' : 'id4b']
               if (!target.disabled) {
                 target.dispatchEvent(new Event('click'))
@@ -2039,16 +2035,16 @@
           // 时间单位转换
           const syncTimeUnit = (unitEl, valEl) => {
             unitEl.prevVal = unitEl.value
-            unitEl.addEventListener('change', function() {
-              if (valEl.max != Number.POSITIVE_INFINITY) {
-                valEl.max = (valEl.max * this.prevVal / this.value).toFixed(1)
+            unitEl.addEventListener('change', () => {
+              if (valEl.max !== Number.POSITIVE_INFINITY) {
+                valEl.max = (valEl.max * unitEl.prevVal / unitEl.value).toFixed(1)
               }
               if (valEl.defaultValue) {
-                valEl.defaultValue = (valEl.defaultValue * this.prevVal / this.value).toFixed(1)
+                valEl.defaultValue = (valEl.defaultValue * unitEl.prevVal / unitEl.value).toFixed(1)
               }
               if (valEl.value) {
-                valEl.value = (valEl.value * this.prevVal / this.value).toFixed(1)
-                this.prevVal = this.value
+                valEl.value = (valEl.value * unitEl.prevVal / unitEl.value).toFixed(1)
+                unitEl.prevVal = unitEl.value
               }
             }, true)
           }
@@ -2062,7 +2058,6 @@
      * 打开移除记录
      */
     openRemoveHistory() {
-      const _self = this
       if (!gm.config.removeHistory) {
         api.message.info('请在设置中开启稍后再看移除记录')
         return
@@ -2079,12 +2074,12 @@
         if (el.historySort.type !== 0) {
           el.historySort.setType(0) // 降序
         }
-        _self.openMenuItem('history')
+        this.openMenuItem('history')
       } else {
         setTimeout(() => {
           initHistory()
           processItem()
-          _self.openMenuItem('history')
+          this.openMenuItem('history')
         })
 
         /**
@@ -2126,20 +2121,21 @@
           el.content.fadeInTime = gm.const.textFadeTime
           el.content.fadeOutTime = gm.const.textFadeTime
           el.searchTimes.current = el.searchTimes.value
-          el.searchTimes.addEventListener('blur', function() {
-            if (this.value != el.searchTimes.current) {
-              el.searchTimes.current = this.value
+          el.searchTimes.addEventListener('blur', () => {
+            const target = el.searchTimes
+            if (target.value !== el.searchTimes.current) {
+              el.searchTimes.current = target.value
               gm.menu.history.openHandler()
             }
           })
-          el.searchTimes.addEventListener('keyup', function(e) {
-            if (e.key == 'Enter') {
-              this.dispatchEvent(new Event('blur'))
+          el.searchTimes.addEventListener('keyup', e => {
+            if (e.key === 'Enter') {
+              el.searchTimes.dispatchEvent(new Event('blur'))
             }
           })
 
-          el.content.addEventListener('click', async function(e) {
-            if (e.target.type == 'checkbox') {
+          el.content.addEventListener('click', async e => {
+            if (e.target.type === 'checkbox') {
               const box = e.target
               const status = box.checked
               const bvid = box.getAttribute('bvid')
@@ -2159,19 +2155,21 @@
           el.historySort.type = 0
           el.historySort.typeText = ['降序', '升序', '完全升序']
           el.historySort.title = '点击切换升序'
-          el.historySort.setType = function(type) {
-            this.type = type
-            this.textContent = this.typeText[type]
-            this.title = `点击切换${this.typeText[(type + 1) % this.typeText.length]}`
+          el.historySort.setType = type => {
+            const target = el.historySort
+            target.type = type
+            target.textContent = target.typeText[type]
+            target.title = `点击切换${target.typeText[(type + 1) % target.typeText.length]}`
           }
-          el.historySort.addEventListener('click', function() {
-            this.setType((this.type + 1) % this.typeText.length)
+          el.historySort.addEventListener('click', () => {
+            const target = el.historySort
+            target.setType((target.type + 1) % target.typeText.length)
             gm.menu.history.openHandler()
           })
 
           gm.menu.history.openHandler = onOpen
           gm.el.history.fadeInDisplay = 'flex'
-          el.shadow.addEventListener('click', () => _self.closeMenuItem('history'))
+          el.shadow.addEventListener('click', () => this.closeMenuItem('history'))
         }
 
         /**
@@ -2202,7 +2200,7 @@
 
             if (gm.config.removeHistoryTimestamp) { // 两种情况有大量同类项，但合并后处理速度会降不少
               if (history.length > 1) {
-                // ES2019 后 Array.prototype.sort() 为稳定排序
+                // ES2019 后 Array#sort() 为稳定排序
                 history.sort((a, b) => (b[2] ?? 0) - (a[2] ?? 0))
                 if (el.historySort.type >= 1) {
                   history.reverse()
@@ -2290,7 +2288,9 @@
       const result = await api.message.confirm('是否要取消所有固定项？')
       if (result) {
         GM_setValue('fixedItems', [])
-        document.querySelectorAll('.gm-fixed').forEach(item => item.classList?.remove('gm-fixed'))
+        for (const item of document.querySelectorAll('.gm-fixed')) {
+          item.classList?.remove('gm-fixed')
+        }
         api.message.info('已取消所有固定项')
       }
     }
@@ -2298,28 +2298,27 @@
     /**
      * 对「打开菜单项」这一操作进行处理，包括显示菜单项、设置当前菜单项的状态、关闭其他菜单项
      * @param {string} name 菜单项的名称
-     * @param {() => void} [callback] 打开菜单项后的回调函数
+     * @param {(menu: GMObject_menu_item) => void} [callback] 打开菜单项后的回调函数
      * @param {boolean} [keepOthers] 打开时保留其他菜单项
      * @returns {Promise<boolean>} 操作是否成功
      */
     async openMenuItem(name, callback, keepOthers) {
-      const _self = this
       let success = false
       const menu = gm.menu[name]
       if (menu.wait > 0) return false
       try {
         try {
-          if (menu.state == 1) {
+          if (menu.state === 1) {
             menu.wait = 1
             await api.wait.waitForConditionPassed({
-              condition: () => menu.state == 2,
+              condition: () => menu.state === 2,
               timeout: 1500 + (menu.el.fadeInTime ?? gm.const.fadeTime),
             })
             return true
-          } else if (menu.state == 3) {
+          } else if (menu.state === 3) {
             menu.wait = 1
             await api.wait.waitForConditionPassed({
-              condition: () => menu.state == 0,
+              condition: () => menu.state === 0,
               timeout: 1500 + (menu.el.fadeOutTime ?? gm.const.fadeTime),
             })
           }
@@ -2329,26 +2328,26 @@
         } finally {
           menu.wait = 0
         }
-        if (menu.state == 0 || menu.state == -1) {
+        if (menu.state === 0 || menu.state === -1) {
           for (const key in gm.menu) {
             /** @type {GMObject_menu_item} */
             const menu = gm.menu[key]
-            if (key == name) {
+            if (key === name) {
               menu.state = 1
               await menu.openHandler?.()
               await new Promise(resolve => {
                 api.dom.fade(true, menu.el, () => {
                   resolve()
                   menu.openedHandler?.()
-                  callback?.call(menu)
+                  callback?.(menu)
                 })
               })
               menu.state = 2
               success = true
               // 不要返回，需将其他菜单项关闭
             } else if (!keepOthers) {
-              if (menu.state == 2) {
-                _self.closeMenuItem(key)
+              if (menu.state === 2) {
+                this.closeMenuItem(key)
               }
             }
           }
@@ -2366,7 +2365,7 @@
     /**
      * 对「关闭菜单项」这一操作进行处理，包括隐藏菜单项、设置当前菜单项的状态
      * @param {string} name 菜单项的名称
-     * @param {() => void} [callback] 关闭菜单项后的回调函数
+     * @param {(menu: GMObject_menu_item) => void} [callback] 关闭菜单项后的回调函数
      * @returns {Promise<boolean>} 操作是否成功
      */
     async closeMenuItem(name, callback) {
@@ -2375,16 +2374,16 @@
       if (menu.wait > 0) return
       try {
         try {
-          if (menu.state == 1) {
+          if (menu.state === 1) {
             menu.wait = 2
             await api.wait.waitForConditionPassed({
-              condition: () => menu.state == 2,
+              condition: () => menu.state === 2,
               timeout: 1500 + (menu.el.fadeInTime ?? gm.const.fadeTime),
             })
-          } else if (menu.state == 3) {
+          } else if (menu.state === 3) {
             menu.wait = 2
             await api.wait.waitForConditionPassed({
-              condition: () => menu.state == 0,
+              condition: () => menu.state === 0,
               timeout: 1500 + (menu.el.fadeOutTime ?? gm.const.fadeTime),
             })
             return true
@@ -2395,14 +2394,14 @@
         } finally {
           menu.wait = 0
         }
-        if (menu.state == 2 || menu.state == -1) {
+        if (menu.state === 2 || menu.state === -1) {
           menu.state = 3
           await menu.closeHandler?.()
           await new Promise(resolve => {
             api.dom.fade(false, menu.el, () => {
               resolve()
               menu.closedHandler?.()
-              callback?.call(menu)
+              callback?.(menu)
             })
           })
           menu.state = 0
@@ -2425,7 +2424,8 @@
 
     /** 通用方法 */
     method = {
-      obj: this,
+      /** @type {Webpage} */
+      obj: null,
 
       /**
        * 获取指定 Cookie
@@ -2491,7 +2491,7 @@
           function enc(x) {
             x = Number.parseInt(x)
             x = (x ^ xor) + add
-            const r = 'BV1  4 1 7  '.split('')
+            const r = [...'BV1  4 1 7  ']
             for (let i = 0; i < 6; i++) {
               r[s[i]] = table[Math.floor(x / 58 ** i) % 58]
             }
@@ -2520,11 +2520,10 @@
        * @returns {string} `aid`
        */
       getAid(url = location.pathname) {
-        const _self = this
-        const vid = _self.getVid(url)
+        const vid = this.getVid(url)
         if (vid) {
-          if (vid.type == 'bvid') {
-            return _self.bvTool.bv2av(vid.id)
+          if (vid.type === 'bvid') {
+            return this.bvTool.bv2av(vid.id)
           }
           return vid.id
         }
@@ -2537,11 +2536,10 @@
        * @returns {string} `bvid`
        */
       getBvid(url = location.pathname) {
-        const _self = this
-        const vid = _self.getVid(url)
+        const vid = this.getVid(url)
         if (vid) {
-          if (vid.type == 'aid') {
-            return _self.bvTool.av2bv(vid.id)
+          if (vid.type === 'aid') {
+            return this.bvTool.av2bv(vid.id)
           }
           return vid.id
         }
@@ -2568,11 +2566,10 @@
        * @returns {Promise<boolean>} 操作是否成功（视频不在稍后在看中不被判定为失败）
        */
       async switchVideoWatchlaterStatus(id, status = true) {
-        const _self = this
         try {
           let typeA = /^\d+$/.test(id)
           if (!typeA && !status) { // 移除 API 只支持 aid，先作转换
-            id = _self.bvTool.bv2av(id)
+            id = this.bvTool.bv2av(id)
             typeA = true
           }
           const data = new URLSearchParams()
@@ -2581,7 +2578,7 @@
           } else {
             data.append('bvid', id)
           }
-          data.append('csrf', _self.getCSRF())
+          data.append('csrf', this.getCSRF())
           return await api.web.request({
             method: 'POST',
             url: status ? gm.url.api_addToWatchlater : gm.url.api_removeFromWatchlater,
@@ -2649,11 +2646,11 @@
       updateRemoveHistoryData(reload) {
         if (gm.config.removeHistory) {
           const removeHistorySaveTime = GM_getValue('removeHistorySaveTime') ?? 0
-          const removeHistorySavePeriod = GM_getValue('updateRemoveHistoryData') ?? gm.configMap.removeHistorySavePeriod.default
+          const removeHistorySavePeriod = GM_getValue('removeHistorySavePeriod') ?? gm.configMap.removeHistorySavePeriod.default
           if (Date.now() - removeHistorySaveTime > removeHistorySavePeriod * 1000) {
             if (!gm.runtime.savingRemoveHistoryData) {
               gm.runtime.savingRemoveHistoryData = true
-              return gm.data.watchlaterListData(reload).then(current => {
+              gm.data.watchlaterListData(reload).then(current => {
                 if (current.length > 0) {
                   if (gm.config.removeHistoryFuzzyCompare > 0) {
                     const ref = GM_getValue('removeHistoryFuzzyCompareReference')
@@ -2664,7 +2661,7 @@
                         const r = ref[i]
                         if (c) { // 如果 current 没有数据直接跳过得了
                           if (r) {
-                            if (c.bvid != r) {
+                            if (c.bvid !== r) {
                               same = false
                               break
                             }
@@ -2699,14 +2696,14 @@
                   if (gm.config.removeHistoryTimestamp) {
                     const timestamp = Date.now()
                     const map = new Map()
-                    for (let i = 0; i < data.size; i++) {
-                      map.set(data.get(i)[0], i)
+                    for (const [index, record] of data.entries()) {
+                      map.set(record[0], index)
                     }
                     for (let i = current.length - 1; i >= 0; i--) {
                       const item = current[i]
                       if (map.has(item.bvid)) {
                         const idx = map.get(item.bvid)
-                        data.get(idx)[2] = timestamp
+                        data.data[idx][2] = timestamp
                       } else {
                         data.push([item.bvid, item.title, timestamp])
                       }
@@ -2714,8 +2711,8 @@
                     updated = true
                   } else {
                     const set = new Set()
-                    for (let i = 0; i < data.size; i++) {
-                      set.add(data.get(i)[0])
+                    for (const record of data) {
+                      set.add(record[0])
                     }
                     for (let i = current.length - 1; i >= 0; i--) {
                       const item = current[i]
@@ -2728,6 +2725,8 @@
                   if (updated) {
                     GM_setValue('removeHistoryData', data)
                   }
+                  // current.length === 0 时不更新
+                  // 不要提到前面，否则时间不准确
                   GM_setValue('removeHistorySaveTime', Date.now())
                 }
               }).finally(() => {
@@ -2781,14 +2780,13 @@
         if (!location.search.includes(gm.id)) return
         let removed = false
         const url = new URL(location.href)
-        const searchParams = url.searchParams
-        gm.searchParams.forEach((value, key) => {
+        for (const key of gm.searchParams.keys()) {
           if (key.startsWith(gm.id)) {
-            searchParams.delete(key)
+            url.searchParams.delete(key)
             removed = true
           }
-        })
-        if (removed && location.href != url.href) {
+        }
+        if (removed && location.href !== url.href) {
           history.replaceState({}, null, url.href)
         }
       },
@@ -2803,7 +2801,7 @@
         let iM = Math.floor(sTime / 60)
         if (iM >= 60) {
           iH = Math.floor(iM / 60)
-          iM = iM % 60
+          iM %= 60
         }
         const iS = sTime % 60
 
@@ -2877,8 +2875,8 @@
        */
       getItemStateDesc(state) {
         return ({
-          [1]: '橙色通过',
-          [0]: '开放浏览',
+          1: '橙色通过',
+          0: '开放浏览',
           [-1]: '待审',
           [-2]: '被打回',
           [-3]: '网警锁定',
@@ -2903,18 +2901,20 @@
       },
     }
 
+    constructor() {
+      this.method.obj = this
+    }
+
     /**
      * 顶栏中加入稍后再看入口
      */
     addHeaderButton() {
       const _self = this
-      if (gm.config.headerCompatible == Enums.headerCompatible.bilibiliEvolved) {
+      if (gm.config.headerCompatible === Enums.headerCompatible.bilibiliEvolved) {
         api.wait.$('.custom-navbar [data-name=watchlaterList]').then(el => {
           const watchlater = el.parentElement.appendChild(el.cloneNode(true))
           el.style.display = 'none'
-          const link = watchlater.querySelector('a.main-content')
-          link.href = gm.url.noop
-          link.target = '_self'
+          watchlater.querySelector('a.main-content').removeAttribute('href')
           processClickEvent(watchlater)
           processPopup(watchlater)
           const ob = new MutationObserver((mutations, observer) => {
@@ -2931,10 +2931,10 @@
           ob.observe(el, { attributes: true })
         })
         api.base.addStyle(`
-          #${gm.id} .gm-entrypopup[gm-compatible] .gm-popup-arrow {
+          #${gm.id} .gm-entrypopup[data-compatible="${gm.config.headerCompatible}"] .gm-popup-arrow {
             display: none;
           }
-          #${gm.id} .gm-entrypopup[gm-compatible] .gm-entrypopup-page {
+          #${gm.id} .gm-entrypopup[data-compatible="${gm.config.headerCompatible}"] .gm-entrypopup-page {
             box-shadow: rgb(0 0 0 / 20%) 0 4px 8px 0;
             border-radius: 8px;
             margin-top: -12px;
@@ -3006,7 +3006,7 @@
             case Enums.headerButtonOp.playAllInCurrent:
             case Enums.headerButtonOp.playAllInNew: {
               const action = getHeaderButtonOpConfig(cfg)
-              window.open(action.href, action.target)
+              action.href && window.open(action.href, action.target)
               break
             }
             case Enums.headerButtonOp.clearWatchlater:
@@ -3024,15 +3024,17 @@
             case Enums.headerButtonOp.openBatchAddManager:
               script.openBatchAddManager()
               break
+            default:
+              break
           }
         }
-        watchlater.addEventListener('mousedown', function(e) {
-          if (e.button != 2) {
+        watchlater.addEventListener('mousedown', e => {
+          if (e.button !== 2) {
             process(e.button)
             e.preventDefault()
           }
         })
-        watchlater.addEventListener('contextmenu', function(e) {
+        watchlater.addEventListener('contextmenu', e => {
           process(2) // 整合写进 mousedown 中会导致无法阻止右键菜单弹出
           e.preventDefault()
         })
@@ -3043,7 +3045,7 @@
        * @param {HTMLElement} watchlater 稍后再看元素
        */
       function processPopup(watchlater) {
-        if (gm.config.headerMenu == Enums.headerMenu.disable) return
+        if (gm.config.headerMenu === Enums.headerMenu.disable) return
         gm.menu.entryPopup.el = document.createElement('div')
         const popup = gm.menu.entryPopup.el
         // 模仿官方顶栏弹出菜单的弹出与关闭效果
@@ -3071,12 +3073,12 @@
          * 进入稍后再看入口的处理
          */
         function onOverWatchlater() {
-          if (this.mouseOver) return
-          this.mouseOver = true
+          if (watchlater._mouseOver) return
+          watchlater._mouseOver = true
           // 预加载数据，延时以在避免误触与加载速度间作平衡
           if (gm.config.watchlaterListCacheValidPeriod > 0) {
             setTimeout(() => {
-              if (this.mouseOver) {
+              if (watchlater._mouseOver) {
                 gm.data.watchlaterListData()
               }
             }, 25) // 以鼠标快速掠过不触发为准
@@ -3084,7 +3086,7 @@
           // 完整加载，延时以避免误触
           // 误触率与弹出速度正相关，与数据加载时间无关
           setTimeout(() => {
-            if (this.mouseOver) {
+            if (watchlater._mouseOver) {
               popup.style.position = api.dom.isFixed(watchlater.offsetParent) ? 'fixed' : ''
               const rect = watchlater.getBoundingClientRect()
               popup.style.top = `${rect.bottom}px`
@@ -3099,12 +3101,12 @@
          * @param {MouseEvent} e 事件
          */
         function onLeaveWatchlater(e) {
-          this.mouseOver = false
+          watchlater._mouseOver = false
           if (withinHeader(e)) {
             script.closeMenuItem('entryPopup')
           } else {
             setTimeout(() => {
-              if (!this.mouseOver && !popup.mouseOver) {
+              if (!watchlater._mouseOver && !popup._mouseOver) {
                 script.closeMenuItem('entryPopup')
               }
             }, 150)
@@ -3115,16 +3117,16 @@
          * 进入弹出菜单的处理
          */
         function onEnterPopup() {
-          this.mouseOver = true
+          popup._mouseOver = true
         }
 
         /**
          * 离开弹出菜单的处理
          */
         function onLeavePopup() {
-          this.mouseOver = false
+          popup._mouseOver = false
           setTimeout(() => {
-            if (!this.mouseOver && !watchlater.mouseOver) {
+            if (!popup._mouseOver && !watchlater._mouseOver) {
               script.closeMenuItem('entryPopup')
             }
           }, 50)
@@ -3150,11 +3152,11 @@
            * 初始化
            */
           const initPopup = () => {
-            const openLinkInCurrent = gm.config.openHeaderMenuLink == Enums.openHeaderMenuLink.openInCurrent
+            const openLinkInCurrent = gm.config.openHeaderMenuLink === Enums.openHeaderMenuLink.openInCurrent
             const target = openLinkInCurrent ? '_self' : '_blank'
             gm.el.entryPopup = gm.el.gmRoot.appendChild(gm.menu.entryPopup.el)
-            if (gm.config.headerCompatible != Enums.headerCompatible.none) {
-              gm.el.entryPopup.setAttribute('gm-compatible', gm.config.headerCompatible)
+            if (gm.config.headerCompatible !== Enums.headerCompatible.none) {
+              gm.el.entryPopup.dataset.compatible = gm.config.headerCompatible
             }
             gm.el.entryPopup.className = 'gm-entrypopup'
             gm.el.entryPopup.innerHTML = `
@@ -3171,30 +3173,30 @@
                 <div class="gm-entry-list"></div>
                 <div class="gm-entry-list gm-entry-removed-list"></div>
                 <div class="gm-entry-bottom">
-                  <a class="gm-entry-button" fn="setting" href="${gm.url.noop}" target="_self">设置</a>
-                  <a class="gm-entry-button" fn="history" href="${gm.url.noop}" target="_self">历史</a>
-                  <a class="gm-entry-button" fn="removeAll" href="${gm.url.noop}" target="_self">清空</a>
-                  <a class="gm-entry-button" fn="removeWatched" href="${gm.url.noop}" target="_self">移除已看</a>
+                  <a class="gm-entry-button" fn="setting">设置</a>
+                  <a class="gm-entry-button" fn="history">历史</a>
+                  <a class="gm-entry-button" fn="removeAll">清空</a>
+                  <a class="gm-entry-button" fn="removeWatched">移除已看</a>
                   <a class="gm-entry-button" fn="showAll" href="${gm.url.page_watchlaterList}" target="${target}">显示</a>
                   <a class="gm-entry-button" fn="playAll" href="${gm.url.page_watchlaterPlayAll}" target="${target}">播放</a>
-                  <a class="gm-entry-button" fn="sortControl" href="${gm.url.noop}" target="_self">
+                  <a class="gm-entry-button" fn="sortControl">
                     <div class="gm-select">
-                      <div class="gm-selected" value="">排序</div>
+                      <div class="gm-selected" data-value="">排序</div>
                       <div class="gm-options">
-                        <div class="gm-option" value="${Enums.sortType.fixed}">固定</div>
-                        <div class="gm-option" value="${Enums.sortType.title}">标题</div>
-                        ${gm.config.headerMenu == Enums.headerMenu.enable ? `
-                          <div class="gm-option" value="${Enums.sortType.uploader}">UP主</div>
-                          <div class="gm-option" value="${Enums.sortType.progress}">进度</div>
+                        <div class="gm-option" data-value="${Enums.sortType.fixed}">固定</div>
+                        <div class="gm-option" data-value="${Enums.sortType.title}">标题</div>
+                        ${gm.config.headerMenu === Enums.headerMenu.enable ? `
+                          <div class="gm-option" data-value="${Enums.sortType.uploader}">UP主</div>
+                          <div class="gm-option" data-value="${Enums.sortType.progress}">进度</div>
                         ` : ''}
-                        <div class="gm-option" value="${Enums.sortType.durationR}">时长↓</div>
-                        <div class="gm-option" value="${Enums.sortType.duration}">时长</div>
-                        <div class="gm-option" value="${Enums.sortType.defaultR}">默认↓</div>
-                        <div class="gm-option gm-option-selected" value="${Enums.sortType.default}">默认</div>
+                        <div class="gm-option" data-value="${Enums.sortType.durationR}">时长↓</div>
+                        <div class="gm-option" data-value="${Enums.sortType.duration}">时长</div>
+                        <div class="gm-option" data-value="${Enums.sortType.defaultR}">默认↓</div>
+                        <div class="gm-option gm-option-selected" data-value="${Enums.sortType.default}">默认</div>
                       </div>
                     </div>
                   </a>
-                  <a class="gm-entry-button" fn="autoRemoveControl" href="${gm.url.noop}" target="_self">移除</a>
+                  <a class="gm-entry-button" fn="autoRemoveControl">移除</a>
                 </div>
               </div>
             `
@@ -3221,16 +3223,17 @@
             }
 
             if (gm.config.headerMenuSearch) {
-              el.search.addEventListener('input', function() {
-                const m = /^\s+(.*)/.exec(this.value)
+              el.search.addEventListener('input', () => {
+                const { search, searchClear } = el
+                const m = /^\s+(.*)/.exec(search.value)
                 if (m) {
-                  this.value = m[1]
-                  this.setSelectionRange(0, 0)
+                  search.value = m[1]
+                  search.setSelectionRange(0, 0)
                 }
-                el.searchClear.style.visibility = this.value.length > 0 ? 'visible' : ''
+                searchClear.style.visibility = search.value.length > 0 ? 'visible' : ''
               })
-              el.search.addEventListener('input', api.base.throttle(function() {
-                let val = this.value.trim()
+              el.search.addEventListener('input', api.base.throttle(() => {
+                let val = el.search.value.trim()
                 const match = str => str && val?.test(str)
                 const lists = gm.config.headerMenuKeepRemoved ? [el.entryList, el.entryRemovedList] : [el.entryList]
                 if (val.length > 0) {
@@ -3276,7 +3279,7 @@
                   el.entryListEmpty.style.display = 'unset'
                 }
               }, gm.const.inputThrottleWait))
-              el.searchClear.addEventListener('click', function() {
+              el.searchClear.addEventListener('click', () => {
                 el.search.value = ''
                 el.search.dispatchEvent(new Event('input'))
               })
@@ -3285,36 +3288,36 @@
             }
 
             el.entryFn = {}
-            el.entryBottom.querySelectorAll('.gm-entry-button').forEach(button => {
+            for (const button of el.entryBottom.querySelectorAll('.gm-entry-button')) {
               const fn = button.getAttribute('fn')
               if (fn) {
                 el.entryFn[fn] = button
               }
-            })
+            }
 
             // 排序控制器
             {
               el.entryFn.sortControl.control = el.entryFn.sortControl.firstElementChild
-              const control = el.entryFn.sortControl.control
+              const { control } = el.entryFn.sortControl
               const selected = control.selected = control.children[0]
               const options = control.options = control.children[1]
 
               const defaultSelect = options.querySelector('.gm-option-selected') ?? options.firstElementChild
-              if (gm.config.autoSort != Enums.autoSort.default) {
+              if (gm.config.autoSort !== Enums.autoSort.default) {
                 let type = gm.config.autoSort
-                if (type == Enums.autoSort.auto) {
+                if (type === Enums.autoSort.auto) {
                   type = GM_getValue('autoSort_auto')
                   if (!type) {
                     type = Enums.sortType.default
                     GM_setValue('autoSort_auto', type)
                   }
                 }
-                selected.option = options.querySelector(`[value="${type}"]`)
+                selected.option = options.querySelector(`[data-value="${type}"]`)
                 if (selected.option) {
                   defaultSelect?.classList.remove('gm-option-selected')
                   selected.option.classList.add('gm-option-selected')
-                  selected.setAttribute('value', selected.option.getAttribute('value'))
-                } else if (gm.config.autoSort == Enums.autoSort.auto) {
+                  selected.dataset.value = selected.option.dataset.value
+                } else if (gm.config.autoSort === Enums.autoSort.auto) {
                   type = Enums.sortType.default
                   GM_setValue('autoSort_auto', type)
                 }
@@ -3323,7 +3326,7 @@
                 selected.option = defaultSelect
                 if (selected.option) {
                   selected.option.classList.add('gm-option-selected')
-                  selected.setAttribute('value', selected.option.getAttribute('value'))
+                  selected.dataset.value = selected.option.dataset.value
                 }
               }
 
@@ -3331,30 +3334,30 @@
                 el.entryFn.sortControl.setAttribute('enabled', '')
                 options.fadeOutNoInteractive = true
 
-                el.entryFn.sortControl.addEventListener('click', function() {
+                el.entryFn.sortControl.addEventListener('click', () => {
                   if (!control.selecting) {
                     control.selecting = true
                     api.dom.fade(true, options)
                   }
                 })
-                el.entryFn.sortControl.addEventListener('mouseenter', function() {
+                el.entryFn.sortControl.addEventListener('mouseenter', () => {
                   control.selecting = true
                   api.dom.fade(true, options)
                 })
-                el.entryFn.sortControl.addEventListener('mouseleave', function() {
+                el.entryFn.sortControl.addEventListener('mouseleave', () => {
                   control.selecting = false
                   api.dom.fade(false, options)
                 })
-                options.addEventListener('click', function(/** @type {MouseEvent} */ e) {
+                options.addEventListener('click', /** @param {MouseEvent} e */ e => {
                   control.selecting = false
-                  api.dom.fade(false, this)
-                  const val = e.target.getAttribute('value')
-                  if (selected.getAttribute('value') != val) {
+                  api.dom.fade(false, options)
+                  const val = e.target.dataset.value
+                  if (selected.dataset.value !== val) {
                     selected.option.classList.remove('gm-option-selected')
-                    selected.setAttribute('value', val)
+                    selected.dataset.value = val
                     selected.option = e.target
                     selected.option.classList.add('gm-option-selected')
-                    if (gm.config.autoSort == Enums.autoSort.auto) {
+                    if (gm.config.autoSort === Enums.autoSort.auto) {
                       GM_setValue('autoSort_auto', val)
                     }
                     sort(val)
@@ -3365,27 +3368,28 @@
 
             // 自动移除控制器
             const cfgAutoRemove = gm.config.autoRemove
-            const autoRemove = cfgAutoRemove == Enums.autoRemove.always || cfgAutoRemove == Enums.autoRemove.openFromList
+            const autoRemove = cfgAutoRemove === Enums.autoRemove.always || cfgAutoRemove === Enums.autoRemove.openFromList
             el.entryFn.autoRemoveControl.autoRemove = autoRemove
             if (gm.config.headerMenuAutoRemoveControl) {
-              if (cfgAutoRemove == Enums.autoRemove.absoluteNever) {
+              if (cfgAutoRemove === Enums.autoRemove.absoluteNever) {
                 el.entryFn.autoRemoveControl.setAttribute('disabled', '')
-                el.entryFn.autoRemoveControl.addEventListener('click', function() {
+                el.entryFn.autoRemoveControl.addEventListener('click', () => {
                   api.message.info('当前彻底禁用自动移除功能，无法执行操作')
                 })
               } else {
                 if (autoRemove) {
                   el.entryFn.autoRemoveControl.classList.add('gm-popup-auto-remove')
                 }
-                el.entryFn.autoRemoveControl.addEventListener('click', function() {
-                  if (this.autoRemove) {
-                    this.classList.remove('gm-popup-auto-remove')
+                el.entryFn.autoRemoveControl.addEventListener('click', () => {
+                  const target = el.entryFn.autoRemoveControl
+                  if (target.autoRemove) {
+                    target.classList.remove('gm-popup-auto-remove')
                     api.message.info('已临时关闭自动移除功能')
                   } else {
-                    this.classList.add('gm-popup-auto-remove')
+                    target.classList.add('gm-popup-auto-remove')
                     api.message.info('已临时开启自动移除功能')
                   }
-                  this.autoRemove = !this.autoRemove
+                  target.autoRemove = !target.autoRemove
                 })
               }
               el.entryFn.autoRemoveControl.setAttribute('enabled', '')
@@ -3401,14 +3405,14 @@
             }
             if (gm.config.headerMenuFnRemoveAll) {
               el.entryFn.removeAll.setAttribute('enabled', '')
-              el.entryFn.removeAll.addEventListener('click', function() {
+              el.entryFn.removeAll.addEventListener('click', () => {
                 script.closeMenuItem('entryPopup')
                 clearWatchlater()
               })
             }
             if (gm.config.headerMenuFnRemoveWatched) {
               el.entryFn.removeWatched.setAttribute('enabled', '')
-              el.entryFn.removeWatched.addEventListener('click', function() {
+              el.entryFn.removeWatched.addEventListener('click', () => {
                 script.closeMenuItem('entryPopup')
                 clearWatchedInWatchlater()
               })
@@ -3445,12 +3449,11 @@
             el.entryRemovedList.textContent = ''
             el.entryRemovedList.total = 0
             const data = await gm.data.watchlaterListData()
-            const simplePopup = gm.config.headerMenu == Enums.headerMenu.enableSimple
+            const simplePopup = gm.config.headerMenu === Enums.headerMenu.enableSimple
             let serial = 0
             if (data.length > 0) {
-              const openLinkInCurrent = gm.config.openHeaderMenuLink == Enums.openHeaderMenuLink.openInCurrent
-              const redirect = gm.config.redirect
-              const autoRemoveControl = el.entryFn.autoRemoveControl
+              const openLinkInCurrent = gm.config.openHeaderMenuLink === Enums.openHeaderMenuLink.openInCurrent
+              const { autoRemoveControl } = el.entryFn
               for (const item of data) {
                 /** @type {HTMLAnchorElement} */
                 const card = el.entryList.appendChild(document.createElement('a'))
@@ -3542,12 +3545,12 @@
                   }
 
                   card.added = true
-                  card.querySelector('.gm-card-switcher').addEventListener('click', function(e) {
+                  card.querySelector('.gm-card-switcher').addEventListener('click', e => {
                     e.preventDefault()
                     switchStatus(!card.added)
                   })
 
-                  card.querySelector('.gm-card-collector').addEventListener('click', function(e) {
+                  card.querySelector('.gm-card-collector').addEventListener('click', e => {
                     e.preventDefault() // 不能放到 async 中
                     setTimeout(async () => {
                       const uid = _self.method.getDedeUserID()
@@ -3570,7 +3573,7 @@
                   })
 
                   const fixer = card.querySelector('.gm-card-fixer')
-                  fixer.addEventListener('click', function(e) {
+                  fixer.addEventListener('click', e => {
                     e.preventDefault()
                     if (card.fixed) {
                       card.classList.remove('gm-fixed')
@@ -3580,7 +3583,7 @@
                     card.fixed = !card.fixed
                     gm.data.fixedItem(card.bvid, card.fixed)
                   })
-                  fixer.addEventListener('contextmenu', function(e) {
+                  fixer.addEventListener('contextmenu', e => {
                     e.preventDefault()
                     script.clearFixedItems()
                   })
@@ -3593,39 +3596,39 @@
                 }
                 if (valid) {
                   card.target = openLinkInCurrent ? '_self' : '_blank'
-                  if (redirect) {
+                  if (gm.config.redirect) {
                     card.href = `${gm.url.page_videoNormalMode}/${card.bvid}`
                   } else {
                     card.href = `${gm.url.page_videoWatchlaterMode}/${card.bvid}`
                   }
-                  if (gm.config.autoRemove != Enums.autoRemove.absoluteNever) {
+                  if (gm.config.autoRemove !== Enums.autoRemove.absoluteNever) {
                     const excludes = '.gm-card-switcher, .gm-card-uploader, .gm-card-fixer, .gm-card-collector'
-                    card._originalHref = card.href
-                    card.addEventListener('mousedown', function(e) {
-                      if (e.button == 0 || e.button == 1) { // 左键或中键
+                    card._href = card.href
+                    card.addEventListener('mousedown', e => {
+                      if (e.button === 0 || e.button === 1) { // 左键或中键
                         if (card.fixed) return
                         if (!simplePopup && e.target.matches(excludes)) return
                         if (autoRemoveControl.autoRemove) {
-                          if (gm.config.autoRemove != Enums.autoRemove.always) {
-                            const url = new URL(this.href)
+                          if (gm.config.autoRemove !== Enums.autoRemove.always) {
+                            const url = new URL(card.href)
                             url.searchParams.set(`${gm.id}_remove`, 'true')
-                            this.href = url.href
+                            card.href = url.href
                           } else {
-                            this.href = this._originalHref
+                            card.href = card._href
                           }
                         } else {
-                          if (gm.config.autoRemove == Enums.autoRemove.always) {
-                            const url = new URL(this.href)
+                          if (gm.config.autoRemove === Enums.autoRemove.always) {
+                            const url = new URL(card.href)
                             url.searchParams.set(`${gm.id}_disable_remove`, 'true')
-                            this.href = url.href
+                            card.href = url.href
                           } else {
-                            this.href = this._originalHref
+                            card.href = card._href
                           }
                         }
                       }
                     })
-                    card.addEventListener('mouseup', function(e) {
-                      if (e.button == 0 || e.button == 1) { // 左键或中键
+                    card.addEventListener('mouseup', e => {
+                      if (e.button === 0 || e.button === 1) { // 左键或中键
                         if (card.fixed) return
                         if (!simplePopup) {
                           if (!card.added) return
@@ -3642,8 +3645,6 @@
                   }
                 } else {
                   card.classList.add('gm-invalid')
-                  card.target = '_self'
-                  card.href = gm.url.noop
                 }
               }
               el.entryList.total = data.length
@@ -3661,10 +3662,10 @@
               const addedBvid = new Set()
               for (const rmCard of rmCards) {
                 rmCard.serial = serial++
-                const bvid = rmCard.bvid
+                const { bvid } = rmCard
                 if (addedBvid.has(bvid)) continue
                 if (rmBvid.has(bvid)) {
-                  if (rmCard.style.display == 'none') {
+                  if (rmCard.style.display === 'none') {
                     rmCard.style.display = ''
                   }
                 } else {
@@ -3675,23 +3676,23 @@
               }
             }
             if (rmBvid?.size > 0) {
-              const only1 = rmBvid.size == 1
+              const only1 = rmBvid.size === 1
               const h = simplePopup ? (only1 ? 6 : 9) : (only1 ? 6.4 : 11)
               el.entryList.style.height = `${42 - h}em`
               el.entryRemovedList.style.height = `${h}em`
               el.entryRemovedList.style.display = 'flex'
               el.entryRemovedList.total = rmBvid.size
-              el.entryRemovedList.querySelectorAll('.gm-fixed').forEach(el => {
-                el.classList.remove('gm-fixed')
-                el.fixed = false
-              })
+              for (const fixedEl of el.entryRemovedList.querySelectorAll('.gm-fixed')) {
+                fixedEl.classList.remove('gm-fixed')
+                fixedEl.fixed = false
+              }
             } else {
               el.entryList.style.height = ''
               el.entryRemovedList.style.display = ''
             }
 
             el.popupTotal.textContent = `${el.entryList.total}${el.entryRemovedList.total > 0 ? `/${el.entryList.total + el.entryRemovedList.total}` : ''}`
-            if (gm.config.removeHistory && gm.config.removeHistorySavePoint == Enums.removeHistorySavePoint.listAndMenu) {
+            if (gm.config.removeHistory && gm.config.removeHistorySavePoint === Enums.removeHistorySavePoint.listAndMenu) {
               _self.method.updateRemoveHistoryData()
             }
 
@@ -3699,7 +3700,7 @@
             el.entryList.scrollTop = 0
             el.entryRemovedList.scrollTop = 0
 
-            const sortType = el.entryFn.sortControl.control.selected.getAttribute('value')
+            const sortType = el.entryFn.sortControl.control.selected.dataset.value
             sortType && sort(sortType)
             if (el.search.value.length > 0) {
               el.search.dispatchEvent(new Event('input'))
@@ -3711,10 +3712,10 @@
            * @param {sortType} type 排序类型
            */
           const sort = type => {
-            if (type == gm.menu.entryPopup.sortType) return
+            if (type === gm.menu.entryPopup.sortType) return
             const prevBase = gm.menu.entryPopup.sortType.replace(/:R$/, '')
             gm.menu.entryPopup.sortType = type
-            if (type == Enums.sortType.fixed) {
+            if (type === Enums.sortType.fixed) {
               type = Enums.sortType.default
               el.entryList.setAttribute('sort-type-fixed', '')
             } else {
@@ -3731,22 +3732,22 @@
               lists.push(el.entryRemovedList)
             }
             for (const list of lists) {
-              if (k != prevBase) {
+              if (k !== prevBase) {
                 const cards = [...list.children]
                 cards.sort((a, b) => {
                   let result = 0
                   const va = a[k]
                   const vb = b[k]
-                  if (typeof va == 'string') {
+                  if (typeof va === 'string') {
                     result = va.localeCompare(vb)
                   } else {
                     result = va - vb
                   }
                   return result
                 })
-                cards.forEach((card, idx) => {
+                for (const [idx, card] of cards.entries()) {
                   card.style.order = idx
-                })
+                }
               }
               if (reverse) {
                 list.setAttribute('gm-list-reverse', '')
@@ -3766,7 +3767,6 @@
        * @returns {{href: string, target: '_self' | '_blank'}}
        */
       function getHeaderButtonOpConfig(op) {
-        /** @type {{href: string, target: '_self' | '_blank'}} */
         const result = {}
         switch (op) {
           case Enums.headerButtonOp.openListInCurrent:
@@ -3777,21 +3777,18 @@
           case Enums.headerButtonOp.playAllInNew:
             result.href = gm.url.page_watchlaterPlayAll
             break
-          case Enums.headerButtonOp.clearWatchlater:
-          case Enums.headerButtonOp.openUserSetting:
-          case Enums.headerButtonOp.openRemoveHistory:
-          case Enums.headerButtonOp.openBatchAddManager:
-          case Enums.headerButtonOp.noOperation:
-            result.href = gm.url.noop
+          default:
             break
         }
-        switch (op) {
-          case Enums.headerButtonOp.openListInNew:
-          case Enums.headerButtonOp.playAllInNew:
-            result.target = '_blank'
-            break
-          default:
-            result.target = '_self'
+        if (result.href) {
+          switch (op) {
+            case Enums.headerButtonOp.openListInNew:
+            case Enums.headerButtonOp.playAllInNew:
+              result.target = '_blank'
+              break
+            default:
+              result.target = '_self'
+          }
         }
         return result
       }
@@ -3800,16 +3797,16 @@
     /**
      * 填充稍后再看状态
      */
-    async fillWatchlaterStatus() {
+    fillWatchlaterStatus() {
       const _self = this
       let map = null
       const initMap = async () => {
-        map = await _self.method.getWatchlaterDataMap(item => String(item.aid), 'aid', false, true)
+        map = await this.method.getWatchlaterDataMap(item => String(item.aid), 'aid', false, true)
       }
       if (api.base.urlMatch(gm.regex.page_dynamicMenu)) { // 必须在动态页之前匹配
         fillWatchlaterStatus_dynamicMenu()
       } else if (api.base.urlMatch(gm.regex.page_dynamic)) {
-        if (location.pathname == '/') { // 仅动态主页
+        if (location.pathname === '/') { // 仅动态主页
           api.wait.$('.feed-card').then(feed => {
             api.wait.executeAfterElementLoaded({
               selector: '.tab:not(#gm-batch-manager-btn)',
@@ -3825,7 +3822,7 @@
             async function refillDynamicWatchlaterStatus() {
               map = await _self.method.getWatchlaterDataMap(item => String(item.aid), 'aid', true)
               // map 更新期间，ob 偷跑可能会将错误的数据写入，重新遍历并修正之
-              feed.querySelectorAll('.video-container').forEach(video => {
+              for (const video of feed.querySelectorAll('.video-container')) {
                 const vue = video.__vue__
                 if (vue) {
                   const aid = String(vue.aid)
@@ -3835,7 +3832,7 @@
                     vue.seeLaterStatus = 0
                   }
                 }
-              })
+              }
             }
           })
         }
@@ -3853,13 +3850,12 @@
             if (api.base.urlMatch([gm.regex.page_videoNormalMode, gm.regex.page_videoWatchlaterMode])) {
               fillWatchlaterStatus_main()
             }
-            return
+            break
           case Enums.fillWatchlaterStatus.anypage:
             fillWatchlaterStatus_main()
-            return
-          case Enums.fillWatchlaterStatus.never:
+            break
           default:
-            return
+            break
         }
       }
 
@@ -3874,7 +3870,7 @@
           multiple: true,
           repeat: true,
           timeout: 0,
-          callback: async video => {
+          callback: video => {
             // 这个 video 未必是最后加入到页面的视频卡片，有可能是作为 Vue 处理过程中的中转元素
             const vue = video.__vue__ // 此时理应有 Vue 对象，如果没有就说明它可能是中转元素
             // 但是，即使 video 真是中转元素，也有可能出现存在 __vue__ 的情况，实在没搞懂是什么原理
@@ -3900,7 +3896,7 @@
           multiple: true,
           repeat: true,
           timeout: 0,
-          callback: async video => {
+          callback: video => {
             const vue = video.__vue__
             if (vue) {
               const aid = String(vue.aid)
@@ -3923,7 +3919,7 @@
           multiple: true,
           repeat: true,
           timeout: 0,
-          callback: async video => {
+          callback: video => {
             const vue = video.__vue__
             if (vue) {
               const aid = String(vue.aid)
@@ -3948,7 +3944,7 @@
       const original = await api.wait.$('.van-watchlater', atr)
       api.wait.waitForConditionPassed({
         condition: () => app.__vue__,
-      }).then(async () => {
+      }).then(() => {
         const btn = document.createElement('label')
         btn.id = `${gm.id}-video-btn`
         const cb = btn.appendChild(document.createElement('input'))
@@ -3956,30 +3952,28 @@
         const text = btn.appendChild(document.createElement('span'))
         text.textContent = '稍后再看'
         btn.className = 'appeal-text'
-        cb.addEventListener('click', function() {
-          processSwitch()
-        })
+        cb.addEventListener('click', () => processSwitch())
         atr.append(btn)
 
-        const aid = _self.method.getAid()
+        const aid = this.method.getAid()
         bus = { btn, cb, aid }
         initButtonStatus()
         original.parentElement.style.display = 'none'
 
         bus.pathname = location.pathname
-        window.addEventListener('urlchange', async function() {
-          if (location.pathname == bus.pathname) return // 并非切换视频（如切分P）
+        window.addEventListener('urlchange', async () => {
+          if (location.pathname === bus.pathname) return // 并非切换视频（如切分P）
           bus.pathname = location.pathname
-          bus.aid = _self.method.getAid()
+          bus.aid = this.method.getAid()
           let reloaded = false
           gm.searchParams = new URL(location.href).searchParams
-          const removed = await _self.processAutoRemove()
-          if (gm.config.removeHistory && gm.config.removeHistorySavePoint == Enums.removeHistorySavePoint.anypage) {
+          const removed = await this.processAutoRemove()
+          if (gm.config.removeHistory && gm.config.removeHistorySavePoint === Enums.removeHistorySavePoint.anypage) {
             // 本来没必要强制刷新，但后面查询状态必须要新数据，搭个顺风车
-            await _self.method.updateRemoveHistoryData(true)
+            await this.method.updateRemoveHistoryData(true)
             reloaded = true
           }
-          const status = removed ? false : await _self.method.getVideoWatchlaterStatusByAid(bus.aid, !reloaded)
+          const status = removed ? false : await this.method.getVideoWatchlaterStatusByAid(bus.aid, !reloaded)
           btn.added = status
           cb.checked = status
         })
@@ -3988,7 +3982,7 @@
       /**
        * 初始化按钮的稍后再看状态
        */
-      async function initButtonStatus() {
+      function initButtonStatus() {
         const setStatus = async status => {
           status ??= await _self.method.getVideoWatchlaterStatusByAid(bus.aid, false, true)
           bus.btn.added = status
@@ -3997,9 +3991,9 @@
         if (gm.data.fixedItem(_self.method.getBvid())) {
           setStatus(true)
         } else {
-          const alwaysAutoRemove = gm.config.autoRemove == Enums.autoRemove.always
-          const spRemove = gm.searchParams.get(`${gm.id}_remove`) == 'true'
-          const spDisableRemove = gm.searchParams.get(`${gm.id}_disable_remove`) == 'true'
+          const alwaysAutoRemove = gm.config.autoRemove === Enums.autoRemove.always
+          const spRemove = gm.searchParams.get(`${gm.id}_remove`) === 'true'
+          const spDisableRemove = gm.searchParams.get(`${gm.id}_disable_remove`) === 'true'
           if ((!alwaysAutoRemove && !spRemove) || spDisableRemove) {
             setStatus()
           }
@@ -4013,8 +4007,7 @@
        * 处理视频状态的切换
        */
       async function processSwitch() {
-        const btn = bus.btn
-        const cb = bus.cb
+        const { btn, cb } = bus
         const note = btn.added ? '从稍后再看移除' : '添加到稍后再看'
         const success = await _self.method.switchVideoWatchlaterStatus(bus.aid, !btn.added)
         if (success) {
@@ -4029,7 +4022,7 @@
     }
 
     /**
-     * 稍后再看模式重定向至正常模式播放
+     * 稍后再看模式重定向至常规模式播放
      */
     async redirect() {
       // stop() 并不能带来有效的重定向速度改善，反而可能会引起已加载脚本执行错误，也许会造成意外的不良影响
@@ -4037,7 +4030,7 @@
         let id = null
         const vid = this.method.getVid() // 必须从 URL 直接反推 bvid，其他方式都比这个慢
         if (vid) {
-          if (vid.type == 'aid') {
+          if (vid.type === 'aid') {
             id = 'av' + vid.id
           } else {
             id = vid.id
@@ -4069,14 +4062,14 @@
       const _self = this
       const data = await gm.data.watchlaterListData(true)
       const fixedItems = GM_getValue('fixedItems') ?? []
-      const sortable = gm.config.autoSort != Enums.autoSort.default || gm.config.listSortControl
+      const sortable = gm.config.autoSort !== Enums.autoSort.default || gm.config.listSortControl
       let autoRemoveControl = null
-      if (gm.config.autoRemove != Enums.autoRemove.absoluteNever) {
+      if (gm.config.autoRemove !== Enums.autoRemove.absoluteNever) {
         autoRemoveControl = await api.wait.$('#gm-list-auto-remove-control')
       }
       const listContainer = await api.wait.$('.watch-later-list')
       const listBox = await api.wait.$('.list-box', listContainer)
-      listBox.querySelectorAll('.av-item').forEach((item, idx) => {
+      for (const [idx, item] of listBox.querySelectorAll('.av-item').entries()) {
         // info
         const d = data[idx]
         item.state = d.state
@@ -4093,9 +4086,11 @@
         item.progress = (d.videos > 1 && d.progress > 0) ? d.duration : d.progress
 
         initItem(item)
-        item.querySelectorAll('a:not([class=user])').forEach(link => processLink(item, link, autoRemoveControl))
-      })
-      _self.updateWatchlaterListTotal()
+        for (const link of item.querySelectorAll('a:not([class=user])')) {
+          processLink(item, link, autoRemoveControl)
+        }
+      }
+      this.updateWatchlaterListTotal()
 
       // 移除无效固定项
       for (const item of fixedItems) {
@@ -4104,8 +4099,8 @@
 
       if (sortable) {
         const sortControl = await api.wait.$('#gm-list-sort-control')
-        if (sortControl.value != sortControl.prevVal) {
-          _self.sortWatchlaterList()
+        if (sortControl.value !== sortControl.prevVal) {
+          this.sortWatchlaterList()
         }
       }
 
@@ -4123,9 +4118,7 @@
           </span>
         `)
         const tools = state.querySelector('.gm-list-item-tools')
-        const fixer = tools.children[0]
-        const collector = tools.children[1]
-        const switcher = tools.children[2]
+        const [fixer, collector, switcher] = tools.children
         item.switcher = switcher
 
         const fixedIdx = fixedItems.indexOf(item.bvid)
@@ -4169,11 +4162,11 @@
           switcher.checked = item.added
         }
 
-        switcher.addEventListener('click', function() {
+        switcher.addEventListener('click', () => {
           switchStatus(!item.added)
         })
 
-        collector.addEventListener('click', async function() {
+        collector.addEventListener('click', async () => {
           const uid = _self.method.getDedeUserID()
           let mlid = GM_getValue(`watchlaterMediaList_${uid}`)
           let dmlid = false
@@ -4192,7 +4185,7 @@
           }
         })
 
-        fixer.addEventListener('click', function() {
+        fixer.addEventListener('click', () => {
           if (item.fixed) {
             item.classList.remove('gm-fixed')
           } else {
@@ -4201,7 +4194,7 @@
           item.fixed = !item.fixed
           gm.data.fixedItem(item.bvid, item.fixed)
         })
-        fixer.addEventListener('contextmenu', function(e) {
+        fixer.addEventListener('contextmenu', e => {
           e.preventDefault()
           script.clearFixedItems()
         })
@@ -4232,38 +4225,38 @@
        */
       function processLink(base, link, arc) {
         if (base.state >= 0) { // 过滤视频被和谐或其他特殊情况
-          link.target = gm.config.openListVideo == Enums.openListVideo.openInCurrent ? '_self' : '_blank'
+          link.target = gm.config.openListVideo === Enums.openListVideo.openInCurrent ? '_self' : '_blank'
           if (gm.config.redirect) {
             link.href = `${gm.url.page_videoNormalMode}/${base.bvid}`
           }
           if (arc) {
-            link.addEventListener('mousedown', function(e) {
-              if (e.button == 0 || e.button == 1) { // 左键或中键
+            link.addEventListener('mousedown', e => {
+              if (e.button === 0 || e.button === 1) { // 左键或中键
                 if (base.fixed) return
-                if (!this._originalHref) {
-                  this._originalHref = this.href
+                if (!link._href) {
+                  link._href = link.href
                 }
                 if (arc.autoRemove) {
-                  if (gm.config.autoRemove != Enums.autoRemove.always) {
-                    const url = new URL(this.href)
+                  if (gm.config.autoRemove !== Enums.autoRemove.always) {
+                    const url = new URL(link.href)
                     url.searchParams.set(`${gm.id}_remove`, 'true')
-                    this.href = url.href
+                    link.href = url.href
                   } else {
-                    this.href = this._originalHref
+                    link.href = link._href
                   }
                 } else {
-                  if (gm.config.autoRemove == Enums.autoRemove.always) {
-                    const url = new URL(this.href)
+                  if (gm.config.autoRemove === Enums.autoRemove.always) {
+                    const url = new URL(link.href)
                     url.searchParams.set(`${gm.id}_disable_remove`, 'true')
-                    this.href = url.href
+                    link.href = url.href
                   } else {
-                    this.href = this._originalHref
+                    link.href = link._href
                   }
                 }
               }
             })
-            link.addEventListener('mouseup', function(e) {
-              if (e.button == 0 || e.button == 1) { // 左键或中键
+            link.addEventListener('mouseup', e => {
+              if (e.button === 0 || e.button === 1) { // 左键或中键
                 if (base.fixed) return
                 if (arc.autoRemove) {
                   // 添加移除样式并移动至列表末尾
@@ -4281,8 +4274,7 @@
             })
           }
         } else {
-          link.href = gm.url.noop
-          link.target = '_self'
+          link.removeAttribute('href')
         }
       }
     }
@@ -4307,7 +4299,7 @@
       }
 
       const listBox = await api.wait.$('.watch-later-list .list-box')
-      listBox.querySelectorAll('.av-item').forEach(item => {
+      for (const item of listBox.querySelectorAll('.av-item')) {
         let valid = false
         if (val) {
           if (match(item.vTitle)) {
@@ -4323,7 +4315,7 @@
         } else {
           item.classList.add('gm-filtered')
         }
-      })
+      }
     }
 
     /**
@@ -4334,7 +4326,7 @@
       const listBox = await api.wait.$('.watch-later-list .list-box')
       let type = sortControl.value
       sortControl.prevVal = type
-      if (type == Enums.sortType.fixed) {
+      if (type === Enums.sortType.fixed) {
         type = Enums.sortType.default
         listBox.firstElementChild.setAttribute('sort-type-fixed', '')
       } else {
@@ -4354,7 +4346,7 @@
           let result = 0
           const va = a[k]
           const vb = b[k]
-          if (typeof va == 'string') {
+          if (typeof va === 'string') {
             result = va.localeCompare(vb)
           } else {
             result = va - vb
@@ -4404,13 +4396,12 @@
      * 根据 URL 上的查询参数作进一步处理
      */
     async processSearchParams() {
-      const _self = this
       if (api.base.urlMatch(gm.regex.page_videoNormalMode)) {
         // 常规播放页
-        await _self.processAutoRemove()
+        await this.processAutoRemove()
       } else if (api.base.urlMatch(gm.regex.page_videoWatchlaterMode)) {
         // 稍后再看播放页；推迟执行，否则稍后再看播放页会因为检测不到视频在稍后再看中而出错
-        await _self.processAutoRemove(5000)
+        await this.processAutoRemove(5000)
       }
     }
 
@@ -4421,17 +4412,16 @@
      */
     async processAutoRemove(delay = 0) {
       try {
-        const alwaysAutoRemove = gm.config.autoRemove == Enums.autoRemove.always
-        const spRemove = gm.searchParams.get(`${gm.id}_remove`) == 'true'
-        const spDisableRemove = gm.searchParams.get(`${gm.id}_disable_remove`) == 'true'
+        const alwaysAutoRemove = gm.config.autoRemove === Enums.autoRemove.always
+        const spRemove = gm.searchParams.get(`${gm.id}_remove`) === 'true'
+        const spDisableRemove = gm.searchParams.get(`${gm.id}_disable_remove`) === 'true'
         if ((alwaysAutoRemove || spRemove) && !spDisableRemove) {
-          const _self = this
-          if (gm.data.fixedItem(_self.method.getBvid())) return
-          const aid = _self.method.getAid()
+          if (gm.data.fixedItem(this.method.getBvid())) return
+          const aid = this.method.getAid()
           if (delay > 0) {
             await new Promise(resolve => setTimeout(resolve, delay))
           }
-          const success = await _self.method.switchVideoWatchlaterStatus(aid, false)
+          const success = await this.method.switchVideoWatchlaterStatus(aid, false)
           if (!success) {
             api.message.info('从稍后再看移除失败')
           }
@@ -4447,22 +4437,21 @@
      * 根据 `removeHistorySavePoint` 保存稍后再看历史数据
      */
     processWatchlaterListDataSaving() {
-      const _self = this
       switch (gm.config.removeHistorySavePoint) {
         case Enums.removeHistorySavePoint.list:
           if (api.base.urlMatch(gm.regex.page_watchlaterList)) {
-            _self.method.updateRemoveHistoryData()
+            this.method.updateRemoveHistoryData()
           }
           break
         case Enums.removeHistorySavePoint.listAndMenu:
         default:
           if (api.base.urlMatch(gm.regex.page_watchlaterList)) {
-            _self.method.updateRemoveHistoryData()
+            this.method.updateRemoveHistoryData()
           }
           break
         case Enums.removeHistorySavePoint.anypage:
           if (!api.base.urlMatch(gm.regex.page_dynamicMenu)) {
-            _self.method.updateRemoveHistoryData()
+            this.method.updateRemoveHistoryData()
           }
           break
       }
@@ -4472,12 +4461,11 @@
      * 调整列表页面的 UI
      */
     async adjustWatchlaterListUI() {
-      const _self = this
       const r_con = await api.wait.$('.watch-later-list header .r-con')
       // 页面上本来就存在的「全部播放」按钮不要触发重定向
       const setPlayAll = el => {
         el.href = gm.url.page_watchlaterPlayAll
-        el.target = gm.config.openListVideo == Enums.openListVideo.openInCurrent ? '_self' : '_blank'
+        el.target = gm.config.openListVideo === Enums.openListVideo.openInCurrent ? '_self' : '_blank'
       }
       const playAll = r_con.children[0]
       if (playAll.classList.contains('s-btn')) {
@@ -4548,19 +4536,16 @@
           </div>
         `
         const searchBox = searchContainer.firstElementChild
-        const search = searchBox.children[0]
-        const searchClear = searchBox.children[1]
+        const [search, searchClear] = searchBox.children
 
-        search.addEventListener('mouseenter', function() {
-          this.focus()
-        })
-        search.addEventListener('input', function() {
-          const m = /^\s+(.*)/.exec(this.value)
+        search.addEventListener('mouseenter', () => search.focus())
+        search.addEventListener('input', () => {
+          const m = /^\s+(.*)/.exec(search.value)
           if (m) {
-            this.value = m[1]
-            this.setSelectionRange(0, 0)
+            search.value = m[1]
+            search.setSelectionRange(0, 0)
           }
-          if (this.value.length > 0) {
+          if (search.value.length > 0) {
             searchBox.classList.add('gm-active')
             searchClear.style.visibility = 'visible'
           } else {
@@ -4569,11 +4554,11 @@
           }
         })
         search.addEventListener('input', api.base.throttle(async () => {
-          await _self.searchWatchlaterList()
-          await _self.updateWatchlaterListTotal()
-          _self.triggerWatchlaterListContentLoad()
+          await this.searchWatchlaterList()
+          await this.updateWatchlaterListTotal()
+          this.triggerWatchlaterListContentLoad()
         }, gm.const.inputThrottleWait))
-        searchClear.addEventListener('click', function() {
+        searchClear.addEventListener('click', () => {
           search.value = ''
           search.dispatchEvent(new Event('input'))
         })
@@ -4597,9 +4582,9 @@
         `
         control.prevVal = control.value
 
-        if (gm.config.autoSort != Enums.autoSort.default) {
+        if (gm.config.autoSort !== Enums.autoSort.default) {
           let type = gm.config.autoSort
-          if (type == Enums.autoSort.auto) {
+          if (type === Enums.autoSort.auto) {
             type = GM_getValue('autoSort_auto')
             if (!type) {
               type = Enums.sortType.default
@@ -4638,11 +4623,11 @@
           `)
           control.className = 's-btn'
 
-          control.addEventListener('change', function() {
-            if (gm.config.autoSort == Enums.autoSort.auto) {
-              GM_setValue('autoSort_auto', this.value)
+          control.addEventListener('change', () => {
+            if (gm.config.autoSort === Enums.autoSort.auto) {
+              GM_setValue('autoSort_auto', control.value)
             }
-            _self.sortWatchlaterList()
+            this.sortWatchlaterList()
           })
         } else {
           sortControlButton.style.display = 'none'
@@ -4658,7 +4643,7 @@
           autoRemoveControl.style.display = 'none'
         }
         r_con.prepend(autoRemoveControl)
-        if (gm.config.autoRemove != Enums.autoRemove.absoluteNever) {
+        if (gm.config.autoRemove !== Enums.autoRemove.absoluteNever) {
           api.base.addStyle(`
             #gm-list-auto-remove-control {
               background: #fff;
@@ -4669,27 +4654,27 @@
               color: #fff;
             }
           `)
-          const autoRemove = gm.config.autoRemove == Enums.autoRemove.always || gm.config.autoRemove == Enums.autoRemove.openFromList
+          const autoRemove = gm.config.autoRemove === Enums.autoRemove.always || gm.config.autoRemove === Enums.autoRemove.openFromList
           autoRemoveControl.className = 's-btn'
           autoRemoveControl.title = '临时切换在当前页面打开视频后是否将其自动移除出「稍后再看」。若要默认开启/关闭自动移除功能，请在「用户设置」中配置。'
           autoRemoveControl.autoRemove = autoRemove
           if (autoRemove) {
             autoRemoveControl.setAttribute('enabled', '')
           }
-          autoRemoveControl.addEventListener('click', function() {
-            if (this.autoRemove) {
+          autoRemoveControl.addEventListener('click', () => {
+            if (autoRemoveControl.autoRemove) {
               autoRemoveControl.removeAttribute('enabled')
               api.message.info('已临时关闭自动移除功能')
             } else {
               autoRemoveControl.setAttribute('enabled', '')
               api.message.info('已临时开启自动移除功能')
             }
-            this.autoRemove = !this.autoRemove
+            autoRemoveControl.autoRemove = !autoRemoveControl.autoRemove
           })
         } else {
           autoRemoveControl.className = 'd-btn'
           autoRemoveControl.style.cursor = 'not-allowed'
-          autoRemoveControl.addEventListener('click', function() {
+          autoRemoveControl.addEventListener('click', () => {
             api.message.info('当前彻底禁用自动移除功能，无法执行操作')
           })
         }
@@ -4699,16 +4684,15 @@
     /**
      * 隐藏「收藏」中的「稍后再看」
      */
-    async hideWatchlaterInCollect() {
+    hideWatchlaterInCollect() {
       api.wait.$('.user-con .mini-favorite').then(fav => {
         const collect = fav.parentElement
-        const process = function() {
+        collect.addEventListener('mouseover', function process() {
           api.wait.$('[role=tooltip] .tab-item [title=稍后再看]', document, true).then(el => {
             el.parentElement.style.display = 'none'
             collect.removeEventListener('mouseover', process) // 确保移除后再解绑
           }).catch(() => {}) // 有时候鼠标经过收藏也没弹出来，不知道什么原因，就不报错了
-        }
-        collect.addEventListener('mouseover', process)
+        })
       })
     }
 
@@ -4716,7 +4700,7 @@
      * 添加批量添加管理器按钮
      */
     addBatchAddManagerButton() {
-      if (location.pathname == '/') { // 仅动态主页
+      if (location.pathname === '/') { // 仅动态主页
         api.wait.$('.feed-card .tab-bar').then(bar => {
           const btn = bar.firstElementChild.cloneNode(true)
           btn.id = 'gm-batch-manager-btn'
@@ -4772,7 +4756,7 @@
               background-color: var(--${gm.id}-scrollbar-background-color);
             }
           `)
-          return
+          break
         case Enums.menuScrollbarSetting.hidden:
           api.base.addStyle(`
             ${popup}::-webkit-scrollbar,
@@ -4781,10 +4765,9 @@
               display: none;
             }
           `)
-          return
-        case Enums.menuScrollbarSetting.original:
+          break
         default:
-          return
+          break
       }
     }
 
@@ -4792,7 +4775,7 @@
      * 添加脚本样式
      */
     addStyle() {
-      if (self == top) {
+      if (self === top) {
         this.addMenuScrollbarStyle()
         // 通用样式
         api.base.addStyle(`
@@ -5245,7 +5228,7 @@
             position: absolute;
             color: var(--${gm.id}-warn-color);
             font-size: 1.4em;
-            line-height: 1em;
+            line-height: 0.8em;
             transition: var(--${gm.id}-opacity-fade-transition);
             opacity: 0;
             display: none;
@@ -5262,7 +5245,7 @@
             visibility: hidden;
           }
 
-          #${gm.id} .gm-hideDisabledSubitems .gm-setting-page:not([setting-type]) .gm-item[disabled] {
+          #${gm.id} .gm-hideDisabledSubitems .gm-setting-page:not([data-type]) .gm-item[disabled] {
             display: none;
           }
 
@@ -5390,22 +5373,22 @@
             color: var(--${gm.id}-hint-text-color);
             cursor: pointer;
           }
-          #${gm.id} [setting-type=updated] .gm-changelog {
+          #${gm.id} [data-type=updated] .gm-changelog {
             font-weight: bold;
             color: var(--${gm.id}-update-hightlight-hover-color);
           }
-          #${gm.id} [setting-type=updated] .gm-changelog:hover {
+          #${gm.id} [data-type=updated] .gm-changelog:hover {
             color: var(--${gm.id}-update-hightlight-hover-color);
           }
-          #${gm.id} [setting-type=updated] .gm-updated,
-          #${gm.id} [setting-type=updated] .gm-updated input,
-          #${gm.id} [setting-type=updated] .gm-updated select {
+          #${gm.id} [data-type=updated] .gm-updated,
+          #${gm.id} [data-type=updated] .gm-updated input,
+          #${gm.id} [data-type=updated] .gm-updated select {
             background-color: var(--${gm.id}-update-hightlight-color);
           }
-          #${gm.id} [setting-type=updated] .gm-updated option {
+          #${gm.id} [data-type=updated] .gm-updated option {
             background-color: var(--${gm.id}-background-color);
           }
-          #${gm.id} [setting-type=updated] .gm-updated:hover {
+          #${gm.id} [data-type=updated] .gm-updated:hover {
             color: var(--${gm.id}-update-hightlight-hover-color);
             font-weight: bold;
           }
@@ -5622,7 +5605,7 @@
           .gm-fixed .gm-card-fixer {
             font-weight: bold;
           }
-          .watch-later-list .list-box > span[sort-type-fixed] .gm-fixed,
+          .watch-later-list .list-box > [sort-type-fixed] .gm-fixed,
           #${gm.id} .gm-entrypopup .gm-entry-list[gm-list-reverse] .gm-fixed,
           #${gm.id} .gm-entrypopup .gm-entry-list[sort-type-fixed] .gm-fixed {
             order: -1000 !important;
@@ -5644,224 +5627,8 @@
     }
   }
 
-  /**
-   * 推入队列，循环数组实现
-   * @template T 数据类型
-   */
-  class PushQueue {
-    /**
-     * @param {number} maxSize 队列的最大长度，达到此长度后继续推入数据，将舍弃末尾处的数据
-     * @param {number} [capacity=maxSize] 容量，即循环数组的长度，不能小于 maxSize
-     */
-    constructor(maxSize, capacity) {
-      /** 起始元素位置（指向起始元素后方） */
-      this.index = 0
-      /** 队列长度 */
-      this.size = 0
-      /** 最大长度 */
-      this.maxSize = maxSize
-      if (!capacity || capacity < maxSize) {
-        capacity = maxSize
-      }
-      /** 容量 */
-      this.capacity = capacity
-      /** 内部数据 */
-      this.data = new Array(capacity)
-    }
-
-    /**
-     * 设置推入队列的最大长度
-     * @param {number} maxSize 队列的最大长度，不能大于 capacity
-     */
-    setMaxSize(maxSize) {
-      if (maxSize > this.capacity) {
-        maxSize = this.capacity
-      }
-      if (maxSize < this.size) {
-        this.size = maxSize
-      }
-      this.maxSize = maxSize
-      this.gc()
-    }
-
-    /**
-     * 重新设置推入队列的容量
-     * @param {number} capacity 容量
-     */
-    setCapacity(capacity) {
-      if (this.maxSize > capacity) {
-        this.maxSize = capacity
-      }
-      if (this.size > capacity) {
-        this.size = capacity
-      }
-      // no need to gc() here
-      const data = this.toArray().reverse()
-      this.capacity = capacity
-      this.index = data.length
-      data.length = capacity
-      this.data = data
-    }
-
-    /**
-     * 队列是否为空
-     */
-    empty() {
-      return this.size == 0
-    }
-
-    /**
-     * 向队列中推入数据，若队列已达到最大长度，则舍弃末尾处数据
-     * @param {T} value 推入队列的数据
-     */
-    push(value) {
-      this.data[this.index] = value
-      this.index += 1
-      if (this.index >= this.capacity) {
-        this.index = 0
-      }
-      if (this.size < this.maxSize) {
-        this.size += 1
-      }
-      if (this.maxSize < this.capacity && this.size == this.maxSize) { // maxSize 等于 capacity 时资源刚好完美利用，不必回收资源
-        let release = this.index - this.size - 1
-        if (release < 0) {
-          release += this.capacity
-        }
-        this.data[release] = null
-      }
-    }
-
-    /**
-     * 将队列末位处的数据弹出
-     * @returns {T} 弹出的数据
-     */
-    pop() {
-      if (this.size > 0) {
-        let index = this.index - this.size
-        if (index < 0) {
-          index += this.capacity
-        }
-        this.size -= 1
-        const result = this.data[index]
-        this.data[index] = null
-        return result
-      }
-    }
-
-    /**
-     * 获取第 `n` 个元素（范围 `[0, size - 1]`）
-     * @param {number} n 元素位置
-     * @returns {T} 第 `n` 个元素
-     */
-    get(n) {
-      if (this.size > 0 && n >= 0) {
-        let index = this.index - n - 1
-        if (index < 0) {
-          index += this.capacity
-        }
-        return this.data[index]
-      }
-    }
-
-    /**
-     * 设置第 `n` 个元素的值为 `value`（范围 `[0, size - 1]`，且第 `n` 个元素必须已存在）
-     * @param {number} n 元素位置
-     * @param {T} value 要设置的值
-     * @returns {boolean} 是否设置成功
-     */
-    set(n, value) {
-      if (n <= this.size - 1 && n >= 0) {
-        let index = this.index - n - 1
-        if (index < 0) {
-          index += this.capacity
-        }
-        this.data[index] = value
-        return true
-      } else {
-        return false
-      }
-    }
-
-    /**
-     * 使用数组初始化推入队列
-     * @param {Array<T>} array 初始化数组
-     */
-    fromArray(array) {
-      if (this.maxSize < array.length) {
-        this.data = array.slice(0, this.maxSize).reverse()
-      } else {
-        this.data = array.reverse()
-      }
-      this.index = this.data.length
-      if (this.index >= this.capacity) {
-        this.index = 0
-      }
-      this.size = this.data.length
-      this.data.length = this.capacity
-    }
-
-    /**
-     * 将推入队列以数组的形式返回
-     * @param {number} [maxLength=size] 读取的最大长度
-     * @param {number} [offset=0] 起始点
-     * @returns {Array<T>} 队列数据的数组形式
-     */
-    toArray(maxLength = this.size, offset = 0) {
-      if (offset < 0) {
-        offset = 0
-      }
-      if (offset + maxLength > this.size) {
-        maxLength = this.size - offset
-      }
-      const ar = []
-      let start = this.index - offset
-      if (start < 0) {
-        start += this.capacity
-      }
-      let end = start - maxLength
-      for (let i = start - 1; i >= end && i >= 0; i--) {
-        ar.push(this.data[i])
-      }
-      if (end < 0) {
-        end += this.capacity
-        for (let i = this.capacity - 1; i >= end; i--) {
-          ar.push(this.data[i])
-        }
-      }
-      return ar
-    }
-
-    /**
-     * 清理内部无效数据，释放内存
-     */
-    gc() {
-      if (this.size > 0) {
-        const start = this.index - 1
-        let end = this.index - this.size
-        if (end < 0) {
-          end += this.capacity
-        }
-        if (start >= end) {
-          for (let i = 0; i < end; i++) {
-            this.data[i] = null
-          }
-          for (let i = start + 1; i < this.capacity; i++) {
-            this.data[i] = null
-          }
-        } else {
-          for (let i = start + 1; i < end; i++) {
-            this.data[i] = null
-          }
-        }
-      } else {
-        this.data = new Array(this.capacity)
-      }
-    }
-  }
-
   (function() {
-    if (GM_info.scriptHandler != 'Tampermonkey') {
+    if (GM_info.scriptHandler !== 'Tampermonkey') {
       api.base.initUrlchangeEvent()
     }
     script = new Script()
@@ -5873,7 +5640,7 @@
 
     script.initAtDocumentStart()
     if (api.base.urlMatch(gm.regex.page_videoWatchlaterMode)) {
-      const disableRedirect = gm.searchParams.get(`${gm.id}_disable_redirect`) == 'true'
+      const disableRedirect = gm.searchParams.get(`${gm.id}_disable_redirect`) === 'true'
       if (gm.config.redirect && !disableRedirect) { // 重定向，document-start 就执行，尽可能快地将原页面掩盖过去
         webpage.redirect()
         return
@@ -5882,15 +5649,15 @@
 
     webpage.method.cleanSearchParams()
     webpage.addStyle()
-    if (gm.config.mainRunAt == Enums.mainRunAt.DOMContentLoaded) {
-      document.readyState == 'loading' ? document.addEventListener('DOMContentLoaded', main) : main()
+    if (gm.config.mainRunAt === Enums.mainRunAt.DOMContentLoaded) {
+      document.readyState === 'loading' ? document.addEventListener('DOMContentLoaded', main) : main()
     } else {
-      document.readyState != 'complete' ? window.addEventListener('load', main) : main()
+      document.readyState !== 'complete' ? window.addEventListener('load', main) : main()
     }
 
     function main() {
       script.init()
-      if (self == top) {
+      if (self === top) {
         script.addScriptMenu()
 
         if (gm.config.headerButton) {
@@ -5899,7 +5666,7 @@
         if (gm.config.removeHistory) {
           webpage.processWatchlaterListDataSaving()
         }
-        if (gm.config.fillWatchlaterStatus != Enums.fillWatchlaterStatus.never) {
+        if (gm.config.fillWatchlaterStatus !== Enums.fillWatchlaterStatus.never) {
           webpage.fillWatchlaterStatus()
         }
         if (gm.config.hideWatchlaterInCollect) {
@@ -5922,7 +5689,7 @@
         webpage.processSearchParams()
       } else {
         if (api.base.urlMatch(gm.regex.page_dynamicMenu)) {
-          if (gm.config.fillWatchlaterStatus != Enums.fillWatchlaterStatus.never) {
+          if (gm.config.fillWatchlaterStatus !== Enums.fillWatchlaterStatus.never) {
             webpage.fillWatchlaterStatus()
           }
         }
