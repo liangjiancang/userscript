@@ -5,7 +5,7 @@
 ## V2.2
 
 1. 代码：扩充代码规则至 `["eslint:all", "plugin:unicorn/all"]`，然后在此基础上做减法。
-2. 脚本：不再是单例（Singleton），以降低维护难度。
+2. 库：不再是单例（Singleton），以降低维护难度。
 
 ## V2.1
 
