@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.23.0.20210926
+// @version         4.23.1.20210926
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -525,9 +525,7 @@
         }
         if (invalid) {
           value = defaultValue
-          if (writeback) {
-            GM_setValue(gmKey, value)
-          }
+          writeback && GM_setValue(gmKey, value)
         }
         return value
       },
@@ -1717,14 +1715,13 @@
           el.shadow.addEventListener('click', () => script.closeMenuItem('batchAddManager'))
 
           // 时间同步
-          const setLastAddTime = time => {
-            time ??= null
-            GM_setValue('batchLastAddTime', time)
+          const setLastAddTime = (time = null, writeBack = true) => {
+            writeBack && GM_setValue('batchLastAddTime', time)
             el.lastAddTime.val = time
-            el.lastAddTime.title = `将上一次成功执行添加步骤的时间同步到加载步骤中${time ? `\n上次添加时间：${new Date(time).toLocaleString()}` : ''}`
+            el.lastAddTime.title = `将一个合适的时间点同步到加载步骤中，以便与上次批量添加操作无缝对接。\n上一次执行添加步骤成功时同步「成功执行的时间」，失败或中断时同步「最后一个添加成功的稿件的投稿时间」。${time ? `\n当前同步时间：${new Date(time).toLocaleString()}` : ''}`
             el.lastAddTime.disabled = !time
           }
-          setLastAddTime(GM_getValue('batchLastAddTime'))
+          setLastAddTime(GM_getValue('batchLastAddTime'), false)
           el.lastAddTime.addEventListener('click', () => {
             if (executing) return api.message.info('执行中，无法同步')
             const target = el.lastAddTime
@@ -1780,6 +1777,7 @@
           })
 
           let executing = false
+          let loadTime = 0
 
           // 加载投稿
           let stopLoad = false
@@ -1845,7 +1843,7 @@
                     avSet.add(aid)
                     const uncheck = history?.has(aid)
                     const displayNone = uncheck && el.uncheckedDisplay._hide
-                    html = `<label class="gm-item" aid="${info.aid}" timestamp="${item.desc.timestamp}"${displayNone ? ' style="display:none"' : ''}><input type="checkbox"${uncheck ? '' : ' checked'}> <span>[${info.owner.name}] ${info.title}</span></label>` + html
+                    html = `<label class="gm-item" data-aid="${info.aid}" data-timestamp="${item.desc.timestamp}"${displayNone ? ' style="display:none"' : ''}><input type="checkbox"${uncheck ? '' : ' checked'}> <span>[${info.owner.name}] ${info.title}</span></label>` + html
                   }
                 }
                 el.items.insertAdjacentHTML('afterbegin', html)
@@ -1862,6 +1860,7 @@
                 api.message.info('批量添加：稿件加载完成', 1800)
               }
               executing = false
+              loadTime = Date.now()
               stopLoad = false
               el.id1c.disabled = false
               el.id1c.textContent = '重新执行'
@@ -1903,7 +1902,7 @@
                 const newEnd = Date.now() - v2a * el.id2b.value * 1000
                 for (let i = 0; i < el.items.childElementCount; i++) {
                   const item = el.items.children[i]
-                  const timestamp = Number.parseInt(item.getAttribute('timestamp'))
+                  const timestamp = Number.parseInt(item.dataset.timestamp)
                   if (timestamp * 1000 < newEnd) {
                     item.classList.add('gm-filtered-time')
                   } else {
@@ -1971,6 +1970,7 @@
           let stopAdd = false
           el.id4b.addEventListener('click', async () => {
             if (executing) return
+            let lastAddTime = 0
             try {
               executing = true
               let v4a = Number.parseFloat(el.id4a.value)
@@ -1993,8 +1993,9 @@
                 if (stopAdd) return api.message.info('批量添加：任务终止', 1800) // -> finally
                 if (available <= 0) break
                 const item = check.parentElement
-                const success = await webpage.method.switchVideoWatchlaterStatus(item.getAttribute('aid'))
+                const success = await webpage.method.switchVideoWatchlaterStatus(item.dataset.aid)
                 if (!success) throw new Error('add request error')
+                lastAddTime = item.dataset.timestamp
                 check.checked = false
                 if (el.uncheckedDisplay._hide) {
                   item.style.display = 'none'
@@ -2002,12 +2003,18 @@
                 available -= 1
                 await new Promise(resolve => setTimeout(resolve, v4a * (Math.random() + 0.5)))
               }
-              setLastAddTime(Date.now())
+              lastAddTime = loadTime
               api.message.info('批量添加：已将所有选定稿件添加到稍后再看', 1800)
             } catch (e) {
               api.message.alert('执行失败：可能是因为该稿件不可用或稍后再看不支持该稿件类型（如互动视频），请尝试取消勾选当前列表中第一个选定的稿件后重新执行')
               api.logger.error(e)
             } finally {
+              if (lastAddTime !== loadTime) {
+                lastAddTime = Number.parseInt(lastAddTime * 1000)
+              }
+              if (lastAddTime > 0) {
+                setLastAddTime(lastAddTime)
+              }
               executing = false
               stopAdd = false
               el.id4b.disabled = false
@@ -2138,7 +2145,7 @@
             if (e.target.type === 'checkbox') {
               const box = e.target
               const status = box.checked
-              const bvid = box.getAttribute('bvid')
+              const { bvid } = box.dataset
               const note = status ? '添加到稍后再看' : '从稍后再看移除'
               const success = await webpage?.method.switchVideoWatchlaterStatus(bvid, status)
               if (success) {
@@ -2210,7 +2217,7 @@
                 result.push(`
                   <div>
                     <a href="${gm.url.page_videoNormalMode}/${rm[0]}" target="_blank">${rm[1]}</a>
-                    <input type="checkbox" bvid="${rm[0]}">
+                    <input type="checkbox" data-bvid="${rm[0]}">
                     ${rm[2] ? `<div class="gm-history-date">${new Date(rm[2]).toLocaleString()}</div>` : ''}
                   </div>
                 `)
@@ -2223,7 +2230,7 @@
                 result.push(`
                   <div>
                     <a href="${gm.url.page_videoNormalMode}/${rm[0]}" target="_blank">${rm[1]}</a>
-                    <input type="checkbox" bvid="${rm[0]}">
+                    <input type="checkbox" data-bvid="${rm[0]}">
                   </div>
                 `)
               }

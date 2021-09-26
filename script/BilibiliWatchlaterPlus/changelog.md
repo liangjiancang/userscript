@@ -5,15 +5,16 @@
 ## V4.23
 
 1. 代码：扩充代码规则至 `["eslint:all", "plugin:unicorn/all"]`，然后在此基础上做减法。
-2. 移除记录：修复「数据保存最小时间间隔」总是使用默认值的问题。
-3. 移除记录：优化稍后再看历史数据保存流程。
-4. 脚本：菜单项回调函数以参数而非 `this` 回传菜单对象。
-5. 外部：`UserscriptAPI` 更新至 V2.2。详见 [UserscriptAPI 更新日志](https://gitee.com/liangjiancang/userscript/blob/master/lib/UserscriptAPI/changelog.md)。
-6. 外部：`UserscriptAPIBase` 更新至 V1.1，`UserscriptAPIDom` 更新至 V1.2，`UserscriptAPIMessage` 更新至 V1.2。
-7. 外部：`UserscriptAPILogger` 更新至 V1.2，大幅增强日志系统。
-8. 外部：`UserscriptAPIWait` 更新至 V1.2，优化错误处理流程。
-9. 外部：`UserscriptAPIWeb` 更新至 V1.2，优化错误处理流程。
-10. 外部：`PushQueue` 独立成库（V1.0）。
+2. 批量添加：改进时间同步逻辑——上一次执行添加步骤成功时同步「成功执行的时间」，失败或中断时同步「最后一个添加成功的稿件的投稿时间」。
+3. 移除记录：修复「数据保存最小时间间隔」总是使用默认值的问题。
+4. 移除记录：优化稍后再看历史数据保存流程。
+5. 脚本：菜单项回调函数以参数而非 `this` 回传菜单对象。
+6. 外部：`UserscriptAPI` 更新至 V2.2。详见 [UserscriptAPI 更新日志](https://gitee.com/liangjiancang/userscript/blob/master/lib/UserscriptAPI/changelog.md)。
+7. 外部：`UserscriptAPIBase` 更新至 V1.1，`UserscriptAPIDom` 更新至 V1.2，`UserscriptAPIMessage` 更新至 V1.2。
+8. 外部：`UserscriptAPILogger` 更新至 V1.2，大幅增强日志系统。
+9. 外部：`UserscriptAPIWait` 更新至 V1.2，优化错误处理流程。
+10. 外部：`UserscriptAPIWeb` 更新至 V1.2，优化错误处理流程。
+11. 外部：`PushQueue` 独立成库（V1.0）。
 
 ## V4.22
 
