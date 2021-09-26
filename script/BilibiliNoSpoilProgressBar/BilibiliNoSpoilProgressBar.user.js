@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站防剧透进度条
-// @version         2.4.3.20210922
+// @version         2.5.0.20210926
 // @namespace       laster2800
 // @author          Laster2800
 // @description     看比赛、看番总是被进度条剧透？装上这个脚本再也不用担心这些问题了
@@ -13,12 +13,12 @@
 // @include         *://www.bilibili.com/medialist/play/watchlater
 // @include         *://www.bilibili.com/medialist/play/watchlater/*
 // @include         *://www.bilibili.com/bangumi/play/*
-// @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=972855
-// @require         https://greasyfork.org/scripts/431998-userscriptapidom/code/UserscriptAPIDom.js?version=972856
-// @require         https://greasyfork.org/scripts/432000-userscriptapimessage/code/UserscriptAPIMessage.js?version=971987
-// @require         https://greasyfork.org/scripts/432002-userscriptapiwait/code/UserscriptAPIWait.js?version=971988
-// @require         https://greasyfork.org/scripts/432003-userscriptapiweb/code/UserscriptAPIWeb.js?version=969305
-// @require         https://greasyfork.org/scripts/432807-inputnumber/code/InputNumber.js?version=972880
+// @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=973747
+// @require         https://greasyfork.org/scripts/431998-userscriptapidom/code/UserscriptAPIDom.js?version=973743
+// @require         https://greasyfork.org/scripts/432000-userscriptapimessage/code/UserscriptAPIMessage.js?version=973744
+// @require         https://greasyfork.org/scripts/432002-userscriptapiwait/code/UserscriptAPIWait.js?version=973745
+// @require         https://greasyfork.org/scripts/432003-userscriptapiweb/code/UserscriptAPIWeb.js?version=973746
+// @require         https://greasyfork.org/scripts/432807-inputnumber/code/InputNumber.js?version=973690
 // @grant           GM_registerMenuCommand
 // @grant           GM_xmlhttpRequest
 // @grant           GM_setValue
@@ -36,8 +36,8 @@
 (function() {
   'use strict'
 
-  if (GM_info.scriptHandler != 'Tampermonkey') {
-    const script = GM_info.script
+  if (GM_info.scriptHandler !== 'Tampermonkey') {
+    const { script } = GM_info
     script.author ??= 'Laster2800'
     script.homepage ??= 'https://greasyfork.org/zh-CN/scripts/411092'
     script.supportURL ??= 'https://greasyfork.org/zh-CN/scripts/411092/feedback'
@@ -128,12 +128,11 @@
    * @property {api_videoInfo} api_videoInfo 视频信息
    * @property {string} gm_readme 说明文档
    * @property {string} gm_changelog 更新日志
-   * @property {string} noop 无操作
    */
   /**
    * @typedef GMObject_regex
-   * @property {RegExp} page_videoNormalMode 匹配正常模式播放页
-   * @property {RegExp} page_videoWatchlaterMode 匹配稍后再看模式播放页
+   * @property {RegExp} page_videoNormalMode 匹配常规播放页
+   * @property {RegExp} page_videoWatchlaterMode 匹配稍后再看播放页
    * @property {RegExp} page_bangumi 匹配番剧播放页
    */
   /**
@@ -188,7 +187,6 @@
       api_videoInfo: (id, type) => `https://api.bilibili.com/x/web-interface/view?${type}=${id}`,
       gm_readme: 'https://gitee.com/liangjiancang/userscript/blob/master/script/BilibiliNoSpoilProgressBar/README.md',
       gm_changelog: 'https://gitee.com/liangjiancang/userscript/blob/master/script/BilibiliNoSpoilProgressBar/changelog.md',
-      noop: 'javascript:void(0)',
     },
     regex: {
       page_videoNormalMode: /\.com\/video([#/?]|$)/,
@@ -244,9 +242,9 @@
           if (!Object.values(Enums[gmKey]).includes(value)) {
             invalid = true
           }
-        } else if (typeof value == typeof defaultValue) { // 对象默认赋 null 无需额外处理
-          const type = gm.configMap[gmKey].type
-          if (type == 'int' || type == 'float') {
+        } else if (typeof value === typeof defaultValue) { // 对象默认赋 null 无需额外处理
+          const { type } = gm.configMap[gmKey]
+          if (type === 'int' || type === 'float') {
             invalid = gm.configMap[gmKey].min > value || gm.configMap[gmKey].max < value
           }
         } else {
@@ -276,16 +274,15 @@
      * 初始化
      */
     init() {
-      const _self = this
       try {
-        _self.initGMObject()
-        _self.updateVersion()
-        _self.readConfig()
+        this.initGMObject()
+        this.updateVersion()
+        this.readConfig()
       } catch (e) {
         api.logger.error(e)
         api.message.confirm('初始化错误！是否彻底清空内部数据以重置脚本？').then(result => {
           if (result) {
-            _self.method.reset()
+            this.method.reset()
             location.reload()
           }
         })
@@ -299,7 +296,7 @@
       gm.data = {
         ...gm.data,
         uploaderList: updateData => {
-          if (typeof updateData == 'string') {
+          if (typeof updateData === 'string') {
             // 注意多行模式「\n」位置为「line$\n^line」，且「\n」是空白符，被视为在下一行「行首」
             updateData = updateData.replace(/\s+$/gm, '') // 除空行及行尾空白符（有效的换行符被「^」隔断而得以保留），除下面的特殊情况
               .replace(/^\n/, '') // 移除为作为「\s*$」且有后续的首行的换行符，此时该换行符被视为在第二行「行首」
@@ -308,7 +305,7 @@
             return updateData
           } else {
             let uploaderList = GM_getValue('uploaderList')
-            if (typeof uploaderList != 'string') {
+            if (typeof uploaderList !== 'string') {
               uploaderList = ''
               GM_setValue('uploaderList', uploaderList)
             }
@@ -349,7 +346,6 @@
      * 版本更新处理
      */
     updateVersion() {
-      const _self = this
       if (gm.configVersion >= 20210627) { // 1.5.5.20210627
         if (gm.configVersion < gm.configUpdate) {
           // 必须按从旧到新的顺序写
@@ -367,7 +363,7 @@
           }
         }
       } else {
-        _self.method.reset()
+        this.method.reset()
         gm.configVersion = null
       }
     }
@@ -376,14 +372,12 @@
      * 用户配置读取
      */
     readConfig() {
-      const _self = this
       if (gm.configVersion > 0) {
-        // 对配置进行校验
         for (const name in gm.configMap) {
-          gm.config[name] = _self.method.getConfig(name, gm.configMap[name].default)
+          gm.config[name] = this.method.getConfig(name, gm.configMap[name].default)
         }
-        if (gm.configVersion != gm.configUpdate) {
-          _self.openUserSetting(2)
+        if (gm.configVersion !== gm.configUpdate) {
+          this.openUserSetting(2)
         }
       } else {
         // 用户强制初始化，或第一次安装脚本，或版本过旧
@@ -392,7 +386,7 @@
           gm.config[name] = gm.configMap[name].default
           GM_setValue(name, gm.configMap[name].default)
         }
-        _self.openUserSetting(1)
+        this.openUserSetting(1)
 
         setTimeout(async () => {
           const result = await api.message.confirm('脚本有一定使用门槛，如果不理解防剧透机制效果将会剧减，这种情况下用户甚至完全不明白脚本在「干什么」，建议在阅读说明后使用。是否立即打开防剧透机制说明？')
@@ -407,13 +401,12 @@
      * 添加脚本菜单
      */
     addScriptMenu() {
-      const _self = this
       // 用户配置设置
-      GM_registerMenuCommand('用户设置', () => _self.openUserSetting())
+      GM_registerMenuCommand('用户设置', () => this.openUserSetting())
       // 防剧透UP主名单
-      GM_registerMenuCommand('防剧透UP主名单', () => _self.openUploaderList())
+      GM_registerMenuCommand('防剧透UP主名单', () => this.openUploaderList())
       // 强制初始化
-      GM_registerMenuCommand('初始化脚本', () => _self.resetScript())
+      GM_registerMenuCommand('初始化脚本', () => this.resetScript())
     }
 
     /**
@@ -421,16 +414,15 @@
      * @param {number} [type=0] 常规 `0` | 初始化 `1` | 功能性更新 `2`
      */
     openUserSetting(type = 0) {
-      const _self = this
       if (gm.el.setting) {
-        _self.openMenuItem('setting')
+        this.openMenuItem('setting')
       } else {
         /** @type {{[n: string]: HTMLElement}} */
         const el = {}
         setTimeout(() => {
           initSetting()
           processSettingItem()
-          _self.openMenuItem('setting')
+          this.openMenuItem('setting')
         })
 
         /**
@@ -600,22 +592,23 @@
           el.changelog = gm.el.setting.querySelector('.gm-changelog')
           switch (type) {
             case 1:
-              el.settingPage.setAttribute('setting-type', 'init')
+              el.settingPage.dataset.type = 'init'
               el.maintitle.innerHTML += '<br><span style="font-size:0.8em">(初始化设置)</span>'
               break
             case 2:
-              el.settingPage.setAttribute('setting-type', 'updated')
+              el.settingPage.dataset.type = 'updated'
               el.maintitle.innerHTML += '<br><span style="font-size:0.8em">(功能性更新设置)</span>'
               {
-                (function(map) {
-                  for (const name in map) {
-                    if (map[name].configVersion > gm.configVersion) {
-                      const item = api.dom.findAncestor(el[name], el => el.classList.contains('gm-item'))
-                      item?.classList.add('gm-updated')
-                    }
+                const map = { ...gm.configMap, ...gm.infoMap }
+                for (const name in map) {
+                  if (map[name].configVersion > gm.configVersion) {
+                    const item = api.dom.findAncestor(el[name], el => el.classList.contains('gm-item'))
+                    item?.classList.add('gm-updated')
                   }
-                })({ ...gm.configMap, ...gm.infoMap })
+                }
               }
+              break
+            default:
               break
           }
           el.save = gm.el.setting.querySelector('.gm-save')
@@ -680,14 +673,14 @@
           gm.menu.setting.openHandler = onOpen
           gm.el.setting.fadeInDisplay = 'flex'
           el.save.addEventListener('click', onSave)
-          el.cancel.addEventListener('click', () => _self.closeMenuItem('setting'))
-          el.shadow.addEventListener('click', function() {
-            if (!this.hasAttribute('disabled')) {
-              _self.closeMenuItem('setting')
+          el.cancel.addEventListener('click', () => this.closeMenuItem('setting'))
+          el.shadow.addEventListener('click', () => {
+            if (!el.shadow.hasAttribute('disabled')) {
+              this.closeMenuItem('setting')
             }
           })
-          el.reset.addEventListener('click', () => _self.resetScript())
-          el.resetParam.addEventListener('click', function() {
+          el.reset.addEventListener('click', () => this.resetScript())
+          el.resetParam.addEventListener('click', () => {
             el.offsetTransformFactor.value = gm.configMap.offsetTransformFactor.default
             el.offsetLeft.value = gm.configMap.offsetLeft.default
             el.offsetRight.value = gm.configMap.offsetRight.default
@@ -695,7 +688,7 @@
             el.reservedRight.value = gm.configMap.reservedRight.default
             el.postponeOffset.checked = gm.configMap.postponeOffset.default
           })
-          el.uploaderList.addEventListener('click', () => _self.openUploaderList())
+          el.uploaderList.addEventListener('click', () => this.openUploaderList())
           if (type > 0) {
             el.cancel.disabled = true
             el.shadow.setAttribute('disabled', '')
@@ -718,14 +711,14 @@
             }
           }
 
-          _self.closeMenuItem('setting')
+          this.closeMenuItem('setting')
           if (type > 0) {
             // 更新配置版本
             gm.configVersion = gm.configUpdate
             GM_setValue('configVersion', gm.configVersion)
             // 关闭特殊状态
             setTimeout(() => {
-              el.settingPage.removeAttribute('setting-type')
+              delete el.settingPage.dataset.type
               el.maintitle.textContent = GM_info.script.name
               el.cancel.disabled = false
               el.shadow.removeAttribute('disabled')
@@ -743,7 +736,7 @@
          */
         const onOpen = () => {
           for (const name in gm.configMap) {
-            const attr = gm.configMap[name].attr
+            const { attr } = gm.configMap[name]
             el[name][attr] = gm.config[name]
           }
           for (const name in gm.configMap) {
@@ -760,16 +753,16 @@
          */
         const saveConfig = (name, attr) => {
           let val = el[name][attr]
-          const type = gm.configMap[name].type
-          if (type == 'int' || type == 'float') {
-            if (typeof val != 'number') {
-              val = type == 'int' ? Number.parseInt(val) : Number.parseFloat(val)
+          const { type } = gm.configMap[name]
+          if (type === 'int' || type === 'float') {
+            if (typeof val !== 'number') {
+              val = type === 'int' ? Number.parseInt(val) : Number.parseFloat(val)
             }
             if (Number.isNaN(val)) {
               val = gm.configMap[name].default
             }
           }
-          if (gm.config[name] != val) {
+          if (gm.config[name] !== val) {
             gm.config[name] = val
             GM_setValue(name, gm.config[name])
             return true
@@ -794,21 +787,17 @@
         buttons: ['保存', '取消'],
         width: '28em',
       })
-      const list = dialog.interactives[0]
-      const save = dialog.interactives[1]
-      const cancel = dialog.interactives[2]
+      const [list, save, cancel] = dialog.interactives
       const example = dialog.querySelector('#gm-uploader-list-example')
 
       list.style.height = '15em'
       list.value = gm.data.uploaderList()
-      save.addEventListener('click', function() {
+      save.addEventListener('click', () => {
         gm.data.uploaderList(list.value)
         api.message.info('防剧透UP主名单保存成功')
         dialog.close()
       })
-      cancel.addEventListener('click', function() {
-        dialog.close()
-      })
+      cancel.addEventListener('click', () => dialog.close())
       example.addEventListener('click', () => {
         list.value = '# 非 UID 起始的行不会影响名单读取\n204335848 # 皇室战争电竞频道\n50329118 # 哔哩哔哩英雄联盟赛事'
       })
@@ -834,32 +823,30 @@
       }
     }
 
-
     /**
      * 对「打开菜单项」这一操作进行处理，包括显示菜单项、设置当前菜单项的状态、关闭其他菜单项
      * @param {string} name 菜单项的名称
-     * @param {() => void} [callback] 打开菜单项后的回调函数
+     * @param {(menu: GMObject_menu_item) => void} [callback] 打开菜单项后的回调函数
      * @param {boolean} [keepOthers] 打开时保留其他菜单项
      * @returns {Promise<boolean>} 操作是否成功
      */
     async openMenuItem(name, callback, keepOthers) {
-      const _self = this
       let success = false
       const menu = gm.menu[name]
       if (menu.wait > 0) return false
       try {
         try {
-          if (menu.state == 1) {
+          if (menu.state === 1) {
             menu.wait = 1
             await api.wait.waitForConditionPassed({
-              condition: () => menu.state == 2,
+              condition: () => menu.state === 2,
               timeout: 1500 + (menu.el.fadeInTime ?? gm.const.fadeTime),
             })
             return true
-          } else if (menu.state == 3) {
+          } else if (menu.state === 3) {
             menu.wait = 1
             await api.wait.waitForConditionPassed({
-              condition: () => menu.state == 0,
+              condition: () => menu.state === 0,
               timeout: 1500 + (menu.el.fadeOutTime ?? gm.const.fadeTime),
             })
           }
@@ -869,26 +856,26 @@
         } finally {
           menu.wait = 0
         }
-        if (menu.state == 0 || menu.state == -1) {
+        if (menu.state === 0 || menu.state === -1) {
           for (const key in gm.menu) {
             /** @type {GMObject_menu_item} */
             const menu = gm.menu[key]
-            if (key == name) {
+            if (key === name) {
               menu.state = 1
               await menu.openHandler?.()
               await new Promise(resolve => {
                 api.dom.fade(true, menu.el, () => {
                   resolve()
                   menu.openedHandler?.()
-                  callback?.call(menu)
+                  callback?.(menu)
                 })
               })
               menu.state = 2
               success = true
               // 不要返回，需将其他菜单项关闭
             } else if (!keepOthers) {
-              if (menu.state == 2) {
-                _self.closeMenuItem(key)
+              if (menu.state === 2) {
+                this.closeMenuItem(key)
               }
             }
           }
@@ -906,7 +893,7 @@
     /**
      * 对「关闭菜单项」这一操作进行处理，包括隐藏菜单项、设置当前菜单项的状态
      * @param {string} name 菜单项的名称
-     * @param {() => void} [callback] 关闭菜单项后的回调函数
+     * @param {(menu: GMObject_menu_item) => void} [callback] 关闭菜单项后的回调函数
      * @returns {Promise<boolean>} 操作是否成功
      */
     async closeMenuItem(name, callback) {
@@ -915,16 +902,16 @@
       if (menu.wait > 0) return
       try {
         try {
-          if (menu.state == 1) {
+          if (menu.state === 1) {
             menu.wait = 2
             await api.wait.waitForConditionPassed({
-              condition: () => menu.state == 2,
+              condition: () => menu.state === 2,
               timeout: 1500 + (menu.el.fadeInTime ?? gm.const.fadeTime),
             })
-          } else if (menu.state == 3) {
+          } else if (menu.state === 3) {
             menu.wait = 2
             await api.wait.waitForConditionPassed({
-              condition: () => menu.state == 0,
+              condition: () => menu.state === 0,
               timeout: 1500 + (menu.el.fadeOutTime ?? gm.const.fadeTime),
             })
             return true
@@ -935,14 +922,14 @@
         } finally {
           menu.wait = 0
         }
-        if (menu.state == 2 || menu.state == -1) {
+        if (menu.state === 2 || menu.state === -1) {
           menu.state = 3
           await menu.closeHandler?.()
           await new Promise(resolve => {
             api.dom.fade(false, menu.el, () => {
               resolve()
               menu.closedHandler?.()
-              callback?.call(menu)
+              callback?.(menu)
             })
           })
           menu.state = 0
@@ -1014,14 +1001,15 @@
 
     /** 通用方法 */
     method = {
-      obj: this,
+      /** @type {Webpage} */
+      obj: null,
 
       /**
        * 判断播放器是否为 V3
        * @returns {boolean} 播放器是否为 V3
        */
       isV3Player() {
-        return !!document.querySelector('.bpx-player-video-area')
+        return Boolean(document.querySelector('.bpx-player-video-area'))
       },
 
       /**
@@ -1029,7 +1017,7 @@
        * @returns {boolean} 播放器是否启用分段进度条
        */
       isSegmentedProgress() {
-        return !!document.querySelector('.bilibili-player-video-btn-viewpointlist')
+        return Boolean(document.querySelector('.bilibili-player-video-btn-viewpointlist'))
       },
 
       /**
@@ -1093,35 +1081,37 @@
       },
     }
 
+    constructor() {
+      this.method.obj = this
+    }
+
     /**
      * 初始化页面内容
      */
     async initWebpage() {
-      const _self = this
       const selector = {
         control: '.bilibili-player-video-control, .squirtle-controller',
         controlPanel: '.bilibili-player-video-control-bottom, .squirtle-controller-wrap',
         progressRoot: '.bilibili-player-video-progress, .squirtle-progress-wrap',
       }
-      _self.control = await api.wait.$(selector.control)
-      _self.controlPanel = await api.wait.$(selector.controlPanel, _self.control)
-      _self.progress.root = await api.wait.$(selector.progressRoot, _self.control)
-      _self.initScriptControl()
+      this.control = await api.wait.$(selector.control)
+      this.controlPanel = await api.wait.$(selector.controlPanel, this.control)
+      this.progress.root = await api.wait.$(selector.progressRoot, this.control)
+      this.initScriptControl()
     }
 
     /**
      * 初始化进度条
      */
     async initProgress() {
-      const _self = this
-      const segmented = _self.method.isSegmentedProgress() // 目前还没出现 V3 的分段进度条
+      const segmented = this.method.isSegmentedProgress() // 目前还没出现 V3 的分段进度条
       const selector = {
         thumb: segmented
           ? '.bilibili-player-video-segmentation-progress-slider .bui-thumb'
-          : '.bui-thumb, .squirtle-progress-dot',
+          : '.bilibili-player-video-progress .bui-thumb, .squirtle-progress-dot',
         preview: '.bilibili-player-video-progress-detail, .squirtle-progress-detail',
       }
-      if (_self.method.isV3Player()) {
+      if (this.method.isV3Player()) {
         selector.dispEl = [
           '.squirtle-progress-totalline', // 进度条背景
           '.squirtle-progress-timeline', // 已播放条
@@ -1135,51 +1125,55 @@
           ]
         } else {
           selector.dispEl = [
-            '.bui-bar-wrap', // 进度条可视部分
+            '.bilibili-player-video-progress .bui-bar-wrap, .bilibili-player-video-progress .bui-schedule-wrap', // 进度条可视部分
             '.bilibili-player-video-progress-shadow', // 影子进度条
           ]
         }
       }
 
-      _self.progress.thumb = await api.wait.$(selector.thumb, _self.control)
-      _self.progress.preview = await api.wait.$(selector.preview, _self.control)
-      _self.progress.dispEl = []
+      this.progress.thumb = await api.wait.$(selector.thumb, this.control)
+      this.progress.preview = await api.wait.$(selector.preview, this.control)
+      this.progress.dispEl = []
       for (const elSelector of selector.dispEl) {
         if (elSelector.includes('<select-all>')) {
-          await api.wait.$(elSelector, _self.control)
-          _self.control.querySelectorAll(elSelector).forEach(el => _self.progress.dispEl.push(el))
+          await api.wait.$(elSelector, this.control)
+          for (const el of this.control.querySelectorAll(elSelector)) {
+            this.progress.dispEl.push(el)
+          }
         } else {
-          _self.progress.dispEl.push(await api.wait.$(elSelector, _self.control))
+          this.progress.dispEl.push(await api.wait.$(elSelector, this.control))
         }
       }
 
-      if (!_self.control.contains(_self.fakeProgress.root)) {
-        _self.fakeProgress.root = _self.progress.root.insertAdjacentElement('beforebegin', document.createElement('div'))
-        _self.fakeProgress.root.id = `${gm.id}-fake-progress`
-        if (_self.method.isV3Player()) {
-          _self.fakeProgress.root.className = 'gm-v3'
+      if (!this.control.contains(this.fakeProgress.root)) {
+        this.fakeProgress.root = this.progress.root.insertAdjacentElement('beforebegin', document.createElement('div'))
+        this.fakeProgress.root.id = `${gm.id}-fake-progress`
+        if (this.method.isV3Player()) {
+          this.fakeProgress.root.dataset.mode = 'v3'
+        } else if (this.control.querySelector('.bilibili-player-video-progress .bui-schedule-wrap')) {
+          this.fakeProgress.root.dataset.mode = 'v2-type2'
         }
-        _self.fakeProgress.root.innerHTML = `
+        this.fakeProgress.root.innerHTML = `
             <div class='fake-track'></div>
             <div class='fake-played'></div>
           `
-        _self.fakeProgress.track = _self.fakeProgress.root.children[0]
-        _self.fakeProgress.played = _self.fakeProgress.root.children[1]
+        this.fakeProgress.track = this.fakeProgress.root.children[0]
+        this.fakeProgress.played = this.fakeProgress.root.children[1]
       }
 
-      if (!_self.progress.thumb._replaceDetect) {
+      if (!this.progress.thumb._replaceDetect) {
         // 有些播放页面，自动跳转到上次播放进度时，thumb 被会被替换成新的
         // 似乎最多只会变一次，暂时就只处理一次
         api.wait.executeAfterElementLoaded({
           selector: selector.thumb,
-          base: _self.progress.root,
-          exclude: [_self.progress.thumb],
+          base: this.progress.root,
+          exclude: [this.progress.thumb],
           onTimeout: null,
           callback: thumb => {
-            _self.progress.thumb = thumb
+            this.progress.thumb = thumb
           },
         })
-        _self.progress.thumb._replaceDetect = true
+        this.progress.thumb._replaceDetect = true
       }
     }
 
@@ -1188,18 +1182,17 @@
      * @returns {Promise<boolean>} 当前页面时是否自动启用功能
      */
     async detectEnabled() {
-      const _self = this
       if (api.base.urlMatch([gm.regex.page_videoNormalMode, gm.regex.page_videoWatchlaterMode])) {
         try {
           const ulSet = gm.data.uploaderListSet()
           if (ulSet.has('*')) {
             return true
           }
-          const vid = await _self.method.getVid()
-          const videoInfo = await _self.method.getVideoInfo(vid.id, vid.type)
+          const vid = await this.method.getVid()
+          const videoInfo = await this.method.getVideoInfo(vid.id, vid.type)
           const uid = String(videoInfo.owner.mid)
           if (ulSet.has(uid)) {
-            _self.uploaderEnabled = true
+            this.uploaderEnabled = true
             return true
           }
         } catch (e) {
@@ -1215,17 +1208,16 @@
      * 隐藏必要元素（相关设置修改后需刷新页面）
      */
     hideElementStatic() {
-      const _self = this
       // 隐藏进度条预览
-      if (_self.enabled) {
-        _self.progress.preview.style.visibility = gm.config.disablePreview ? 'hidden' : 'visible'
+      if (this.enabled) {
+        this.progress.preview.style.visibility = gm.config.disablePreview ? 'hidden' : 'visible'
       } else {
-        _self.progress.preview.style.visibility = 'visible'
+        this.progress.preview.style.visibility = 'visible'
       }
 
       // 隐藏当前播放时间
       api.wait.$('.bilibili-player-video-time-now:not(.fake), .squirtle-video-time-now:not(.fake)').then(currentPoint => {
-        if (_self.enabled && gm.config.disableCurrentPoint) {
+        if (this.enabled && gm.config.disableCurrentPoint) {
           if (!currentPoint._fake) {
             currentPoint._fake = currentPoint.insertAdjacentElement('afterend', currentPoint.cloneNode(true))
             currentPoint._fake.textContent = '???'
@@ -1242,7 +1234,7 @@
       })
       // 隐藏视频预览上的当前播放时间（鼠标移至进度条上显示）
       api.wait.$('.bilibili-player-video-progress-detail-time, .squirtle-progress-time').then(currentPoint => {
-        if (_self.enabled && gm.config.disableCurrentPoint) {
+        if (this.enabled && gm.config.disableCurrentPoint) {
           currentPoint.style.visibility = 'hidden'
         } else {
           currentPoint.style.visibility = 'visible'
@@ -1251,7 +1243,7 @@
 
       // 隐藏视频时长
       api.wait.$('.bilibili-player-video-time-total:not(.fake), .squirtle-video-time-total:not(.fake)').then(duration => {
-        if (_self.enabled && gm.config.disableDuration) {
+        if (this.enabled && gm.config.disableDuration) {
           if (!duration._fake) {
             duration._fake = duration.insertAdjacentElement('afterend', duration.cloneNode(true))
             duration._fake.textContent = '???'
@@ -1268,7 +1260,7 @@
       })
       // 隐藏进度条自动跳转提示（可能存在）
       api.wait.$('.bilibili-player-video-toast-wrp, .bpx-player-toast-wrap', document, true).then(tip => {
-        if (_self.enabled) {
+        if (this.enabled) {
           tip.style.display = 'none'
         } else {
           tip.style.display = 'unset'
@@ -1276,49 +1268,51 @@
       }).catch(() => {})
 
       // 隐藏高能进度条的「热度」曲线（可能存在）
-      api.wait.$('#bilibili_pbp', _self.control, true).then(pbp => {
-        pbp.style.visibility = _self.enabled ? 'hidden' : ''
+      api.wait.$('#bilibili_pbp', this.control, true).then(pbp => {
+        pbp.style.visibility = this.enabled ? 'hidden' : ''
       }).catch(() => {})
 
       // 隐藏 pakku 扩展引入的弹幕密度显示（可能存在）
-      api.wait.$('.pakku-fluctlight', _self.control, true).then(pakku => {
-        pakku.style.visibility = _self.enabled ? 'hidden' : ''
+      api.wait.$('.pakku-fluctlight', this.control, true).then(pakku => {
+        pakku.style.visibility = this.enabled ? 'hidden' : ''
       }).catch(() => {})
 
       // 隐藏分P信息（番剧没有必要隐藏）
       if (gm.config.disablePartInformation && !api.base.urlMatch(gm.regex.page_bangumi)) {
         // 全屏播放时的分P选择（即使没有分P也存在）
-        if (_self.enabled) {
+        if (this.enabled) {
           api.wait.$('.bilibili-player-video-btn-menu').then(menu => {
-            menu.querySelectorAll('.bilibili-player-video-btn-menu-list').forEach((item, idx) => {
+            for (const [idx, item] of menu.querySelectorAll('.bilibili-player-video-btn-menu-list').entries()) {
               item.textContent = `P${idx + 1}`
-            })
+            }
           })
         }
         // 全屏播放时显示的分P标题
         api.wait.$('.bilibili-player-video-top-title').then(el => {
-          el.style.visibility = _self.enabled ? 'hidden' : 'visible'
+          el.style.visibility = this.enabled ? 'hidden' : 'visible'
         })
         // 播放页右侧分P选择（可能存在）
         if (api.base.urlMatch(gm.regex.page_videoNormalMode)) {
           api.wait.$('#multi_page', document, true).then(multiPage => {
-            multiPage.querySelectorAll('.clickitem .part, .clickitem .duration').forEach(el => {
-              el.style.visibility = _self.enabled ? 'hidden' : 'visible'
-            })
-            if (_self.enabled) {
-              multiPage.querySelectorAll('[title]').forEach(el => el.title = '') // 隐藏提示信息
+            for (const el of multiPage.querySelectorAll('.clickitem .part, .clickitem .duration')) {
+              el.style.visibility = this.enabled ? 'hidden' : 'visible'
+            }
+            if (this.enabled) {
+              for (const el of multiPage.querySelectorAll('[title]')) {
+                el.title = '' // 隐藏提示信息
+              }
             }
           }).catch(() => {})
         } else if (api.base.urlMatch(gm.regex.page_videoWatchlaterMode)) {
           api.wait.$('.player-auxiliary-playlist-list').then(list => {
             const exec = () => {
-              if (_self.enabled) {
-                list.querySelectorAll('.player-auxiliary-playlist-item-p-item').forEach(item => {
+              if (this.enabled) {
+                for (const item of list.querySelectorAll('.player-auxiliary-playlist-item-p-item')) {
                   const m = /^(p\d+)\D/i.exec(item.textContent)
                   if (m) {
                     item.textContent = m[1]
                   }
-                })
+                }
               }
             }
             exec()
@@ -1331,11 +1325,11 @@
       }
 
       // 隐藏分段信息
-      if (gm.config.disableSegmentInformation && _self.method.isSegmentedProgress()) {
-        if (!_self.method.isV3Player()) {
+      if (gm.config.disableSegmentInformation && this.method.isSegmentedProgress()) {
+        if (!this.method.isV3Player()) {
           // 分段按钮
-          api.wait.$('.bilibili-player-video-btn-viewpointlist', _self.control).then(btn => {
-            btn.style.visibility = _self.enabled ? 'hidden' : ''
+          api.wait.$('.bilibili-player-video-btn-viewpointlist', this.control).then(btn => {
+            btn.style.visibility = this.enabled ? 'hidden' : ''
           })
           // 分段列表
           api.wait.$('.player-auxiliary-collapse-viewpointlist').then(list => {
@@ -1343,7 +1337,7 @@
           })
           // 进度条预览上的分段标题（必定存在）
           api.wait.$('.bilibili-player-video-progress-detail-content').then(content => {
-            content.style.display = _self.enabled ? 'none' : ''
+            content.style.display = this.enabled ? 'none' : ''
           })
         }
       }
@@ -1359,14 +1353,14 @@
           condition: () => unsafeWindow.player.isInitialized(),
         })
       }
-      await _self.initProgress()
-      _self.hideElementStatic()
+      await this.initProgress()
+      this.hideElementStatic()
       processControlShow()
       core()
-      if (_self.enabled) {
-        _self.scriptControl.enabled.setAttribute('enabled', '')
+      if (this.enabled) {
+        this.scriptControl.enabled.setAttribute('enabled', '')
       } else {
-        _self.scriptControl.enabled.removeAttribute('enabled')
+        this.scriptControl.enabled.removeAttribute('enabled')
       }
 
       /**
@@ -1388,7 +1382,7 @@
           if (!_self.controlPanel._obControlShow) {
             // 切换视频控制显隐时，添加或删除 ob 以控制伪进度条
             panel._obControlShow = new MutationObserver(() => {
-              if (panel.style.display != 'none') {
+              if (panel.style.display !== 'none') {
                 if (_self.enabled) {
                   _self.fakeProgress.root.style.visibility = 'visible'
                   core(true)
@@ -1406,7 +1400,7 @@
             })
             panel._obControlShow.observe(panel, { attributeFilter: ['style'] })
           }
-          if (panel.style.display != 'none') {
+          if (panel.style.display !== 'none') {
             addObserver(panel)
           }
         } else {
@@ -1415,10 +1409,10 @@
           if (!playerArea._obControlShow) {
             // 切换视频控制显隐时，添加或删除 ob 以控制伪进度条
             playerArea._obControlShow = new MutationObserver(records => {
-              if (records[0].oldValue == playerArea.className) return // 不能去，有个东西一直在原地修改 class……
+              if (records[0].oldValue === playerArea.className) return // 不能去，有个东西一直在原地修改 class……
               const before = new RegExp(String.raw`(^|\s)${clzControlShow}(\s|$)`).test(records[0].oldValue)
               const current = playerArea.classList.contains(clzControlShow)
-              if (before != current) {
+              if (before !== current) {
                 if (current) {
                   if (_self.enabled) {
                     core(true)
@@ -1451,7 +1445,7 @@
         if (_self.enabled) {
           playRate = _self.method.getCurrentTime() / _self.method.getDuration()
           offset = getEndPoint() - 100
-          const reservedLeft = gm.config.reservedLeft
+          const { reservedLeft } = gm.config
           const reservedRight = 100 - gm.config.reservedRight
           if (playRate * 100 < reservedLeft) {
             offset = 0
@@ -1467,16 +1461,16 @@
           offset = 0
         }
 
-        if (typeof offset == 'number') {
+        if (typeof offset === 'number') {
           const handler = () => {
             _self.progress.root._offset = offset
             _self.progress.root.style.transform = `translateX(${offset}%)`
           }
 
           if (_self.enabled) {
-            _self.progress.dispEl.forEach(el => {
+            for (const el of _self.progress.dispEl) {
               el.style.visibility = 'hidden'
-            })
+            }
             if (_self.method.isV3Player()) {
               _self.progress.thumb.parentElement.style.backgroundColor = 'unset'
             }
@@ -1493,9 +1487,9 @@
 
             _self.progress._noSpoil = true
           } else {
-            _self.progress.dispEl.forEach(el => {
+            for (const el of _self.progress.dispEl) {
               el.style.visibility = ''
-            })
+            }
             if (_self.method.isV3Player()) {
               _self.progress.thumb.parentElement.style.backgroundColor = ''
             }
@@ -1552,12 +1546,11 @@
      * 初始化防剧透功能
      */
     async initNoSpoil() {
-      const _self = this
-      _self.uploaderEnabled = false
-      _self.enabled = await _self.detectEnabled()
-      await _self.initWebpage()
-      if (_self.enabled) {
-        await _self.processNoSpoil()
+      this.uploaderEnabled = false
+      this.enabled = await this.detectEnabled()
+      await this.initWebpage()
+      if (this.enabled) {
+        await this.processNoSpoil()
       }
     }
 
@@ -1565,32 +1558,31 @@
      * 切换分P、页面内切换视频、播放器刷新等各种情况下，重新初始化防剧透流程
      */
     initSwitch() {
-      const _self = this
-      if (_self.method.isV3Player()) {
+      if (this.method.isV3Player()) {
         // V3 会使用原来的大部分组件，刷一下 static 就行
         let currentPathname = location.pathname
-        window.addEventListener('urlchange', function() {
-          if (location.pathname != currentPathname) {
+        window.addEventListener('urlchange', () => {
+          if (location.pathname !== currentPathname) {
             currentPathname = location.pathname
             // 其实只有 pbp 需要重刷，但是 pbp 来得很晚且不好检测，而且影响也不是很大，稍微延迟一下得了
-            setTimeout(() => _self.hideElementStatic(), 5000)
+            setTimeout(() => this.hideElementStatic(), 5000)
           }
         })
       } else {
         // V2 在这些情况下会自动刷新
         if (unsafeWindow.player) {
           unsafeWindow.player.addEventListener('video_destroy', async () => {
-            await _self.initNoSpoil()
-            _self.initSwitch()
+            await this.initNoSpoil()
+            this.initSwitch()
           })
         } else {
           api.wait.executeAfterElementLoaded({
             selector: '.bilibili-player-video-control',
-            exclude: [_self.control],
+            exclude: [this.control],
             repeat: true,
             throttleWait: 2000,
             timeout: 0,
-            callback: () => _self.initNoSpoil(),
+            callback: () => this.initNoSpoil(),
           })
         }
       }
@@ -1600,50 +1592,49 @@
      * 初始化脚本控制条
      */
     initScriptControl() {
-      const _self = this
-      if (!_self.controlPanel.contains(_self.scriptControl)) {
-        _self.scriptControl = _self.controlPanel.appendChild(document.createElement('div'))
-        _self.control._scriptControl = _self.scriptControl
-        if (_self.method.isV3Player()) {
-          _self.scriptControl.className = `${gm.id}-scriptControl gm-v3`
-        } else {
-          _self.scriptControl.className = `${gm.id}-scriptControl`
+      if (!this.controlPanel.contains(this.scriptControl)) {
+        this.scriptControl = this.controlPanel.appendChild(document.createElement('div'))
+        this.control._scriptControl = this.scriptControl
+        this.scriptControl.className = `${gm.id}-scriptControl`
+        if (this.method.isV3Player()) {
+          this.scriptControl.dataset.mode = 'v3'
         }
-        _self.scriptControl.innerHTML = `
+        this.scriptControl.innerHTML = `
           <span id="${gm.id}-enabled">防剧透</span>
           <span id="${gm.id}-uploaderEnabled" style="display:none">将UP主加入防剧透名单</span>
           <span id="${gm.id}-bangumiEnabled" style="display:none">番剧自动启用防剧透</span>
           <span id="${gm.id}-setting" style="display:none">设置</span>
         `
-        _self.scriptControl.enabled = _self.scriptControl.querySelector(`#${gm.id}-enabled`)
-        _self.scriptControl.uploaderEnabled = _self.scriptControl.querySelector(`#${gm.id}-uploaderEnabled`)
-        _self.scriptControl.bangumiEnabled = _self.scriptControl.querySelector(`#${gm.id}-bangumiEnabled`)
-        _self.scriptControl.setting = _self.scriptControl.querySelector(`#${gm.id}-setting`)
+        this.scriptControl.enabled = this.scriptControl.querySelector(`#${gm.id}-enabled`)
+        this.scriptControl.uploaderEnabled = this.scriptControl.querySelector(`#${gm.id}-uploaderEnabled`)
+        this.scriptControl.bangumiEnabled = this.scriptControl.querySelector(`#${gm.id}-bangumiEnabled`)
+        this.scriptControl.setting = this.scriptControl.querySelector(`#${gm.id}-setting`)
 
-        _self.scriptControl.enabled.addEventListener('click', function() {
-          _self.enabled = !_self.enabled
-          _self.processNoSpoil()
+        this.scriptControl.enabled.addEventListener('click', () => {
+          this.enabled = !this.enabled
+          this.processNoSpoil()
         })
 
         if (!gm.config.simpleScriptControl) {
           if (api.base.urlMatch([gm.regex.page_videoNormalMode, gm.regex.page_videoWatchlaterMode])) {
             if (!gm.data.uploaderListSet().has('*')) { // * 匹配所有UP主不显示该按钮
-              _self.scriptControl.uploaderEnabled.style.display = 'unset'
-              _self.scriptControl.uploaderEnabled.addEventListener('click', async function() {
+              this.scriptControl.uploaderEnabled.style.display = 'unset'
+              this.scriptControl.uploaderEnabled.addEventListener('click', async () => {
+                const target = this.scriptControl.uploaderEnabled
                 const ulSet = gm.data.uploaderListSet() // 必须每次读取
-                const vid = await _self.method.getVid()
-                const videoInfo = await _self.method.getVideoInfo(vid.id, vid.type)
+                const vid = await this.method.getVid()
+                const videoInfo = await this.method.getVideoInfo(vid.id, vid.type)
                 const uid = String(videoInfo.owner.mid)
 
-                _self.uploaderEnabled = !_self.uploaderEnabled
-                if (_self.uploaderEnabled) {
-                  this.setAttribute('enabled', '')
+                this.uploaderEnabled = !this.uploaderEnabled
+                if (this.uploaderEnabled) {
+                  target.setAttribute('enabled', '')
                   if (!ulSet.has(uid)) {
                     const ul = gm.data.uploaderList()
                     gm.data.uploaderList(`${ul}\n${uid} # ${videoInfo.owner.name}`)
                   }
                 } else {
-                  this.removeAttribute('enabled')
+                  target.removeAttribute('enabled')
                   if (ulSet.has(uid)) {
                     let ul = gm.data.uploaderList()
                     ul = ul.replace(new RegExp(String.raw`^${uid}(?=\D|$).*\n?`, 'gm'), '')
@@ -1655,38 +1646,37 @@
           }
 
           if (api.base.urlMatch(gm.regex.page_bangumi)) {
-            _self.scriptControl.bangumiEnabled.style.display = 'unset'
-            _self.scriptControl.bangumiEnabled.addEventListener('click', function() {
+            this.scriptControl.bangumiEnabled.style.display = 'unset'
+            this.scriptControl.bangumiEnabled.addEventListener('click', () => {
+              const target = this.scriptControl.bangumiEnabled
               gm.config.bangumiEnabled = !gm.config.bangumiEnabled
               if (gm.config.bangumiEnabled) {
-                this.setAttribute('enabled', '')
+                target.setAttribute('enabled', '')
               } else {
-                this.removeAttribute('enabled')
+                target.removeAttribute('enabled')
               }
               GM_setValue('bangumiEnabled', gm.config.bangumiEnabled)
             })
           }
 
-          _self.scriptControl.setting.style.display = 'unset'
-          _self.scriptControl.setting.addEventListener('click', function() {
-            script.openUserSetting()
-          })
+          this.scriptControl.setting.style.display = 'unset'
+          this.scriptControl.setting.addEventListener('click', () => script.openUserSetting())
         }
 
-        api.dom.fade(true, _self.scriptControl)
+        api.dom.fade(true, this.scriptControl)
       }
 
-      if (!_self.progress.root._scriptControlListeners) {
+      if (!this.progress.root._scriptControlListeners) {
         // 临时将 z-index 调至底层，不要影响信息的显示
         // 不通过样式直接将 z-index 设为最底层，是因为会被 pbp 遮盖导致点击不了
         // 问题的关键在于，B站已经给进度条和 pbp 内所有元素都设定好 z-index，只能用这种奇技淫巧来解决
-        _self.progress.root.addEventListener('mouseenter', function() {
-          _self.scriptControl.style.zIndex = '-1'
+        this.progress.root.addEventListener('mouseenter', () => {
+          this.scriptControl.style.zIndex = '-1'
         })
-        _self.progress.root.addEventListener('mouseleave', function() {
-          _self.scriptControl.style.zIndex = ''
+        this.progress.root.addEventListener('mouseleave', () => {
+          this.scriptControl.style.zIndex = ''
         })
-        _self.progress.root._scriptControlListeners = true
+        this.progress.root._scriptControlListeners = true
       }
     }
 
@@ -1694,16 +1684,15 @@
      * 更新用于模拟已播放进度的伪已播放条
      */
     processFakePlayed() {
-      const _self = this
-      if (!_self.enabled) return
-      const playRate = _self.method.getCurrentTime() / _self.method.getDuration()
-      let offset = _self.progress.root._offset ?? 0
+      if (!this.enabled) return
+      const playRate = this.method.getCurrentTime() / this.method.getDuration()
+      let offset = this.progress.root._offset ?? 0
       // 若处于播放进度小于左侧预留区的特殊情况，不要进行处理
       // 注意，一旦离开这种特殊状态，就再也不可能进入该特殊状态了，因为这样反而会暴露信息
       if (offset !== 0) {
         let reservedZone = false
         const offsetPlayRate = offset + playRate * 100
-        const reservedLeft = gm.config.reservedLeft
+        const { reservedLeft } = gm.config
         const reservedRight = 100 - gm.config.reservedRight
         // 当实际播放进度小于左侧保留区时，不作特殊处理，因为这样反而会暴露信息
         if (offsetPlayRate < reservedLeft) {
@@ -1714,11 +1703,11 @@
           reservedZone = true
         }
         if (reservedZone) {
-          _self.progress.root._offset = offset
-          _self.progress.root.style.transform = `translateX(${offset}%)`
+          this.progress.root._offset = offset
+          this.progress.root.style.transform = `translateX(${offset}%)`
         }
       }
-      _self.fakeProgress.played.style.transform = `scaleX(${playRate + offset / 100})`
+      this.fakeProgress.played.style.transform = `scaleX(${playRate + offset / 100})`
     }
 
     /**
@@ -1766,12 +1755,8 @@
         .mode-webfullscreen .${gm.id}-scriptControl {
           margin-bottom: 1em;
         }
-        .${gm.id}-scriptControl.gm-v3 {
+        .${gm.id}-scriptControl[data-mode=v3] {
           left: 1em;
-          margin-bottom: 0.4em;
-        }
-        [data-screen=full] .${gm.id}-scriptControl.gm-v3,
-        [data-screen=web] .${gm.id}-scriptControl.gm-v3 {
           margin-bottom: 0.2em;
         }
 
@@ -1944,22 +1929,22 @@
           color: var(--${gm.id}-hint-text-color);
           cursor: pointer;
         }
-        #${gm.id} [setting-type=updated] .gm-changelog {
+        #${gm.id} [data-type=updated] .gm-changelog {
           font-weight: bold;
           color: var(--${gm.id}-update-hightlight-hover-color);
         }
-        #${gm.id} [setting-type=updated] .gm-changelog:hover {
+        #${gm.id} [data-type=updated] .gm-changelog:hover {
           color: var(--${gm.id}-update-hightlight-hover-color);
         }
-        #${gm.id} [setting-type=updated] .gm-updated,
-        #${gm.id} [setting-type=updated] .gm-updated input,
-        #${gm.id} [setting-type=updated] .gm-updated select {
+        #${gm.id} [data-type=updated] .gm-updated,
+        #${gm.id} [data-type=updated] .gm-updated input,
+        #${gm.id} [data-type=updated] .gm-updated select {
           background-color: var(--${gm.id}-update-hightlight-color);
         }
-        #${gm.id} [setting-type=updated] .gm-updated option {
+        #${gm.id} [data-type=updated] .gm-updated option {
           background-color: var(--${gm.id}-background-color);
         }
-        #${gm.id} [setting-type=updated] .gm-item.gm-updated:hover {
+        #${gm.id} [data-type=updated] .gm-item.gm-updated:hover {
           color: var(--${gm.id}-update-hightlight-hover-color);
           font-weight: bold;
         }
@@ -2029,15 +2014,26 @@
           position: absolute;
           top: 42%;
           left: 0;
-          height: 4px;
+          height: 2px;
           width: 100%;
           pointer-events: none;
           visibility: hidden;
         }
-        #${gm.id}-fake-progress.gm-v3 {
-          top: 10%;
+        #${gm.id}-fake-progress[data-mode="v2-type2"] {
+          top: 64%;
+        }
+        #${gm.id}-fake-progress[data-mode=v3] {
+          top: 13%;
           left: 1.5%;
+          height: 4px;
           width: 97%;
+        }
+        [data-screen=full] #${gm.id}-fake-progress[data-mode=v3],
+        [data-screen=web] #${gm.id}-fake-progress[data-mode=v3],
+        [data-screen=wide] #${gm.id}-fake-progress[data-mode=v3] {
+          top: 8%;
+          left: 0.8%;
+          width: 98.4%;
         }
         #${gm.id}-fake-progress > * {
           position: absolute;
@@ -2063,10 +2059,10 @@
     }
   }
 
-  document.readyState != 'complete' ? window.addEventListener('load', main) : main()
+  document.readyState !== 'complete' ? window.addEventListener('load', main) : main()
 
   function main() {
-    if (GM_info.scriptHandler != 'Tampermonkey') {
+    if (GM_info.scriptHandler !== 'Tampermonkey') {
       api.base.initUrlchangeEvent()
     }
     script = new Script()
