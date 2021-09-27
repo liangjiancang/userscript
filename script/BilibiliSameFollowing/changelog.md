@@ -5,14 +5,13 @@
 ## V1.7
 
 1. 外部：`UserscriptAPI` 更新至 V2.2。详见 [UserscriptAPI 更新日志](https://gitee.com/liangjiancang/userscript/blob/master/lib/UserscriptAPI/changelog.md)。
-2. 外部：`UserscriptAPIBase` 更新至 V1.1。
-3. 外部：`UserscriptAPILogger` 更新至 V1.2，大幅增强日志系统。
-4. 外部：`UserscriptAPIWait` 更新至 V1.2，优化错误处理流程。
-5. 外部：`UserscriptAPIWeb` 更新至 V1.2，优化错误处理流程。
-6. 外部：移除 `UserscriptAPIDom`、`UserscriptAPIMessage`。
-7. 脚本：优化版本更新机制。
-8. 脚本：优化卡片处理逻辑，避免页面重定向导致的初始化错误。
-9. 代码：扩充代码规则至 `["eslint:all", "plugin:unicorn/all"]`，然后在此基础上做减法。
+2. 外部：`UserscriptAPIBase` 更新至 V1.2，`UserscriptAPILogger` 更新至 V1.2。
+3. 外部：`UserscriptAPIWait` 更新至 V1.2，优化错误处理流程。
+4. 外部：`UserscriptAPIWeb` 更新至 V1.2，优化错误处理流程。
+5. 外部：移除 `UserscriptAPIDom`、`UserscriptAPIMessage`。
+6. 脚本：优化版本更新机制。
+7. 脚本：优化卡片处理逻辑，避免页面重定向导致的初始化错误。
+8. 代码：扩充代码规则至 `["eslint:all", "plugin:unicorn/all"]`，然后在此基础上做减法。
 
 ## V1.6
 
