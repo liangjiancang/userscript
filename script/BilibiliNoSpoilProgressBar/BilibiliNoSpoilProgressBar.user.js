@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站防剧透进度条
-// @version         2.5.1.20210926
+// @version         2.5.2.20210927
 // @namespace       laster2800
 // @author          Laster2800
 // @description     看比赛、看番总是被进度条剧透？装上这个脚本再也不用担心这些问题了
@@ -13,7 +13,7 @@
 // @include         *://www.bilibili.com/medialist/play/watchlater
 // @include         *://www.bilibili.com/medialist/play/watchlater/*
 // @include         *://www.bilibili.com/bangumi/play/*
-// @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=973747
+// @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=974252
 // @require         https://greasyfork.org/scripts/431998-userscriptapidom/code/UserscriptAPIDom.js?version=973743
 // @require         https://greasyfork.org/scripts/432000-userscriptapimessage/code/UserscriptAPIMessage.js?version=973744
 // @require         https://greasyfork.org/scripts/432002-userscriptapiwait/code/UserscriptAPIWait.js?version=973745
@@ -25,8 +25,6 @@
 // @grant           GM_getValue
 // @grant           GM_deleteValue
 // @grant           GM_listValues
-// @grant           unsafeWindow
-// @grant           window.onurlchange
 // @connect         api.bilibili.com
 // @compatible      edge 版本不小于 85
 // @compatible      chrome 版本不小于 85
@@ -1558,10 +1556,8 @@
     initSwitch() {
       if (this.method.isV3Player()) {
         // V3 会使用原来的大部分组件，刷一下 static 就行
-        let currentPathname = location.pathname
-        window.addEventListener('urlchange', () => {
-          if (location.pathname !== currentPathname) {
-            currentPathname = location.pathname
+        window.addEventListener('urlchange', e => {
+          if (location.pathname !== e.detail.prev.pathname) {
             // 其实只有 pbp 需要重刷，但是 pbp 来得很晚且不好检测，而且影响也不是很大，稍微延迟一下得了
             setTimeout(() => this.hideElementStatic(), 5000)
           }
@@ -2060,15 +2056,13 @@
   document.readyState !== 'complete' ? window.addEventListener('load', main) : main()
 
   function main() {
-    if (GM_info.scriptHandler !== 'Tampermonkey') {
-      api.base.initUrlchangeEvent()
-    }
     script = new Script()
     webpage = new Webpage()
 
     script.init()
     script.addScriptMenu()
     webpage.addStyle()
+    api.base.initUrlchangeEvent()
 
     webpage.initNoSpoil().then(() => {
       webpage.initSwitch()

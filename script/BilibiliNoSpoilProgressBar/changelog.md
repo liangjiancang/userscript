@@ -6,12 +6,13 @@
 
 1. 代码：扩充代码规则至 `["eslint:all", "plugin:unicorn/all"]`，然后在此基础上做减法。
 2. UI：依据播放器类型（V2 播放器两种形式 + V3 播放器），以及播放模式（常规、宽屏、网页全屏、全屏），对脚本控制和伪进度条的显示进行优化。
-3. 脚本：菜单项回调函数以参数而非 `this` 回传菜单对象。
-4. 外部：`UserscriptAPI` 更新至 V2.2。详见 [UserscriptAPI 更新日志](https://gitee.com/liangjiancang/userscript/blob/master/lib/UserscriptAPI/changelog.md)。
-5. 外部：`UserscriptAPIBase` 更新至 V1.1，`UserscriptAPIDom` 更新至 V1.2，`UserscriptAPIMessage` 更新至 V1.2。
-6. 外部：`UserscriptAPILogger` 更新至 V1.2，大幅增强日志系统。
-7. 外部：`UserscriptAPIWait` 更新至 V1.2，优化错误处理流程。
-8. 外部：`UserscriptAPIWeb` 更新至 V1.2，优化错误处理流程。
+3. 脚本：弃用 Tampermonkey 提供的 `window.onurlchange` 特性，改用 `UserscriptAPI` 提供的实现更为完善、功能更为强大的 `urlchange` 事件，来对 URL 变化进行跟踪。
+4. 脚本：菜单项回调函数以参数而非 `this` 回传菜单对象。
+5. 外部：`UserscriptAPI` 更新至 V2.2。详见 [UserscriptAPI 更新日志](https://gitee.com/liangjiancang/userscript/blob/master/lib/UserscriptAPI/changelog.md)。
+6. 外部：`UserscriptAPIDom` 更新至 V1.2，`UserscriptAPILogger` 更新至 V1.2，`UserscriptAPIMessage` 更新至 V1.2。
+7. 外部：`UserscriptAPIBase` 更新至 V1.2，提供更为完善的 `urlchange` 事件。
+8. 外部：`UserscriptAPIWait` 更新至 V1.2，优化错误处理流程。
+9. 外部：`UserscriptAPIWeb` 更新至 V1.2，优化错误处理流程。
 
 > 所以B站的播放器是什么鬼，为什么同一版本播放器会几种不同的显示情况，而且没有一个准则。前一秒还是类型 1，刷新一下就变成类型 2，换到另一个视频又是一种新的显示模式。
 
@@ -70,11 +71,10 @@
 
 1. 进度条：适配番剧播放页中播放器升级至 `v3.0` 的改版，重新支持番剧播放页。
 2. 进度条：明确不支持分段进度条——主要是因为按目前的实现方式要支持分段进度条非常困难。另一方面，既然UP主在某视频启用了分段进度条，本身就说明该视频向观众提供章节并不影响体验，换句话说这种视频理应是没有剧透问题的；否则，UP主才是「剧透」的元凶。以后可能会采用更合理的实现方式将脚本重写一遍，到时候也许会重新考虑支持分段进度条。
-3. 脚本：移除对 `unsafeWindow` 的依赖，不再需要对网页的完整访问权限。
-4. 脚本：大幅简化页面切换处理流程。
-5. 脚本：优化 URL 匹配。
-6. 用户设置：优化布局。
-7. UI：优化脚本控制的外观。
+3. 脚本：大幅简化页面切换处理流程。
+4. 脚本：优化 URL 匹配。
+5. 用户设置：优化布局。
+6. UI：优化脚本控制的外观。
 
 ## V1.8
 
