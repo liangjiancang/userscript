@@ -98,7 +98,6 @@
 2. `wait`：整体处理流程优化。
 3. `dom`：修改 `createLocationchangeEvent()` 为 `initUrlchangeEvent()`，用于兼容不支持 `urlchange` 事件的脚本管理器。
 4. 库：移除对 `GM_addStyle()` 的依赖。
-5. 库：移除对 `unsafeWindow` 的依赖。
 
 ## V0
 
