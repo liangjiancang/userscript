@@ -2,6 +2,12 @@
 
 本日志只记录用户友好的更新说明，影响不大的问题修复与修改不作记录，具体修改见 [提交记录](https://gitee.com/liangjiancang/userscript/commits/master/script/ExplicitMessage)。
 
+## V2.7
+
+1. 脚本：引入 `Symbol` 隐藏脚本接口。
+2. 注入版 `v1.4`：更新与主脚本的对接方式。
+3. 代码：`prefer-rest-params`。
+
 ## V2.6
 
 1. 代码：扩充代码规则至 `["eslint:all", "plugin:unicorn/all"]`，然后在此基础上做减法。

@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            [DEBUG] 信息显式化
-// @version         2.6.1.20210926
+// @version         2.7.0.20210927
 // @namespace       laster2800
 // @author          Laster2800
 // @description     用 alert() 提示符合匹配规则的日志或未捕获异常，帮助开发者在日常使用网页时发现潜藏问题
@@ -12,7 +12,6 @@
 // @grant           GM_unregisterMenuCommand
 // @grant           GM_setValue
 // @grant           GM_getValue
-// @grant           unsafeWindow
 // @run-at          document-start
 // @compatible      edge 版本不小于 85
 // @compatible      chrome 版本不小于 85
@@ -26,7 +25,7 @@
 
   const gm = {
     id: 'gm429521',
-    injectUpdate: 20210925,
+    injectUpdate: 20210927,
     config: {},
     fn: {
       /**
@@ -39,21 +38,21 @@
        */
       wrappedLog(console, log, type, source) {
         const { config, fn } = gm
-        return function() {
-          Reflect.apply(log, console, arguments)
+        return (...args) => {
+          Reflect.apply(log, console, args)
           try {
             if (config.enabled) {
-              const m = [arguments, type]
+              const m = [args, type]
               if (fn.match(m, config.include) && !fn.match(m, config.exclude)) {
                 let msg = null
-                if (arguments.length === 1) {
-                  if (arguments[0] && typeof arguments[0] === 'object') {
-                    msg = JSON.stringify(arguments[0], null, 2)
+                if (args.length === 1) {
+                  if (args[0] && typeof args[0] === 'object') {
+                    msg = JSON.stringify(args[0], null, 2)
                   } else {
-                    msg = arguments[0]
+                    msg = args[0]
                   }
                 } else {
-                  msg = JSON.stringify(arguments, null, 2)
+                  msg = JSON.stringify(args, null, 2)
                 }
                 fn.explicit(msg, type, source)
               }
@@ -135,7 +134,10 @@
       },
     },
   }
-  unsafeWindow.gm429521 = gm
+  unsafeWindow[Symbol.for('ExplicitMessage')] = gm
+  Reflect.defineProperty(unsafeWindow, 'gm429521', {
+    get: () => alert('您需要更新「[DEBUG] 信息显式化（注入版）！此处检测将会在未来的版本移除。」'),
+  })
 
   try {
     // 配置

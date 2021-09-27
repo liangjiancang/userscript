@@ -1,7 +1,7 @@
 /**
  * ExplicitMessage_Inject
  * @file [DEBUG] 信息显式化（注入版）
- * @version 1.3.1.20210925
+ * @version 1.4.0.20210927
  * @author Laster2800
  */
 
@@ -9,24 +9,24 @@
   'use strict'
 
   let updateAlerted = false
-  const injectVersion = 20210925
+  const injectVersion = 20210927
+  const m = unsafeWindow[Symbol.for('ExplicitMessage')]
   for (const n of ['log', 'debug', 'info', 'warn', 'error']) {
     const log = console[n]
-    console[n] = function() {
-      if (unsafeWindow.gm429521?.fn?.wrappedLog) {
-        const gm = unsafeWindow.gm429521
-        if (injectVersion !== gm.injectUpdate) {
+    console[n] = (...args) => {
+      if (m?.fn?.wrappedLog) {
+        if (injectVersion !== m.injectUpdate) {
           if (!updateAlerted) {
             updateAlerted = true
-            gm.fn.updateCheck?.(GM_info.script.name, injectVersion > gm.injectUpdate)
+            m.fn.updateCheck?.(GM_info.script.name, injectVersion > m.injectUpdate)
           }
           console[n] = log
         } else {
-          console[n] = gm.fn.wrappedLog(console, log, n.toUpperCase(), GM_info.script.name)
+          console[n] = m.fn.wrappedLog(console, log, n.toUpperCase(), GM_info.script.name)
         }
-        Reflect.apply(console[n], console, arguments)
+        Reflect.apply(console[n], console, args)
       } else {
-        Reflect.apply(log, console, arguments)
+        Reflect.apply(log, console, args)
       }
     }
   }
