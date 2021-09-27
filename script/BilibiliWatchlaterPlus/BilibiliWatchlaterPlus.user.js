@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.23.2.20210926
+// @version         4.23.3.20210927
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -17,7 +17,7 @@
 // @exclude         *://message.bilibili.com/*/*
 // @exclude         *://t.bilibili.com/h5/*
 // @exclude         *://www.bilibili.com/page-proxy/*
-// @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=973747
+// @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=974252
 // @require         https://greasyfork.org/scripts/431998-userscriptapidom/code/UserscriptAPIDom.js?version=973743
 // @require         https://greasyfork.org/scripts/432000-userscriptapimessage/code/UserscriptAPIMessage.js?version=973744
 // @require         https://greasyfork.org/scripts/432002-userscriptapiwait/code/UserscriptAPIWait.js?version=973745
@@ -30,8 +30,6 @@
 // @grant           GM_getValue
 // @grant           GM_deleteValue
 // @grant           GM_listValues
-// @grant           unsafeWindow
-// @grant           window.onurlchange
 // @connect         api.bilibili.com
 // @connect         api.vc.bilibili.com
 // @run-at          document-start
@@ -1994,7 +1992,7 @@
               const checks = el.items.querySelectorAll('label:not([class*=gm-filtered-]) input:checked')
               for (const check of checks) {
                 if (stopAdd) return api.message.info('批量添加：任务终止', 1800) // -> finally
-                if (available <= 0) break
+                if (available <= 0) return api.message.info('批量添加：稍后再看已满', 1800) // -> finally
                 const item = check.parentElement
                 const success = await webpage.method.switchVideoWatchlaterStatus(item.dataset.aid)
                 if (!success) throw new Error('add request error')
@@ -2012,11 +2010,13 @@
               api.message.alert('执行失败：可能是因为该稿件不可用或稍后再看不支持该稿件类型（如互动视频），请尝试取消勾选当前列表中第一个选定的稿件后重新执行')
               api.logger.error(e)
             } finally {
-              if (lastAddTime !== loadTime) {
-                lastAddTime = Number.parseInt(lastAddTime * 1000)
-              }
-              if (lastAddTime > 0) {
-                setLastAddTime(lastAddTime)
+              if (lastAddTime) {
+                if (lastAddTime !== loadTime) {
+                  lastAddTime = Number.parseInt(lastAddTime * 1000)
+                }
+                if (lastAddTime > 0) {
+                  setLastAddTime(lastAddTime)
+                }
               }
               executing = false
               stopAdd = false
@@ -2653,14 +2653,14 @@
        * 使用稍后再看列表数据更新稍后再看历史数据
        * @param {boolean} [reload] 是否重新加载稍后再看列表数据
        */
-      updateRemoveHistoryData(reload) {
+      async updateRemoveHistoryData(reload) {
         if (gm.config.removeHistory) {
           const removeHistorySaveTime = GM_getValue('removeHistorySaveTime') ?? 0
           const removeHistorySavePeriod = GM_getValue('removeHistorySavePeriod') ?? gm.configMap.removeHistorySavePeriod.default
           if (Date.now() - removeHistorySaveTime > removeHistorySavePeriod * 1000) {
             if (!gm.runtime.savingRemoveHistoryData) {
               gm.runtime.savingRemoveHistoryData = true
-              gm.data.watchlaterListData(reload).then(current => {
+              await gm.data.watchlaterListData(reload).then(current => {
                 if (current.length > 0) {
                   if (gm.config.removeHistoryFuzzyCompare > 0) {
                     const ref = GM_getValue('removeHistoryFuzzyCompareReference')
@@ -3970,10 +3970,8 @@
         initButtonStatus()
         original.parentElement.style.display = 'none'
 
-        bus.pathname = location.pathname
-        window.addEventListener('urlchange', async () => {
-          if (location.pathname === bus.pathname) return // 并非切换视频（如切分P）
-          bus.pathname = location.pathname
+        window.addEventListener('urlchange', async e => {
+          if (location.pathname === e.detail.prev.pathname) return // 并非切换视频（如切分P）
           bus.aid = this.method.getAid()
           let reloaded = false
           gm.searchParams = new URL(location.href).searchParams
@@ -5638,9 +5636,6 @@
   }
 
   (function() {
-    if (GM_info.scriptHandler !== 'Tampermonkey') {
-      api.base.initUrlchangeEvent()
-    }
     script = new Script()
     webpage = new Webpage()
     if (!webpage.method.isLogin()) {
@@ -5669,6 +5664,7 @@
       script.init()
       if (self === top) {
         script.addScriptMenu()
+        api.base.initUrlchangeEvent()
 
         if (gm.config.headerButton) {
           webpage.addHeaderButton()

@@ -8,13 +8,14 @@
 2. 批量添加：改进时间同步逻辑。若上一次执行加载步骤时，没有找到新稿件，同步「加载完成时间」。若上一次执行添加步骤成功，同步「加载完成时间」；否则（失败或中断），同步「最后一个添加成功的稿件的投稿时间」。
 3. 移除记录：修复「数据保存最小时间间隔」总是使用默认值的问题。
 4. 移除记录：优化稍后再看历史数据保存流程。
-5. 脚本：菜单项回调函数以参数而非 `this` 回传菜单对象。
-6. 外部：`UserscriptAPI` 更新至 V2.2。详见 [UserscriptAPI 更新日志](https://gitee.com/liangjiancang/userscript/blob/master/lib/UserscriptAPI/changelog.md)。
-7. 外部：`UserscriptAPIBase` 更新至 V1.1，`UserscriptAPIDom` 更新至 V1.2，`UserscriptAPIMessage` 更新至 V1.2。
-8. 外部：`UserscriptAPILogger` 更新至 V1.2，大幅增强日志系统。
-9. 外部：`UserscriptAPIWait` 更新至 V1.2，优化错误处理流程。
-10. 外部：`UserscriptAPIWeb` 更新至 V1.2，优化错误处理流程。
-11. 外部：`PushQueue` 独立成库（V1.0）。
+5. 脚本：弃用 Tampermonkey 提供的 `window.onurlchange` 特性，改用 `UserscriptAPI` 提供的实现更为完善、功能更为强大的 `urlchange` 事件，来对 URL 变化进行跟踪。
+6. 脚本：菜单项回调函数以参数而非 `this` 回传菜单对象。
+7. 外部：`UserscriptAPI` 更新至 V2.2。详见 [UserscriptAPI 更新日志](https://gitee.com/liangjiancang/userscript/blob/master/lib/UserscriptAPI/changelog.md)。
+8. 外部：`UserscriptAPIDom` 更新至 V1.2，`UserscriptAPILogger` 更新至 V1.2，`UserscriptAPIMessage` 更新至 V1.2。
+9. 外部：`UserscriptAPIBase` 更新至 V1.2，提供更为完善的 `urlchange` 事件。
+10. 外部：`UserscriptAPIWait` 更新至 V1.2，优化错误处理流程。
+11. 外部：`UserscriptAPIWeb` 更新至 V1.2，优化错误处理流程。
+12. 外部：`PushQueue` 独立成库（V1.0）。
 
 ## V4.22
 
