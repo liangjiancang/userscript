@@ -10,11 +10,11 @@
 
 1. 代码：扩充代码规则至 `["eslint:all", "plugin:unicorn/all"]`，然后在此基础上做减法。
 2. 快速复制：修复复制事件可以被重复添加的问题。
-3. 脚本：弃用 Tampermonkey 提供的 `window.onurlchange` 特性，改用 `UserscriptAPI` 提供的实现更为完善、功能更为强大的 `urlchange` 事件，来对 URL 变化进行追踪。
+3. 脚本：弃用 Tampermonkey 提供的 `window.onurlchange` 特性，改用 `UserscriptAPI` 提供的实现更为完善、功能更为强大的 `urlchange` 事件，来对 URL 变化进行跟踪。
 4. 脚本：优化错误信息提示。
 5. 外部：`UserscriptAPI` 更新至 V2.2。详见 [UserscriptAPI 更新日志](https://gitee.com/liangjiancang/userscript/blob/master/lib/UserscriptAPI/changelog.md)。
 6. 外部：`UserscriptAPIDom` 更新至 V1.2，`UserscriptAPILogger` 更新至 V1.2，`UserscriptAPIMessage` 更新至 V1.2。
-7. 外部：`UserscriptAPIBase` 更新至 V1.2，提供功能强大的 `urlchange` 事件。
+7. 外部：`UserscriptAPIBase` 更新至 V1.2，提供更为完善的 `urlchange` 事件。
 8. 外部：`UserscriptAPIWait` 更新至 V1.2，优化错误处理流程。
 9. 外部：`UserscriptAPIWeb` 更新至 V1.2，优化错误处理流程。
 
