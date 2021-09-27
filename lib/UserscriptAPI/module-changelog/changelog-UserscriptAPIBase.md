@@ -6,6 +6,8 @@
 2. `initUrlchangeEvent()`：提供符合标准且携带 URL 更改前后信息的 `UrlchangeEvent` 事件。
 3. 代码：`prefer-rest-params`。
 
+> [论如何实现一个完善的 urlchange 事件](./../../../doc/论如何实现一个完善的%20urlchange%20事件.md)
+
 ## V1.1
 
 1. 代码：扩充代码规则至 `["eslint:all", "plugin:unicorn/all"]`，然后在此基础上做减法。
