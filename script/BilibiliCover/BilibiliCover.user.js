@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站封面获取
-// @version         5.6.0.20210926
+// @version         5.6.1.20210927
 // @namespace       laster2800
 // @author          Laster2800
 // @description     获取B站各播放页及直播间封面，支持手动及实时预览等多种模式，支持点击下载、封面预览、快速复制，可高度自定义
@@ -16,7 +16,7 @@
 // @include         *://live.bilibili.com/*
 // @exclude         *://live.bilibili.com/
 // @exclude         *://live.bilibili.com/?*
-// @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=973747
+// @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=974252
 // @require         https://greasyfork.org/scripts/431998-userscriptapidom/code/UserscriptAPIDom.js?version=973743
 // @require         https://greasyfork.org/scripts/432000-userscriptapimessage/code/UserscriptAPIMessage.js?version=973744
 // @require         https://greasyfork.org/scripts/432002-userscriptapiwait/code/UserscriptAPIWait.js?version=973745
@@ -30,8 +30,6 @@
 // @grant           GM_listValues
 // @grant           GM_registerMenuCommand
 // @grant           GM_unregisterMenuCommand
-// @grant           window.onurlchange
-// @grant           unsafeWindow
 // @connect         api.bilibili.com
 // @compatible      edge 版本不小于 85
 // @compatible      chrome 版本不小于 85
@@ -1081,15 +1079,13 @@
   document.readyState !== 'complete' ? window.addEventListener('load', main) : main()
 
   function main() {
-    if (GM_info.scriptHandler !== 'Tampermonkey') {
-      api.base.initUrlchangeEvent()
-    }
     script = new Script()
     webpage = new Webpage()
 
     script.init()
     script.initScriptMenu()
     webpage.addStyle()
+    api.base.initUrlchangeEvent()
 
     if (api.base.urlMatch([gm.regex.page_videoNormalMode, gm.regex.page_videoWatchlaterMode])) {
       webpage.initVideo()
