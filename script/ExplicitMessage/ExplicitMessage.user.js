@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            [DEBUG] 信息显式化
-// @version         2.7.0.20210927
+// @version         2.7.1.20210927
 // @namespace       laster2800
 // @author          Laster2800
 // @description     用 alert() 提示符合匹配规则的日志或未捕获异常，帮助开发者在日常使用网页时发现潜藏问题
@@ -136,7 +136,7 @@
   }
   unsafeWindow[Symbol.for('ExplicitMessage')] = gm
   Reflect.defineProperty(unsafeWindow, 'gm429521', {
-    get: () => alert('您需要更新「[DEBUG] 信息显式化（注入版）！此处检测将会在未来的版本移除。」'),
+    get: () => alert('您需要更新「[DEBUG] 信息显式化（注入版）」！此处检测将会在未来的版本移除。'),
   })
 
   try {
