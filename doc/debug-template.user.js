@@ -20,5 +20,5 @@
  *
  * PS：建议调试脚本名称以 `[debug]` 开头，这样方便识别，且会在油猴菜单中显示在最前方（若按名字排序）。
  *
- * @see https://stackoverflow.com/a/55568502/7152981
+ * @see {@link https://stackoverflow.com/a/55568502 Develop Tampermonkey scripts in a real IDE with automatic deployment to OpenUserJs repo}
  */
