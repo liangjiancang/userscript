@@ -5,21 +5,27 @@
 ## V4.23
 
 1. 代码：扩充代码规则至 `["eslint:all", "plugin:unicorn/all"]`，然后在此基础上做减法。
-2. 批量添加：改进时间同步逻辑。若上一次执行加载步骤时，没有找到新稿件，同步「加载完成时间」。若上一次执行添加步骤成功，同步「加载完成时间」；否则（失败或中断），同步「最后一个添加成功的稿件的投稿时间」。
-3. 移除记录：修复「数据保存最小时间间隔」总是使用默认值的问题。
-4. 移除记录：优化稍后再看历史数据保存流程。
-5. 脚本：弃用 Tampermonkey 提供的 `window.onurlchange` 特性，改用 `UserscriptAPI` 提供的实现更为完善、功能更为强大的 `urlchange` 事件，来对 URL 变化进行跟踪。
-6. 脚本：菜单项回调函数以参数而非 `this` 回传菜单对象。
-7. 外部：`UserscriptAPI` 更新至 V2.2。详见 [UserscriptAPI 更新日志](https://gitee.com/liangjiancang/userscript/blob/master/lib/UserscriptAPI/changelog.md)。
-8. 外部：`UserscriptAPIDom` 更新至 V1.2，`UserscriptAPILogger` 更新至 V1.2，`UserscriptAPIMessage` 更新至 V1.2。
-9. 外部：`UserscriptAPIBase` 更新至 V1.2，提供更为完善的 `urlchange` 事件。
-10. 外部：`UserscriptAPIWait` 更新至 V1.2，优化错误处理流程。
-11. 外部：`UserscriptAPIWeb` 更新至 V1.2，优化错误处理流程。
-12. 外部：`PushQueue` 独立成库（V1.0）。
+2. 代码：偏好于 `Object.entries()`、`Object.keys()`、`Object.values()`。
+3. 批量添加：改进时间同步逻辑。若上一次执行加载步骤时，没有找到新稿件，同步「加载完成时间」。若上一次执行添加步骤成功，同步「加载完成时间」；否则（失败或中断），同步「最后一个添加成功的稿件的投稿时间」。
+4. 批量添加：修复在视频播放页中批量添加管理器显示错乱的问题。
+5. 约定：「menu / 菜单 / 菜单项」->「panel / 面板 / 面板项」。在一开始，这个命名是没有问题的，但现在所谓的「menu」干的事情早已远不是「菜单」二字所能描述的了。
+6. 脚本：弃用 Tampermonkey 提供的 `window.onurlchange` 特性，改用 `UserscriptAPI` 提供的实现更为完善、功能更为强大的 `urlchange` 事件，来对 URL 变化进行跟踪。
+7. 脚本：优化面板开启与关闭流程。
+8. 脚本：面板项回调函数以参数而非 `this` 回传菜单对象。
+9. 移除记录：修复「数据保存最小时间间隔」总是使用默认值的问题。
+10. 移除记录：优化稍后再看历史数据保存流程。
+11. 外部：`UserscriptAPI` 更新至 V2.2。详见 [UserscriptAPI 更新日志](https://gitee.com/liangjiancang/userscript/blob/master/lib/UserscriptAPI/changelog.md)。
+12. 外部：`UserscriptAPIDom` 更新至 V1.2，`UserscriptAPILogger` 更新至 V1.2，`UserscriptAPIMessage` 更新至 V1.2。
+13. 外部：`UserscriptAPIBase` 更新至 V1.2，提供更为完善的 `urlchange` 事件。
+14. 外部：`UserscriptAPIWait` 更新至 V1.2，优化错误处理流程。
+15. 外部：`UserscriptAPIWeb` 更新至 V1.2，优化错误处理流程。
+16. 外部：`PushQueue` 独立成库（V1.0）。
 
 > ESLint 确实是个好东西，把规则全开一下子就暴露出 N 个潜在的问题——但反过来也可以说完全没有用，因为这一大堆所有的潜在问题其实几乎没有造成实际上的问题。
 
 > `unsafeWindow` 不是个好东西，困惑了我一年多的时间，不过最终还是妥善解决了—— [unsafeWindow 二三事](./../../doc/unsafeWindow%20二三事.md)。
+
+> B站样式修改导致脚本显示不正常已经不是一次两次了，我甚至都想把主 UI 给搬到 Shadow DOM 里了。但有点杀鸡用牛刀的感觉，想想就好。
 
 ## V4.22
 
@@ -279,7 +285,7 @@
 
 ## V4.7
 
-1. 脚本：明确「稍后再看列表数据」和「稍后再看历史数据」这两个概念，在代码以及 UI 上进行统一。其中，前者指单次获取到稍后再看列表数据，大部分情况下特指当前时间点获取到的稍后再看列表数据；后者是前者的历史集合。
+1. 约定：明确「稍后再看列表数据」和「稍后再看历史数据」这两个概念，在代码以及 UI 上进行统一。其中，前者指单次获取到稍后再看列表数据，大部分情况下特指当前时间点获取到的稍后再看列表数据；后者是前者的历史集合。
 2. 脚本：明确「页面缓存」和「本地缓存」这两个概念，在代码以及 UI 上进行统一。其中，前者指通过 `GMObject` 保存在内存上的缓存数据，后者指通过 `GM_setValue()` 保存在脚本数据库上的缓存数据。
 3. 脚本：在本地对稍后再看列表数据进行缓存，本地缓存有效期内将会使用其来代替网络请求，除非是在有必要确保数据正确性的场合。
 4. 脚本：增加选项，以对稍后再看列表数据本地缓存有效期进行设置。
