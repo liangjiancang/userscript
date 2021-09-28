@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            [DEBUG] 信息显式化
-// @version         2.7.1.20210927
+// @version         2.7.2.20210928
 // @namespace       laster2800
 // @author          Laster2800
 // @description     用 alert() 提示符合匹配规则的日志或未捕获异常，帮助开发者在日常使用网页时发现潜藏问题
@@ -158,9 +158,10 @@
     unsafeWindow.addEventListener('error', /** @param {ErrorEvent} event */ event => { // 常规
       try {
         if (!gm.config.enabled) return
-        const m = [event.message, event.filename, 'Uncaught Exception (Normal)']
+        const message = event.error?.stack ?? event.message
+        const m = [message, event.filename, 'Uncaught Exception (Normal)']
         if (gm.fn.match(m, gm.config.include) && !gm.fn.match(m, gm.config.exclude)) {
-          gm.fn.explicit(event.message, 'Uncaught Exception (Normal)')
+          gm.fn.explicit(message, 'Uncaught Exception (Normal)')
         }
       } catch (e) {
         innerError(e)
@@ -169,9 +170,10 @@
     unsafeWindow.addEventListener('unhandledrejection', /** @param {PromiseRejectionEvent} event */ event => { // Promise
       try {
         if (!gm.config.enabled) return
-        const m = [event.reason, 'Uncaught Exception (in Promise)']
+        const message = event.reason.stack ?? event.reason
+        const m = [message, 'Uncaught Exception (in Promise)']
         if (gm.fn.match(m, gm.config.include) && !gm.fn.match(m, gm.config.exclude)) {
-          gm.fn.explicit(event.reason, 'Uncaught Exception (in Promise)')
+          gm.fn.explicit(message, 'Uncaught Exception (in Promise)')
         }
       } catch (e) {
         innerError(e)
@@ -181,20 +183,20 @@
     // 菜单
     if (self === top) { // frame 中不要执行
       const initScriptMenu = () => {
-        const menuId = {}
-        menuId.enabled = GM_registerMenuCommand(`当前${gm.config.enabled ? '开启' : '关闭'}`, () => {
+        const menuMap = {}
+        menuMap.enabled = GM_registerMenuCommand(`当前${gm.config.enabled ? '开启' : '关闭'}`, () => {
           try {
             gm.config.enabled = confirm(`${GM_info.script.name}\n\n「确定」以开启功能，「取消」以关闭功能。`)
             GM_setValue('enabled', gm.config.enabled)
-            for (const id in menuId) {
-              GM_unregisterMenuCommand(menuId[id])
+            for (const menuId of Object.values(menuMap)) {
+              GM_unregisterMenuCommand(menuId)
             }
             initScriptMenu()
           } catch (e) {
             innerError(e)
           }
         })
-        menuId.filter = GM_registerMenuCommand('设置过滤器', () => {
+        menuMap.filter = GM_registerMenuCommand('设置过滤器', () => {
           try {
             const sInclude = prompt(`${GM_info.script.name}\n\n设置匹配过滤器：`, gm.config.include?.source ?? df.include)
             if (typeof sInclude === 'string') {
@@ -210,8 +212,8 @@
             innerError(e)
           }
         })
-        menuId.help = GM_registerMenuCommand('使用说明', () => window.open('https://gitee.com/liangjiancang/userscript/tree/master/script/ExplicitMessage#使用说明'))
-        menuId.inject = GM_registerMenuCommand('获取注入版', () => window.open('https://greasyfork.org/zh-CN/scripts/429525'))
+        menuMap.help = GM_registerMenuCommand('使用说明', () => window.open('https://gitee.com/liangjiancang/userscript/tree/master/script/ExplicitMessage#使用说明'))
+        menuMap.inject = GM_registerMenuCommand('获取注入版', () => window.open('https://greasyfork.org/zh-CN/scripts/429525'))
       }
       initScriptMenu()
     }
