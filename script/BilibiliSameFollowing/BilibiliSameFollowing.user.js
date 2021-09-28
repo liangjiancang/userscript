@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站共同关注快速查看
-// @version         1.7.8.20210927
+// @version         1.8.0.20210928
 // @namespace       laster2800
 // @author          Laster2800
 // @description     快速查看与特定用户的共同关注（视频播放页、动态页、用户空间、直播间）
@@ -39,32 +39,27 @@
   const gm = {
     id: 'gm428453',
     configVersion: GM_getValue('configVersion'),
-    configUpdate: 20210829,
+    configUpdate: 20210928,
     config: {
       dispMessage: true,
       dispInReverse: false,
       dispInText: false,
       dispRelation: true,
       userSpace: true,
-      live: true,
-      commonCard: true,
       rareCard: false,
     },
     configMap: {
-      dispMessage: { name: '无共同关注或查询失败时提示信息', needNotReload: true },
-      dispInReverse: { name: '以关注时间降序显示', needNotReload: true },
-      dispInText: { name: '以纯文本形式显示', needNotReload: true },
-      dispRelation: { name: '显示目标用户与自己的关系', needNotReload: true },
-      userSpace: { name: '在用户空间中快速查看' },
-      live: { name: '在直播间中快速查看' },
-      commonCard: { name: '在常规用户卡片中快速查看' },
-      rareCard: { name: '在罕见用户卡片中快速查看' },
+      dispMessage: { default: true, name: '无共同关注或查询失败时提示信息', needNotReload: true },
+      dispInReverse: { default: false, name: '以关注时间降序显示', needNotReload: true },
+      dispInText: { default: false, name: '以纯文本形式显示', needNotReload: true },
+      dispRelation: { default: true, name: '显示目标用户与自己的关系', needNotReload: true },
+      userSpace: { default: true, name: '在用户空间启用' },
+      rareCard: { default: false, name: '在非常规用户卡片启用' },
     },
     url: {
       api_sameFollowings: uid => `https://api.bilibili.com/x/relation/same/followings?vmid=${uid}`,
       api_relation: uid => `http://api.bilibili.com/x/space/acc/relation?mid=${uid}`,
       page_space: uid => `https://space.bilibili.com/${uid}`,
-      gm_help: 'https://gitee.com/liangjiancang/userscript/blob/master/script/BilibiliSameFollowing/README.md#配置说明',
       gm_changelog: 'https://gitee.com/liangjiancang/userscript/blob/master/script/BilibiliSameFollowing/changelog.md',
     },
     regex: {
@@ -113,9 +108,10 @@
     init() {
       try {
         this.updateVersion()
-        for (const name in gm.config) {
-          const eb = GM_getValue(name)
-          gm.config[name] = typeof eb === 'boolean' ? eb : gm.config[name]
+        for (const [name, item] of Object.entries(gm.configMap)) {
+          const v = GM_getValue(name)
+          const dv = item.default
+          gm.config[name] = typeof v === typeof dv ? v : dv
         }
       } catch (e) {
         api.logger.error(e)
@@ -135,13 +131,12 @@
       const _self = this
       const cfgName = id => `[ ${config[id] ? '✓' : '✗'} ] ${configMap[id].name}`
       const { config, configMap } = gm
-      const menuId = {}
-      for (const id in config) {
-        menuId[id] = createMenuItem(id)
+      const menuMap = {}
+      for (const id of Object.keys(config)) {
+        menuMap[id] = createMenuItem(id)
       }
       // 其他菜单
-      menuId.reset = GM_registerMenuCommand('初始化脚本', () => this.resetScript())
-      menuId.help = GM_registerMenuCommand('配置说明', () => window.open(gm.url.gm_help))
+      menuMap.reset = GM_registerMenuCommand('初始化脚本', () => this.resetScript())
 
       function createMenuItem(id) {
         return GM_registerMenuCommand(cfgName(id), () => {
@@ -158,8 +153,8 @@
       }
 
       function clearMenu() {
-        for (const id in menuId) {
-          GM_unregisterMenuCommand(menuId[id])
+        for (const menuId of Object.values(menuMap)) {
+          GM_unregisterMenuCommand(menuId)
         }
       }
     }
@@ -172,6 +167,12 @@
         if (gm.configVersion < gm.configUpdate) {
           // 必须按从旧到新的顺序写
           // 内部不能使用 gm.configUpdate，必须手写更新后的配置版本号！
+
+          // 1.8.0.20210928
+          if (gm.configVersion < 20210928) {
+            GM_deleteValue('live')
+            GM_deleteValue('commonCard')
+          }
 
           // 功能性更新后更新此处配置版本
           if (gm.configVersion < 0) {
@@ -248,6 +249,7 @@
      * @param {string} options.info 信息元素选择器
      * @param {boolean} [options.lazy=true] 卡片内容是否为懒加载
      * @param {boolean} [options.ancestor] 将 `container` 视为祖先元素而非父元素
+     * @param {string} [options.before] 将信息显示元素插入到信息元素内部哪个元素之前，以 CSS 选择器定义，缺省时插入到信息元素最后
      */
     async cardLogic(options) {
       options = { lazy: true, ancestor: false, ...options }
@@ -269,10 +271,12 @@
           }
           if (userLink) {
             const info = await api.wait.$(options.info, card)
+            const before = options.before && await api.wait.$(options.before, info)
             await this.generalLogic({
               uid: this.method.getUid(userLink.href),
               target: info,
               className: `${gm.id} card-same-followings`,
+              before,
             })
           }
         },
@@ -283,17 +287,24 @@
      * 通用处理逻辑
      * @param {Object} options 选项
      * @param {string | number} options.uid 用户 ID
-     * @param {HTMLElement} options.target 指定信息显示元素的父元素
+     * @param {HTMLElement} options.target 指定目标元素
      * @param {string} [options.className=''] 显示元素的类名；若 `target` 的子孙元素中有对应元素则直接使用，否则创建之
+     * @param {HTMLElement} [options.before] 将信息显示元素插入哪个元素之前，该元素须为目标元素的子元素；缺省时插入到目标元素最后
      */
     async generalLogic(options) {
-      let dispEl = options.target.sameFollowings ?? (options.className ? options.target.querySelector(options.className.replace(/(^|\s+)(?=\w)/g, '.')) : null)
+      const { target, before } = options
+      let dispEl = target.sameFollowings ?? (options.className ? target.querySelector(options.className.replace(/(^|\s+)(?=\w)/g, '.')) : null)
       if (dispEl) {
         dispEl.textContent = ''
       } else {
-        dispEl = options.target.appendChild(document.createElement('div'))
+        dispEl = document.createElement('div')
+        if (before && target.contains(before)) {
+          before.before(dispEl)
+        } else {
+          target.append(dispEl)
+        }
         dispEl.className = options.className || ''
-        options.target.sameFollowings = dispEl
+        target.sameFollowings = dispEl
       }
       dispEl.style.display = 'none'
 
@@ -506,45 +517,40 @@
     script.initScriptMenu()
     webpage.addStyle()
 
-    if (gm.config.commonCard) {
-      // 遍布全站的常规用户卡片，如视频评论区、动态评论区、用户空间评论区……
+    // 遍布全站的常规用户卡片，如视频评论区、动态评论区、用户空间评论区……
+    webpage.cardLogic({
+      card: '.user-card',
+      user: '.face',
+      info: '.info',
+      lazy: false,
+    })
+
+    if (api.base.urlMatch(gm.regex.page_videoNormalMode)) {
+      // 常规播放页中的UP主头像
       webpage.cardLogic({
-        card: '.user-card',
+        container: '#app .v-wrap',
+        card: '.user-card-m',
         user: '.face',
         info: '.info',
-        lazy: false,
+        before: '.btn-box',
       })
-    }
-    if (api.base.urlMatch(gm.regex.page_videoNormalMode)) {
-      if (gm.config.commonCard) {
-        // 常规播放页中的UP主头像
-        webpage.cardLogic({
-          container: '#app .v-wrap',
-          card: '.user-card-m',
-          user: '.face',
-          info: '.info',
-        })
-      }
     } else if (api.base.urlMatch(gm.regex.page_videoWatchlaterMode)) {
-      if (gm.config.commonCard) {
-        // 稍后再看播放页中的UP主头像
-        webpage.cardLogic({
-          container: '#app #app', // 这是什么阴间玩意？
-          card: '.user-card-m',
-          user: '.face',
-          info: '.info',
-        })
-      }
+      // 稍后再看播放页中的UP主头像
+      webpage.cardLogic({
+        container: '#app #app', // 这是什么阴间玩意？
+        card: '.user-card-m',
+        user: '.face',
+        info: '.info',
+        before: '.btn-box',
+      })
     } else if (api.base.urlMatch(gm.regex.page_dynamic)) {
-      if (gm.config.commonCard) {
-        // 动态页中，被转发动态的所有者的用户卡片
-        webpage.cardLogic({
-          card: '.userinfo-wrapper',
-          user: '.face',
-          info: '.info',
-          ancestor: true,
-        })
-      }
+      // 动态页中，被转发动态的所有者的用户卡片
+      webpage.cardLogic({
+        card: '.userinfo-wrapper',
+        user: '.face',
+        info: '.info',
+        ancestor: true,
+      })
     } else if (api.base.urlMatch(gm.regex.page_space)) {
       if (gm.config.userSpace) {
         // 用户空间顶部显示
@@ -570,10 +576,8 @@
         })
       }
     } else if (api.base.urlMatch(gm.regex.page_live)) {
-      if (gm.config.live) {
-        // 直播间点击弹幕弹出的信息卡片
-        webpage.initLive()
-      }
+      // 直播间点击弹幕弹出的信息卡片
+      webpage.initLive()
     }
   }
 })()

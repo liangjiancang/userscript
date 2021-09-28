@@ -6,17 +6,6 @@
 
 快速查看与特定用户的共同关注（视频播放页、动态页、用户空间、直播间），详情查看下方截图。求好评，求收藏💔。点击查看 [更新日志](https://gitee.com/liangjiancang/userscript/blob/master/script/BilibiliSameFollowing/changelog.md)。
 
-## 配置说明
-
-* 常规用户卡片
-
-  * 遍布全站的「评论区用户卡片」，包括视频评论区、动态评论区、用户空间动态评论区等。
-  * 较为常见的用户卡片，如视频播放页右上方的UP主头像用户卡片，动态页中被转发动态的所有者的用户卡片。
-
-* 罕见用户卡片
-
-  一般情况下不太会触发的用户卡片，如用户空间中充电用户的用户卡片，用户空间动态中被转发动态的所有者的用户卡片，用户空间「关注」「粉丝」中的用户卡片。
-
 ## 补充说明
 
 * 脚本基于 Microsoft Edge 浏览器和 Tampermonkey 脚本管理器开发，不支持 Greasemonkey。要求 Edge / Chrome / Chromium 内核版本不小于 85，Firefox 版本不小于 90。
