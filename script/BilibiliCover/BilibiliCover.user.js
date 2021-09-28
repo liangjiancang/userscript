@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站封面获取
-// @version         5.6.1.20210927
+// @version         5.6.2.20210928
 // @namespace       laster2800
 // @author          Laster2800
 // @description     获取B站各播放页及直播间封面，支持手动及实时预览等多种模式，支持点击下载、封面预览、快速复制，可高度自定义
@@ -143,9 +143,9 @@
     init() {
       try {
         this.updateVersion()
-        for (const name in gm.configMap) {
+        for (const [name, item] of Object.entries(gm.configMap)) {
           const v = GM_getValue(name)
-          const dv = gm.configMap[name].default
+          const dv = item.default
           gm.config[name] = typeof v === typeof dv ? v : dv
         }
         this.initRuntime()
@@ -188,15 +188,15 @@
       const _self = this
       const cfgName = id => `[ ${config[id] ? '✓' : '✗'} ] ${configMap[id].name}`
       const { config, configMap, runtime } = gm
-      const menuId = {}
+      const menuMap = {}
 
-      menuId.mode = GM_registerMenuCommand(`${configMap.mode.name} [ ${runtime.modeName} ]`, () => this.configureMode())
-      for (const id in config) {
-        if (configMap[id].checkItem) {
-          menuId[id] = createMenuItem(id)
+      menuMap.mode = GM_registerMenuCommand(`${configMap.mode.name} [ ${runtime.modeName} ]`, () => this.configureMode())
+      for (const [id, item] of Object.entries(configMap)) {
+        if (item.checkItem) {
+          menuMap[id] = createMenuItem(id)
         }
       }
-      menuId.reset = GM_registerMenuCommand('初始化脚本', () => this.resetScript())
+      menuMap.reset = GM_registerMenuCommand('初始化脚本', () => this.resetScript())
 
       function createMenuItem(id) {
         return GM_registerMenuCommand(cfgName(id), () => {
@@ -213,8 +213,8 @@
       }
 
       function clearMenu() {
-        for (const id in menuId) {
-          GM_unregisterMenuCommand(menuId[id])
+        for (const menuId of Object.values(menuMap)) {
+          GM_unregisterMenuCommand(menuId)
         }
       }
     }
