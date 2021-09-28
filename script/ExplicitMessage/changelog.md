@@ -7,7 +7,7 @@
 1. 未捕获异常：在能访问到异常堆栈时，将异常堆栈作为匹配目标及显式信息。
 2. 脚本：引入 `Symbol` 隐藏脚本接口。
 3. 注入版 `v1.4`：更新与主脚本的对接方式。
-4. 代码：`prefer-rest-params`，`guard-for-in`。
+4. 代码：`prefer-rest-params`。
 5. 代码：偏好于 `Object.entries()`、`Object.keys()`、`Object.values()`。
 
 ## V2.6
