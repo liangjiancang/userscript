@@ -5,14 +5,17 @@
 ## V2.5
 
 1. 代码：扩充代码规则至 `["eslint:all", "plugin:unicorn/all"]`，然后在此基础上做减法。
-2. UI：依据播放器类型（V2 播放器两种形式 + V3 播放器），以及播放模式（常规、宽屏、网页全屏、全屏），对脚本控制和伪进度条的显示进行优化。
-3. 脚本：弃用 Tampermonkey 提供的 `window.onurlchange` 特性，改用 `UserscriptAPI` 提供的实现更为完善、功能更为强大的 `urlchange` 事件，来对 URL 变化进行跟踪。
-4. 脚本：菜单项回调函数以参数而非 `this` 回传菜单对象。
-5. 外部：`UserscriptAPI` 更新至 V2.2。详见 [UserscriptAPI 更新日志](https://gitee.com/liangjiancang/userscript/blob/master/lib/UserscriptAPI/changelog.md)。
-6. 外部：`UserscriptAPIDom` 更新至 V1.2，`UserscriptAPILogger` 更新至 V1.2，`UserscriptAPIMessage` 更新至 V1.2。
-7. 外部：`UserscriptAPIBase` 更新至 V1.2，提供更为完善的 `urlchange` 事件。
-8. 外部：`UserscriptAPIWait` 更新至 V1.2，优化错误处理流程。
-9. 外部：`UserscriptAPIWeb` 更新至 V1.2，优化错误处理流程。
+2. 代码：偏好于 `Object.entries()`、`Object.keys()`、`Object.values()`。
+3. UI：依据播放器类型（V2 播放器两种形式 + V3 播放器），以及播放模式（常规、宽屏、网页全屏、全屏），对脚本控制和伪进度条的显示进行优化。
+4. 约定：「menu / 菜单 / 菜单项」->「panel / 面板 / 面板项」。在一开始，这个命名是没有问题的，但现在所谓的「menu」干的事情早已远不是「菜单」二字所能描述的了。
+5. 脚本：弃用 Tampermonkey 提供的 `window.onurlchange` 特性，改用 `UserscriptAPI` 提供的实现更为完善、功能更为强大的 `urlchange` 事件，来对 URL 变化进行跟踪。
+6. 脚本：优化面板开启与关闭流程。
+7. 脚本：菜单项回调函数以参数而非 `this` 回传菜单对象。
+8. 外部：`UserscriptAPI` 更新至 V2.2。详见 [UserscriptAPI 更新日志](https://gitee.com/liangjiancang/userscript/blob/master/lib/UserscriptAPI/changelog.md)。
+9. 外部：`UserscriptAPIDom` 更新至 V1.2，`UserscriptAPILogger` 更新至 V1.2，`UserscriptAPIMessage` 更新至 V1.2。
+10. 外部：`UserscriptAPIBase` 更新至 V1.2，提供更为完善的 `urlchange` 事件。
+11. 外部：`UserscriptAPIWait` 更新至 V1.2，优化错误处理流程。
+12. 外部：`UserscriptAPIWeb` 更新至 V1.2，优化错误处理流程。
 
 > 所以B站的播放器是什么鬼，为什么同一版本播放器会几种不同的显示情况，而且没有一个准则。前一秒还是类型 1，刷新一下就变成类型 2，换到另一个视频又是一种新的显示模式。
 

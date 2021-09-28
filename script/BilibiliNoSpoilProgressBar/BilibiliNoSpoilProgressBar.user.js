@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站防剧透进度条
-// @version         2.5.2.20210927
+// @version         2.5.3.20210928
 // @namespace       laster2800
 // @author          Laster2800
 // @description     看比赛、看番总是被进度条剧透？装上这个脚本再也不用担心这些问题了
@@ -59,7 +59,7 @@
    * @property {GMObject_url} url URL
    * @property {GMObject_regex} regex 正则表达式
    * @property {{[c: string]: *}} const 常量
-   * @property {GMObject_menu} menu 菜单
+   * @property {GMObject_panel} panel 面板
    * @property {{[s: string]: HTMLElement}} el HTML 元素
    */
   /**
@@ -134,18 +134,18 @@
    * @property {RegExp} page_bangumi 匹配番剧播放页
    */
   /**
-   * @typedef GMObject_menu
-   * @property {GMObject_menu_item} setting 设置
+   * @typedef GMObject_panel
+   * @property {GMObject_panel_item} setting 设置
    */
   /**
-   * @typedef GMObject_menu_item
+   * @typedef GMObject_panel_item
    * @property {0 | 1 | 2 | 3 | -1} state 打开状态（关闭 | 开启中 | 打开 | 关闭中 | 错误）
    * @property {0 | 1 | 2} wait 等待阻塞状态（无等待阻塞 | 等待开启 | 等待关闭）
-   * @property {HTMLElement} el 菜单元素
-   * @property {() => (void | Promise<void>)} [openHandler] 打开菜单的回调函数
-   * @property {() => void} [closeHandler] 关闭菜单的回调函数
-   * @property {() => (void | Promise<void>)} [openedHandler] 彻底打开菜单后的回调函数
-   * @property {() => void} [closedHandler] 彻底关闭菜单后的回调函数
+   * @property {HTMLElement} el 面板元素
+   * @property {() => (void | Promise<void>)} [openHandler] 打开面板的回调函数
+   * @property {() => (void | Promise<void>)} [closeHandler] 关闭面板的回调函数
+   * @property {() => void} [openedHandler] 彻底打开面板后的回调函数
+   * @property {() => void} [closedHandler] 彻底关闭面板后的回调函数
    */
   /**
    * 全局对象
@@ -194,7 +194,7 @@
     const: {
       fadeTime: 400,
     },
-    menu: {
+    panel: {
       setting: { state: 0, wait: 0, el: null },
     },
     el: {
@@ -369,8 +369,8 @@
      */
     readConfig() {
       if (gm.configVersion > 0) {
-        for (const name in gm.configMap) {
-          gm.config[name] = this.method.getConfig(name, gm.configMap[name].default)
+        for (const [name, item] of Object.entries(gm.configMap)) {
+          gm.config[name] = this.method.getConfig(name, item.default)
         }
         if (gm.configVersion !== gm.configUpdate) {
           this.openUserSetting(2)
@@ -378,9 +378,9 @@
       } else {
         // 用户强制初始化，或第一次安装脚本，或版本过旧
         gm.configVersion = 0
-        for (const name in gm.configMap) {
-          gm.config[name] = gm.configMap[name].default
-          GM_setValue(name, gm.configMap[name].default)
+        for (const [name, item] of Object.entries(gm.configMap)) {
+          gm.config[name] = item.default
+          GM_setValue(name, item.default)
         }
         this.openUserSetting(1)
 
@@ -411,14 +411,14 @@
      */
     openUserSetting(type = 0) {
       if (gm.el.setting) {
-        this.openMenuItem('setting')
+        this.openPanelItem('setting')
       } else {
         /** @type {{[n: string]: HTMLElement}} */
         const el = {}
         setTimeout(() => {
           initSetting()
           processSettingItem()
-          this.openMenuItem('setting')
+          this.openPanelItem('setting')
         })
 
         /**
@@ -426,7 +426,7 @@
          */
         const initSetting = () => {
           gm.el.setting = gm.el.gmRoot.appendChild(document.createElement('div'))
-          gm.menu.setting.el = gm.el.setting
+          gm.panel.setting.el = gm.el.setting
           gm.el.setting.className = 'gm-setting gm-modal-container'
 
           const getItemHTML = (label, ...items) => {
@@ -579,7 +579,7 @@
           `
 
           // 找出配置对应的元素
-          for (const name in { ...gm.configMap, ...gm.infoMap }) {
+          for (const name of Object.keys({ ...gm.configMap, ...gm.infoMap })) {
             el[name] = gm.el.setting.querySelector(`#gm-${name}`)
           }
 
@@ -594,13 +594,10 @@
             case 2:
               el.settingPage.dataset.type = 'updated'
               el.maintitle.innerHTML += '<br><span style="font-size:0.8em">(功能性更新设置)</span>'
-              {
-                const map = { ...gm.configMap, ...gm.infoMap }
-                for (const name in map) {
-                  if (map[name].configVersion > gm.configVersion) {
-                    const item = api.dom.findAncestor(el[name], el => el.classList.contains('gm-item'))
-                    item?.classList.add('gm-updated')
-                  }
+              for (const [name, item] of Object.entries({ ...gm.configMap, ...gm.infoMap })) {
+                if (item.configVersion > gm.configVersion) {
+                  const updated = api.dom.findAncestor(el[name], el => el.classList.contains('gm-item'))
+                  updated?.classList.add('gm-updated')
                 }
               }
               break
@@ -666,13 +663,13 @@
          * 处理与设置页相关的数据和元素
          */
         const processSettingItem = () => {
-          gm.menu.setting.openHandler = onOpen
+          gm.panel.setting.openHandler = onOpen
           gm.el.setting.fadeInDisplay = 'flex'
           el.save.addEventListener('click', onSave)
-          el.cancel.addEventListener('click', () => this.closeMenuItem('setting'))
+          el.cancel.addEventListener('click', () => this.closePanelItem('setting'))
           el.shadow.addEventListener('click', () => {
             if (!el.shadow.hasAttribute('disabled')) {
-              this.closeMenuItem('setting')
+              this.closePanelItem('setting')
             }
           })
           el.reset.addEventListener('click', () => this.resetScript())
@@ -697,17 +694,16 @@
          */
         const onSave = () => {
           // 通用处理
-          for (const name in gm.configMap) {
-            const cfg = gm.configMap[name]
-            if (!cfg.manual) {
-              const change = saveConfig(name, cfg.attr)
-              if (!cfg.needNotReload) {
+          for (const [name, item] of Object.entries(gm.configMap)) {
+            if (!item.manual) {
+              const change = saveConfig(name, item.attr)
+              if (!item.needNotReload) {
                 needReload ||= change
               }
             }
           }
 
-          this.closeMenuItem('setting')
+          this.closePanelItem('setting')
           if (type > 0) {
             // 更新配置版本
             gm.configVersion = gm.configUpdate
@@ -731,11 +727,11 @@
          * 设置打开时执行
          */
         const onOpen = () => {
-          for (const name in gm.configMap) {
-            const { attr } = gm.configMap[name]
+          for (const [name, item] of Object.entries(gm.configMap)) {
+            const { attr } = item
             el[name][attr] = gm.config[name]
           }
-          for (const name in gm.configMap) {
+          for (const name of Object.keys(gm.configMap)) {
             // 需要等所有配置读取完成后再进行选项初始化
             el[name].init?.()
           }
@@ -820,119 +816,115 @@
     }
 
     /**
-     * 对「打开菜单项」这一操作进行处理，包括显示菜单项、设置当前菜单项的状态、关闭其他菜单项
-     * @param {string} name 菜单项的名称
-     * @param {(menu: GMObject_menu_item) => void} [callback] 打开菜单项后的回调函数
-     * @param {boolean} [keepOthers] 打开时保留其他菜单项
+     * 打开面板项
+     * @param {string} name 面板项名称
+     * @param {(panel: GMObject_panel_item) => void} [callback] 打开面板项后的回调函数
+     * @param {boolean} [keepOthers] 打开时保留其他面板项
      * @returns {Promise<boolean>} 操作是否成功
      */
-    async openMenuItem(name, callback, keepOthers) {
+    async openPanelItem(name, callback, keepOthers) {
       let success = false
-      const menu = gm.menu[name]
-      if (menu.wait > 0) return false
+      /** @type {GMObject_panel_item}  */
+      const panel = gm.panel[name]
+      if (panel.wait > 0) return false
       try {
         try {
-          if (menu.state === 1) {
-            menu.wait = 1
+          if (panel.state === 1) {
+            panel.wait = 1
             await api.wait.waitForConditionPassed({
-              condition: () => menu.state === 2,
-              timeout: 1500 + (menu.el.fadeInTime ?? gm.const.fadeTime),
+              condition: () => panel.state === 2,
+              timeout: 1500 + (panel.el.fadeInTime ?? gm.const.fadeTime),
             })
             return true
-          } else if (menu.state === 3) {
-            menu.wait = 1
+          } else if (panel.state === 3) {
+            panel.wait = 1
             await api.wait.waitForConditionPassed({
-              condition: () => menu.state === 0,
-              timeout: 1500 + (menu.el.fadeOutTime ?? gm.const.fadeTime),
+              condition: () => panel.state === 0,
+              timeout: 1500 + (panel.el.fadeOutTime ?? gm.const.fadeTime),
             })
           }
         } catch (e) {
-          menu.state = -1
+          panel.state = -1
           api.logger.error(e)
         } finally {
-          menu.wait = 0
+          panel.wait = 0
         }
-        if (menu.state === 0 || menu.state === -1) {
-          for (const key in gm.menu) {
-            /** @type {GMObject_menu_item} */
-            const menu = gm.menu[key]
-            if (key === name) {
-              menu.state = 1
-              await menu.openHandler?.()
-              await new Promise(resolve => {
-                api.dom.fade(true, menu.el, () => {
-                  resolve()
-                  menu.openedHandler?.()
-                  callback?.(menu)
-                })
-              })
-              menu.state = 2
-              success = true
-              // 不要返回，需将其他菜单项关闭
-            } else if (!keepOthers) {
-              if (menu.state === 2) {
-                this.closeMenuItem(key)
-              }
+        if (panel.state === 0 || panel.state === -1) {
+          panel.state = 1
+          if (!keepOthers) {
+            for (const [key, curr] of Object.entries(gm.panel)) {
+              if (key === name || curr.state === 0) continue
+              this.closePanelItem(key)
             }
           }
+          await panel.openHandler?.()
+          await new Promise(resolve => {
+            api.dom.fade(true, panel.el, () => {
+              resolve()
+              panel.openedHandler?.()
+              callback?.(panel)
+            })
+          })
+          panel.state = 2
+          success = true
         }
         if (success && document.fullscreenElement) {
           document.exitFullscreen()
         }
       } catch (e) {
-        gm.menu[name].state = -1
+        panel.state = -1
         api.logger.error(e)
       }
       return success
     }
 
     /**
-     * 对「关闭菜单项」这一操作进行处理，包括隐藏菜单项、设置当前菜单项的状态
-     * @param {string} name 菜单项的名称
-     * @param {(menu: GMObject_menu_item) => void} [callback] 关闭菜单项后的回调函数
+     * 关闭面板项
+     * @param {string} name 面板项名称
+     * @param {(panel: GMObject_panel_item) => void} [callback] 关闭面板项后的回调函数
      * @returns {Promise<boolean>} 操作是否成功
      */
-    async closeMenuItem(name, callback) {
-      /** @type {GMObject_menu_item} */
-      const menu = gm.menu[name]
-      if (menu.wait > 0) return
+    async closePanelItem(name, callback) {
+      /** @type {GMObject_panel_item} */
+      const panel = gm.panel[name]
+      if (panel.wait > 0) return
       try {
         try {
-          if (menu.state === 1) {
-            menu.wait = 2
+          if (panel.state === 1) {
+            panel.wait = 2
             await api.wait.waitForConditionPassed({
-              condition: () => menu.state === 2,
-              timeout: 1500 + (menu.el.fadeInTime ?? gm.const.fadeTime),
+              condition: () => panel.state === 2,
+              timeout: 1500 + (panel.el.fadeInTime ?? gm.const.fadeTime),
             })
-          } else if (menu.state === 3) {
-            menu.wait = 2
+          } else if (panel.state === 3) {
+            panel.wait = 2
             await api.wait.waitForConditionPassed({
-              condition: () => menu.state === 0,
-              timeout: 1500 + (menu.el.fadeOutTime ?? gm.const.fadeTime),
+              condition: () => panel.state === 0,
+              timeout: 1500 + (panel.el.fadeOutTime ?? gm.const.fadeTime),
             })
             return true
           }
         } catch (e) {
-          menu.state = -1
+          panel.state = -1
           api.logger.error(e)
         } finally {
-          menu.wait = 0
+          panel.wait = 0
         }
-        if (menu.state === 2 || menu.state === -1) {
-          menu.state = 3
-          await menu.closeHandler?.()
+        if (panel.state === 2 || panel.state === -1) {
+          panel.state = 3
+          await panel.closeHandler?.()
           await new Promise(resolve => {
-            api.dom.fade(false, menu.el, () => {
+            api.dom.fade(false, panel.el, () => {
               resolve()
-              menu.closedHandler?.()
-              callback?.(menu)
+              panel.closedHandler?.()
+              callback?.(panel)
             })
           })
-          menu.state = 0
+          panel.state = 0
           return true
         }
       } catch (e) {
-        menu.state = -1
+        panel.state = -1
         api.logger.error(e)
       }
       return false
