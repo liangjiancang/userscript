@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.23.5.20210930
+// @version         4.23.6.20211001
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -1823,7 +1823,7 @@
                 if (items.length === 0) return // -> finally
                 // 不要用 json.data.next_offset，会丢失精度
                 // offset 本身不会被获取，末项 offset 即下次查询 offset
-                dynamicOffset = items.at(-1).desc.dynamic_id_str
+                dynamicOffset = items[items.length - 1].desc.dynamic_id_str
                 let html = ''
                 for (const item of items) {
                   const info = JSON.parse(item.card)
