@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.23.4.20210928
+// @version         4.23.5.20210930
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -2073,12 +2073,12 @@
       /** @type {{[n: string]: HTMLElement}} */
       const el = {}
       if (gm.el.history) {
-        el.searchTimes = gm.el.history.querySelector('#gm-search-times')
+        el.searchTimes = gm.el.history.querySelector('#gm-history-search-times')
         el.searchTimes.value = gm.config.removeHistorySearchTimes
         el.searchTimes.current = el.searchTimes.value
-        el.historySort = gm.el.history.querySelector('#gm-history-sort')
-        if (el.historySort.type !== 0) {
-          el.historySort.setType(0) // 降序
+        el.sort = gm.el.history.querySelector('#gm-history-sort')
+        if (el.sort.type !== 0) {
+          el.sort.type = 0 // 降序
         }
         this.openPanelItem('history')
       } else {
@@ -2099,10 +2099,10 @@
             <div class="gm-history-page gm-modal">
               <div class="gm-title">稍后再看移除记录</div>
               <div class="gm-comment">
-                <div>根据最近<span id="gm-save-times">0</span>条不重复数据记录生成，共筛选出<span id="gm-removed-num">0</span>条移除记录。排序由视频<span id="gm-history-time-point"></span>被观察到处于稍后再看的时间决定，与被移除出稍后再看的时间无关。如果记录太少请设置增加历史回溯深度；记录太多则减少之，并善用浏览器搜索功能辅助定位。</div>
+                <div>根据<span id="gm-history-new-or-old" style="padding-right:0"></span><span id="gm-history-save-times">0</span>条不重复数据记录生成，共筛选出<span id="gm-history-removed-num">0</span>条移除记录。排序由视频<span id="gm-history-time-point"></span>被观察到处于稍后再看的时间决定，与被移除出稍后再看的时间无关。如果记录太少请设置增加历史回溯深度；记录太多则减少之，并善用浏览器搜索功能辅助定位。</div>
                 <div style="text-align:right;font-weight:bold">
-                  <span id="gm-history-sort" style="text-decoration:underline;cursor:pointer">降序</span>
-                  <span title="搜寻时在最近保存的多少条稍后再看历史数据记录中查找。按下回车键或输入框失去焦点时刷新数据，设置较小的值能较好地定位最近被添加到稍后再看的视频。">历史回溯深度：<input is="laster2800-input-number" id="gm-search-times" value="${gm.config.removeHistorySearchTimes}" min="${gm.configMap.removeHistorySearchTimes.min}" max="${gm.configMap.removeHistorySearchTimes.max}"></span>
+                  <span id="gm-history-sort" style="text-decoration:underline;cursor:pointer"></span>
+                  <span title="搜寻时在最近/最早保存的多少条稍后再看历史数据记录中查找。按下回车键或输入框失去焦点时刷新数据。">历史回溯深度：<input is="laster2800-input-number" id="gm-history-search-times" value="${gm.config.removeHistorySearchTimes}" min="${gm.configMap.removeHistorySearchTimes.min}" max="${gm.configMap.removeHistorySearchTimes.max}"></span>
                 </div>
               </div>
               <div class="gm-content"></div>
@@ -2112,10 +2112,12 @@
           el.historyPage = gm.el.history.querySelector('.gm-history-page')
           el.comment = gm.el.history.querySelector('.gm-comment')
           el.content = gm.el.history.querySelector('.gm-content')
+          el.sort = gm.el.history.querySelector('#gm-history-sort')
           el.timePoint = gm.el.history.querySelector('#gm-history-time-point')
-          el.saveTimes = gm.el.history.querySelector('#gm-save-times')
-          el.removedNum = gm.el.history.querySelector('#gm-removed-num')
-          el.searchTimes = gm.el.history.querySelector('#gm-search-times')
+          el.saveTimes = gm.el.history.querySelector('#gm-history-save-times')
+          el.removedNum = gm.el.history.querySelector('#gm-history-removed-num')
+          el.searchTimes = gm.el.history.querySelector('#gm-history-search-times')
+          el.newOrOld = gm.el.history.querySelector('#gm-history-new-or-old')
           el.shadow = gm.el.history.querySelector('.gm-shadow')
         }
 
@@ -2157,19 +2159,25 @@
           })
 
           // 排序方式
-          el.historySort = gm.el.history.querySelector('#gm-history-sort')
-          el.historySort.type = 0
-          el.historySort.typeText = ['降序', '升序', '完全升序']
-          el.historySort.title = '点击切换升序'
-          el.historySort.setType = type => {
-            const target = el.historySort
-            target.type = type
-            target.textContent = target.typeText[type]
-            target.title = `点击切换${target.typeText[(type + 1) % target.typeText.length]}`
-          }
-          el.historySort.addEventListener('click', () => {
-            const target = el.historySort
-            target.setType((target.type + 1) % target.typeText.length)
+          const typeText = ['降序', '升序', '完全升序']
+          const typeDesc = [
+            '降序回溯历史，降序显示结果',
+            '降序回溯历史，升序显示结果',
+            '升序回溯历史，升序显示结果',
+          ]
+          Reflect.defineProperty(el.sort, 'type', {
+            get: function() { return Number.parseInt(this.dataset.type) },
+            set: function(val) {
+              this.dataset.type = val
+              this.textContent = typeText[val]
+              this.title = typeDesc[val]
+              el.newOrOld.textContent = val < 2 ? '最近' : '最早'
+            },
+          })
+          el.sort.type = 0
+          el.sort.addEventListener('click', () => {
+            const target = el.sort
+            target.type = (target.type + 1) % typeText.length
             gm.panel.history.openHandler()
           })
 
@@ -2189,7 +2197,7 @@
             const map = await webpage.method.getWatchlaterDataMap(item => item.bvid, 'bvid', true)
             const depth = Number.parseInt(el.searchTimes.value)
             let data = null
-            if (el.historySort.type < 2) {
+            if (el.sort.type < 2) {
               data = gm.data.removeHistoryData().toArray(depth)
             } else {
               const rhd = gm.data.removeHistoryData()
@@ -2208,7 +2216,7 @@
               if (history.length > 1) {
                 // ES2019 后 Array#sort() 为稳定排序
                 history.sort((a, b) => (b[2] ?? 0) - (a[2] ?? 0))
-                if (el.historySort.type >= 1) {
+                if (el.sort.type >= 1) {
                   history.reverse()
                 }
               }
@@ -2222,7 +2230,7 @@
                 `)
               }
             } else {
-              if (history.length > 1 && el.historySort.type >= 1) {
+              if (history.length > 1 && el.sort.type >= 1) {
                 history.reverse()
               }
               for (const rm of history) {

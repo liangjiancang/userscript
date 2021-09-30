@@ -14,12 +14,13 @@
 8. 脚本：面板项回调函数以参数而非 `this` 回传菜单对象。
 9. 移除记录：修复「数据保存最小时间间隔」总是使用默认值的问题。
 10. 移除记录：优化稍后再看历史数据保存流程。
-11. 外部：`UserscriptAPI` 更新至 V2.2。详见 [UserscriptAPI 更新日志](https://gitee.com/liangjiancang/userscript/blob/master/lib/UserscriptAPI/changelog.md)。
-12. 外部：`UserscriptAPIDom` 更新至 V1.2，`UserscriptAPILogger` 更新至 V1.2，`UserscriptAPIMessage` 更新至 V1.2。
-13. 外部：`UserscriptAPIBase` 更新至 V1.2，提供更为完善的 `urlchange` 事件。
-14. 外部：`UserscriptAPIWait` 更新至 V1.2，优化错误处理流程。
-15. 外部：`UserscriptAPIWeb` 更新至 V1.2，优化错误处理流程。
-16. 外部：`PushQueue` 独立成库（V1.0）。
+11. 移除记录：优化说明及提示文本。
+12. 外部：`UserscriptAPI` 更新至 V2.2。详见 [UserscriptAPI 更新日志](https://gitee.com/liangjiancang/userscript/blob/master/lib/UserscriptAPI/changelog.md)。
+13. 外部：`UserscriptAPIDom` 更新至 V1.2，`UserscriptAPILogger` 更新至 V1.2，`UserscriptAPIMessage` 更新至 V1.2。
+14. 外部：`UserscriptAPIBase` 更新至 V1.2，提供更为完善的 `urlchange` 事件。
+15. 外部：`UserscriptAPIWait` 更新至 V1.2，优化错误处理流程。
+16. 外部：`UserscriptAPIWeb` 更新至 V1.2，优化错误处理流程。
+17. 外部：`PushQueue` 独立成库（V1.0）。
 
 > ESLint 确实是个好东西，把规则全开一下子就暴露出 N 个潜在的问题——但反过来也可以说完全没有用，因为这一大堆所有的潜在问题其实几乎没有造成实际上的问题。
 
