@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站防剧透进度条
-// @version         2.5.3.20210928
+// @version         2.5.4.20211003
 // @namespace       laster2800
 // @author          Laster2800
 // @description     看比赛、看番总是被进度条剧透？装上这个脚本再也不用担心这些问题了
@@ -164,11 +164,11 @@
       disablePreview: { default: false, attr: 'checked' },
       disablePartInformation: { default: true, attr: 'checked', configVersion: 20210302 },
       disableSegmentInformation: { default: true, attr: 'checked', configVersion: 20210806 },
-      offsetTransformFactor: { default: 0.65, type: 'float', attr: 'value', needNotReload: true, max: 5.0, configVersion: 20210722 },
-      offsetLeft: { default: 40, type: 'int', attr: 'value', needNotReload: true, configVersion: 20210722 },
-      offsetRight: { default: 40, type: 'int', attr: 'value', needNotReload: true, configVersion: 20210722 },
+      offsetTransformFactor: { default: 0.6, type: 'float', attr: 'value', needNotReload: true, max: 5.0, configVersion: 20210722 },
+      offsetLeft: { default: 60, type: 'int', attr: 'value', needNotReload: true, configVersion: 20210722 },
+      offsetRight: { default: 60, type: 'int', attr: 'value', needNotReload: true, configVersion: 20210722 },
       reservedLeft: { default: 10, type: 'int', attr: 'value', needNotReload: true, configVersion: 20210722 },
-      reservedRight: { default: 10, type: 'int', attr: 'value', needNotReload: true, configVersion: 20210722 },
+      reservedRight: { default: 15, type: 'int', attr: 'value', needNotReload: true, configVersion: 20210722 },
       postponeOffset: { default: true, attr: 'checked', needNotReload: true, configVersion: 20200911 },
       reloadAfterSetting: { default: true, attr: 'checked', needNotReload: true },
     },
