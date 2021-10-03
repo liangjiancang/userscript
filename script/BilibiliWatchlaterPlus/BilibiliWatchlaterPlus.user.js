@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.23.6.20211001
+// @version         4.23.7.20211003
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -1792,6 +1792,7 @@
               el.id2a.defaultValue = el.id2a.max = v1a
               el.id2b.syncVal = el.id1b.value
               el.items.textContent = ''
+              loadTime = Date.now()
               const uid = webpage.method.getDedeUserID()
               let dynamicOffset = await (async () => {
                 // 一定要确保取到的是视频投稿的 dynamic_id
@@ -1807,7 +1808,7 @@
                 // dynamic_id 数值过大，直接运算会丢失精度，必须转为 BigInt 运算
                 return BigInt(items[0].desc.dynamic_id_str) + 1n // +1 才能获取到当前首项
               })()
-              const end = Date.now() - v1a * el.id1b.value * 1000
+              const end = loadTime - v1a * el.id1b.value * 1000
               const avSet = new Set()
               gm.runtime.reloadWatchlaterListData = true
               // eslint-disable-next-line no-unmodified-loop-condition
@@ -1847,14 +1848,18 @@
               api.message.info('批量添加：任务终止', 1800)
             } catch (e) {
               error = true
+              loadTime = 0
               api.message.alert('执行失败')
               api.logger.error(e)
             } finally {
               if (!error && !stopLoad) {
                 api.message.info('批量添加：稿件加载完成', 1800)
+                if (el.items.querySelectorAll('label input:checked').length === 0) {
+                  // 无有效新稿件时直接更新同步时间
+                  setLastAddTime(loadTime)
+                }
               }
               executing = false
-              loadTime = Date.now()
               stopLoad = false
               el.id1c.disabled = false
               el.id1c.textContent = '重新执行'
@@ -1866,9 +1871,6 @@
                 el.id2a.value = el.id2a.defaultValue
                 el.id2b.value = el.id2b.syncVal // 非用户操作不会触发 change 事件
                 el.id2b.prevVal = el.id2b.value
-              }
-              if (el.items.childElementCount === 0) { // 无新稿件时直接更新同步时间
-                setLastAddTime(loadTime)
               }
             }
           })
