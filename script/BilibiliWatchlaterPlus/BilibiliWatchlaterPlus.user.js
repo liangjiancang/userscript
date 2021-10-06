@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.23.7.20211003
+// @version         4.23.8.20211006
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -1842,7 +1842,7 @@
                   }
                 }
                 el.items.insertAdjacentHTML('afterbegin', html)
-                await new Promise(resolve => setTimeout(resolve, 250 * (Math.random() + 0.5))) // 多让点时间给其他线程，顺便给请求留点间隔
+                await new Promise(resolve => setTimeout(resolve, 250 * (Math.random() * 0.5 + 0.75))) // 多让点时间给其他线程，顺便给请求留点间隔
               }
               // 执行到这里只有一个原因：stopLoad 导致任务终止
               api.message.info('批量添加：任务终止', 1800)
@@ -1854,7 +1854,7 @@
             } finally {
               if (!error && !stopLoad) {
                 api.message.info('批量添加：稿件加载完成', 1800)
-                if (el.items.querySelectorAll('label input:checked').length === 0) {
+                if (loadTime > 0 && el.items.querySelectorAll('label input:checked').length === 0) {
                   // 无有效新稿件时直接更新同步时间
                   setLastAddTime(loadTime)
                 }
@@ -2000,7 +2000,7 @@
                   item.style.display = 'none'
                 }
                 available -= 1
-                await new Promise(resolve => setTimeout(resolve, v4a * (Math.random() + 0.5)))
+                await new Promise(resolve => setTimeout(resolve, v4a * (Math.random() * 0.5 + 0.75)))
               }
               lastAddTime = loadTime
               api.message.info('批量添加：已将所有选定稿件添加到稍后再看', 1800)
@@ -2010,7 +2010,7 @@
             } finally {
               if (lastAddTime) {
                 if (lastAddTime !== loadTime) {
-                  lastAddTime = Number.parseInt(lastAddTime * 1000)
+                  lastAddTime = Number.parseInt(lastAddTime) * 1000
                 }
                 if (lastAddTime > 0) {
                   setLastAddTime(lastAddTime)
