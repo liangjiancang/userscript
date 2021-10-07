@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.23.8.20211006
+// @version         4.23.9.20211007
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -925,7 +925,7 @@
               </span>
             </div>`,
           }, {
-            desc: '无须兼容第三方顶栏时务必选择「无」，否则脚本无法正常工作！\n若列表中没有提供您需要的第三方顶栏，且该第三方顶栏有一定用户基数，可在脚本反馈页发起请求。',
+            desc: '无须兼容第三方顶栏时务必选择「无」，否则脚本无法正常工作！\n若列表中没有提供你需要的第三方顶栏，且该第三方顶栏有一定用户基数，可在脚本反馈页发起请求。',
             html: `<div>
               <span>兼容第三方顶栏：</span>
               <select id="gm-headerCompatible">
@@ -1657,7 +1657,7 @@
               <div class="gm-title">批量添加管理器</div>
               <div class="gm-comment">
                 <div>请执行以下步骤以将投稿批量添加到稍后再看（可以跳过部分步骤）。执行过程中可以关闭对话框，但不能关闭页面——且将当前页面置于后台时，浏览器会暂缓甚至暂停任务执行。</div>
-                <div>脚本会优先添加投稿时间较早的投稿，达到稍后再看容量上限 100 时终止执行。注意，该功能会向后台发起大量请求，滥用可能会导致一段时间内无法正常访问B站，您可以增加平均请求间隔以降低被 BAN 的概率。</div>
+                <div>脚本会优先添加投稿时间较早的投稿，达到稍后再看容量上限 100 时终止执行。注意，该功能会向后台发起大量请求，滥用可能会导致一段时间内无法正常访问B站，你可以增加平均请求间隔以降低被 BAN 的概率。</div>
                 <div>第一步：加载最近 <input is="laster2800-input-number" id="gm-batch-1a" value="24" digits="Infinity"> <select id="gm-batch-1b" style="border:none;margin: 0 -4px">
                   <option value="${3600 * 24}">天</option>
                   <option value="3600" selected>小时</option>

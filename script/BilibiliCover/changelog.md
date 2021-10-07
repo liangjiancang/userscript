@@ -18,6 +18,7 @@
 8. 外部：`UserscriptAPIBase` 更新至 V1.2，提供更为完善的 `urlchange` 事件。
 9. 外部：`UserscriptAPIWait` 更新至 V1.2，优化错误处理流程。
 10. 外部：`UserscriptAPIWeb` 更新至 V1.2，优化错误处理流程。
+11. UI：优化文本。
 
 ## V5.5
 

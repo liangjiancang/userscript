@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站封面获取
-// @version         5.6.2.20210928
+// @version         5.6.3.20211007
 // @namespace       laster2800
 // @author          Laster2800
 // @description     获取B站各播放页及直播间封面，支持手动及实时预览等多种模式，支持点击下载、封面预览、快速复制，可高度自定义
@@ -242,7 +242,7 @@
           // 功能性更新后更新此处配置版本
           if (gm.configVersion < 20210815) {
             GM_notification({
-              text: '功能性更新完毕，您可能需要重新设置脚本。点击查看更新日志。',
+              text: '功能性更新完毕，你可能需要重新设置脚本。点击查看更新日志。',
               onclick: () => window.open(gm.url.gm_changelog),
             })
           }

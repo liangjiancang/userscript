@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站共同关注快速查看
-// @version         1.8.0.20210928
+// @version         1.8.1.20211007
 // @namespace       laster2800
 // @author          Laster2800
 // @description     快速查看与特定用户的共同关注（视频播放页、动态页、用户空间、直播间）
@@ -177,7 +177,7 @@
           // 功能性更新后更新此处配置版本
           if (gm.configVersion < 0) {
             GM_notification({
-              text: '功能性更新完毕，您可能需要重新设置脚本。点击查看更新日志。',
+              text: '功能性更新完毕，你可能需要重新设置脚本。点击查看更新日志。',
               onclick: () => window.open(gm.url.gm_changelog),
             })
           }

@@ -9,6 +9,7 @@
 3. 注入版 `v1.4`：更新与主脚本的对接方式。
 4. 代码：`prefer-rest-params`。
 5. 代码：偏好于 `Object.entries()`、`Object.keys()`、`Object.values()`。
+6. UI：优化文本。
 
 ## V2.6
 

@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            [DEBUG] 信息显式化
-// @version         2.7.2.20210928
+// @version         2.7.3.20211007
 // @namespace       laster2800
 // @author          Laster2800
 // @description     用 alert() 提示符合匹配规则的日志或未捕获异常，帮助开发者在日常使用网页时发现潜藏问题
@@ -128,7 +128,7 @@
           this.explicit(`「[DEBUG] 信息显式化」版本落后于「${source}」中的注入版。请在稍后弹出的新标签页中获取最新版主脚本。\n若弹出页被浏览器阻止，请手动查看浏览器的「已阻止弹出窗口」，前往主脚本主页进行更新。`, 'UPDATE', source)
           window.open('https://greasyfork.org/zh-CN/scripts/429521')
         } else {
-          this.explicit(`您需要更新「[DEBUG] 信息显式化（注入版）」。请在稍后弹出的新标签页中获取最新版 URL 并更新「${source}」中的「@require」属性值。\n若弹出页被浏览器阻止，请手动查看浏览器的「已阻止弹出窗口」，前往注入版主页进行更新。`, 'UPDATE', source)
+          this.explicit(`需要更新「[DEBUG] 信息显式化（注入版）」。请在稍后弹出的新标签页中获取最新版 URL 并更新「${source}」中的「@require」属性值。\n若弹出页被浏览器阻止，请手动查看浏览器的「已阻止弹出窗口」，前往注入版主页进行更新。`, 'UPDATE', source)
           window.open('https://greasyfork.org/zh-CN/scripts/429525')
         }
       },
@@ -136,7 +136,7 @@
   }
   unsafeWindow[Symbol.for('ExplicitMessage')] = gm
   Reflect.defineProperty(unsafeWindow, 'gm429521', {
-    get: () => alert('您需要更新「[DEBUG] 信息显式化（注入版）」！此处检测将会在未来的版本移除。'),
+    get: () => alert('需要更新「[DEBUG] 信息显式化（注入版）」！此处检测将会在未来的版本移除。'),
   })
 
   try {
