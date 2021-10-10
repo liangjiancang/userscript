@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.23.9.20211007
+// @version         4.23.10.20211010
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -2474,28 +2474,29 @@
       },
 
       /**
-       * av/bv 互转
+       * av/bv 互转工具类
        *
-       * 保证 av < 2 ** 27 时正确，同时应该在 av < 2 ** 30 时正确
+       * 保证 av < 2 ** 27 时正确，同时应该在 av < 2 ** 30 时正确。
+       *
+       * 结合 `xor` 与 `add` 可推断出，运算过程中不会出现超过 `2 ** 34 - 1` 的数值，远不会触及到 `Number.MAX_SAFE_INTEGER === 2 ** 53 - 1`，故无须引入 BigInt 进行计算。
        * @see {@link https://www.zhihu.com/question/381784377/answer/1099438784 如何看待 2020 年 3 月 23 日哔哩哔哩将稿件的「av 号」变更为「BV 号」？ - 知乎 - mcfx 的回答}
        */
       bvTool: new class BvTool {
         constructor() {
           const table = 'fZodR9XQDSUm21yCkr6zBqiveYah8bt4xsWpHnJE7jL5VG3guMTKNPAwcF'
-          const tr = {}
-          for (let i = 0; i < 58; i++) {
-            tr[table[i]] = i
-          }
+          const tr = Object.fromEntries([...table].map((c, i) => [c, i]))
           const s = [11, 10, 3, 8, 4, 6]
           const xor = 177451812
           const add = 8728348608
+          const tl = table.length
+          const sl = s.length
           this.bv2av = dec
           this.av2bv = enc
 
           function dec(x) {
             let r = 0
-            for (let i = 0; i < 6; i++) {
-              r += tr[x[s[i]]] * 58 ** i
+            for (let i = 0; i < sl; i++) {
+              r += tr[x[s[i]]] * tl ** i
             }
             return String((r - add) ^ xor)
           }
@@ -2504,8 +2505,8 @@
             x = Number.parseInt(x)
             x = (x ^ xor) + add
             const r = [...'BV1  4 1 7  ']
-            for (let i = 0; i < 6; i++) {
-              r[s[i]] = table[Math.floor(x / 58 ** i) % 58]
+            for (let i = 0; i < sl; i++) {
+              r[s[i]] = table[Math.floor(x / tl ** i) % tl]
             }
             return r.join('')
           }
