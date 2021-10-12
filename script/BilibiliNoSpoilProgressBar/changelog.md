@@ -11,12 +11,13 @@
 5. 脚本：弃用 Tampermonkey 提供的 `window.onurlchange` 特性，改用 `UserscriptAPI` 提供的实现更为完善、功能更为强大的 `urlchange` 事件，来对 URL 变化进行跟踪。
 6. 脚本：优化面板开启与关闭流程。
 7. 脚本：菜单项回调函数以参数而非 `this` 回传菜单对象。
-8. 进度条：优化防剧透参数默认值。
-9. 外部：`UserscriptAPI` 更新至 V2.2。详见 [UserscriptAPI 更新日志](https://gitee.com/liangjiancang/userscript/blob/master/lib/UserscriptAPI/changelog.md)。
-10. 外部：`UserscriptAPIDom` 更新至 V1.2，`UserscriptAPILogger` 更新至 V1.2，`UserscriptAPIMessage` 更新至 V1.2。
-11. 外部：`UserscriptAPIBase` 更新至 V1.2，提供更为完善的 `urlchange` 事件。
-12. 外部：`UserscriptAPIWait` 更新至 V1.2，优化错误处理流程。
-13. 外部：`UserscriptAPIWeb` 更新至 V1.2，优化错误处理流程。
+8. 进度条：鼠标在上方时总是显示为 `pointer` 形式，防止暴露偏移信息。
+9. 进度条：优化防剧透参数默认值。
+10. 外部：`UserscriptAPI` 更新至 V2.2。详见 [UserscriptAPI 更新日志](https://gitee.com/liangjiancang/userscript/blob/master/lib/UserscriptAPI/changelog.md)。
+11. 外部：`UserscriptAPIDom` 更新至 V1.2，`UserscriptAPILogger` 更新至 V1.2，`UserscriptAPIMessage` 更新至 V1.2。
+12. 外部：`UserscriptAPIBase` 更新至 V1.2，提供更为完善的 `urlchange` 事件。
+13. 外部：`UserscriptAPIWait` 更新至 V1.2，优化错误处理流程。
+14. 外部：`UserscriptAPIWeb` 更新至 V1.2，优化错误处理流程。
 
 > 所以B站的播放器是什么鬼，为什么同一版本播放器会几种不同的显示情况，而且没有一个准则。前一秒还是类型 1，刷新一下就变成类型 2，换到另一个视频又是一种新的显示模式。
 
