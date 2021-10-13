@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.23.11.20211010
+// @version         4.23.12.20211013
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -22,9 +22,10 @@
 // @require         https://greasyfork.org/scripts/432000-userscriptapimessage/code/UserscriptAPIMessage.js?version=973744
 // @require         https://greasyfork.org/scripts/432002-userscriptapiwait/code/UserscriptAPIWait.js?version=977808
 // @require         https://greasyfork.org/scripts/432003-userscriptapiweb/code/UserscriptAPIWeb.js?version=977807
-// @require         https://greasyfork.org/scripts/432936-pushqueue/code/PushQueue.js?version=973688
+// @require         https://greasyfork.org/scripts/432936-pushqueue/code/PushQueue.js?version=978730
 // @require         https://greasyfork.org/scripts/432807-inputnumber/code/InputNumber.js?version=973690
 // @grant           GM_registerMenuCommand
+// @grant           GM_notification
 // @grant           GM_xmlhttpRequest
 // @grant           GM_setValue
 // @grant           GM_getValue
@@ -372,7 +373,7 @@
   const gm = {
     id: gmId,
     configVersion: GM_getValue('configVersion'),
-    configUpdate: 20210917,
+    configUpdate: 20211013,
     searchParams: new URL(location.href).searchParams,
     config: {},
     configMap: {
@@ -459,6 +460,7 @@
     const: {
       fadeTime: 400,
       textFadeTime: 100,
+      noticeTimeout: 5600,
       updateHighlightColor: '#4cff9c',
       inputThrottleWait: 250,
       batchAddRequestInterval: 300,
@@ -585,16 +587,8 @@
               let data = GM_getValue('removeHistoryData')
               if (data && typeof data === 'object') {
                 Reflect.setPrototypeOf(data, PushQueue.prototype) // 初始化替换原型不会影响内联缓存
-                let updated = false
-                if (data.capacity !== gm.config.removeHistorySaves) {
-                  data.setCapacity(gm.config.removeHistorySaves)
-                  updated = true
-                }
                 if (data.maxSize !== gm.config.removeHistorySaves) {
                   data.setMaxSize(gm.config.removeHistorySaves)
-                  updated = true
-                }
-                if (updated) {
                   GM_setValue('removeHistoryData', data)
                 }
               } else {
@@ -715,17 +709,10 @@
      * 版本更新处理
      */
     updateVersion() {
-      if (gm.configVersion >= 20210810.1) { // 4.17.4.20210810
+      if (gm.configVersion >= 20210819) { // 4.18.0.20210819
         if (gm.configVersion < gm.configUpdate) {
           // 必须按从旧到新的顺序写
           // 内部不能使用 gm.configUpdate，必须手写更新后的配置版本号！
-
-          // 4.18.0.20210819
-          if (gm.configVersion < 20210819) {
-            GM_deleteValue('removeHistorySearchTimes')
-            GM_deleteValue('watchlaterListCacheTime')
-            GM_deleteValue('watchlaterListCache')
-          }
 
           // 4.20.5.20210908
           if (gm.configVersion < 20210908) {
@@ -734,13 +721,21 @@
 
           // 4.21.1.20210911
           if (gm.configVersion < 20210911) {
-            GM_deleteValue('removeHistoryData')
             GM_deleteValue('removeHistoryFuzzyCompareReference')
           }
 
           // 4.21.7.20210915
           if (gm.configVersion < 20210915) {
             GM_deleteValue('batchParams')
+          }
+
+          // 4.23.12.20211013
+          if (gm.configVersion < 20211013) {
+            GM_deleteValue('removeHistoryData')
+            GM_notification({
+              text: '因存储结构变动，已重置稍后再看历史数据。',
+              timeout: gm.const.noticeTimeout,
+            })
           }
 
           // 功能性更新后更新此处配置版本，通过时跳过功能性更新设置，否则转至 readConfig() 中处理
@@ -1394,7 +1389,6 @@
               // 因：removeHistorySaves
               // 果：removeHistorySaves & removeHistoryData
               const data = gm.data.removeHistoryData()
-              data.setCapacity(rhsV)
               data.setMaxSize(rhsV)
               gm.config.removeHistorySaves = rhsV
               GM_setValue('removeHistorySaves', rhsV)
@@ -2718,7 +2712,7 @@
                         const idx = map.get(item.bvid)
                         data.data[idx][2] = timestamp
                       } else {
-                        data.push([item.bvid, item.title, timestamp])
+                        data.enqueue([item.bvid, item.title, timestamp])
                       }
                     }
                     updated = true
@@ -2730,7 +2724,7 @@
                     for (let i = current.length - 1; i >= 0; i--) {
                       const item = current[i]
                       if (!set.has(item.bvid)) {
-                        data.push([item.bvid, item.title])
+                        data.enqueue([item.bvid, item.title])
                         updated = true
                       }
                     }

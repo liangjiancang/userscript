@@ -13,16 +13,17 @@
 7. 脚本：优化面板开启与关闭流程。
 8. 脚本：面板项回调函数以参数而非 `this` 回传菜单对象。
 9. 脚本：优化 `aid` 与 `bvid` 互转工具类，明确一些细节问题。
-10. 移除记录：修复「数据保存最小时间间隔」总是使用默认值的问题。
-11. 移除记录：优化稍后再看历史数据保存流程。
-12. 移除记录：优化说明及提示文本。
-13. 外部：`UserscriptAPI` 更新至 V2.2。详见 [UserscriptAPI 更新日志](https://gitee.com/liangjiancang/userscript/blob/master/lib/UserscriptAPI/changelog.md)。
-14. 外部：`UserscriptAPIDom` 更新至 V1.2，`UserscriptAPILogger` 更新至 V1.2，`UserscriptAPIMessage` 更新至 V1.2。
-15. 外部：`UserscriptAPIBase` 更新至 V1.2，提供更为完善的 `urlchange` 事件。
-16. 外部：`UserscriptAPIWait` 更新至 V1.2，优化错误处理流程。
-17. 外部：`UserscriptAPIWeb` 更新至 V1.2，优化错误处理流程。
-18. 外部：`PushQueue` 独立成库（V1.0）。
-19. UI：优化文本。
+10. 脚本：优化更新处理机制，现在会在必要时发送通知。
+11. 移除记录：修复「数据保存最小时间间隔」总是使用默认值的问题。
+12. 移除记录：优化稍后再看历史数据保存流程。
+13. 移除记录：优化说明及提示文本。
+14. 外部：`UserscriptAPI` 更新至 V2.2。详见 [UserscriptAPI 更新日志](https://gitee.com/liangjiancang/userscript/blob/master/lib/UserscriptAPI/changelog.md)。
+15. 外部：`UserscriptAPIDom` 更新至 V1.2，`UserscriptAPILogger` 更新至 V1.2，`UserscriptAPIMessage` 更新至 V1.2。
+16. 外部：`UserscriptAPIBase` 更新至 V1.2，提供更为完善的 `urlchange` 事件。
+17. 外部：`UserscriptAPIWait` 更新至 V1.2，优化错误处理流程。
+18. 外部：`UserscriptAPIWeb` 更新至 V1.2，优化错误处理流程。
+19. 外部：`PushQueue` 独立成库（V1.1）。
+20. UI：优化文本。
 
 > ESLint 确实是个好东西，把规则全开一下子就暴露出 N 个潜在的问题——但反过来也可以说完全没有用，因为这一大堆所有的潜在问题其实几乎没有造成实际上的问题。
 
