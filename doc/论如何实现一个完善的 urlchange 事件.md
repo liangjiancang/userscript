@@ -22,4 +22,4 @@
 
 由于 Tampermonkey 使用 `defineProperty` 定义了沙箱 `window` 上的 `onurlchange` 属性——尽管目前 Tampermonkey 定义的这个属性是可写的，但为了向前兼容性—— `Userscript#initUrlchangeEvent` 并没有实现出来一个真正完善的 `urlchange` 事件。不过，估计也没有人在意 `window.onurlchange` 应该排在第几执行就是了。
 
-不过，在探寻这一事件实现的同时，解决了困惑了我一年多的 `unsafeWindow` 问题：[unsafeWindow 二三事](./unsafeWindow%20二三事.md)。总的来说，赚大了。
+不过，在探寻这一事件实现的同时，解决了困惑了我一年多的 `unsafeWindow` 问题：[unsafeWindow 二三事](unsafeWindow%20二三事.md)。总的来说，赚大了。

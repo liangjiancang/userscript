@@ -24,4 +24,4 @@ unsafeWindow[Symbol.for('ExampleScriptExecuted')] = true
 
 ---
 
-`urlchange` 事件实现本身也很有意思，见 [论如何实现一个完善的 urlchange 事件](./论如何实现一个完善的%20urlchange%20事件.md)。
+`urlchange` 事件实现本身也很有意思，见 [论如何实现一个完善的 urlchange 事件](论如何实现一个完善的%20urlchange%20事件.md)。
