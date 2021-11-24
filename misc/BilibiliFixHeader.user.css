@@ -1,6 +1,6 @@
 /* ==UserStyle==
 @name           B站顶栏固顶
-@version        1.1.2.20210817
+@version        1.2.0.20211124
 @namespace      laster2800
 @author         Laster2800
 @homepageURL    https://greasyfork.org/zh-CN/scripts/430292
@@ -21,6 +21,10 @@
 }
 
 @-moz-document domain("t.bilibili.com") {
+    .home-page .left-panel {
+        z-index: unset !important;
+    }
+
     .home-page .left-panel .scroll-content {
         top: 55px !important;
     }
