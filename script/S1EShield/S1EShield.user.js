@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            S1战斗力屏蔽
-// @version         3.7.11.20211010
+// @version         3.8.0.20211206
 // @namespace       laster2800
 // @author          Laster2800
 // @description     屏蔽S1的战斗力系统，眼不见为净
@@ -116,13 +116,19 @@
       }, 50))
     })
 
-    // 右上角「积分」的弹出菜单移除
     api.base.addStyle(`
+      /* 右上角「积分」的弹出菜单移除 */
       #extcreditmenu {
         background: none;
         padding-right: 1em;
       }
+      /* 帖子列表中，加分或减分帖子后的大拇指标志 */
+      ${enabledSelector} img[alt=agree],
+      ${enabledSelector} img[alt=disagree] {
+        display: none;
+      }
     `)
+    // 右上角「积分」的弹出菜单移除
     api.wait.$('#extcreditmenu').then(extcreditmenu => {
       extcreditmenu.className = ''
       extcreditmenu.onmouseover = null
