@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站封面获取
-// @version         5.6.4.20211010
+// @version         5.6.5.20211209
 // @namespace       laster2800
 // @author          Laster2800
 // @description     获取B站各播放页及直播间封面，支持手动及实时预览等多种模式，支持点击下载、封面预览、快速复制，可高度自定义
@@ -1014,6 +1014,16 @@
         }
         return true
       })
+
+      // 避免直播间名字过长时热门榜/热门排名显示错乱
+      api.base.addStyle(`
+        .left-ctnr {
+          margin-right: 1em;
+        }
+        .hot-rank-wrap {
+          word-break: keep-all;
+        }
+      `)
 
       async function getCover(win) {
         if (!cover.loaded) {
