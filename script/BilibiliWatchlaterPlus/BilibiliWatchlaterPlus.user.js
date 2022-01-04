@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.24.1.20220104
+// @version         4.24.2.20220104
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -3282,7 +3282,9 @@
                     }
                     include = include && new RegExp(include, 'i')
                     exclude = exclude && new RegExp(exclude, 'i')
-                  } catch {}
+                  } catch {
+                    include = exclude = null
+                  }
                 }
                 const cnt = [0, 0]
                 for (const [i, list] of lists.entries()) {
@@ -4351,7 +4353,9 @@
           }
           include = include && new RegExp(include, 'i')
           exclude = exclude && new RegExp(exclude, 'i')
-        } catch {}
+        } catch {
+          include = exclude = null
+        }
       }
 
       const listBox = await api.wait.$('.watch-later-list .list-box')
