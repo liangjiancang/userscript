@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.24.0.20220104
+// @version         4.24.1.20220104
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -18,7 +18,7 @@
 // @exclude         *://t.bilibili.com/h5/*
 // @exclude         *://www.bilibili.com/page-proxy/*
 // @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=974252
-// @require         https://greasyfork.org/scripts/431998-userscriptapidom/code/UserscriptAPIDom.js?version=973743
+// @require         https://greasyfork.org/scripts/431998-userscriptapidom/code/UserscriptAPIDom.js?version=1005139
 // @require         https://greasyfork.org/scripts/432000-userscriptapimessage/code/UserscriptAPIMessage.js?version=973744
 // @require         https://greasyfork.org/scripts/432002-userscriptapiwait/code/UserscriptAPIWait.js?version=977808
 // @require         https://greasyfork.org/scripts/432003-userscriptapiweb/code/UserscriptAPIWeb.js?version=977807
@@ -237,7 +237,6 @@
    * @property {boolean} removeButton_removeAll 移除「一键清空」按钮
    * @property {boolean} removeButton_removeWatched 移除「移除已观看视频」按钮
    * @property {menuScrollbarSetting} menuScrollbarSetting 弹出菜单的滚动条设置
-   * @property {boolean} hideWatchlaterInCollect 隐藏「收藏」中的「稍后再看」
    * @property {mainRunAt} mainRunAt 主要逻辑运行时期
    * @property {number} watchlaterListCacheValidPeriod 稍后再看列表数据本地缓存有效期（单位：秒）
    * @property {boolean} hideDisabledSubitems 设置页隐藏被禁用项的子项
@@ -266,6 +265,7 @@
    */
   /**
    * @typedef GMObject_runtime
+   * @property {'old' | '2022' | '3rd-party'} headerType 顶栏版本
    * @property {boolean} reloadWatchlaterListData 刷新稍后再看列表数据
    * @property {boolean} loadingWatchlaterListData 正在加载稍后再看列表数据
    * @property {boolean} savingRemoveHistoryData 正在存储稍后再看历史数据
@@ -373,7 +373,7 @@
   const gm = {
     id: gmId,
     configVersion: GM_getValue('configVersion'),
-    configUpdate: 20211013,
+    configUpdate: 20220104,
     searchParams: new URL(location.href).searchParams,
     config: {},
     configMap: {
@@ -416,7 +416,6 @@
       removeButton_removeAll: { default: false, attr: 'checked', configVersion: 20200722 },
       removeButton_removeWatched: { default: false, attr: 'checked', configVersion: 20200722 },
       menuScrollbarSetting: { default: Enums.menuScrollbarSetting.beautify, attr: 'value', configVersion: 20210808.1 },
-      hideWatchlaterInCollect: { default: false, attr: 'checked', configVersion: 20210808.1 },
       mainRunAt: { default: Enums.mainRunAt.DOMContentLoaded, attr: 'value', needNotReload: true, configVersion: 20210726 },
       watchlaterListCacheValidPeriod: { default: 15, type: 'int', attr: 'value', needNotReload: true, min: 8, max: 600, configVersion: 20210908 },
       hideDisabledSubitems: { default: true, attr: 'checked', configVersion: 20210505 },
@@ -709,15 +708,10 @@
      * 版本更新处理
      */
     updateVersion() {
-      if (gm.configVersion >= 20210819) { // 4.18.0.20210819
+      if (gm.configVersion >= 20210908) { // 4.20.5.20210908
         if (gm.configVersion < gm.configUpdate) {
           // 必须按从旧到新的顺序写
           // 内部不能使用 gm.configUpdate，必须手写更新后的配置版本号！
-
-          // 4.20.5.20210908
-          if (gm.configVersion < 20210908) {
-            GM_deleteValue('disablePageCache')
-          }
 
           // 4.21.1.20210911
           if (gm.configVersion < 20210911) {
@@ -736,6 +730,11 @@
               text: '因存储结构变动，已重置稍后再看历史数据。',
               timeout: gm.const.noticeTimeout,
             })
+          }
+
+          // 4.24.1.20220104
+          if (gm.configVersion < 20220104) {
+            GM_deleteValue('hideWatchlaterInCollect')
           }
 
           // 功能性更新后更新此处配置版本，通过时跳过功能性更新设置，否则转至 readConfig() 中处理
@@ -1128,13 +1127,6 @@
                 <option value="${Enums.menuScrollbarSetting.original}">维持官方的滚动条样式</option>
               </select>
             </div>`,
-          })
-          itemsHTML += getItemHTML('相关调整', {
-            desc: '隐藏顶栏「收藏」入口弹出菜单中的「稍后再看」。',
-            html: `<label>
-              <span>隐藏「收藏」中的「稍后再看」</span>
-              <input id="gm-hideWatchlaterInCollect" type="checkbox">
-            </label>`,
           })
           itemsHTML += getItemHTML('脚本设置', {
             desc: '选择脚本主要逻辑的运行时期。',
@@ -2918,7 +2910,8 @@
     async addHeaderButton() {
       const _self = this
       if (gm.config.headerCompatible === Enums.headerCompatible.bilibiliEvolved) {
-        api.wait.$('.custom-navbar [data-name=watchlaterList]').then(el => {
+        api.wait.$('.custom-navbar [data-name=watchlater]').then(el => {
+          gm.runtime.headerType = '3rd-party'
           const watchlater = el.parentElement.appendChild(el.cloneNode(true))
           el.style.display = 'none'
           watchlater.querySelector('a.main-content').removeAttribute('href')
@@ -2950,6 +2943,7 @@
       } else {
         const anchor = await api.wait.$('.user-con.signin, .bili-header__bar .right-entry .v-popover-wrap')
         if (anchor.classList.contains('user-con')) { // 传统顶栏
+          gm.runtime.headerType = 'old'
           const collect = anchor.children[4]
           const watchlater = document.createElement('div')
           watchlater.className = 'item'
@@ -2958,6 +2952,7 @@
           processClickEvent(watchlater)
           processPopup(watchlater)
         } else { // 新版顶栏
+          gm.runtime.headerType = '2022'
           const collect = anchor.parentElement.children[4]
           const watchlater = document.createElement('li')
           watchlater.className = 'v-popover-wrap'
@@ -3103,7 +3098,11 @@
           // 误触率与弹出速度正相关，与数据加载时间无关
           setTimeout(() => {
             if (watchlater._mouseOver) {
-              popup.style.position = api.dom.isFixed(watchlater.offsetParent) ? 'fixed' : ''
+              const isHeaderFixed = api.dom.findAncestor(watchlater, el => {
+                const { position } = window.getComputedStyle(el)
+                return position === 'fixed' || position === 'sticky'
+              }, true)
+              popup.style.position = isHeaderFixed ? 'fixed' : ''
               const rect = watchlater.getBoundingClientRect()
               popup.style.top = `${rect.bottom}px`
               popup.style.left = `calc(${(rect.left + rect.right) / 2}px - 16em)`
@@ -3171,6 +3170,7 @@
             const openLinkInCurrent = gm.config.openHeaderMenuLink === Enums.openHeaderMenuLink.openInCurrent
             const target = openLinkInCurrent ? '_self' : '_blank'
             gm.el.entryPopup = gm.el.gmRoot.appendChild(gm.panel.entryPopup.el)
+            gm.el.entryPopup.dataset.headerType = gm.runtime.headerType ?? '2022'
             if (gm.config.headerCompatible !== Enums.headerCompatible.none) {
               gm.el.entryPopup.dataset.compatible = gm.config.headerCompatible
             }
@@ -3180,7 +3180,7 @@
               <div class="gm-entrypopup-page">
                 <div class="gm-popup-header">
                   <div class="gm-search">
-                    <input type="text" placeholder="在列表中搜索... 支持通配符 ( ? * )">
+                    <input type="text" placeholder="搜索... 支持关键字排除 ( - ) 及通配符 ( ? * )">
                     <div class="gm-search-clear">✖</div>
                   </div>
                   <div class="gm-popup-total" title="列表条目数">0</div>
@@ -3250,18 +3250,39 @@
               })
               el.search.addEventListener('input', api.base.throttle(() => {
                 let val = el.search.value.trim()
-                const match = str => str && val?.test(str)
+                let include = null
+                let exclude = null
+                const isIncluded = str => str && include?.test(str)
+                const isExcluded = str => str && exclude?.test(str)
                 const lists = gm.config.headerMenuKeepRemoved ? [el.entryList, el.entryRemovedList] : [el.entryList]
                 if (val.length > 0) {
                   try {
                     val = val.replace(/[$()+.[\\\]^{|}]/g, '\\$&') // escape regex
                       .replaceAll('?', '.').replaceAll('*', '.+') // 通配符
-                    val = new RegExp(val, 'i')
-                  } catch {
-                    val = null
-                  }
-                } else {
-                  val = null
+                    for (const part of val.split(' ')) {
+                      if (part) {
+                        if (part.startsWith('-')) {
+                          if (part.length === 1) continue
+                          if (exclude) {
+                            exclude += '|' + part.slice(1)
+                          } else {
+                            exclude = part.slice(1)
+                          }
+                        } else {
+                          if (include) {
+                            include += '|' + part
+                          } else {
+                            include = part
+                          }
+                        }
+                      }
+                    }
+                    if (!include && exclude) {
+                      include = '.*'
+                    }
+                    include = include && new RegExp(include, 'i')
+                    exclude = exclude && new RegExp(exclude, 'i')
+                  } catch {}
                 }
                 const cnt = [0, 0]
                 for (const [i, list] of lists.entries()) {
@@ -3269,11 +3290,11 @@
                     for (let j = 0; j < list.childElementCount; j++) {
                       let valid = false
                       const card = list.children[j]
-                      if (val) {
-                        if (match(card.vTitle)) {
-                          valid = true
-                        } else if (match(card.uploader)) {
-                          valid = true
+                      if (include || exclude) {
+                        if (isIncluded(card.vTitle) || isIncluded(card.uploader)) {
+                          if (!isExcluded(card.vTitle) && !isExcluded(card.uploader)) {
+                            valid = true
+                          }
                         }
                       } else {
                         valid = true
@@ -4299,27 +4320,48 @@
     async searchWatchlaterList() {
       const search = await api.wait.$('#gm-list-search input')
       let val = search.value.trim()
-      const match = str => str && val?.test(str)
+      let include = null
+      let exclude = null
+      const isIncluded = str => str && include?.test(str)
+      const isExcluded = str => str && exclude?.test(str)
       if (val.length > 0) {
         try {
           val = val.replace(/[$()+.[\\\]^{|}]/g, '\\$&') // escape regex
             .replaceAll('?', '.').replaceAll('*', '.+') // 通配符
-          val = new RegExp(val, 'i')
-        } catch {
-          val = null
-        }
-      } else {
-        val = null
+          for (const part of val.split(' ')) {
+            if (part) {
+              if (part.startsWith('-')) {
+                if (part.length === 1) continue
+                if (exclude) {
+                  exclude += '|' + part.slice(1)
+                } else {
+                  exclude = part.slice(1)
+                }
+              } else {
+                if (include) {
+                  include += '|' + part
+                } else {
+                  include = part
+                }
+              }
+            }
+          }
+          if (!include && exclude) {
+            include = '.*'
+          }
+          include = include && new RegExp(include, 'i')
+          exclude = exclude && new RegExp(exclude, 'i')
+        } catch {}
       }
 
       const listBox = await api.wait.$('.watch-later-list .list-box')
       for (const item of listBox.querySelectorAll('.av-item')) {
         let valid = false
-        if (val) {
-          if (match(item.vTitle)) {
-            valid = true
-          } else if (match(item.uploader)) {
-            valid = true
+        if (include || exclude) {
+          if (isIncluded(item.vTitle) || isIncluded(item.uploader)) {
+            if (!isExcluded(item.vTitle) && !isExcluded(item.uploader)) {
+              valid = true
+            }
           }
         } else {
           valid = true
@@ -4545,7 +4587,7 @@
         searchContainer.className = 'gm-list-search-container'
         searchContainer.innerHTML = `
           <div id="gm-list-search" class="gm-search">
-            <input type="text" placeholder="点击以在列表中搜索... 支持通配符 ( ? * )">
+            <input type="text" placeholder="搜索... 支持关键字排除 ( - ) 及通配符 ( ? * )">
             <div class="gm-search-clear">✖</div>
           </div>
         `
@@ -4696,21 +4738,6 @@
     }
 
     /**
-     * 隐藏「收藏」中的「稍后再看」
-     */
-    hideWatchlaterInCollect() {
-      api.wait.$('.user-con .mini-favorite').then(fav => {
-        const collect = fav.parentElement
-        collect.addEventListener('mouseover', function process() {
-          api.wait.$('[role=tooltip] .tab-item [title=稍后再看]', document, true).then(el => {
-            el.parentElement.style.display = 'none'
-            collect.removeEventListener('mouseover', process) // 确保移除后再解绑
-          }).catch(() => {}) // 有时候鼠标经过收藏也没弹出来，不知道什么原因，就不报错了
-        })
-      })
-    }
-
-    /**
      * 添加批量添加管理器按钮
      */
     addBatchAddManagerButton() {
@@ -4837,9 +4864,12 @@
             z-index: 900000;
             user-select: none;
             width: 32em;
+            padding-top: 1.3em;
+          }
+          #${gm.id} .gm-entrypopup[data-header-type=old] {
             padding-top: 1em;
           }
-          #${gm.id} .gm-entrypopup .gm-popup-arrow {
+          #${gm.id} .gm-entrypopup[data-header-type=old] .gm-popup-arrow {
             position: absolute;
             top: calc(1em - 6px);
             left: calc(16em - 6px);
@@ -4852,7 +4882,7 @@
             border-bottom-color: #dfdfdf; /* 必须在 border-color 后 */
             z-index: 1;
           }
-          #${gm.id} .gm-entrypopup .gm-popup-arrow::after {
+          #${gm.id} .gm-entrypopup[data-header-type=old] .gm-popup-arrow::after {
             content: " ";
             position: absolute;
             top: 1px;
@@ -5683,9 +5713,6 @@
         }
         if (gm.config.fillWatchlaterStatus !== Enums.fillWatchlaterStatus.never) {
           webpage.fillWatchlaterStatus()
-        }
-        if (gm.config.hideWatchlaterInCollect) {
-          webpage.hideWatchlaterInCollect()
         }
 
         if (api.base.urlMatch(gm.regex.page_watchlaterList)) {
