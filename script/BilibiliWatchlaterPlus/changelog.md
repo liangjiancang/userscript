@@ -2,6 +2,12 @@
 
 本日志只记录用户友好的更新说明，影响不大的问题修复与修改不作记录，具体修改见 [提交记录](https://gitee.com/liangjiancang/userscript/commits/master/script/BilibiliWatchlaterPlus)。
 
+## V4.24
+
+1. 顶栏入口：适配B站 2022 元旦更新。
+
+> 容我吐槽下新版B站在各页面的设计割裂，新版顶栏内部的文字样式甚至都做不到统一……
+
 ## V4.23
 
 1. 代码：扩充代码规则至 `["eslint:all", "plugin:unicorn/all"]`，然后在此基础上做减法。

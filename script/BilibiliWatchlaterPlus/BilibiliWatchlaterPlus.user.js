@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.23.12.20211013
+// @version         4.24.0.20220104
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -2915,7 +2915,7 @@
     /**
      * 顶栏中加入稍后再看入口
      */
-    addHeaderButton() {
+    async addHeaderButton() {
       const _self = this
       if (gm.config.headerCompatible === Enums.headerCompatible.bilibiliEvolved) {
         api.wait.$('.custom-navbar [data-name=watchlaterList]').then(el => {
@@ -2948,15 +2948,24 @@
           }
         `)
       } else {
-        api.wait.$('.user-con.signin').then(header => {
-          const collect = header.children[4]
+        const anchor = await api.wait.$('.user-con.signin, .bili-header__bar .right-entry .v-popover-wrap')
+        if (anchor.classList.contains('user-con')) { // 传统顶栏
+          const collect = anchor.children[4]
           const watchlater = document.createElement('div')
           watchlater.className = 'item'
           watchlater.innerHTML = '<a><span class="name">稍后再看</span></a>'
           collect.before(watchlater)
           processClickEvent(watchlater)
           processPopup(watchlater)
-        })
+        } else { // 新版顶栏
+          const collect = anchor.parentElement.children[4]
+          const watchlater = document.createElement('li')
+          watchlater.className = 'v-popover-wrap'
+          watchlater.innerHTML = '<a class="right-entry__outside" style="cursor:pointer"><svg width="20" height="21" viewBox="0 0 20 21" fill="none" xmlns="http://www.w3.org/2000/svg" class="right-entry-icon"><path d="M3.2 3.5l14.5 7-14.5 7v-14z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"></path></svg><span class="right-entry-text">稍后再看</span></a>'
+          collect.before(watchlater)
+          processClickEvent(watchlater)
+          processPopup(watchlater)
+        }
       }
 
       /**
@@ -4736,22 +4745,22 @@
             ${popup}::-webkit-scrollbar,
             ${tooltip} ::-webkit-scrollbar,
             ${dynamic}::-webkit-scrollbar {
-              width: 6px;
-              height: 6px;
+              width: 4px;
+              height: 4px;
               background-color: var(--${gm.id}-scrollbar-background-color);
             }
 
             ${popup}::-webkit-scrollbar-thumb,
             ${tooltip} ::-webkit-scrollbar-thumb,
             ${dynamic}::-webkit-scrollbar-thumb {
-              border-radius: 3px;
+              border-radius: 4px;
               background-color: var(--${gm.id}-scrollbar-background-color);
             }
 
             ${popup}:hover::-webkit-scrollbar-thumb,
             ${tooltip} :hover::-webkit-scrollbar-thumb,
             ${dynamic}:hover::-webkit-scrollbar-thumb {
-              border-radius: 3px;
+              border-radius: 4px;
               background-color: var(--${gm.id}-scrollbar-thumb-color);
             }
 
@@ -4813,7 +4822,6 @@
 
           #${gm.id} {
             color: var(--${gm.id}-text-color);
-            font-family: Arial, Microsoft Yahei, Hiragino Sans GB, sans-serif;
           }
           #${gm.id} * {
             box-sizing: content-box;
