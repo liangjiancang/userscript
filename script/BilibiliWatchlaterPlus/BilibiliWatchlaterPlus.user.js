@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.24.2.20220104
+// @version         4.24.3.20220105
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -2956,7 +2956,7 @@
           const collect = anchor.parentElement.children[4]
           const watchlater = document.createElement('li')
           watchlater.className = 'v-popover-wrap'
-          watchlater.innerHTML = '<a class="right-entry__outside" style="cursor:pointer"><svg width="20" height="21" viewBox="0 0 20 21" fill="none" xmlns="http://www.w3.org/2000/svg" class="right-entry-icon"><path d="M3.2 3.5l14.5 7-14.5 7v-14z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"></path></svg><span class="right-entry-text">稍后再看</span></a>'
+          watchlater.innerHTML = '<a class="right-entry__outside" style="cursor:pointer"><svg width="20" height="21" viewBox="0 0 20 21" fill="none" xmlns="http://www.w3.org/2000/svg" class="right-entry-icon"><path d="M3.7 3.7l13.9 6.8-13.9 6.8V3.7z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"></path></svg><span class="right-entry-text">稍后再看</span></a>'
           collect.before(watchlater)
           processClickEvent(watchlater)
           processPopup(watchlater)
