@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站封面获取
-// @version         5.7.0.20220108
+// @version         5.7.1.20220108
 // @namespace       laster2800
 // @author          Laster2800
 // @description     获取B站各播放页及直播间封面，支持手动及实时预览等多种模式，支持点击下载、封面预览、快速复制，可高度自定义
@@ -1006,7 +1006,7 @@
       }
     }
 
-    addStyle(doc = document) {
+    addStyle() {
       api.base.addStyle(`
         .${gm.id}-bangumi-cover-btn {
           float: right;
@@ -1052,7 +1052,7 @@
           user-select: none;
           display: none;
         }
-      `, doc)
+      `)
     }
   }
 
