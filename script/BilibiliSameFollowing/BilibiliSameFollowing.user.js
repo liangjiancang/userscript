@@ -8,13 +8,15 @@
 // @homepageURL     https://greasyfork.org/zh-CN/scripts/428453
 // @supportURL      https://greasyfork.org/zh-CN/scripts/428453/feedback
 // @license         LGPL-3.0
-// @noframes
-// @include         https://live.bilibili.com/blackboard/activity-*
-// @include         https://www.bilibili.com/*
-// @include         https://t.bilibili.com/*
-// @include         https://space.bilibili.com/*
-// @include         /https?:\/\/live\.bilibili\.com\/\d+\??.*/
-// @exclude         https://www.bilibili.com/s/*
+// @include         *://www.bilibili.com/*
+// @include         *://t.bilibili.com/*
+// @include         *://space.bilibili.com/*
+// @include         /https?:\/\/live\.bilibili\.com\/(blanc\/)?\d+([/?]|$)/
+// @exclude         *://www.bilibili.com/watchlater/
+// @exclude         *://www.bilibili.com/page-proxy/*
+// @exclude         *://t.bilibili.com/pages/nav/index_new
+// @exclude         *://t.bilibili.com/h5/*
+// @exclude         *://t.bilibili.com/*/*
 // @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=974252
 // @require         https://greasyfork.org/scripts/432002-userscriptapiwait/code/UserscriptAPIWait.js?version=977808
 // @require         https://greasyfork.org/scripts/432003-userscriptapiweb/code/UserscriptAPIWeb.js?version=977807
@@ -35,22 +37,6 @@
 (function() {
   'use strict'
 
-  function objectCookies(cookie) {
-    const cookies = cookie.split(';')
-    const result = {}
-
-    for (const cooky of cookies) {
-      const keyvaluepair = cooky.split('=')
-      result[keyvaluepair[0].trim()] = keyvaluepair[1]
-    }
-    return result
-  }
-  if (location.host === 'space.bilibili.com') {
-    const ObjectCookie = objectCookies(document.cookie)
-    if (ObjectCookie.DedeUserID === location.pathname.replaceAll('/', '')) {
-      return
-    }
-  }
   const gm = {
     id: 'gm428453',
     configVersion: GM_getValue('configVersion'),
@@ -64,34 +50,12 @@
       rareCard: false,
     },
     configMap: {
-      dispMessage: {
-        default: true,
-        name: '无共同关注或查询失败时提示信息',
-        needNotReload: true,
-      },
-      dispInReverse: {
-        default: false,
-        name: '以关注时间降序显示',
-        needNotReload: true,
-      },
-      dispInText: {
-        default: false,
-        name: '以纯文本形式显示',
-        needNotReload: true,
-      },
-      dispRelation: {
-        default: true,
-        name: '显示目标用户与自己的关系',
-        needNotReload: true,
-      },
-      userSpace: {
-        default: true,
-        name: '在用户空间启用',
-      },
-      rareCard: {
-        default: false,
-        name: '在非常规用户卡片启用',
-      },
+      dispMessage: { default: true, name: '无共同关注或查询失败时提示信息', needNotReload: true },
+      dispInReverse: { default: false, name: '以关注时间降序显示', needNotReload: true },
+      dispInText: { default: false, name: '以纯文本形式显示', needNotReload: true },
+      dispRelation: { default: true, name: '显示目标用户与自己的关系', needNotReload: true },
+      userSpace: { default: true, name: '在用户空间启用' },
+      rareCard: { default: false, name: '在非常规用户卡片启用' },
     },
     url: {
       api_sameFollowings: uid => `https://api.bilibili.com/x/relation/same/followings?vmid=${uid}`,
@@ -100,11 +64,11 @@
       gm_changelog: 'https://gitee.com/liangjiancang/userscript/blob/master/script/BilibiliSameFollowing/changelog.md',
     },
     regex: {
-      page_videoNormalMode: /\.com\/video/,
-      page_videoWatchlaterMode: /\.com\/medialist\/play\/watchlater/,
-      page_dynamic: /\/t\.bilibili\.com/,
-      page_space: /space\.bilibili\.com\/\d+/,
-      page_live: /live\.bilibili\.com\/(blackboard|\d+)/, // 只含具体的直播间页面
+      page_videoNormalMode: /\.com\/video([#/?]|$)/,
+      page_videoWatchlaterMode: /\.com\/medialist\/play\/watchlater([#/?]|$)/,
+      page_dynamic: /\/t\.bilibili\.com(\/|$)/,
+      page_space: /space\.bilibili\.com\/\d+([#/?]|$)/,
+      page_live: /live\.bilibili\.com\/(blanc\/)?\d+([#/?]|$)/, // 只含具体的直播间页面
     },
     const: {
       noticeTimeout: 5600,
@@ -167,10 +131,7 @@
     initScriptMenu() {
       const _self = this
       const cfgName = id => `[ ${config[id] ? '✓' : '✗'} ] ${configMap[id].name}`
-      const {
-        config,
-        configMap,
-      } = gm
+      const { config, configMap } = gm
       const menuMap = {}
       for (const id of Object.keys(config)) {
         menuMap[id] = createMenuItem(id)
@@ -185,8 +146,7 @@
           GM_notification({
             text: `已${config[id] ? '开启' : '关闭'}「${configMap[id].name}」功能${configMap[id].needNotReload ? '' : '，刷新页面以生效（点击通知以刷新）'}。`,
             timeout: gm.const.noticeTimeout,
-            onclick: configMap[id].needNotReload ? null : () => location
-              .reload(),
+            onclick: configMap[id].needNotReload ? null : () => location.reload(),
           })
           clearMenu()
           _self.initScriptMenu()
@@ -263,7 +223,7 @@
        * @returns {string} UID
        */
       getUid(url = location.pathname) {
-        return /\d+/.exec(url)?.[0]
+        return /\/(\d+)([#/?]|$)/.exec(url)?.[1]
       },
 
       /**
@@ -275,14 +235,19 @@
       async getRelation(uid) {
         const resp = await api.web.request({
           url: gm.url.api_relation(uid),
-        }, {
-          check: r => r.code === 0,
-        })
+        }, { check: r => r.code === 0 })
         const relation = resp.data.be_relation
-        return {
-          code: relation.attribute,
-          special: relation.special === 1,
-        }
+        return { code: relation.attribute, special: relation.special === 1 }
+      },
+
+      /**
+       * 判断用户是否为自己
+       * @param {string | number} uid UID
+       * @returns {boolean} 用户是否为自己
+       */
+      isUserSelf(uid) {
+        const selfUid = document.cookie.replace(/(?:(?:^|.*;\s*)DedeUserID\s*=\s*([^;]*).*$)|^.*$/, '$1')
+        return selfUid ? String(uid) === selfUid : false
       },
     }
 
@@ -298,13 +263,8 @@
      * @param {string} [options.before] 将信息显示元素插入到信息元素内部哪个元素之前，以 CSS 选择器定义，缺省时插入到信息元素最后
      */
     async cardLogic(options) {
-      options = {
-        lazy: true,
-        ancestor: false,
-        ...options,
-      }
-      const container = options.container ? await api.wait.$(options.container) : (document.body
-        ?? await api.wait.$('body'))
+      options = { lazy: true, ancestor: false, ...options }
+      const container = options.container ? await api.wait.$(options.container) : (document.body ?? await api.wait.$('body'))
       api.wait.executeAfterElementLoaded({
         selector: options.card,
         base: container,
@@ -343,12 +303,9 @@
      * @param {HTMLElement} [options.before] 将信息显示元素插入哪个元素之前，该元素须为目标元素的子元素；缺省时插入到目标元素最后
      */
     async generalLogic(options) {
-      const {
-        target,
-        before,
-      } = options
-      let dispEl = target.sameFollowings ?? (options.className ? target.querySelector(options.className
-        .replace(/(^|\s+)(?=\w)/g, '.')) : null)
+      const { uid, target, before } = options
+      if (webpage.method.isUserSelf(uid)) return
+      let dispEl = target.sameFollowings ?? (options.className ? target.querySelector(options.className.replace(/(^|\s+)(?=\w)/g, '.')) : null)
       if (dispEl) {
         dispEl.textContent = ''
       } else {
@@ -365,17 +322,20 @@
 
       try {
         let resp = await api.web.request({
-          url: gm.url.api_sameFollowings(options.uid),
+          url: gm.url.api_sameFollowings(uid),
         })
         if (resp.code === 0) {
           const { data } = resp
-          const { total } = data
-          const totalPages = Math.ceil(total / 50)
-          for (let i = 2; i <= totalPages; i++) {
-            resp = await api.web.request({
-              url: gm.url.api_sameFollowings(options.uid) + '&pn=' + i,
-            })
-            data.list.push(...resp.data.list)
+          if (data.list) {
+            const { total } = data
+            const totalPages = Math.ceil(total / 50)
+            for (let i = 2; i <= totalPages; i++) {
+              resp = await api.web.request({
+                url: gm.url.api_sameFollowings(uid) + `&pn=${i}`,
+              })
+              if (resp.code !== 0 || !resp.data.list) break
+              data.list.push(...resp.data.list)
+            }
           }
           let sameFollowings = null
           if (gm.config.dispInText) {
@@ -413,7 +373,7 @@
             dispEl.innerHTML = `<div class="gm-pre">共同关注</div><div>[ ${resp.message} ]</div>`
           }
           const msg = [resp.code, resp.message]
-          if (resp.code === 0) {
+          if (resp.code > 0) {
             api.logger.info(msg)
           } else {
             api.logger.error(msg)
@@ -428,7 +388,7 @@
 
       if (gm.config.dispRelation) {
         try {
-          const relation = await this.method.getRelation(options.uid)
+          const relation = await this.method.getRelation(uid)
           const desc = (relation.special ? {
             1: '对方悄悄关注并特别关注了你', // impossible
             2: '对方特别关注了你',
@@ -459,27 +419,8 @@
      * 处理点击弹幕弹出的信息卡片。
      */
     async initLive() {
-      let frame = null
-      let container = await api.wait.$('#player-ctnr iframe')
-      if (container.tagName === 'IFRAME') {
-        frame = container
-        let doc = frame.contentDocument
-        // 依执行至此的页面加载进度（与网络正相关、与 CPU 负相关），这里 doc 有以下三种情况：
-        // 1. frame 未初始化，获取到其默认 document：`<html><head></head><body></body></html>`，且 `readyState == 'complete'`
-        // 2. frame 正在初始化，默认 document 被移除，获取到 null
-        // 3. 获取到正确的 frame document
-        if (!doc?.documentElement.textContent) { // 可应对以上状态的条件
-          api.logger.info('Waiting for live room iframe document...')
-          await new Promise(resolve => {
-            frame.addEventListener('load', () => {
-              doc = frame.contentDocument
-              resolve()
-            })
-          })
-        }
-        container = await api.wait.$('.danmaku-menu', doc)
-        webpage.addStyle(doc)
-      }
+      const frame = self !== top
+      const container = await api.wait.$('.danmaku-menu')
       const userLink = await api.wait.$('.go-space a', container)
       container.style.maxWidth = frame ? '264px' : '300px'
 
@@ -499,78 +440,77 @@
           container.style.left = frame ? '76vw' : '72vw'
         }
       })
-      ob.observe(userLink, {
-        attributeFilter: ['href'],
-      })
+      ob.observe(userLink, { attributeFilter: ['href'] })
     }
 
-    addStyle(doc = document) {
+    addStyle() {
       api.base.addStyle(`
-.${gm.id} > * {
-display: inline-block;
-}
-.${gm.id} > *,
-.${gm.id} .same-following {
-color: inherit;
-text-decoration: none;
-outline: none;
-margin: 0;
-padding: 0;
-border: 0;
-vertical-align: baseline;
-white-space: pre-wrap;
-word-break: break-all;
-line-height: 1.42em; /* 解决换行后仅剩英文时行高不一致的问题 */
-}
-.${gm.id} a.same-following:hover {
-color: #00a1d6;
-}
-.${gm.id} .gm-relation {
-display: block;
-font-weight: bold;
-}
-.${gm.id} .gm-special {
-font-weight: bold;
-}
-.${gm.id} .gm-mutual {
-text-decoration: underline;
-}
+        .${gm.id} > * {
+          display: inline-block;
+        }
+        .${gm.id} > *,
+        .${gm.id} .same-following {
+          color: inherit;
+          text-decoration: none;
+          outline: none;
+          margin: 0;
+          padding: 0;
+          border: 0;
+          vertical-align: baseline;
+          white-space: pre-wrap;
+          word-break: break-all;
+          line-height: 1.42em; /* 解决换行后仅剩英文时行高不一致的问题 */
+        }
+        .${gm.id} a.same-following:hover {
+          color: #00a1d6;
+        }
+        .${gm.id} .gm-relation {
+          display: block;
+          font-weight: bold;
+        }
+        .${gm.id} .gm-special {
+          font-weight: bold;
+        }
+        .${gm.id} .gm-mutual {
+          text-decoration: underline;
+        }
 
-.${gm.id}.card-same-followings {
-color: #99a2aa;
-padding: 1em 0 0;
-}
-.${gm.id}.card-same-followings .gm-pre {
-position: absolute;
-margin-left: -5em;
-font-weight: bold;
-line-height: unset;
-}
+        .${gm.id}.card-same-followings {
+          color: #99a2aa;
+          padding: 1em 0 0;
+        }
+        .${gm.id}.card-same-followings .gm-pre {
+          position: absolute;
+          margin-left: -5em;
+          font-weight: bold;
+          line-height: unset;
+        }
 
-.${gm.id}.space-same-followings {
-margin-bottom: 0.5em;
-padding: 0.5em 1.6em;
-background: #fff;
-box-shadow: 0 0 0 1px #eee;
-border-radius: 0 0 4px 4px;
-}
-.${gm.id}.space-same-followings .gm-pre {
-font-weight: bold;
-padding-right: 1em;
-}
+        .${gm.id}.space-same-followings {
+          margin-bottom: 0.5em;
+          padding: 0.5em 1.6em;
+          background: #fff;
+          box-shadow: 0 0 0 1px #eee;
+          border-radius: 0 0 4px 4px;
+        }
+        .${gm.id}.space-same-followings .gm-pre {
+          font-weight: bold;
+          padding-right: 1em;
+        }
 
-.${gm.id}.live-same-followings > * {
-display: block;
-}
-.${gm.id}.live-same-followings > :first-child { /* 不要直接加到容器上，避免为空时出现间隔 */
-margin-top: 1em;
-}
-.${gm.id}.live-same-followings .gm-pre {
-font-weight: bold;
-}
-`, doc)
+        .${gm.id}.live-same-followings > * {
+          display: block;
+        }
+        .${gm.id}.live-same-followings > :first-child { /* 不要直接加到容器上，避免为空时出现间隔 */
+          margin-top: 1em;
+        }
+        .${gm.id}.live-same-followings .gm-pre {
+          font-weight: bold;
+        }
+      `)
     }
   }
+
   document.readyState !== 'complete' ? window.addEventListener('load', main) : main()
 
   async function main() {
@@ -601,7 +541,8 @@ font-weight: bold;
     } else if (api.base.urlMatch(gm.regex.page_videoWatchlaterMode)) {
       // 稍后再看播放页中的UP主头像
       webpage.cardLogic({
-        card: '.user-card',
+        container: '#app #app', // 这是什么阴间玩意？
+        card: '.user-card-m',
         user: '.face',
         info: '.info',
         before: '.btn-box',
