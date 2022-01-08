@@ -2,6 +2,14 @@
 
 本日志只记录用户友好的更新说明，影响不大的问题修复与修改不作记录，具体修改见 [提交记录](https://gitee.com/liangjiancang/userscript/commits/master/script/BilibiliSameFollowing)。
 
+## V1.9
+
+1. 脚本：优化直播间的匹配方式，支持各种特殊直播间页面，尽可能向前兼容。
+2. 共同关注：修复最多只能显示前 50 个共同关注的问题。
+3. 共同关注：当用户为自己时不再显示共同关注。
+
+> 感谢 [AndrewXiongGe](https://github.com/AndrewXiongGe) 的代码贡献。
+
 ## V1.8
 
 1. 脚本：适配B站 2021 年 9 月对于用户卡片的改版。
