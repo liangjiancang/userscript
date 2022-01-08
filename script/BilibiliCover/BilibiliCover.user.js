@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站封面获取
-// @version         5.6.6.20220104
+// @version         5.7.0.20220108
 // @namespace       laster2800
 // @author          Laster2800
 // @description     获取B站各播放页及直播间封面，支持手动及实时预览等多种模式，支持点击下载、封面预览、快速复制，可高度自定义
@@ -8,14 +8,11 @@
 // @homepageURL     https://greasyfork.org/zh-CN/scripts/395575
 // @supportURL      https://greasyfork.org/zh-CN/scripts/395575/feedback
 // @license         LGPL-3.0
-// @noframes
 // @include         *://www.bilibili.com/video/*
 // @include         *://www.bilibili.com/bangumi/play/*
 // @include         *://www.bilibili.com/medialist/play/watchlater
 // @include         *://www.bilibili.com/medialist/play/watchlater/*
-// @include         *://live.bilibili.com/*
-// @exclude         *://live.bilibili.com/
-// @exclude         *://live.bilibili.com/?*
+// @include         /https?:\/\/live\.bilibili\.com\/(blanc\/)?\d+([/?]|$)/
 // @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=974252
 // @require         https://greasyfork.org/scripts/431998-userscriptapidom/code/UserscriptAPIDom.js?version=1005139
 // @require         https://greasyfork.org/scripts/432000-userscriptapimessage/code/UserscriptAPIMessage.js?version=973744
@@ -91,7 +88,7 @@
       page_videoNormalMode: /\.com\/video([#/?]|$)/,
       page_videoWatchlaterMode: /\.com\/medialist\/play\/watchlater([#/?]|$)/,
       page_bangumi: /\/bangumi\/play([#/?]|$)/,
-      page_live: /live\.bilibili\.com\/\d+([#/?]|$)/, // 只含具体的直播间页面
+      page_live: /live\.bilibili\.com\/(blanc\/)?\d+([#/?]|$)/, // 只含具体的直播间页面
     },
     const: {
       hintText: `
@@ -954,41 +951,14 @@
     }
 
     async initLive() {
-      let win = unsafeWindow
-      let doc = document
-      let container = await api.wait.$(`
-        #head-info-vm .right-ctnr,
-        #head-info-vm .upper-right-ctnr,
-        #player-ctnr iframe
-      `)
-      if (container.tagName === 'IFRAME') {
-        const frame = container
-        win = frame.contentWindow
-        doc = frame.contentDocument
-        // 依执行至此的页面加载进度（与网络正相关、与 CPU 负相关），这里 doc 有以下三种情况：
-        // 1. frame 未初始化，获取到其默认 document：`<html><head></head><body></body></html>`，且 `readyState == 'complete'`
-        // 2. frame 正在初始化，默认 document 被移除，获取到 null
-        // 3. 获取到正确的 frame document
-        if (!doc?.documentElement.textContent) { // 可应对以上状态的条件
-          api.logger.info('Waiting for live room iframe document...')
-          await new Promise(resolve => {
-            frame.addEventListener('load', () => {
-              win = frame.contentWindow
-              doc = frame.contentDocument
-              resolve()
-            })
-          })
-        }
-        container = await api.wait.$('#head-info-vm .right-ctnr, #head-info-vm .upper-right-ctnr', doc)
-        this.addStyle(doc)
-      }
+      const container = await api.wait.$('#head-info-vm .right-ctnr, #head-info-vm .upper-right-ctnr')
       // 这里再获取 hiVm，提前获取到的 hiVm 有可能会被替换成新的
-      const hiVm = await api.wait.$('#head-info-vm', doc)
+      const hiVm = api.dom.findAncestor(container, el => el.id === 'head-info-vm')
       await api.wait.waitForConditionPassed({
         condition: () => hiVm.__vue__,
       })
 
-      const cover = doc.createElement('a')
+      const cover = document.createElement('a')
       cover.textContent = '获取封面'
       cover.className = `${gm.id}-live-cover-btn`
       cover.style.userSelect = 'none'
@@ -1005,7 +975,7 @@
           if (cover.loaded) return false
           // 在异步等待前拦截，避免逻辑倒置
           event.stopPropagation()
-          const url = await getCover(win)
+          const url = await getCover()
           this.method.setCover(cover, preview, url)
         } catch (e) {
           event.stopPropagation()
@@ -1025,10 +995,10 @@
         }
       `)
 
-      async function getCover(win) {
+      async function getCover() {
         if (!cover.loaded) {
           cover._coverUrl = await api.wait.waitForConditionPassed({
-            condition: () => win.__NEPTUNE_IS_MY_WAIFU__?.roomInfoRes?.data?.room_info?.cover ?? win.__STORE__?.baseInfoRoom?.coverUrl,
+            condition: () => unsafeWindow.__NEPTUNE_IS_MY_WAIFU__?.roomInfoRes?.data?.room_info?.cover ?? unsafeWindow.__STORE__?.baseInfoRoom?.coverUrl,
             timeout: 2000,
           })
         }
