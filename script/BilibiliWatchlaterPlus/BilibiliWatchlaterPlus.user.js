@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.24.3.20220105
+// @version         4.24.4.20220115
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -55,6 +55,8 @@
     defaultR: 'serial:R',
     duration: 'duration',
     durationR: 'duration:R',
+    pubtime: 'pubtime',
+    pubtimeR: 'pubtime:R',
     progress: 'progress',
     uploader: 'uploader',
     title: 'vTitle',
@@ -295,6 +297,7 @@
    * @property {string} [owner.name] UP主名字
    * @property {number} [progress] 视频播放进度
    * @property {number} [duration] 视频时长
+   * @property {number} [pubdate] 视频发布时间
    * @property {number} [videos] 稿件分P数
    * @see {@link https://github.com/SocialSisterYi/bilibili-API-collect/blob/master/history%26toview/toview.md#获取稍后再看视频列表 获取稍后再看视频列表}
    */
@@ -373,7 +376,7 @@
   const gm = {
     id: gmId,
     configVersion: GM_getValue('configVersion'),
-    configUpdate: 20220104,
+    configUpdate: 20220115,
     searchParams: new URL(location.href).searchParams,
     config: {},
     configMap: {
@@ -403,7 +406,7 @@
       removeHistorySearchTimes: { default: 100, type: 'int', attr: 'value', manual: true, needNotReload: true, min: 1, max: 500, configVersion: 20210819 },
       batchAddLoadAfterTimeSync: { default: false, attr: 'checked', configVersion: 20210917, needNotReload: true },
       fillWatchlaterStatus: { default: Enums.fillWatchlaterStatus.dynamic, attr: 'value', configVersion: 20200819 },
-      autoSort: { default: Enums.autoSort.default, attr: 'value', configVersion: 20210819 },
+      autoSort: { default: Enums.autoSort.default, attr: 'value', configVersion: 20220115 },
       videoButton: { default: true, attr: 'checked' },
       autoRemove: { default: Enums.autoRemove.openFromList, attr: 'value', configVersion: 20210612 },
       redirect: { default: false, attr: 'checked', configVersion: 20210322.1 },
@@ -659,6 +662,7 @@
                   },
                   progress: item.progress,
                   duration: item.duration,
+                  pubdate: item.pubdate,
                   videos: item.videos,
                 })))
               }
@@ -708,15 +712,10 @@
      * 版本更新处理
      */
     updateVersion() {
-      if (gm.configVersion >= 20210908) { // 4.20.5.20210908
+      if (gm.configVersion >= 20210911) { // 4.21.1.20210911
         if (gm.configVersion < gm.configUpdate) {
           // 必须按从旧到新的顺序写
           // 内部不能使用 gm.configUpdate，必须手写更新后的配置版本号！
-
-          // 4.21.1.20210911
-          if (gm.configVersion < 20210911) {
-            GM_deleteValue('removeHistoryFuzzyCompareReference')
-          }
 
           // 4.21.7.20210915
           if (gm.configVersion < 20210915) {
@@ -735,6 +734,12 @@
           // 4.24.1.20220104
           if (gm.configVersion < 20220104) {
             GM_deleteValue('hideWatchlaterInCollect')
+          }
+
+          // 4.24.4.20220115
+          if (gm.configVersion < 20220115) {
+            GM_deleteValue('watchlaterListCacheTime')
+            GM_deleteValue('watchlaterListCache')
           }
 
           // 功能性更新后更新此处配置版本，通过时跳过功能性更新设置，否则转至 readConfig() 中处理
@@ -1011,6 +1016,8 @@
                 <option value="${Enums.autoSort.defaultR}">使用 [ 默认↓ ] 排序</option>
                 <option value="${Enums.autoSort.duration}">使用 [ 时长 ] 排序</option>
                 <option value="${Enums.autoSort.durationR}">使用 [ 时长↓ ] 排序</option>
+                <option value="${Enums.autoSort.pubtime}">使用 [ 发布 ] 排序</option>
+                <option value="${Enums.autoSort.pubtimeR}">使用 [ 发布↓ ] 排序</option>
                 <option value="${Enums.autoSort.progress}">使用 [ 进度 ] 排序</option>
                 <option value="${Enums.autoSort.uploader}">使用 [ UP主 ] 排序</option>
                 <option value="${Enums.autoSort.title}">使用 [ 标题 ] 排序</option>
@@ -3205,6 +3212,8 @@
                           <div class="gm-option" data-value="${Enums.sortType.uploader}">UP主</div>
                           <div class="gm-option" data-value="${Enums.sortType.progress}">进度</div>
                         ` : ''}
+                        <div class="gm-option" data-value="${Enums.sortType.pubtimeR}">发布↓</div>
+                        <div class="gm-option" data-value="${Enums.sortType.pubtime}">发布</div>
                         <div class="gm-option" data-value="${Enums.sortType.durationR}">时长↓</div>
                         <div class="gm-option" data-value="${Enums.sortType.duration}">时长</div>
                         <div class="gm-option" data-value="${Enums.sortType.defaultR}">默认↓</div>
@@ -3501,6 +3510,7 @@
                 card.vTitle = item.title
                 card.bvid = item.bvid
                 card.duration = item.duration
+                card.pubtime = item.pubdate
                 if (rmBvid?.size > 0) {
                   if (rmBvid.has(card.bvid)) {
                     rmBvid.delete(card.bvid)
@@ -4116,6 +4126,7 @@
         item.vTitle = d.title
         item.uploader = d.owner.name
         item.duration = d.duration
+        item.pubtime = d.pubdate
         item.multiP = d.videos > 1
         if (d.progress < 0) {
           d.progress = d.duration
@@ -4635,6 +4646,8 @@
           <option value="${Enums.sortType.defaultR}">排序：默认↓</option>
           <option value="${Enums.sortType.duration}">排序：时长</option>
           <option value="${Enums.sortType.durationR}">排序：时长↓</option>
+          <option value="${Enums.sortType.pubtime}">排序：发布</option>
+          <option value="${Enums.sortType.pubtimeR}">排序：发布↓</option>
           <option value="${Enums.sortType.progress}">排序：进度</option>
           <option value="${Enums.sortType.uploader}">排序：UP主</option>
           <option value="${Enums.sortType.title}">排序：标题</option>
