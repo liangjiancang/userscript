@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.24.4.20220115
+// @version         4.25.0.20220127
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -1660,8 +1660,8 @@
                   <option value="${3600 * 24}">天</option>
                   <option value="3600" selected>小时</option>
                   <option value="60">分钟</option>
-                </select> 以内；可使用上下方向键（配合 Alt/Shift/Ctrl）调整数值大小<button id="gm-batch-2c" disabled>执行</button></div>
-                <div>第三步：筛选 <input id="gm-batch-3a" type="text" style="width:10em">，过滤 <input id="gm-batch-3b" type="text" style="width:10em">；支持通配符 ( ? * )，使用 | 分隔关键词<button id="gm-batch-3c" disabled>执行</button></div>
+                </select> 以内；可使用上下方向键（配合 Alt/Shift/Ctrl）调整数值大小<button id="gm-batch-2c" disabled hidden>执行</button></div>
+                <div>第三步：筛选 <input id="gm-batch-3a" type="text" style="width:10em">，过滤 <input id="gm-batch-3b" type="text" style="width:10em">；支持通配符 ( ? * )，使用 | 分隔关键词<button id="gm-batch-3c" disabled hidden>执行</button></div>
                 <div>第四步：将选定稿件添加到稍后再看（平均请求间隔：<input is="laster2800-input-number" id="gm-batch-4a" value="${gm.const.batchAddRequestInterval}" min="200">ms）<button id="gm-batch-4b" disabled>执行</button><button id="gm-batch-4c" disabled>终止</button></div>
               </div>
               <div class="gm-items"></div>
@@ -1779,8 +1779,6 @@
               el.id1c.disabled = true
               el.id1c.textContent = '执行中'
               el.id1d.disabled = false
-              el.id2c.disabled = true
-              el.id3c.disabled = true
               el.id4b.disabled = true
               el.id2a.defaultValue = el.id2a.max = v1a
               el.id2b.syncVal = el.id1b.value
@@ -1857,14 +1855,15 @@
               el.id1c.disabled = false
               el.id1c.textContent = '重新执行'
               el.id1d.disabled = true
-              el.id2c.disabled = false
-              el.id3c.disabled = false
               el.id4b.disabled = false
+              // 更新第二步的时间范围
               if (el.id2a.defaultValue && el.id2b.syncVal) {
                 el.id2a.value = el.id2a.defaultValue
                 el.id2b.value = el.id2b.syncVal // 非用户操作不会触发 change 事件
                 el.id2b.prevVal = el.id2b.value
               }
+              // 自动执行第三步
+              el.id3c.dispatchEvent(new Event('click'))
             }
           })
           el.id1d.addEventListener('click', () => {
@@ -1884,7 +1883,6 @@
             if (executing) return
             try {
               executing = true
-              el.id2c.disabled = true
               const v2a = Number.parseFloat(el.id2a.value)
               if (Number.isNaN(v2a)) {
                 for (let i = 0; i < el.items.childElementCount; i++) {
@@ -1925,14 +1923,13 @@
                 if (str !== '') {
                   try {
                     str = str.replace(/[$()+.[\\\]^{}]/g, '\\$&') // escape regex except |
-                      .replaceAll('?', '.').replaceAll('*', '.+') // 通配符
+                      .replaceAll('?', '.').replaceAll('*', '.*') // 通配符
                     result = new RegExp(str, 'i')
                   } catch {}
                 }
                 return result
               }
               executing = true
-              el.id3c.disabled = true
               el.id3a.value = el.id3a.value.trim()
               el.id3b.value = el.id3b.value.trim()
               const v3a = getRegex(el.id3a.value)
@@ -1976,8 +1973,6 @@
               el.id4b.textContent = '执行中'
               el.id4c.disabled = false
               el.id1c.disabled = true
-              el.id2c.disabled = true
-              el.id3c.disabled = true
 
               let available = 100 - (await gm.data.watchlaterListData()).length
               const checks = el.items.querySelectorAll('label:not([class*=gm-filtered-]) input:checked')
@@ -2015,8 +2010,6 @@
               el.id4b.textContent = '重新执行'
               el.id4c.disabled = true
               el.id1c.disabled = false
-              el.id2c.disabled = false
-              el.id3c.disabled = false
               gm.runtime.reloadWatchlaterListData = true
               window.dispatchEvent(new CustomEvent('reloadWatchlaterListData'))
             }
@@ -3267,7 +3260,7 @@
                 if (val.length > 0) {
                   try {
                     val = val.replace(/[$()+.[\\\]^{|}]/g, '\\$&') // escape regex
-                      .replaceAll('?', '.').replaceAll('*', '.+') // 通配符
+                      .replaceAll('?', '.').replaceAll('*', '.*') // 通配符
                     for (const part of val.split(' ')) {
                       if (part) {
                         if (part.startsWith('-')) {
@@ -4340,7 +4333,7 @@
       if (val.length > 0) {
         try {
           val = val.replace(/[$()+.[\\\]^{|}]/g, '\\$&') // escape regex
-            .replaceAll('?', '.').replaceAll('*', '.+') // 通配符
+            .replaceAll('?', '.').replaceAll('*', '.*') // 通配符
           for (const part of val.split(' ')) {
             if (part) {
               if (part.startsWith('-')) {
@@ -5677,6 +5670,7 @@
 
           [gm-list-reverse] {
             flex-direction: column-reverse !important;
+            justify-content: flex-end !important;
           }
 
           .gm-fixed {
