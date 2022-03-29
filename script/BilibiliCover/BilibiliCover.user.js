@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站封面获取
-// @version         5.7.2.20220108
+// @version         5.7.3.20220329
 // @namespace       laster2800
 // @author          Laster2800
 // @description     获取B站各播放页及直播间封面，支持手动及实时预览等多种模式，支持点击下载、封面预览、快速复制，可高度自定义
@@ -12,6 +12,7 @@
 // @include         *://www.bilibili.com/bangumi/play/*
 // @include         *://www.bilibili.com/medialist/play/watchlater
 // @include         *://www.bilibili.com/medialist/play/watchlater/*
+// @include         *://www.bilibili.com/medialist/play/ml*
 // @include         /https?:\/\/live\.bilibili\.com\/(blanc\/)?\d+([/?]|$)/
 // @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=974252
 // @require         https://greasyfork.org/scripts/431998-userscriptapidom/code/UserscriptAPIDom.js?version=1005139
@@ -86,7 +87,7 @@
     },
     regex: {
       page_videoNormalMode: /\.com\/video([#/?]|$)/,
-      page_videoWatchlaterMode: /\.com\/medialist\/play\/watchlater([#/?]|$)/,
+      page_videoWatchlaterMode: /\.com\/medialist\/play\/(watchlater|ml\d+)([#/?]|$)/,
       page_bangumi: /\/bangumi\/play([#/?]|$)/,
       page_live: /live\.bilibili\.com\/(blanc\/)?\d+([#/?]|$)/, // 只含具体的直播间页面
     },

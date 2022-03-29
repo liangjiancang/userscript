@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.25.0.20220127
+// @version         4.25.1.20220329
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -454,7 +454,7 @@
       // B站并不会将「#/list」之后的「[/?#]」视为锚点的一部分，这不符合 URL 规范，但只能将错就错了
       page_watchlaterList: /\.com\/watchlater\/[^#]*#\/list([#/?]|$)/,
       page_videoNormalMode: /\.com\/video([#/?]|$)/,
-      page_videoWatchlaterMode: /\.com\/medialist\/play\/watchlater([#/?]|$)/,
+      page_videoWatchlaterMode: /\.com\/medialist\/play\/(watchlater|ml\d+)([#/?]|$)/,
       page_dynamic: /\/t\.bilibili\.com(\/|$)/,
       page_dynamicMenu: /\.com\/pages\/nav\/index_new([#/?]|$)/,
       page_userSpace: /space\.bilibili\.com([#/?]|$)/,

@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站防剧透进度条
-// @version         2.5.7.20220104
+// @version         2.5.8.20220329
 // @namespace       laster2800
 // @author          Laster2800
 // @description     看比赛、看番总是被进度条剧透？装上这个脚本再也不用担心这些问题了
@@ -12,6 +12,7 @@
 // @include         *://www.bilibili.com/video/*
 // @include         *://www.bilibili.com/medialist/play/watchlater
 // @include         *://www.bilibili.com/medialist/play/watchlater/*
+// @include         *://www.bilibili.com/medialist/play/ml*
 // @include         *://www.bilibili.com/bangumi/play/*
 // @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=974252
 // @require         https://greasyfork.org/scripts/431998-userscriptapidom/code/UserscriptAPIDom.js?version=1005139
@@ -188,7 +189,7 @@
     },
     regex: {
       page_videoNormalMode: /\.com\/video([#/?]|$)/,
-      page_videoWatchlaterMode: /\.com\/medialist\/play\/watchlater([#/?]|$)/,
+      page_videoWatchlaterMode: /\.com\/medialist\/play\/(watchlater|ml\d+)([#/?]|$)/,
       page_bangumi: /\.com\/bangumi\/play([#/?]|$)/,
     },
     const: {

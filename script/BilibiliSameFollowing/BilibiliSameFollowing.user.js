@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站共同关注快速查看
-// @version         1.9.0.20220108
+// @version         1.9.1.20220329
 // @namespace       laster2800
 // @author          Laster2800
 // @description     快速查看与特定用户的共同关注（视频播放页、动态页、用户空间、直播间）
@@ -65,7 +65,7 @@
     },
     regex: {
       page_videoNormalMode: /\.com\/video([#/?]|$)/,
-      page_videoWatchlaterMode: /\.com\/medialist\/play\/watchlater([#/?]|$)/,
+      page_videoWatchlaterMode: /\.com\/medialist\/play\/(watchlater|ml\d+)([#/?]|$)/,
       page_dynamic: /\/t\.bilibili\.com(\/|$)/,
       page_space: /space\.bilibili\.com\/\d+([#/?]|$)/,
       page_live: /live\.bilibili\.com\/(blanc\/)?\d+([#/?]|$)/, // 只含具体的直播间页面
