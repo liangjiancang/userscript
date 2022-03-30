@@ -6,7 +6,7 @@
 
 与稍后再看功能相关，一切你能想到和想不到的功能。一图胜千言，无须多言。求好评，求收藏💔。点击查看 [更新日志](https://gitee.com/liangjiancang/userscript/blob/master/script/BilibiliWatchlaterPlus/changelog.md)。
 
-![用户设置](https://gitee.com/liangjiancang/userscript/raw/master/script/BilibiliWatchlaterPlus/screenshot/用户设置.png)
+![用户设置](https://gitee.com/liangjiancang/userscript/raw/master/script/BilibiliWatchlaterPlus/screenshot/用户设置-p)
 
 ## 补充说明
 
@@ -19,26 +19,26 @@
 
 * 顶栏入口
 
-    ![顶栏入口](https://gitee.com/liangjiancang/userscript/raw/master/script/BilibiliWatchlaterPlus/screenshot/顶栏入口.png)
+    ![顶栏入口](https://gitee.com/liangjiancang/userscript/raw/master/script/BilibiliWatchlaterPlus/screenshot/顶栏入口-p)
 
 * 列表页
 
-    ![列表页](https://gitee.com/liangjiancang/userscript/raw/master/script/BilibiliWatchlaterPlus/screenshot/列表页.png)
+    ![列表页](https://gitee.com/liangjiancang/userscript/raw/master/script/BilibiliWatchlaterPlus/screenshot/列表页-p)
 
 * 批量添加
 
-    ![批量添加](https://gitee.com/liangjiancang/userscript/raw/master/script/BilibiliWatchlaterPlus/screenshot/批量添加.png)
+    ![批量添加](https://gitee.com/liangjiancang/userscript/raw/master/script/BilibiliWatchlaterPlus/screenshot/批量添加-p)
 
 * 移除记录
 
-    ![移除记录](https://gitee.com/liangjiancang/userscript/raw/master/script/BilibiliWatchlaterPlus/screenshot/移除记录.png)
+    ![移除记录](https://gitee.com/liangjiancang/userscript/raw/master/script/BilibiliWatchlaterPlus/screenshot/移除记录-p)
 
 * 快速切换
 
-    ![快速切换](https://gitee.com/liangjiancang/userscript/raw/master/script/BilibiliWatchlaterPlus/screenshot/快速切换.png)
+    ![快速切换](https://gitee.com/liangjiancang/userscript/raw/master/script/BilibiliWatchlaterPlus/screenshot/快速切换-p)
 
 * 设置入口
 
-    ![设置入口](https://gitee.com/liangjiancang/userscript/raw/master/script/BilibiliWatchlaterPlus/screenshot/设置入口.png)
+    ![设置入口](https://gitee.com/liangjiancang/userscript/raw/master/script/BilibiliWatchlaterPlus/screenshot/设置入口-p)
 
 **Source: [Gitee](https://gitee.com/liangjiancang/userscript/tree/master/script/BilibiliWatchlaterPlus) / [GitHub](https://github.com/liangjiancang/userscript/tree/master/script/BilibiliWatchlaterPlus)** - *by Laster2800*

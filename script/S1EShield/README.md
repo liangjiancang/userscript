@@ -4,6 +4,6 @@
 
 屏蔽S1的战斗力系统（可快速切换屏蔽与非屏蔽状态），但你依然可以对别人进行加鹅和扣鹅的操作。
 
-![屏蔽开关](https://gitee.com/liangjiancang/userscript/raw/master/script/S1EShield/screenshot/屏蔽开关.png)
+![屏蔽开关](https://gitee.com/liangjiancang/userscript/raw/master/script/S1EShield/screenshot/屏蔽开关-p)
 
 **Source: [Gitee](https://gitee.com/liangjiancang/userscript/tree/master/script/S1EShield) / [GitHub](https://github.com/liangjiancang/userscript/tree/master/script/S1EShield)** - *by Laster2800*

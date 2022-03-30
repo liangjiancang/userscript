@@ -20,18 +20,18 @@
 
 * 脚本设置
 
-    ![脚本设置](https://gitee.com/liangjiancang/userscript/raw/master/script/BilibiliSameFollowing/screenshot/脚本设置.png)
+    ![脚本设置](https://gitee.com/liangjiancang/userscript/raw/master/script/BilibiliSameFollowing/screenshot/脚本设置-p)
 
 * 用户卡片
 
-    ![用户卡片](https://gitee.com/liangjiancang/userscript/raw/master/script/BilibiliSameFollowing/screenshot/用户卡片.png)!
+    ![用户卡片](https://gitee.com/liangjiancang/userscript/raw/master/script/BilibiliSameFollowing/screenshot/用户卡片-p)!
 
 * 用户空间
 
-    ![用户空间](https://gitee.com/liangjiancang/userscript/raw/master/script/BilibiliSameFollowing/screenshot/用户空间.png)
+    ![用户空间](https://gitee.com/liangjiancang/userscript/raw/master/script/BilibiliSameFollowing/screenshot/用户空间-p)
 
 * 直播间
 
-    ![直播间](https://gitee.com/liangjiancang/userscript/raw/master/script/BilibiliSameFollowing/screenshot/直播间.png)
+    ![直播间](https://gitee.com/liangjiancang/userscript/raw/master/script/BilibiliSameFollowing/screenshot/直播间-p)
 
 **Source: [Gitee](https://gitee.com/liangjiancang/userscript/tree/master/script/BilibiliSameFollowing) / [GitHub](https://github.com/liangjiancang/userscript/tree/master/script/BilibiliSameFollowing)** - *by Laster2800*

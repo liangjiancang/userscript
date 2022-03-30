@@ -46,12 +46,12 @@
 * 脚本基于 Microsoft Edge 浏览器和 Tampermonkey 脚本管理器开发，不支持 Greasemonkey。要求 Edge / Chrome / Chromium 内核版本不小于 85，Firefox 版本不小于 90。
 * 脚本管理器可对特定脚本的匹配规则进行自定义。若要保持该脚本常开，建议关闭「原始包括」并添加需要的「用户包括」（以 Tampermonkey 为例）。
 
-  ![匹配设置](https://gitee.com/liangjiancang/userscript/raw/master/script/ExplicitMessage/screenshot/匹配设置.png)
+  ![匹配设置](https://gitee.com/liangjiancang/userscript/raw/master/script/ExplicitMessage/screenshot/匹配设置-p)
 
 ## 截图
 
 * 脚本设置
 
-    ![脚本设置](https://gitee.com/liangjiancang/userscript/raw/master/script/ExplicitMessage/screenshot/脚本设置.png)
+    ![脚本设置](https://gitee.com/liangjiancang/userscript/raw/master/script/ExplicitMessage/screenshot/脚本设置-p)
 
 **Source: [Gitee](https://gitee.com/liangjiancang/userscript/tree/master/script/ExplicitMessage) / [GitHub](https://github.com/liangjiancang/userscript/tree/master/script/ExplicitMessage)** - *by Laster2800*
