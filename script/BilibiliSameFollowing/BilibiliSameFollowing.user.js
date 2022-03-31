@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站共同关注快速查看
-// @version         1.9.4.20220331
+// @version         1.9.5.20220331
 // @namespace       laster2800
 // @author          Laster2800
 // @description     快速查看与特定用户的共同关注（视频播放页、动态页、用户空间、直播间）
@@ -426,7 +426,7 @@
 
       // 此处B站的用户卡片更新方式比较奇葩
       // 查看未查看过的用户时：直接改部分元素的 textContent 来达成效果
-      // 查看已查看过用户时：是通过其他方式，如 setAttribute() 来达成效果
+      // 查看已查看过用户时：通过其他方式，如 setAttribute() 来达成效果
       let userLink = null
       // 处理查看未查看过的用户，用 wait API 中的黑科技解决
       api.wait.executeAfterElementLoaded({
