@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站共同关注快速查看
-// @version         1.9.1.20220329
+// @version         1.9.2.20220331
 // @namespace       laster2800
 // @author          Laster2800
 // @description     快速查看与特定用户的共同关注（视频播放页、动态页、用户空间、直播间）
@@ -414,6 +414,54 @@
     }
 
     /**
+     * 初始化动态页
+     *
+     * 针对 (左方「正在直播」 + 动态所有者 + 被转发动态所有者) 的用户卡片。
+     */
+    async initDynamic() {
+      const container = await api.wait.waitForElementLoaded({
+        selector: '.bili-user-profile',
+        base: document.body,
+        subtree: false,
+        timeout: 0,
+      })
+      let userLink = await api.wait.$('.bili-user-profile-view__avatar', container)
+      update()
+
+      // 此处B站的用户卡片更新方式比较奇葩
+      // 查看未查看过的用户时：直接改部分元素的 textContent 来达成效果
+      // 查看已查看过用户时：是通过其他方式，如 setAttribute() 来达成效果
+      // ----------
+      // 处理查看未查看过的用户，用 wait API 中的黑科技解决
+      api.wait.executeAfterElementLoaded({
+        selector: '.bili-user-profile-view__avatar',
+        base: container,
+        exclude: [userLink],
+        repeat: true,
+        timeout: 0,
+        callback: el => {
+          userLink = el
+          update()
+
+          // 处理查看已查看过用户
+          const ob = new MutationObserver(update)
+          ob.observe(userLink, { attributeFilter: ['href'] })
+        },
+      })
+
+      async function update() {
+        const uid = webpage.method.getUid(userLink.href)
+        if (uid) {
+          webpage.generalLogic({
+            uid: uid,
+            target: await api.wait.$('.bili-user-profil1e__info__body', container),
+            className: `${gm.id} card-same-followings`,
+          })
+        }
+      }
+    }
+
+    /**
      * 初始化直播间
      *
      * 处理点击弹幕弹出的信息卡片。
@@ -548,13 +596,8 @@
         before: '.btn-box',
       })
     } else if (api.base.urlMatch(gm.regex.page_dynamic)) {
-      // 动态页中，被转发动态的所有者的用户卡片
-      webpage.cardLogic({
-        card: '.userinfo-wrapper',
-        user: '.face',
-        info: '.info',
-        ancestor: true,
-      })
+      // 动态页中，(左方「正在直播」 + 动态所有者 + 被转发动态所有者) 的用户卡片
+      webpage.initDynamic()
     } else if (api.base.urlMatch(gm.regex.page_space)) {
       if (gm.config.userSpace) {
         // 用户空间顶部显示
