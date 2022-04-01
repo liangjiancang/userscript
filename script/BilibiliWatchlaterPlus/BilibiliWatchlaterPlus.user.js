@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.25.1.20220329
+// @version         4.26.0.20220401
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -3775,7 +3775,7 @@
             }
             for (const list of lists) {
               if (k !== prevBase) {
-                const cards = [...list.children]
+                const cards = [...list.querySelectorAll('.gm-entry-list-item')]
                 cards.sort((a, b) => {
                   let result = 0
                   const va = a[k]
@@ -3794,6 +3794,14 @@
               if (reverse) {
                 list.setAttribute('gm-list-reverse', '')
                 list.scrollTop = -list.scrollHeight
+
+                // column-reverse + order + flex-end 无法生成滚动条
+                // 只能改用一个定位元素加 margin: auto 来实现 flex-end 效果
+                if (!list.querySelector('.gm-list-reverse-end')) {
+                  const listEnd = document.createElement('div')
+                  listEnd.className = 'gm-list-reverse-end'
+                  list.append(listEnd)
+                }
               } else {
                 list.removeAttribute('gm-list-reverse')
                 list.scrollTop = 0
@@ -3849,10 +3857,10 @@
         fillWatchlaterStatus_dynamicMenu()
       } else if (api.base.urlMatch(gm.regex.page_dynamic)) {
         if (location.pathname === '/') { // 仅动态主页
-          api.wait.$('.feed-card').then(feed => {
+          api.wait.$('.bili-dyn-list').then(async feed => {
             api.wait.executeAfterElementLoaded({
-              selector: '.tab:not(#gm-batch-manager-btn)',
-              base: feed,
+              selector: '.bili-dyn-list-tabs__item:not(#gm-batch-manager-btn)',
+              base: await api.wait.$('.bili-dyn-list-tabs__list'),
               multiple: true,
               callback: tab => {
                 tab.addEventListener('click', refillDynamicWatchlaterStatus)
@@ -3864,14 +3872,14 @@
             async function refillDynamicWatchlaterStatus() {
               map = await _self.method.getWatchlaterDataMap(item => String(item.aid), 'aid', true)
               // map 更新期间，ob 偷跑可能会将错误的数据写入，重新遍历并修正之
-              for (const video of feed.querySelectorAll('.video-container')) {
+              for (const video of feed.querySelectorAll('.bili-dyn-card-video')) {
                 const vue = video.__vue__
-                if (vue) {
-                  const aid = String(vue.aid)
+                if (vue && vue.data.aid && vue.mark) {
+                  const aid = String(vue.data.aid)
                   if (map.has(aid)) {
-                    vue.seeLaterStatus = 1
+                    vue.mark.done = true
                   } else {
-                    vue.seeLaterStatus = 0
+                    vue.mark.done = false
                   }
                 }
               }
@@ -3879,11 +3887,30 @@
           })
         }
       } else if (api.base.urlMatch(gm.regex.page_userSpace)) {
-        // 用户空间中也有动态，但用户未必切换到动态子窗口，故需长时间等待
+        // 虽然长得跟动态主页一样，但这里用的是老代码，不过估计拖个半年又会改成跟动态主页一样吧……
+        // 用户空间中也有动态，但用户未必切换到动态子页，故需长时间等待
         api.wait.waitForElementLoaded({
           selector: '.feed-card',
           timeout: 0,
-        }).then(() => fillWatchlaterStatus_dynamic())
+        }).then(async () => {
+          await initMap()
+          api.wait.executeAfterElementLoaded({
+            selector: '.video-container',
+            base: await api.wait.$('.feed-card'),
+            multiple: true,
+            repeat: true,
+            timeout: 0,
+            callback: video => {
+              const vue = video.__vue__
+              if (vue) {
+                const aid = String(vue.aid)
+                if (map.has(aid)) {
+                  vue.seeLaterStatus = 1
+                }
+              }
+            },
+          })
+        })
       } else {
         // 两部分 URL 刚好不会冲突，放到 else 中即可
         // 用户空间「投稿」理论上需要单独处理，但该处逻辑和数据都在一个闭包里，无法通过简单的方式实现，经考虑选择放弃
@@ -3906,21 +3933,29 @@
        */
       async function fillWatchlaterStatus_dynamic() {
         await initMap()
+        const feed = await api.wait.$('.bili-dyn-list__items')
         api.wait.executeAfterElementLoaded({
-          selector: '.video-container',
-          base: await api.wait.$('.feed-card'),
+          selector: '.bili-dyn-card-video',
+          base: feed,
           multiple: true,
           repeat: true,
           timeout: 0,
-          callback: video => {
-            // 这个 video 未必是最后加入到页面的视频卡片，有可能是作为 Vue 处理过程中的中转元素
-            const vue = video.__vue__ // 此时理应有 Vue 对象，如果没有就说明它可能是中转元素
-            // 但是，即使 video 真是中转元素，也有可能出现存在 __vue__ 的情况，实在没搞懂是什么原理
-            // 总之，只要有 Vue 对象，一率进行处理就不会有问题！
+          callback: async video => {
+            let vue = video.__vue__
             if (vue) {
-              const aid = String(vue.aid)
+              // 初始的卡片的 Vue 对象中缺少关键数据、缺少操作稍后再看状态按钮的方法与状态
+              // 需要用户将鼠标移至稍后再看按钮，才会对以上数据、状态等进行加载，这里要模拟一下这个操作
+              if (!vue.data.aid || !vue.mark) {
+                const mark = await api.wait.$('.bili-dyn-card-video__mark', video)
+                mark.dispatchEvent(new Event('mouseenter')) // 触发初始化
+                await api.wait.waitForConditionPassed({
+                  condition: () => video.__vue__.data.aid && video.__vue__.mark,
+                })
+                vue = video.__vue__ // 此时卡片 Vue 对象发生了替换！
+              }
+              const aid = String(vue.data.aid)
               if (map.has(aid)) {
-                vue.seeLaterStatus = 1
+                vue.mark.done = true
               }
             }
           },
@@ -4752,11 +4787,11 @@
      */
     addBatchAddManagerButton() {
       if (location.pathname === '/') { // 仅动态主页
-        api.wait.$('.feed-card .tab-bar').then(bar => {
+        api.wait.$('.bili-dyn-list-tabs__list').then(bar => {
           const btn = bar.firstElementChild.cloneNode(true)
           btn.id = 'gm-batch-manager-btn'
-          btn.firstElementChild.classList.remove('selected')
-          btn.firstElementChild.textContent = '批量添加'
+          btn.classList.remove('active')
+          btn.textContent = '批量添加'
           btn.addEventListener('click', () => script.openBatchAddManager())
           bar.append(btn)
         })
@@ -5670,7 +5705,13 @@
 
           [gm-list-reverse] {
             flex-direction: column-reverse !important;
-            justify-content: flex-end !important;
+          }
+          .gm-list-reverse-end {
+            order: unset !important;
+          }
+          [gm-list-reverse] .gm-list-reverse-end {
+            margin-top: auto !important;
+            order: -9999 !important;
           }
 
           .gm-fixed {
