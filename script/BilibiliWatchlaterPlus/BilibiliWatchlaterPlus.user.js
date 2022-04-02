@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.26.0.20220401
+// @version         4.26.1.20220402
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -349,7 +349,7 @@
    * @property {RegExp} page_videoNormalMode 匹配常规播放页
    * @property {RegExp} page_videoWatchlaterMode 匹配稍后再看播放页
    * @property {RegExp} page_dynamic 匹配动态页面
-   * @property {RegExp} page_dynamicMenu 匹配顶栏动态入口菜单
+   * @property {RegExp} page_dynamicMenu 匹配旧版顶栏动态入口菜单
    * @property {RegExp} page_userSpace 匹配用户空间
    */
   /**
@@ -1807,7 +1807,7 @@
                 const data = new URLSearchParams()
                 data.append('uid', uid)
                 data.append('offset_dynamic_id', dynamicOffset)
-                data.append('type', 8) // 视频（参考动态入口弹出菜单的请求）
+                data.append('type', 8) // 视频（参考旧版动态入口弹出菜单的请求）
                 const resp = await api.web.request({
                   url: `${gm.url.api_dynamicHistory}?${data.toString()}`,
                 }, { check: r => r.code === 0 })
@@ -3849,83 +3849,72 @@
      */
     fillWatchlaterStatus() {
       const _self = this
+      /** @type {Map<string, GMObject_data_item0>} */
       let map = null
       const initMap = async () => {
         map = await this.method.getWatchlaterDataMap(item => String(item.aid), 'aid', false, true)
       }
       if (api.base.urlMatch(gm.regex.page_dynamicMenu)) { // 必须在动态页之前匹配
-        fillWatchlaterStatus_dynamicMenu()
-      } else if (api.base.urlMatch(gm.regex.page_dynamic)) {
-        if (location.pathname === '/') { // 仅动态主页
-          api.wait.$('.bili-dyn-list').then(async feed => {
-            api.wait.executeAfterElementLoaded({
-              selector: '.bili-dyn-list-tabs__item:not(#gm-batch-manager-btn)',
-              base: await api.wait.$('.bili-dyn-list-tabs__list'),
-              multiple: true,
-              callback: tab => {
-                tab.addEventListener('click', refillDynamicWatchlaterStatus)
-              },
+        fillWatchlaterStatus_dynamicMenu() // 旧版动态入口菜单
+      } else {
+        if (api.base.urlMatch(gm.regex.page_dynamic)) {
+          if (location.pathname === '/') { // 仅动态主页
+            api.wait.$('.bili-dyn-list').then(async () => {
+              api.wait.executeAfterElementLoaded({
+                selector: '.bili-dyn-list-tabs__item:not(#gm-batch-manager-btn)',
+                base: await api.wait.$('.bili-dyn-list-tabs__list'),
+                multiple: true,
+                callback: tab => {
+                  tab.addEventListener('click', refillDynamicWatchlaterStatus)
+                },
+              })
+              fillWatchlaterStatus_dynamic()
             })
-            window.addEventListener('reloadWatchlaterListData', api.base.debounce(refillDynamicWatchlaterStatus, 2000))
-            fillWatchlaterStatus_dynamic()
-
-            async function refillDynamicWatchlaterStatus() {
-              map = await _self.method.getWatchlaterDataMap(item => String(item.aid), 'aid', true)
-              // map 更新期间，ob 偷跑可能会将错误的数据写入，重新遍历并修正之
-              for (const video of feed.querySelectorAll('.bili-dyn-card-video')) {
+          }
+        } else if (api.base.urlMatch(gm.regex.page_userSpace)) {
+          // 虽然长得跟动态主页一样，但这里用的是老代码，不过估计拖个半年又会改成跟动态主页一样吧……
+          // 用户空间中也有动态，但用户未必切换到动态子页，故需长时间等待
+          api.wait.waitForElementLoaded({
+            selector: '.feed-card',
+            timeout: 0,
+          }).then(async () => {
+            await initMap()
+            api.wait.executeAfterElementLoaded({
+              selector: '.video-container',
+              base: await api.wait.$('.feed-card'),
+              multiple: true,
+              repeat: true,
+              timeout: 0,
+              callback: video => {
                 const vue = video.__vue__
-                if (vue && vue.data.aid && vue.mark) {
-                  const aid = String(vue.data.aid)
+                if (vue) {
+                  const aid = String(vue.aid)
                   if (map.has(aid)) {
-                    vue.mark.done = true
-                  } else {
-                    vue.mark.done = false
+                    vue.seeLaterStatus = 1
                   }
                 }
-              }
-            }
+              },
+            })
           })
-        }
-      } else if (api.base.urlMatch(gm.regex.page_userSpace)) {
-        // 虽然长得跟动态主页一样，但这里用的是老代码，不过估计拖个半年又会改成跟动态主页一样吧……
-        // 用户空间中也有动态，但用户未必切换到动态子页，故需长时间等待
-        api.wait.waitForElementLoaded({
-          selector: '.feed-card',
-          timeout: 0,
-        }).then(async () => {
-          await initMap()
-          api.wait.executeAfterElementLoaded({
-            selector: '.video-container',
-            base: await api.wait.$('.feed-card'),
-            multiple: true,
-            repeat: true,
-            timeout: 0,
-            callback: video => {
-              const vue = video.__vue__
-              if (vue) {
-                const aid = String(vue.aid)
-                if (map.has(aid)) {
-                  vue.seeLaterStatus = 1
-                }
+        } else {
+          // 两部分 URL 刚好不会冲突，放到 else 中即可
+          // 用户空间「投稿」理论上需要单独处理，但该处逻辑和数据都在一个闭包里，无法通过简单的方式实现，经考虑选择放弃
+          switch (gm.config.fillWatchlaterStatus) {
+            case Enums.fillWatchlaterStatus.dynamicAndVideo:
+              if (api.base.urlMatch([gm.regex.page_videoNormalMode, gm.regex.page_videoWatchlaterMode])) {
+                fillWatchlaterStatus_main()
               }
-            },
-          })
-        })
-      } else {
-        // 两部分 URL 刚好不会冲突，放到 else 中即可
-        // 用户空间「投稿」理论上需要单独处理，但该处逻辑和数据都在一个闭包里，无法通过简单的方式实现，经考虑选择放弃
-        switch (gm.config.fillWatchlaterStatus) {
-          case Enums.fillWatchlaterStatus.dynamicAndVideo:
-            if (api.base.urlMatch([gm.regex.page_videoNormalMode, gm.regex.page_videoWatchlaterMode])) {
+              break
+            case Enums.fillWatchlaterStatus.anypage:
               fillWatchlaterStatus_main()
-            }
-            break
-          case Enums.fillWatchlaterStatus.anypage:
-            fillWatchlaterStatus_main()
-            break
-          default:
-            break
+              break
+            default:
+              break
+          }
         }
+        fillWatchlaterStatus_dynamicPopup()
+
+        window.addEventListener('reloadWatchlaterListData', api.base.debounce(refillDynamicWatchlaterStatus, 2000))
       }
 
       /**
@@ -3963,7 +3952,28 @@
       }
 
       /**
-       * 填充动态入口菜单稍后再看状态
+       * 填充动态入口弹出菜单稍后再看状态
+       */
+      async function fillWatchlaterStatus_dynamicPopup() {
+        await initMap()
+        api.wait.executeAfterElementLoaded({
+          selector: '.dynamic-video-item',
+          multiple: true,
+          repeat: true,
+          timeout: 0,
+          callback: async item => {
+            const aid = webpage.method.getAid(item.href)
+            if (map.has(aid)) {
+              // 官方的实现太复杂，这里改一下显示效果算了
+              const svg = await api.wait.$('.watch-later svg', item)
+              svg.innerHTML = '<path d="M176.725 56.608c1.507 1.508 2.44 3.591 2.44 5.892s-.932 4.384-2.44 5.892l-92.883 92.892c-2.262 2.264-5.388 3.664-8.842 3.664s-6.579-1.4-8.842-3.664l-51.217-51.225a8.333 8.333 0 1 1 11.781-11.785l48.277 48.277 89.942-89.942c1.508-1.507 3.591-2.44 5.892-2.44s4.384.932 5.892 2.44z" fill="currentColor"></path>'
+            }
+          },
+        })
+      }
+
+      /**
+       * 填充旧版动态入口菜单稍后再看状态
        */
       async function fillWatchlaterStatus_dynamicMenu() {
         await initMap()
@@ -4006,6 +4016,43 @@
             }
           },
         })
+      }
+
+      /**
+       * 重新填充与动态相关的稍后再看状态
+       */
+      async function refillDynamicWatchlaterStatus() {
+        map = await _self.method.getWatchlaterDataMap(item => String(item.aid), 'aid', true)
+
+        // 更新动态主页稍后再看状态
+        if (api.base.urlMatch(gm.regex.page_dynamic)) {
+          // map 更新期间，ob 偷跑可能会将错误的数据写入，重新遍历并修正之
+          const feed = document.querySelector('.bili-dyn-list') // 更新已有项状态，同步找就行了
+          if (feed) {
+            for (const video of feed.querySelectorAll('.bili-dyn-card-video')) {
+              const vue = video.__vue__
+              if (vue && vue.data.aid && vue.mark) {
+                const aid = String(vue.data.aid)
+                if (map.has(aid)) {
+                  vue.mark.done = true
+                } else {
+                  vue.mark.done = false
+                }
+              }
+            }
+          }
+        }
+
+        // 更新顶栏动态入口弹出菜单稍后再看状态
+        for (const item of document.querySelectorAll('.dynamic-video-item')) {
+          const aid = webpage.method.getAid(item.href)
+          const svg = await api.wait.$('.watch-later svg', item)
+          if (map.has(aid)) {
+            svg.innerHTML = '<path d="M176.725 56.608c1.507 1.508 2.44 3.591 2.44 5.892s-.932 4.384-2.44 5.892l-92.883 92.892c-2.262 2.264-5.388 3.664-8.842 3.664s-6.579-1.4-8.842-3.664l-51.217-51.225a8.333 8.333 0 1 1 11.781-11.785l48.277 48.277 89.942-89.942c1.508-1.507 3.591-2.44 5.892-2.44s4.384.932 5.892 2.44z" fill="currentColor"></path>'
+          } else {
+            svg.innerHTML = '<path d="M17.5 100c0-45.563 36.937-82.5 82.501-82.5 44.504 0 80.778 35.238 82.442 79.334l-7.138-7.137a7.5 7.5 0 0 0-10.607 10.606l20.001 20a7.5 7.5 0 0 0 10.607 0l20.002-20a7.5 7.5 0 0 0-10.607-10.606l-7.245 7.245c-1.616-52.432-44.63-94.441-97.455-94.441-53.848 0-97.501 43.652-97.501 97.5s43.653 97.5 97.501 97.5c32.719 0 61.673-16.123 79.346-40.825a7.5 7.5 0 0 0-12.199-8.728c-14.978 20.934-39.472 34.553-67.147 34.553-45.564 0-82.501-36.937-82.501-82.5zm109.888-12.922c9.215 5.743 9.215 20.101 0 25.843l-29.62 18.46c-9.215 5.742-20.734-1.436-20.734-12.922V81.541c0-11.486 11.519-18.664 20.734-12.921l29.62 18.459z" fill="currentColor"></path>'
+          }
+        }
       }
     }
 
@@ -4803,8 +4850,8 @@
      */
     addMenuScrollbarStyle() {
       const popup = `#${gm.id} .gm-entrypopup .gm-entry-list`
-      const tooltip = '[role=tooltip]'
-      const dynamic = '#app > .out-container > .container'
+      const oldTooltip = '[role=tooltip]' // 旧版顶栏弹出菜单
+      const oldDynamic = '#app > .out-container > .container' // 旧版动态弹出菜单
       switch (gm.config.menuScrollbarSetting) {
         case Enums.menuScrollbarSetting.beautify:
           // 目前在不借助 JavaScript 的情况下，无法完美实现类似于移动端滚动条浮动在内容上的效果
@@ -4815,40 +4862,56 @@
             }
 
             ${popup}::-webkit-scrollbar,
-            ${tooltip} ::-webkit-scrollbar,
-            ${dynamic}::-webkit-scrollbar {
+            ${oldTooltip} ::-webkit-scrollbar,
+            ${oldDynamic}::-webkit-scrollbar {
               width: 4px;
-              height: 4px;
+              height: 5px;
               background-color: var(--${gm.id}-scrollbar-background-color);
             }
 
             ${popup}::-webkit-scrollbar-thumb,
-            ${tooltip} ::-webkit-scrollbar-thumb,
-            ${dynamic}::-webkit-scrollbar-thumb {
+            ${oldTooltip} ::-webkit-scrollbar-thumb,
+            ${oldDynamic}::-webkit-scrollbar-thumb {
               border-radius: 4px;
               background-color: var(--${gm.id}-scrollbar-background-color);
             }
 
             ${popup}:hover::-webkit-scrollbar-thumb,
-            ${tooltip} :hover::-webkit-scrollbar-thumb,
-            ${dynamic}:hover::-webkit-scrollbar-thumb {
+            ${oldTooltip} :hover::-webkit-scrollbar-thumb,
+            ${oldDynamic}:hover::-webkit-scrollbar-thumb {
               border-radius: 4px;
               background-color: var(--${gm.id}-scrollbar-thumb-color);
             }
 
             ${popup}::-webkit-scrollbar-corner,
-            ${tooltip} ::-webkit-scrollbar-corner,
-            ${dynamic}::-webkit-scrollbar-corner {
+            ${oldTooltip} ::-webkit-scrollbar-corner,
+            ${oldDynamic}::-webkit-scrollbar-corner {
               background-color: var(--${gm.id}-scrollbar-background-color);
+            }
+
+            /* 优化官方顶栏弹出菜单中的滚动条样式 */
+            .dynamic-panel-popover .header-tabs-panel__content::-webkit-scrollbar,
+            .history-panel-popover .header-tabs-panel__content::-webkit-scrollbar,
+            .favorite-panel-popover__content .content-scroll::-webkit-scrollbar,
+            .favorite-panel-popover__nav::-webkit-scrollbar {
+              height: 5px !important;
             }
           `)
           break
         case Enums.menuScrollbarSetting.hidden:
           api.base.addStyle(`
             ${popup}::-webkit-scrollbar,
-            ${tooltip} ::-webkit-scrollbar,
-            ${dynamic}::-webkit-scrollbar {
+            ${oldTooltip} ::-webkit-scrollbar,
+            ${oldDynamic}::-webkit-scrollbar {
               display: none;
+            }
+
+            /* 隐藏官方顶栏弹出菜单中的滚动条 */
+            .dynamic-panel-popover .header-tabs-panel__content::-webkit-scrollbar,
+            .history-panel-popover .header-tabs-panel__content::-webkit-scrollbar,
+            .favorite-panel-popover__content .content-scroll::-webkit-scrollbar,
+            .favorite-panel-popover__nav::-webkit-scrollbar {
+              display: none !important;
             }
           `)
           break
