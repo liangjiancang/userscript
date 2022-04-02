@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            S1战斗力屏蔽
-// @version         3.8.0.20211206
+// @version         3.8.1.20220402
 // @namespace       laster2800
 // @author          Laster2800
 // @description     屏蔽S1的战斗力系统，眼不见为净
@@ -83,8 +83,8 @@
       }
     `)
     api.wait.$('#myprompt_menu').then(menu => {
-      // 有系统提醒时，每次打开页面时都会弹出一个通知菜单
-      // 点击网页提供的关闭按键后，此菜单在有新提醒前不会再次弹出
+      // 有系统提醒时，每次打开页面时都会弹出一个通知面板
+      // 点击网页提供的关闭按键后，此面板在有新提醒前不会再次弹出
       // 注意，需在 menu.initialized 为 true 后点击关闭按键
       const p1 = api.wait.$('.ignore_notice', document, true).then(ignore_notice => api.wait.waitForConditionPassed({
         condition: () => menu.getAttribute('initialized') === 'true' && ignore_notice,
@@ -94,8 +94,8 @@
       // 有系统提醒处于未读状态时，相关位置会有高亮显示，网页标题也会有所不同
       // 将这些差异化显示，在用户没有反应出来之前去除
       const p2 = api.wait.$('#myprompt').then(menu_button => {
-        const menu_mypost = menu.querySelector('.notice_mypost') // 右上角菜单「我的帖子」
-        const menu_system = menu.querySelector('.notice_system') // 右上角菜单「系统提醒」
+        const menu_mypost = menu.querySelector('.notice_mypost') // 右上角面板「我的帖子」
+        const menu_system = menu.querySelector('.notice_system') // 右上角面板「系统提醒」
         if (menu_mypost || menu_system) {
           menu_button.textContent = '提醒'
           menu_button.className = 'a showmenu'
@@ -117,7 +117,7 @@
     })
 
     api.base.addStyle(`
-      /* 右上角「积分」的弹出菜单移除 */
+      /* 右上角「积分」的弹出面板移除 */
       #extcreditmenu {
         background: none;
         padding-right: 1em;
@@ -128,7 +128,7 @@
         display: none;
       }
     `)
-    // 右上角「积分」的弹出菜单移除
+    // 右上角「积分」的弹出面板移除
     api.wait.$('#extcreditmenu').then(extcreditmenu => {
       extcreditmenu.className = ''
       extcreditmenu.onmouseover = null

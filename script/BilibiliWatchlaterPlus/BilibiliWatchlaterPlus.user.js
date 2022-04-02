@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.26.1.20220402
+// @version         4.26.2.20220402
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -204,18 +204,18 @@
    * @property {headerButtonOp} headerButtonOpL 顶栏入口左键点击行为
    * @property {headerButtonOp} headerButtonOpR 顶栏入口右键点击行为
    * @property {headerButtonOp} headerButtonOpM 顶栏入口中键点击行为
-   * @property {headerMenu} headerMenu 顶栏入口弹出菜单设置
-   * @property {openHeaderMenuLink} openHeaderMenuLink 顶栏弹出菜单链接点击行为
-   * @property {boolean} headerMenuKeepRemoved 弹出菜单保留被移除视频
-   * @property {boolean} headerMenuSearch 弹出菜单搜索框
-   * @property {boolean} headerMenuSortControl 弹出菜单排序控制器
-   * @property {boolean} headerMenuAutoRemoveControl 弹出菜单自动移除控制器
-   * @property {boolean} headerMenuFnSetting 弹出菜单：设置
-   * @property {boolean} headerMenuFnHistory 弹出菜单：历史
-   * @property {boolean} headerMenuFnRemoveAll 弹出菜单：清空
-   * @property {boolean} headerMenuFnRemoveWatched 弹出菜单：移除已看
-   * @property {boolean} headerMenuFnShowAll 弹出菜单：显示
-   * @property {boolean} headerMenuFnPlayAll 弹出菜单：播放
+   * @property {headerMenu} headerMenu 顶栏入口弹出面板设置
+   * @property {openHeaderMenuLink} openHeaderMenuLink 顶栏弹出面板链接点击行为
+   * @property {boolean} headerMenuKeepRemoved 弹出面板保留被移除视频
+   * @property {boolean} headerMenuSearch 弹出面板搜索框
+   * @property {boolean} headerMenuSortControl 弹出面板排序控制器
+   * @property {boolean} headerMenuAutoRemoveControl 弹出面板自动移除控制器
+   * @property {boolean} headerMenuFnSetting 弹出面板：设置
+   * @property {boolean} headerMenuFnHistory 弹出面板：历史
+   * @property {boolean} headerMenuFnRemoveAll 弹出面板：清空
+   * @property {boolean} headerMenuFnRemoveWatched 弹出面板：移除已看
+   * @property {boolean} headerMenuFnShowAll 弹出面板：显示
+   * @property {boolean} headerMenuFnPlayAll 弹出面板：播放
    * @property {boolean} headerCompatible 兼容第三方顶栏
    * @property {boolean} removeHistory 稍后再看移除记录
    * @property {removeHistorySavePoint} removeHistorySavePoint 保存稍后再看历史数据的时间点
@@ -238,7 +238,7 @@
    * @property {openListVideo} openListVideo 列表页面视频点击行为
    * @property {boolean} removeButton_removeAll 移除「一键清空」按钮
    * @property {boolean} removeButton_removeWatched 移除「移除已观看视频」按钮
-   * @property {menuScrollbarSetting} menuScrollbarSetting 弹出菜单的滚动条设置
+   * @property {menuScrollbarSetting} menuScrollbarSetting 弹出面板的滚动条设置
    * @property {mainRunAt} mainRunAt 主要逻辑运行时期
    * @property {number} watchlaterListCacheValidPeriod 稍后再看列表数据本地缓存有效期（单位：秒）
    * @property {boolean} hideDisabledSubitems 设置页隐藏被禁用项的子项
@@ -349,7 +349,7 @@
    * @property {RegExp} page_videoNormalMode 匹配常规播放页
    * @property {RegExp} page_videoWatchlaterMode 匹配稍后再看播放页
    * @property {RegExp} page_dynamic 匹配动态页面
-   * @property {RegExp} page_dynamicMenu 匹配旧版顶栏动态入口菜单
+   * @property {RegExp} page_dynamicMenu 匹配旧版顶栏动态入口面板
    * @property {RegExp} page_userSpace 匹配用户空间
    */
   /**
@@ -357,7 +357,7 @@
    * @property {GMObject_panel_item} setting 设置
    * @property {GMObject_panel_item} history 移除记录
    * @property {GMObject_panel_item} batchAddManager 批量添加管理器
-   * @property {GMObject_panel_item} entryPopup 入口弹出菜单
+   * @property {GMObject_panel_item} entryPopup 入口弹出面板
    */
   /**
    * @typedef GMObject_panel_item
@@ -832,7 +832,7 @@
           }
           let itemsHTML = ''
           itemsHTML += getItemHTML('全局功能', {
-            desc: '在顶栏「动态」和「收藏」之间加入稍后再看入口，鼠标移至上方时弹出列表菜单，支持点击功能设置。',
+            desc: '在顶栏「动态」和「收藏」之间加入稍后再看入口，鼠标移至上方时弹出列表面板，支持点击功能设置。',
             html: `<label>
               <span>在顶栏中加入稍后再看入口</span>
               <input id="gm-headerButton" type="checkbox">
@@ -856,7 +856,7 @@
               <select id="gm-headerButtonOpM"></select>
             </div>`,
           }, {
-            desc: '设置入口弹出菜单。',
+            desc: '设置入口弹出面板。',
             html: `<div>
               <span>将鼠标移动至入口上方时</span>
               <select id="gm-headerMenu">
@@ -866,42 +866,42 @@
               </select>
             </div>`,
           }, {
-            desc: '选择在弹出菜单中点击链接的行为。',
+            desc: '选择在弹出面板中点击链接的行为。',
             html: `<div>
-              <span>在弹出菜单中点击链接时</span>
+              <span>在弹出面板中点击链接时</span>
               <select id="gm-openHeaderMenuLink">
                 <option value="${Enums.openHeaderMenuLink.openInCurrent}">在当前页面打开</option>
                 <option value="${Enums.openHeaderMenuLink.openInNew}">在新标签页打开</option>
               </select>
             </div>`,
           }, {
-            desc: '在弹出菜单中显示自当前页面打开以来从弹出菜单移除的视频。',
+            desc: '在弹出面板中显示自当前页面打开以来从弹出面板移除的视频。',
             html: `<label>
-              <span>在弹出菜单中显示被移除的视频</span>
+              <span>在弹出面板中显示被移除的视频</span>
               <input id="gm-headerMenuKeepRemoved" type="checkbox">
             </label>`,
           }, {
-            desc: '在弹出菜单顶部显示搜索框。',
+            desc: '在弹出面板顶部显示搜索框。',
             html: `<label>
-              <span>在弹出菜单顶部显示搜索框</span>
+              <span>在弹出面板顶部显示搜索框</span>
               <input id="gm-headerMenuSearch" type="checkbox">
             </label>`,
           }, {
-            desc: '在弹出菜单底部显示排序控制器。',
+            desc: '在弹出面板底部显示排序控制器。',
             html: `<label>
-              <span>在弹出菜单底部显示排序控制器</span>
+              <span>在弹出面板底部显示排序控制器</span>
               <input id="gm-headerMenuSortControl" type="checkbox">
             </label>`,
           }, {
-            desc: '在弹出菜单底部显示自动移除控制器。',
+            desc: '在弹出面板底部显示自动移除控制器。',
             html: `<label>
-              <span>在弹出菜单底部显示自动移除控制器</span>
+              <span>在弹出面板底部显示自动移除控制器</span>
               <input id="gm-headerMenuAutoRemoveControl" type="checkbox">
             </label>`,
           }, {
             desc: '设置在弹出列表显示的快捷功能。',
             html: `<div>
-              <span>在弹出菜单底部显示：</span>
+              <span>在弹出面板底部显示：</span>
               <span class="gm-lineitems">
                 <label class="gm-lineitem">
                   <span>设置</span><input id="gm-headerMenuFnSetting" type="checkbox">
@@ -947,7 +947,7 @@
               <span>为了生成移除记录，</span>
               <select id="gm-removeHistorySavePoint">
                 <option value="${Enums.removeHistorySavePoint.list}">在打开列表页面时保存数据</option>
-                <option value="${Enums.removeHistorySavePoint.listAndMenu}">在打开列表页面或弹出入口菜单时保存数据</option>
+                <option value="${Enums.removeHistorySavePoint.listAndMenu}">在打开列表页面或弹出入口面板时保存数据</option>
                 <option value="${Enums.removeHistorySavePoint.anypage}">在打开任意相关页面时保存数据</option>
               </select>
             </div>`,
@@ -1007,7 +1007,7 @@
             </div>`,
           })
           itemsHTML += getItemHTML('全局功能', {
-            desc: '决定首次打开列表页面或顶栏入口弹出菜单时，如何对稍后再看列表内容进行排序。',
+            desc: '决定首次打开列表页面或顶栏入口弹出面板时，如何对稍后再看列表内容进行排序。',
             html: `<div>
               <span>自动排序：</span>
               <select id="gm-autoSort">
@@ -1045,7 +1045,7 @@
               <span>打开页面时，</span>
               <select id="gm-autoRemove">
                 <option value="${Enums.autoRemove.always}">若视频在稍后再看中，则移除出稍后再看</option>
-                <option value="${Enums.autoRemove.openFromList}">若是从列表页面或弹出菜单列表点击进入，则移除出稍后再看</option>
+                <option value="${Enums.autoRemove.openFromList}">若是从列表页面或弹出面板列表点击进入，则移除出稍后再看</option>
                 <option value="${Enums.autoRemove.never}">不执行自动移除功能（可通过自动移除控制器临时开启功能）</option>
                 <option value="${Enums.autoRemove.absoluteNever}">彻底禁用自动移除功能</option>
               </select>
@@ -1125,9 +1125,9 @@
             </div>`,
           })
           itemsHTML += getItemHTML('相关调整', {
-            desc: '对顶栏各入口弹出菜单中滚动条的样式进行设置。',
+            desc: '对顶栏各入口弹出面板中滚动条的样式进行设置。',
             html: `<div>
-              <span>对于弹出菜单中的滚动条</span>
+              <span>对于弹出面板中的滚动条</span>
               <select id="gm-menuScrollbarSetting">
                 <option value="${Enums.menuScrollbarSetting.beautify}">修改其外观为现代风格</option>
                 <option value="${Enums.menuScrollbarSetting.hidden}">将其隐藏（不影响鼠标滚动）</option>
@@ -1807,7 +1807,7 @@
                 const data = new URLSearchParams()
                 data.append('uid', uid)
                 data.append('offset_dynamic_id', dynamicOffset)
-                data.append('type', 8) // 视频（参考旧版动态入口弹出菜单的请求）
+                data.append('type', 8) // 视频（参考旧版动态入口弹出面板的请求）
                 const resp = await api.web.request({
                   url: `${gm.url.api_dynamicHistory}?${data.toString()}`,
                 }, { check: r => r.code === 0 })
@@ -3052,14 +3052,14 @@
       }
 
       /**
-       * 处理弹出菜单
+       * 处理弹出面板
        * @param {HTMLElement} watchlater 稍后再看元素
        */
       function processPopup(watchlater) {
         if (gm.config.headerMenu === Enums.headerMenu.disable) return
         gm.panel.entryPopup.el = document.createElement('div')
         const popup = gm.panel.entryPopup.el
-        // 模仿官方顶栏弹出菜单的弹出与关闭效果
+        // 模仿官方顶栏弹出面板的弹出与关闭效果
         popup.fadeInFunction = 'cubic-bezier(0.68, -0.55, 0.27, 1.55)'
         popup.fadeOutFunction = 'cubic-bezier(0.6, -0.3, 0.65, 1)'
         popup.fadeOutNoInteractive = true
@@ -3129,14 +3129,14 @@
         }
 
         /**
-         * 进入弹出菜单的处理
+         * 进入弹出面板的处理
          */
         function onEnterPopup() {
           popup._mouseOver = true
         }
 
         /**
-         * 离开弹出菜单的处理
+         * 离开弹出面板的处理
          */
         function onLeavePopup() {
           popup._mouseOver = false
@@ -3149,7 +3149,7 @@
       }
 
       /**
-       * 打开入口弹出菜单
+       * 打开入口弹出面板
        */
       function openEntryPopup() {
         if (gm.el.entryPopup) {
@@ -3470,7 +3470,7 @@
           }
 
           /**
-           * 打开时弹出菜单时执行
+           * 打开时弹出面板时执行
            */
           const onOpen = async () => {
             // 上半区被移除卡片先于下半区被查询到，恰巧使得后移除视频最后生成在被移除列表前方，无须额外排序
@@ -3750,7 +3750,7 @@
           }
 
           /**
-           * 对弹出菜单列表中的内容进行排序
+           * 对弹出面板列表中的内容进行排序
            * @param {sortType} type 排序类型
            */
           const sort = type => {
@@ -3855,7 +3855,7 @@
         map = await this.method.getWatchlaterDataMap(item => String(item.aid), 'aid', false, true)
       }
       if (api.base.urlMatch(gm.regex.page_dynamicMenu)) { // 必须在动态页之前匹配
-        fillWatchlaterStatus_dynamicMenu() // 旧版动态入口菜单
+        fillWatchlaterStatus_dynamicMenu() // 旧版动态入口面板
       } else {
         if (api.base.urlMatch(gm.regex.page_dynamic)) {
           if (location.pathname === '/') { // 仅动态主页
@@ -3952,7 +3952,7 @@
       }
 
       /**
-       * 填充动态入口弹出菜单稍后再看状态
+       * 填充动态入口弹出面板稍后再看状态
        */
       async function fillWatchlaterStatus_dynamicPopup() {
         await initMap()
@@ -3973,7 +3973,7 @@
       }
 
       /**
-       * 填充旧版动态入口菜单稍后再看状态
+       * 填充旧版动态入口面板稍后再看状态
        */
       async function fillWatchlaterStatus_dynamicMenu() {
         await initMap()
@@ -4043,7 +4043,7 @@
           }
         }
 
-        // 更新顶栏动态入口弹出菜单稍后再看状态
+        // 更新顶栏动态入口弹出面板稍后再看状态
         for (const item of document.querySelectorAll('.dynamic-video-item')) {
           const aid = webpage.method.getAid(item.href)
           const svg = await api.wait.$('.watch-later svg', item)
@@ -4846,12 +4846,12 @@
     }
 
     /**
-     * 添加弹出菜单的滚动条样式
+     * 添加弹出面板的滚动条样式
      */
     addMenuScrollbarStyle() {
       const popup = `#${gm.id} .gm-entrypopup .gm-entry-list`
-      const oldTooltip = '[role=tooltip]' // 旧版顶栏弹出菜单
-      const oldDynamic = '#app > .out-container > .container' // 旧版动态弹出菜单
+      const oldTooltip = '[role=tooltip]' // 旧版顶栏弹出面板
+      const oldDynamic = '#app > .out-container > .container' // 旧版动态弹出面板
       switch (gm.config.menuScrollbarSetting) {
         case Enums.menuScrollbarSetting.beautify:
           // 目前在不借助 JavaScript 的情况下，无法完美实现类似于移动端滚动条浮动在内容上的效果
@@ -4889,7 +4889,7 @@
               background-color: var(--${gm.id}-scrollbar-background-color);
             }
 
-            /* 优化官方顶栏弹出菜单中的滚动条样式 */
+            /* 优化官方顶栏弹出面板中的滚动条样式 */
             .dynamic-panel-popover .header-tabs-panel__content::-webkit-scrollbar,
             .history-panel-popover .header-tabs-panel__content::-webkit-scrollbar,
             .favorite-panel-popover__content .content-scroll::-webkit-scrollbar,
@@ -4906,7 +4906,7 @@
               display: none;
             }
 
-            /* 隐藏官方顶栏弹出菜单中的滚动条 */
+            /* 隐藏官方顶栏弹出面板中的滚动条 */
             .dynamic-panel-popover .header-tabs-panel__content::-webkit-scrollbar,
             .history-panel-popover .header-tabs-panel__content::-webkit-scrollbar,
             .favorite-panel-popover__content .content-scroll::-webkit-scrollbar,
