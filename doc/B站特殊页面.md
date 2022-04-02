@@ -8,8 +8,8 @@
 | ---------------------------------------- | ---------------------------------------- |
 | `*://www.bilibili.com/watchlater/`       | 稍后再看列表页面（及旧稍后再看播放页面） |
 | `*://www.bilibili.com/page-proxy/*`      | 主站 frame                               |
-| `*://t.bilibili.com/pages/nav/index_new` | 动态入口弹出菜单页面                     |
-| `*://t.bilibili.com/h5/*`                | 动态 frame（除动态入口弹出菜单）         |
+| `*://t.bilibili.com/pages/nav/index_new` | 旧版动态入口弹出菜单页面                 |
+| `*://t.bilibili.com/h5/*`                | 动态 frame（除旧版动态入口弹出菜单）     |
 | `*://t.bilibili.com/*/*`                 | 动态 frame                               |
 | `*://live.bilibili.com/`                 | 直播主页，没有必要在此执行直播间逻辑     |
 | `*://live.bilibili.com/?*`               | 直播主页（带查询参数）                   |
