@@ -9,6 +9,7 @@
 ## V1.1
 
 1. `executeAfterElementLoaded()`：若执行时已存在对应元素，则针对已存在的对应元素同步执行 `callback(element)`。注意，其他元素等待 API 并不支持此特性。
+2. `executeAfterElementLoaded()`：修复 `multiple: true, repeat: false` 时，若查找到的最后一个元素被排除，会误报 `TIMEOUT` 的问题。
 
 ## V1.0
 
