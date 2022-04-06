@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.26.3.20220403
+// @version         4.26.4.20220406
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -2915,6 +2915,7 @@
           const watchlater = el.parentElement.appendChild(el.cloneNode(true))
           el.style.display = 'none'
           watchlater.querySelector('a.main-content').removeAttribute('href')
+          watchlater.querySelector('.popup-container').style.display = 'none'
           processClickEvent(watchlater)
           processPopup(watchlater)
           const ob = new MutationObserver((mutations, observer) => {
@@ -2931,6 +2932,9 @@
           ob.observe(el, { attributes: true })
         })
         api.base.addStyle(`
+          #${gm.id} .gm-entrypopup[data-compatible="${gm.config.headerCompatible}"] {
+            padding-top: 1em;
+          }
           #${gm.id} .gm-entrypopup[data-compatible="${gm.config.headerCompatible}"] .gm-popup-arrow {
             display: none;
           }
