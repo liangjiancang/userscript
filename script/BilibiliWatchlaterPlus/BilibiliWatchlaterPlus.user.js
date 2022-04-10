@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.26.4.20220406
+// @version         4.26.5.20220410
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -216,7 +216,6 @@
    * @property {boolean} headerMenuFnRemoveWatched 弹出面板：移除已看
    * @property {boolean} headerMenuFnShowAll 弹出面板：显示
    * @property {boolean} headerMenuFnPlayAll 弹出面板：播放
-   * @property {boolean} headerCompatible 兼容第三方顶栏
    * @property {boolean} removeHistory 稍后再看移除记录
    * @property {removeHistorySavePoint} removeHistorySavePoint 保存稍后再看历史数据的时间点
    * @property {number} removeHistorySavePeriod 数据保存最小时间间隔
@@ -231,6 +230,7 @@
    * @property {autoRemove} autoRemove 自动将视频从播放列表移除
    * @property {boolean} redirect 稍后再看模式重定向至常规模式播放
    * @property {boolean} dynamicBatchAddManagerButton 动态主页批量添加管理器按钮
+   * @property {boolean} listStickControl 列表页面控制栏随页面滚动
    * @property {boolean} listBatchAddManagerButton 列表页面批量添加管理器按钮
    * @property {boolean} listSearch 列表页面搜索框
    * @property {boolean} listSortControl 列表页面排序控制器
@@ -238,6 +238,7 @@
    * @property {openListVideo} openListVideo 列表页面视频点击行为
    * @property {boolean} removeButton_removeAll 移除「一键清空」按钮
    * @property {boolean} removeButton_removeWatched 移除「移除已观看视频」按钮
+   * @property {boolean} headerCompatible 兼容第三方顶栏
    * @property {menuScrollbarSetting} menuScrollbarSetting 弹出面板的滚动条设置
    * @property {mainRunAt} mainRunAt 主要逻辑运行时期
    * @property {number} watchlaterListCacheValidPeriod 稍后再看列表数据本地缓存有效期（单位：秒）
@@ -376,7 +377,7 @@
   const gm = {
     id: gmId,
     configVersion: GM_getValue('configVersion'),
-    configUpdate: 20220115,
+    configUpdate: 20220410,
     searchParams: new URL(location.href).searchParams,
     config: {},
     configMap: {
@@ -396,7 +397,6 @@
       headerMenuFnRemoveWatched: { default: false, attr: 'checked', configVersion: 20210723 },
       headerMenuFnShowAll: { default: false, attr: 'checked', configVersion: 20210322 },
       headerMenuFnPlayAll: { default: true, attr: 'checked', configVersion: 20210322 },
-      headerCompatible: { default: Enums.headerCompatible.none, attr: 'value', configVersion: 20210721 },
       removeHistory: { default: true, attr: 'checked', manual: true, configVersion: 20210911 },
       removeHistorySavePoint: { default: Enums.removeHistorySavePoint.listAndMenu, attr: 'value', configVersion: 20210628 },
       removeHistorySavePeriod: { default: 60, type: 'int', attr: 'value', max: 600, needNotReload: true, configVersion: 20210908 },
@@ -411,6 +411,7 @@
       autoRemove: { default: Enums.autoRemove.openFromList, attr: 'value', configVersion: 20210612 },
       redirect: { default: false, attr: 'checked', configVersion: 20210322.1 },
       dynamicBatchAddManagerButton: { default: true, attr: 'checked', configVersion: 20210902 },
+      listStickControl: { default: true, attr: 'checked', configVersion: 20220410 },
       listBatchAddManagerButton: { default: true, attr: 'checked', configVersion: 20210908 },
       listSearch: { default: true, attr: 'checked', configVersion: 20210810.1 },
       listSortControl: { default: true, attr: 'checked', configVersion: 20210810 },
@@ -418,6 +419,7 @@
       openListVideo: { default: Enums.openListVideo.openInCurrent, attr: 'value', configVersion: 20200717 },
       removeButton_removeAll: { default: false, attr: 'checked', configVersion: 20200722 },
       removeButton_removeWatched: { default: false, attr: 'checked', configVersion: 20200722 },
+      headerCompatible: { default: Enums.headerCompatible.none, attr: 'value', configVersion: 20220410 },
       menuScrollbarSetting: { default: Enums.menuScrollbarSetting.beautify, attr: 'value', configVersion: 20210808.1 },
       mainRunAt: { default: Enums.mainRunAt.DOMContentLoaded, attr: 'value', needNotReload: true, configVersion: 20210726 },
       watchlaterListCacheValidPeriod: { default: 15, type: 'int', attr: 'value', needNotReload: true, min: 8, max: 600, configVersion: 20210908 },
@@ -743,7 +745,7 @@
           }
 
           // 功能性更新后更新此处配置版本，通过时跳过功能性更新设置，否则转至 readConfig() 中处理
-          if (gm.configVersion >= 20210917) {
+          if (gm.configVersion >= 20220410) {
             gm.configVersion = gm.configUpdate
             GM_setValue('configVersion', gm.configVersion)
           }
@@ -923,16 +925,6 @@
                 </label>
               </span>
             </div>`,
-          }, {
-            desc: '无须兼容第三方顶栏时务必选择「无」，否则脚本无法正常工作！\n若列表中没有提供你需要的第三方顶栏，且该第三方顶栏有一定用户基数，可在脚本反馈页发起请求。',
-            html: `<div>
-              <span>兼容第三方顶栏：</span>
-              <select id="gm-headerCompatible">
-                <option value="${Enums.headerCompatible.none}">无</option>
-                <option value="${Enums.headerCompatible.bilibiliEvolved}">Bilibili Evolved</option>
-              </select>
-              <span id="gm-hcWarning" class="gm-warning gm-trailing" title>⚠</span>
-            </div>`,
           })
           itemsHTML += getItemHTML('全局功能', {
             desc: '保留稍后再看列表中的数据，以查找出一段时间内将哪些视频移除出稍后再看，用于拯救误删操作。关闭该选项会将内部历史数据清除！',
@@ -1066,6 +1058,13 @@
             </label>`,
           })
           itemsHTML += getItemHTML('列表页面', {
+            desc: '控制栏跟随页面滚动，建议配合「[相关调整] 将顶栏固定在页面顶部」使用。',
+            html: `<label>
+              <span>控制栏随页面滚动</span>
+              <input id="gm-listStickControl" type="checkbox">
+            </label>`,
+          })
+          itemsHTML += getItemHTML('列表页面', {
             desc: '批量添加管理器可以将投稿批量添加到稍后再看。',
             html: `<label>
               <span>显示批量添加管理器按钮</span>
@@ -1116,6 +1115,17 @@
               <span>移除「移除已观看视频」按钮</span>
               <input id="gm-removeButton_removeWatched" type="checkbox">
             </label>`,
+          })
+          itemsHTML += getItemHTML('相关调整', {
+            desc: '无须兼容第三方顶栏时务必选择「无」，否则脚本无法正常工作！\n若列表中没有提供你需要的第三方顶栏，且该第三方顶栏有一定用户基数，可在脚本反馈页发起请求。',
+            html: `<div>
+              <span>兼容第三方顶栏：</span>
+              <select id="gm-headerCompatible">
+                <option value="${Enums.headerCompatible.none}">无</option>
+                <option value="${Enums.headerCompatible.bilibiliEvolved}">Bilibili Evolved</option>
+              </select>
+              <span id="gm-hcWarning" class="gm-warning gm-trailing" title>⚠</span>
+            </div>`,
           })
           itemsHTML += getItemHTML('相关调整', {
             desc: '安装固顶官方顶栏的用户样式（建议使用 Stylus 安装）。',
@@ -4830,6 +4840,46 @@
             api.message.info('当前彻底禁用自动移除功能，无法执行操作')
           })
         }
+      }
+
+      // 将顶栏固定在页面顶部
+      if (gm.config.listStickControl) {
+        let p1 = '-0.3em'
+        let p2 = '2.8em'
+
+        if (gm.config.headerCompatible === Enums.headerCompatible.bilibiliEvolved) {
+          api.base.addStyle(`
+            .custom-navbar.transparent::before {
+              height: calc(1.3 * var(--navbar-height)) !important;
+            }
+          `)
+          p1 = '-3.5em'
+          p2 = '6em'
+        } else {
+          const header = await api.wait.$('#internationalHeader .mini-header')
+          const style = window.getComputedStyle(header)
+          const isGm430292Fixed = style.position === 'fixed' && style.backgroundImage.startsWith('linear-gradient')
+          if (isGm430292Fixed) { // https://greasyfork.org/zh-CN/scripts/430292
+            p1 = '-3.1em'
+            p2 = '5.6em'
+          }
+        }
+
+        api.base.addStyle(`
+          .watch-later-list {
+            position: relative;
+            top: ${p1};
+          }
+
+          .watch-later-list > header {
+            position: sticky;
+            top: 0;
+            margin-top: 0;
+            padding-top: ${p2};
+            background: white;
+            z-index: 1;
+          }
+        `)
       }
     }
 
