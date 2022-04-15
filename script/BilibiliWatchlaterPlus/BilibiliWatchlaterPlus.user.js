@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.26.5.20220410
+// @version         4.26.6.20220415
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -205,7 +205,7 @@
    * @property {headerButtonOp} headerButtonOpR 顶栏入口右键点击行为
    * @property {headerButtonOp} headerButtonOpM 顶栏入口中键点击行为
    * @property {headerMenu} headerMenu 顶栏入口弹出面板设置
-   * @property {openHeaderMenuLink} openHeaderMenuLink 顶栏弹出面板链接点击行为
+   * @property {openHeaderMenuLink} openHeaderMenuLink 弹出面板内链接点击行为
    * @property {boolean} headerMenuKeepRemoved 弹出面板保留被移除视频
    * @property {boolean} headerMenuSearch 弹出面板搜索框
    * @property {boolean} headerMenuSortControl 弹出面板排序控制器
@@ -230,12 +230,12 @@
    * @property {autoRemove} autoRemove 自动将视频从播放列表移除
    * @property {boolean} redirect 稍后再看模式重定向至常规模式播放
    * @property {boolean} dynamicBatchAddManagerButton 动态主页批量添加管理器按钮
+   * @property {openListVideo} openListVideo 列表页面视频点击行为
    * @property {boolean} listStickControl 列表页面控制栏随页面滚动
-   * @property {boolean} listBatchAddManagerButton 列表页面批量添加管理器按钮
    * @property {boolean} listSearch 列表页面搜索框
    * @property {boolean} listSortControl 列表页面排序控制器
    * @property {boolean} listAutoRemoveControl 列表页面自动移除控制器
-   * @property {openListVideo} openListVideo 列表页面视频点击行为
+   * @property {boolean} listBatchAddManagerButton 列表页面批量添加管理器按钮
    * @property {boolean} removeButton_removeAll 移除「一键清空」按钮
    * @property {boolean} removeButton_removeWatched 移除「移除已观看视频」按钮
    * @property {boolean} headerCompatible 兼容第三方顶栏
@@ -350,7 +350,7 @@
    * @property {RegExp} page_videoNormalMode 匹配常规播放页
    * @property {RegExp} page_videoWatchlaterMode 匹配稍后再看播放页
    * @property {RegExp} page_dynamic 匹配动态页面
-   * @property {RegExp} page_dynamicMenu 匹配旧版顶栏动态入口面板
+   * @property {RegExp} page_dynamicMenu 匹配旧版动态面板
    * @property {RegExp} page_userSpace 匹配用户空间
    */
   /**
@@ -411,12 +411,12 @@
       autoRemove: { default: Enums.autoRemove.openFromList, attr: 'value', configVersion: 20210612 },
       redirect: { default: false, attr: 'checked', configVersion: 20210322.1 },
       dynamicBatchAddManagerButton: { default: true, attr: 'checked', configVersion: 20210902 },
+      openListVideo: { default: Enums.openListVideo.openInCurrent, attr: 'value', configVersion: 20200717 },
       listStickControl: { default: true, attr: 'checked', configVersion: 20220410 },
-      listBatchAddManagerButton: { default: true, attr: 'checked', configVersion: 20210908 },
       listSearch: { default: true, attr: 'checked', configVersion: 20210810.1 },
       listSortControl: { default: true, attr: 'checked', configVersion: 20210810 },
       listAutoRemoveControl: { default: true, attr: 'checked', configVersion: 20210908 },
-      openListVideo: { default: Enums.openListVideo.openInCurrent, attr: 'value', configVersion: 20200717 },
+      listBatchAddManagerButton: { default: true, attr: 'checked', configVersion: 20210908 },
       removeButton_removeAll: { default: false, attr: 'checked', configVersion: 20200722 },
       removeButton_removeWatched: { default: false, attr: 'checked', configVersion: 20200722 },
       headerCompatible: { default: Enums.headerCompatible.none, attr: 'value', configVersion: 20220410 },
@@ -939,7 +939,7 @@
               <span>为了生成移除记录，</span>
               <select id="gm-removeHistorySavePoint">
                 <option value="${Enums.removeHistorySavePoint.list}">在打开列表页面时保存数据</option>
-                <option value="${Enums.removeHistorySavePoint.listAndMenu}">在打开列表页面或弹出入口面板时保存数据</option>
+                <option value="${Enums.removeHistorySavePoint.listAndMenu}">在打开列表页面或弹出面板时保存数据</option>
                 <option value="${Enums.removeHistorySavePoint.anypage}">在打开任意相关页面时保存数据</option>
               </select>
             </div>`,
@@ -999,7 +999,7 @@
             </div>`,
           })
           itemsHTML += getItemHTML('全局功能', {
-            desc: '决定首次打开列表页面或顶栏入口弹出面板时，如何对稍后再看列表内容进行排序。',
+            desc: '决定首次打开列表页面或弹出面板时，如何对稍后再看列表内容进行排序。',
             html: `<div>
               <span>自动排序：</span>
               <select id="gm-autoSort">
@@ -1037,8 +1037,8 @@
               <span>打开页面时，</span>
               <select id="gm-autoRemove">
                 <option value="${Enums.autoRemove.always}">若视频在稍后再看中，则移除出稍后再看</option>
-                <option value="${Enums.autoRemove.openFromList}">若是从列表页面或弹出面板列表点击进入，则移除出稍后再看</option>
-                <option value="${Enums.autoRemove.never}">不执行自动移除功能（可通过自动移除控制器临时开启功能）</option>
+                <option value="${Enums.autoRemove.openFromList}">若是从列表页面或弹出面板点击进入，则移除出稍后再看</option>
+                <option value="${Enums.autoRemove.never}">不执行自动移除功能（可通过自动移除控制器临时开启）</option>
                 <option value="${Enums.autoRemove.absoluteNever}">彻底禁用自动移除功能</option>
               </select>
             </div>`,
@@ -1058,17 +1058,20 @@
             </label>`,
           })
           itemsHTML += getItemHTML('列表页面', {
+            desc: `设置在「${gm.url.page_watchlaterList}」页面点击视频时的行为。`,
+            html: `<div>
+              <span>点击视频时</span>
+              <select id="gm-openListVideo">
+                <option value="${Enums.openListVideo.openInCurrent}">在当前页面打开</option>
+                <option value="${Enums.openListVideo.openInNew}">在新标签页打开</option>
+              </select>
+            </div>`,
+          })
+          itemsHTML += getItemHTML('列表页面', {
             desc: '控制栏跟随页面滚动，建议配合「[相关调整] 将顶栏固定在页面顶部」使用。',
             html: `<label>
               <span>控制栏随页面滚动</span>
               <input id="gm-listStickControl" type="checkbox">
-            </label>`,
-          })
-          itemsHTML += getItemHTML('列表页面', {
-            desc: '批量添加管理器可以将投稿批量添加到稍后再看。',
-            html: `<label>
-              <span>显示批量添加管理器按钮</span>
-              <input id="gm-listBatchAddManagerButton" type="checkbox">
             </label>`,
           })
           itemsHTML += getItemHTML('列表页面', {
@@ -1093,14 +1096,11 @@
             </label>`,
           })
           itemsHTML += getItemHTML('列表页面', {
-            desc: `设置在「${gm.url.page_watchlaterList}」页面点击视频时的行为。`,
-            html: `<div>
-              <span>点击视频时</span>
-              <select id="gm-openListVideo">
-                <option value="${Enums.openListVideo.openInCurrent}">在当前页面打开</option>
-                <option value="${Enums.openListVideo.openInNew}">在新标签页打开</option>
-              </select>
-            </div>`,
+            desc: '批量添加管理器可以将投稿批量添加到稍后再看。',
+            html: `<label>
+              <span>显示批量添加管理器按钮</span>
+              <input id="gm-listBatchAddManagerButton" type="checkbox">
+            </label>`,
           })
           itemsHTML += getItemHTML('列表页面', {
             desc: '这个按钮太危险了……',
@@ -1817,7 +1817,7 @@
                 const data = new URLSearchParams()
                 data.append('uid', uid)
                 data.append('offset_dynamic_id', dynamicOffset)
-                data.append('type', 8) // 视频（参考旧版动态入口弹出面板的请求）
+                data.append('type', 8) // 视频（参考旧版动态面板的请求）
                 const resp = await api.web.request({
                   url: `${gm.url.api_dynamicHistory}?${data.toString()}`,
                 }, { check: r => r.code === 0 })
@@ -3163,7 +3163,7 @@
       }
 
       /**
-       * 打开入口弹出面板
+       * 打开弹出面板
        */
       function openEntryPopup() {
         if (gm.el.entryPopup) {
@@ -3869,7 +3869,7 @@
         map = await this.method.getWatchlaterDataMap(item => String(item.aid), 'aid', false, true)
       }
       if (api.base.urlMatch(gm.regex.page_dynamicMenu)) { // 必须在动态页之前匹配
-        fillWatchlaterStatus_dynamicMenu() // 旧版动态入口面板
+        fillWatchlaterStatus_dynamicMenu() // 旧版动态面板
       } else {
         if (api.base.urlMatch(gm.regex.page_dynamic)) {
           if (location.pathname === '/') { // 仅动态主页
@@ -3966,7 +3966,7 @@
       }
 
       /**
-       * 填充动态入口弹出面板稍后再看状态
+       * 填充动态面板稍后再看状态
        */
       async function fillWatchlaterStatus_dynamicPopup() {
         await initMap()
@@ -3987,7 +3987,7 @@
       }
 
       /**
-       * 填充旧版动态入口面板稍后再看状态
+       * 填充旧版动态面板稍后再看状态
        */
       async function fillWatchlaterStatus_dynamicMenu() {
         await initMap()
@@ -4057,7 +4057,7 @@
           }
         }
 
-        // 更新顶栏动态入口弹出面板稍后再看状态
+        // 更新顶栏动态面板稍后再看状态
         for (const item of document.querySelectorAll('.dynamic-video-item')) {
           const aid = webpage.method.getAid(item.href)
           const svg = await api.wait.$('.watch-later svg', item)
