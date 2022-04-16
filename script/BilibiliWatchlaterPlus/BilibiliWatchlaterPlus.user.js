@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.26.7.20220416
+// @version         4.26.8.20220416
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -4045,8 +4045,7 @@
             repeat: true,
             timeout: 0,
             callback: async card => {
-              const { href } = card
-              const aid = webpage.method.getAid(href)
+              const aid = webpage.method.getAid(card.href)
               if (map.has(aid)) {
                 const svg = await api.wait.$('.bili-watch-later svg', card)
                 svg.innerHTML = '<use xlink:href="#widget-watch-save"></use>'
