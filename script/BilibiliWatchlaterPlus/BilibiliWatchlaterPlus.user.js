@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.26.6.20220415
+// @version         4.26.7.20220416
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -352,6 +352,7 @@
    * @property {RegExp} page_dynamic 匹配动态页面
    * @property {RegExp} page_dynamicMenu 匹配旧版动态面板
    * @property {RegExp} page_userSpace 匹配用户空间
+   * @property {RegExp} page_search 匹配搜索页面
    */
   /**
    * @typedef GMObject_panel
@@ -460,6 +461,7 @@
       page_dynamic: /\/t\.bilibili\.com(\/|$)/,
       page_dynamicMenu: /\.com\/pages\/nav\/index_new([#/?]|$)/,
       page_userSpace: /space\.bilibili\.com([#/?]|$)/,
+      page_search: /search\.bilibili\.com\/.+/, // 不含搜索主页
     },
     const: {
       fadeTime: 400,
@@ -3910,9 +3912,12 @@
               },
             })
           })
+
+          if (gm.config.fillWatchlaterStatus === Enums.fillWatchlaterStatus.anypage) {
+            fillWatchlaterStatus_main()
+          }
         } else {
           // 两部分 URL 刚好不会冲突，放到 else 中即可
-          // 用户空间「投稿」理论上需要单独处理，但该处逻辑和数据都在一个闭包里，无法通过简单的方式实现，经考虑选择放弃
           switch (gm.config.fillWatchlaterStatus) {
             case Enums.fillWatchlaterStatus.dynamicAndVideo:
               if (api.base.urlMatch([gm.regex.page_videoNormalMode, gm.regex.page_videoWatchlaterMode])) {
@@ -4030,6 +4035,41 @@
             }
           },
         })
+
+        if (api.base.urlMatch(gm.regex.page_search)) {
+          // 新版搜索页面
+          api.wait.executeAfterElementLoaded({
+            selector: '.bili-video-card .bili-video-card__wrap > [data-mod="search-card"]',
+            base: document.body,
+            multiple: true,
+            repeat: true,
+            timeout: 0,
+            callback: async card => {
+              const { href } = card
+              const aid = webpage.method.getAid(href)
+              if (map.has(aid)) {
+                const svg = await api.wait.$('.bili-watch-later svg', card)
+                svg.innerHTML = '<use xlink:href="#widget-watch-save"></use>'
+              }
+            },
+          })
+        } else if (api.base.urlMatch(gm.regex.page_userSpace)) {
+          // 用户空间
+          api.wait.executeAfterElementLoaded({
+            selector: '.section.video [data-aid]',
+            base: document.body,
+            multiple: true,
+            repeat: true,
+            timeout: 0,
+            callback: async item => {
+              const aid = webpage.method.bvTool.bv2av(item.dataset.aid) // data-aid 实际上是 bvid
+              if (map.has(aid)) {
+                const wl = await api.wait.$('.i-watchlater', item)
+                wl.classList.add('has-select')
+              }
+            },
+          })
+        }
       }
 
       /**
