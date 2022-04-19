@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站共同关注快速查看
-// @version         1.9.6.20220403
+// @version         1.9.7.20220419
 // @namespace       laster2800
 // @author          Laster2800
 // @description     快速查看与特定用户的共同关注（视频播放页、动态页、用户空间、直播间）
@@ -464,11 +464,11 @@
     async initLive() {
       const frame = self !== top
       const container = await api.wait.$('.danmaku-menu')
-      const userLink = await api.wait.$('.go-space a', container)
+      const usernameEl = await api.wait.$('.username', container)
       container.style.maxWidth = frame ? '264px' : '300px'
 
-      const ob = new MutationObserver(records => {
-        const uid = webpage.method.getUid(records[0].target.href)
+      const ob = new MutationObserver(() => {
+        const uid = container.__vue__.info?.uid
         if (uid) {
           webpage.generalLogic({
             uid: uid,
@@ -483,7 +483,7 @@
           container.style.left = frame ? '76vw' : '72vw'
         }
       })
-      ob.observe(userLink, { attributeFilter: ['href'] })
+      ob.observe(usernameEl, { childList: true, subtree: true })
     }
 
     addStyle() {
