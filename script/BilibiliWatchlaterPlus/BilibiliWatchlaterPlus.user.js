@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.26.8.20220416
+// @version         4.26.9.20220427
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -3331,7 +3331,7 @@
                 }
                 el.popupTotal.textContent = `${cnt[0]}${cnt[1] > 0 ? `/${cnt[0] + cnt[1]}` : ''}`
                 if (cnt[0]) {
-                  el.entryListEmpty.style.display = 'none'
+                  el.entryListEmpty.style.display = ''
                 } else {
                   el.entryListEmpty.style.display = 'unset'
                 }
@@ -3706,6 +3706,7 @@
                 }
               }
               el.entryList.total = data.length
+              el.entryListEmpty.style.display = ''
             } else {
               el.entryListEmpty.style.display = 'unset'
             }
