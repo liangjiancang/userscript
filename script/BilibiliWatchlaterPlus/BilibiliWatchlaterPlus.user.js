@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.26.9.20220427
+// @version         4.26.10.20220427
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -3498,7 +3498,6 @@
                 rmBvid.add(rmCard.bvid)
               }
             }
-            const fixedItems = GM_getValue('fixedItems') ?? []
             gm.panel.entryPopup.sortType = Enums.sortType.default
             el.popupTotal.textContent = '0'
             el.entryList.textContent = ''
@@ -3509,6 +3508,7 @@
             const simplePopup = gm.config.headerMenu === Enums.headerMenu.enableSimple
             let serial = 0
             if (data.length > 0) {
+              const fixedItems = GM_getValue('fixedItems') ?? []
               const openLinkInCurrent = gm.config.openHeaderMenuLink === Enums.openHeaderMenuLink.openInCurrent
               const { autoRemoveControl } = el.entryFn
               for (const item of data) {
@@ -3707,13 +3707,14 @@
               }
               el.entryList.total = data.length
               el.entryListEmpty.style.display = ''
+
+              // 移除无效固定项
+              // 仅在列表项不为空时才执行移除，因为「列表项为空」有可能是一些特殊情况造成的误判
+              for (const item of fixedItems) {
+                gm.data.fixedItem(item, false)
+              }
             } else {
               el.entryListEmpty.style.display = 'unset'
-            }
-
-            // 移除无效固定项
-            for (const item of fixedItems) {
-              gm.data.fixedItem(item, false)
             }
 
             // 添加已移除视频
@@ -4245,7 +4246,8 @@
       }
       const listContainer = await api.wait.$('.watch-later-list')
       const listBox = await api.wait.$('.list-box', listContainer)
-      for (const [idx, item] of listBox.querySelectorAll('.av-item').entries()) {
+      const items = listBox.querySelectorAll('.av-item')
+      for (const [idx, item] of items.entries()) {
         // info
         const d = data[idx]
         item.state = d.state
@@ -4270,8 +4272,11 @@
       this.updateWatchlaterListTotal()
 
       // 移除无效固定项
-      for (const item of fixedItems) {
-        gm.data.fixedItem(item, false)
+      // 仅在列表项不为空时才执行移除，因为「列表项为空」有可能是一些特殊情况造成的误判
+      if (items.length > 0) {
+        for (const item of fixedItems) {
+          gm.data.fixedItem(item, false)
+        }
       }
 
       if (sortable) {
