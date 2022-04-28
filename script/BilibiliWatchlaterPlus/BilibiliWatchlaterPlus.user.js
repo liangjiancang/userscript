@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.26.10.20220427
+// @version         4.26.11.20220428
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -4123,16 +4123,24 @@
       const original = await api.wait.$('.van-watchlater', atr)
       api.wait.waitForConditionPassed({
         condition: () => app.__vue__,
-      }).then(() => {
+      }).then(async () => {
         const btn = document.createElement('label')
         btn.id = `${gm.id}-video-btn`
         const cb = btn.appendChild(document.createElement('input'))
         cb.type = 'checkbox'
         const text = btn.appendChild(document.createElement('span'))
         text.textContent = '稍后再看'
-        btn.className = 'appeal-text'
         cb.addEventListener('click', () => processSwitch())
-        atr.append(btn)
+
+        const version = atr.classList.contains('video-toolbar-v1') ? '2022' : 'old'
+        btn.dataset.toolbarVersion = version
+        if (version === '2022') {
+          const right = await api.wait.$('.toolbar-right', atr)
+          right.prepend(btn)
+        } else {
+          btn.className = 'appeal-text'
+          atr.append(btn)
+        }
 
         const aid = this.method.getAid()
         bus = { btn, cb, aid }
@@ -5752,6 +5760,12 @@
           #${gm.id}-video-btn input[type=checkbox] {
             margin-right: 2px;
             cursor: pointer;
+          }
+          #${gm.id}-video-btn[data-toolbar-version="2022"] {
+            margin-right: 18px;
+          }
+          #${gm.id}-video-btn[data-toolbar-version="2022"]:hover {
+            color: var(--brand_blue); /* 官方提供的 CSS 变量 */
           }
 
           #${gm.id} .gm-items::-webkit-scrollbar,

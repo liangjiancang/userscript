@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站封面获取
-// @version         5.7.4.20220403
+// @version         5.7.5.20220428
 // @namespace       laster2800
 // @author          Laster2800
 // @description     获取B站各播放页及直播间封面，支持手动及实时预览等多种模式，支持点击下载、封面预览、快速复制，可高度自定义
@@ -794,18 +794,30 @@
       if (gm.runtime.layer === 'legacy') {
         cover = document.createElement('a')
         cover.textContent = '获取封面'
-        cover.className = 'appeal-text'
-        cover.style.userSelect = 'none'
+        cover.className = `${gm.id}-video-cover-btn`
         if (gm.runtime.preview) {
           cover.style.cursor = 'none'
         }
-        // 确保与其他脚本配合时相关 UI 排列顺序不会乱
-        const gm395456 = atr.querySelector('[id|=gm395456]')
-        if (gm395456) {
-          gm395456.before(cover)
+
+        const version = atr.classList.contains('video-toolbar-v1') ? '2022' : 'old'
+        cover.dataset.toolbarVersion = version
+        const gm395456 = atr.querySelector('[id|=gm395456]') // 确保与其他脚本配合时组件排列顺序不会乱
+        if (version === '2022') {
+          if (gm395456) {
+            gm395456.after(cover)
+          } else {
+            const right = await api.wait.$('.toolbar-right', atr)
+            right.prepend(cover)
+          }
         } else {
-          atr.append(cover)
+          cover.className = 'appeal-text'
+          if (gm395456) {
+            gm395456.before(cover)
+          } else {
+            atr.append(cover)
+          }
         }
+
         this.method.disableContextMenu(cover)
       } else {
         cover = await this.method.createRealtimeCover()
@@ -885,7 +897,6 @@
         cover = document.createElement('a')
         cover.textContent = '获取封面'
         cover.className = `${gm.id}-bangumi-cover-btn`
-        cover.style.userSelect = 'none'
         if (gm.runtime.preview) {
           cover.style.cursor = 'none'
         }
@@ -965,7 +976,6 @@
       cover.className = templateEl.className
       cover.classList.add(`${gm.id}-live-cover-btn`)
       cover.setAttribute('style', templateEl.getAttribute('style'))
-      cover.style.userSelect = 'none'
       if (gm.runtime.preview) {
         cover.style.cursor = 'none'
       }
@@ -1012,6 +1022,18 @@
 
     addStyle() {
       api.base.addStyle(`
+        .${gm.id}-video-cover-btn {
+          cursor: pointer;
+          user-select: none;
+        }
+        .${gm.id}-video-cover-btn[data-toolbar-version="2022"] {
+          margin-right: 18px;
+          color: unset;
+        }
+        .${gm.id}-video-cover-btn[data-toolbar-version="2022"]:hover {
+          color: var(--brand_blue); /* 官方提供的 CSS 变量 */
+        }
+
         .${gm.id}-bangumi-cover-btn {
           float: right;
           cursor: pointer;
@@ -1019,6 +1041,7 @@
           margin-right: 16px;
           line-height: 36px;
           color: #505050;
+          user-select: none;
         }
         .${gm.id}-bangumi-cover-btn:hover {
           color: #00a1d6;
@@ -1027,6 +1050,7 @@
         .${gm.id}-live-cover-btn {
           cursor: pointer;
           color: #999999;
+          user-select: none;
         }
         .${gm.id}-live-cover-btn:hover {
           color: #23ADE5;
