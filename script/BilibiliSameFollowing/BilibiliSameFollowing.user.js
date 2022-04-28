@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站共同关注快速查看
-// @version         1.9.8.20220428
+// @version         1.9.9.20220428
 // @namespace       laster2800
 // @author          Laster2800
 // @description     快速查看与特定用户的共同关注（视频播放页、动态页、用户空间、直播间）
@@ -574,16 +574,11 @@
 
     if (api.base.urlMatch(gm.regex.page_videoNormalMode)) {
       // 常规播放页中的UP主头像
-      webpage.cardLogic({ // 旧版播放页
-        container: '#app .v-wrap',
-        card: '.user-card-m',
-        user: '.face',
-        info: '.info',
-        before: '.btn-box',
-      })
-      webpage.cardLogic({ // 2022 版播放页
-        container: '#app .video-container-v1',
-        card: '.user-card-m-exp',
+      // 旧版播放页：     #app .v-wrap                |   .user-card-m
+      // 2022 版播放页：  #app .video-container-v1    |   .user-card-m-exp
+      webpage.cardLogic({
+        container: '#app .v-wrap, #app .video-container-v1',
+        card: '.user-card-m, .user-card-m-exp',
         user: '.face',
         info: '.info',
         before: '.btn-box',
