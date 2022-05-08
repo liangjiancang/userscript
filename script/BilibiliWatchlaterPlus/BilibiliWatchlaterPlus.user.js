@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.26.11.20220428
+// @version         4.26.12.20220508
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -31,6 +31,7 @@
 // @grant           GM_getValue
 // @grant           GM_deleteValue
 // @grant           GM_listValues
+// @grant           GM_addValueChangeListener
 // @connect         api.bilibili.com
 // @connect         api.vc.bilibili.com
 // @run-at          document-start
@@ -1733,6 +1734,8 @@
               api.message.info(`已同步到 ${new Date(target.val).toLocaleString()}`)
             }
           })
+          // 避免不同标签页中脚本实例互相影响而产生的同步时间错误
+          GM_addValueChangeListener('batchLastAddTime', (name, oldVal, newVal, remote) => remote && setLastAddTime(newVal))
 
           // 非选显示
           const setUncheckedDisplayText = () => {
