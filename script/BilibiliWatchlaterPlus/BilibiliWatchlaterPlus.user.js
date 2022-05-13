@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.26.12.20220508
+// @version         4.26.13.20220513
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -379,7 +379,7 @@
   const gm = {
     id: gmId,
     configVersion: GM_getValue('configVersion'),
-    configUpdate: 20220410,
+    configUpdate: 20220513,
     searchParams: new URL(location.href).searchParams,
     config: {},
     configMap: {
@@ -406,7 +406,7 @@
       removeHistorySaves: { default: 100, type: 'int', attr: 'value', manual: true, needNotReload: true, min: 10, max: 500, configVersion: 20210808 },
       removeHistoryTimestamp: { default: true, attr: 'checked', needNotReload: true, configVersion: 20210703 },
       removeHistorySearchTimes: { default: 100, type: 'int', attr: 'value', manual: true, needNotReload: true, min: 1, max: 500, configVersion: 20210819 },
-      batchAddLoadAfterTimeSync: { default: false, attr: 'checked', configVersion: 20210917, needNotReload: true },
+      batchAddLoadAfterTimeSync: { default: true, attr: 'checked', configVersion: 20220513, needNotReload: true },
       fillWatchlaterStatus: { default: Enums.fillWatchlaterStatus.dynamic, attr: 'value', configVersion: 20200819 },
       autoSort: { default: Enums.autoSort.default, attr: 'value', configVersion: 20220115 },
       videoButton: { default: true, attr: 'checked' },
@@ -722,11 +722,6 @@
           // 必须按从旧到新的顺序写
           // 内部不能使用 gm.configUpdate，必须手写更新后的配置版本号！
 
-          // 4.21.7.20210915
-          if (gm.configVersion < 20210915) {
-            GM_deleteValue('batchParams')
-          }
-
           // 4.23.12.20211013
           if (gm.configVersion < 20211013) {
             GM_deleteValue('removeHistoryData')
@@ -747,8 +742,13 @@
             GM_deleteValue('watchlaterListCache')
           }
 
+          // 4.26.13.20220513
+          if (gm.configVersion < 20220513) {
+            GM_deleteValue('batchAddLoadAfterTimeSync')
+          }
+
           // 功能性更新后更新此处配置版本，通过时跳过功能性更新设置，否则转至 readConfig() 中处理
-          if (gm.configVersion >= 20220410) {
+          if (gm.configVersion >= 20220513) {
             gm.configVersion = gm.configUpdate
             GM_setValue('configVersion', gm.configVersion)
           }
@@ -985,6 +985,7 @@
             desc: '在批量添加管理器中，执行时间同步后，是否自动执行稿件加载步骤？',
             html: `<label>
               <span>批量添加：执行时间同步后是否自动加载稿件</span>
+              <span id="gm-balatsInformation" class="gm-information" title>💬</span>
               <input id="gm-batchAddLoadAfterTimeSync" type="checkbox">
             </label>`,
           })
@@ -1240,26 +1241,28 @@
               <p>模糊比对模式：设当前时间点获取到的稍后再看列表数据为 A，上一次获取到的数据为 B。若 A 与 B 的前 <b>N</b> 项均一致就认为这段时间没有往稍后再看中添加新视频，直接跳过后续处理。</p>
               <p>其中，<b>N</b> 即为模糊比对深度。注意，<b>深度设置过大反而会降低比对效率</b>，建议先设置较小的值，若后续观察到有记录被误丢弃，再增加该项的值。最佳参数与个人使用习惯相关，请根据自身情况微调。你也可以选择设置 <b>0</b> 以关闭模糊比对模式（不推荐）。</p>
             </div>
-          `, null, { width: '36em', flagSize: '2em', position: { top: '80%' } })
+          `, null, { width: '36em', position: { top: '80%' } })
           el.rhsInformation = gm.el.setting.querySelector('#gm-rhsInformation')
           api.message.hoverInfo(el.rhsInformation, `
             <div style="line-height:1.6em">
               即使突破限制将该项设置为最大限制值的两倍，保存与读取对页面加载的影响仍可忽略不计（毫秒级），最坏情况下生成移除记录的耗时也能被控制在 1 秒以内。但仍不建议取太大的值，原因是移除记录本质上是一种误删后的挽回手段，非常近期的历史足以达到效果。
             </div>
-          `, null, { width: '36em', flagSize: '2em', position: { top: '80%' } })
+          `, null, { width: '36em', position: { top: '80%' } })
           el.rhtInformation = gm.el.setting.querySelector('#gm-rhtInformation')
           api.message.hoverInfo(el.rhtInformation, `
             <div style="line-height:1.6em">
               在历史数据记录中添加时间戳，用于改善移除记录中的数据排序，使得排序以「视频『最后一次』被观察到处于稍后再看的时间点」为基准，而非以「视频『第一次』被观察到处于稍后再看的时间点」为基准；同时也利于数据展示与查看。注意，此功能在数据存读及处理上都有额外开销。
             </div>
-          `, null, { width: '36em', flagSize: '2em', position: { top: '80%' } })
+          `, null, { width: '36em', position: { top: '80%' } })
+          el.balatsInformation = gm.el.setting.querySelector('#gm-balatsInformation')
+          api.message.hoverInfo(el.balatsInformation, '若同步时间距离当前时间超过 48 小时，则不会执行自动加载。', null, { width: '28em', position: { top: '80%' } })
           el.fwsInformation = gm.el.setting.querySelector('#gm-fwsInformation')
           api.message.hoverInfo(el.fwsInformation, `
             <div style="text-indent:2em;line-height:1.6em">
               <p>在动态页、视频播放页以及其他页面，视频卡片的右下角方存在一个将视频加入或移除出稍后再看的快捷按钮。然而，在刷新页面后，B站不会为之加载稍后再看的状态——即使视频已经在稍后再看中，也不会显示出来。启用该功能后，会自动填充这些缺失的状态信息。</p>
               <p>第三项「所有页面」，会用一套固定的逻辑对脚本能匹配到的所有非特殊页面尝试进行信息填充。脚本本身没有匹配所有B站页面，如果有需要，请在脚本管理器（如 Tampermonkey）中为脚本设置额外的页面匹配规则。由于B站各页面的设计不是很规范，某些页面中视频卡片的设计可能跟其他地方不一致，所以不保证必定能填充成功。</p>
             </div>
-          `, null, { width: '36em', flagSize: '2em', position: { top: '80%' } })
+          `, null, { width: '36em', position: { top: '80%' } })
           el.mraInformation = gm.el.setting.querySelector('#gm-mraInformation')
           api.message.hoverInfo(el.mraInformation, `
             <div style="line-height:1.6em">
@@ -1729,7 +1732,11 @@
             const secInterval = (Date.now() - target.val) / 1000
             el.id1a.value = secInterval / el.id1b.value // 取精确时间要比向上取整好
             if (gm.config.batchAddLoadAfterTimeSync) {
-              el.id1c.dispatchEvent(new Event('click'))
+              if ((Date.now() - target.val) / (1000 * 3600) <= 48) {
+                el.id1c.dispatchEvent(new Event('click'))
+              } else {
+                api.message.info(`已同步到 ${new Date(target.val).toLocaleString()}。同步时间距离当前时间超过 48 小时，不执行自动加载。`, { ms: 2000 })
+              }
             } else {
               api.message.info(`已同步到 ${new Date(target.val).toLocaleString()}`)
             }
@@ -1848,7 +1855,7 @@
                   }
                 }
                 el.items.insertAdjacentHTML('afterbegin', html)
-                await new Promise(resolve => setTimeout(resolve, 250 * (Math.random() * 0.5 + 0.75))) // 多让点时间给其他线程，顺便给请求留点间隔
+                await new Promise(resolve => setTimeout(resolve, 250 * (Math.random() * 0.5 + 0.75))) // 切线程，顺便给请求留点间隔
               }
               // 执行到这里只有一个原因：stopLoad 导致任务终止
               api.message.info('批量添加：任务终止', 1800)
