@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.26.13.20220513
+// @version         4.26.14.20220515
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -1878,6 +1878,7 @@
               el.id1c.textContent = '重新执行'
               el.id1d.disabled = true
               el.id4b.disabled = false
+              el.id4b.textContent = '执行'
               // 更新第二步的时间范围
               if (el.id2a.defaultValue && el.id2b.syncVal) {
                 el.id2a.value = el.id2a.defaultValue
