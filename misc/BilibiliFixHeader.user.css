@@ -1,6 +1,6 @@
 /* ==UserStyle==
 @name           B站顶栏固顶
-@version        1.3.5.20220428
+@version        1.3.6.20220522
 @namespace      laster2800
 @author         Laster2800
 @homepageURL    https://greasyfork.org/zh-CN/scripts/430292
@@ -37,6 +37,10 @@
 
     .bili-dyn-home--member .sticky {
         top: 63px;
+    }
+
+    .bili-gallery {
+        z-index: 100002 !important;
     }
 }
 
