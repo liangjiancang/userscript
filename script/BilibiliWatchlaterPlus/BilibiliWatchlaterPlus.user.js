@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.26.15.20220521
+// @version         4.26.16.20220526
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -3616,11 +3616,13 @@
                   card.added = true
                   card.querySelector('.gm-card-switcher').addEventListener('click', e => {
                     e.preventDefault()
+                    e.stopPropagation() // 兼容第三方的「链接转点击事件」处理
                     switchStatus(!card.added)
                   })
 
                   card.querySelector('.gm-card-collector').addEventListener('click', e => {
                     e.preventDefault() // 不能放到 async 中
+                    e.stopPropagation() // 兼容第三方的「链接转点击事件」处理
                     setTimeout(async () => {
                       const uid = _self.method.getDedeUserID()
                       let mlid = GM_getValue(`watchlaterMediaList_${uid}`)
@@ -3644,6 +3646,7 @@
                   const fixer = card.querySelector('.gm-card-fixer')
                   fixer.addEventListener('click', e => {
                     e.preventDefault()
+                    e.stopPropagation() // 兼容第三方的「链接转点击事件」处理
                     if (card.fixed) {
                       card.classList.remove('gm-fixed')
                     } else {

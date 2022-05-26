@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站封面获取
-// @version         5.7.5.20220428
+// @version         5.7.6.20220526
 // @namespace       laster2800
 // @author          Laster2800
 // @description     获取B站各播放页及直播间封面，支持手动及实时预览等多种模式，支持点击下载、封面预览、快速复制，可高度自定义
@@ -476,6 +476,7 @@
           target.addEventListener('click', e => {
             if (target.loaded && gm.config.download) {
               e.preventDefault()
+              e.stopPropagation() // 兼容第三方的「链接转点击事件」处理
             }
           })
           target._downloadEvent = true
