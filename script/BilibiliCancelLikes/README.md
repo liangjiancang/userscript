@@ -32,6 +32,12 @@ Q: 如果说B站会将过于陈旧的点赞状态丢弃，那这个脚本似乎�
 
 A: 其实也不是没用。如果你关注的UP主翻车了，第一时间用这个脚本取消近期的点赞还是能省不少事的……
 
+<br>
+
+Q: 我刚刚才给某视频点赞，时间隔得也不旧，为什么还是检测不到？
+
+A: 大概需要给B站点时间同步状态，一两分钟就好了。不过，这种情况大概只出现在测试中，不会真有人刚给UP主点完赞就用这脚本清赞吧？
+
 *以上均为个人推测，不保真。*
 
 **Source: [Gitee](https://gitee.com/liangjiancang/userscript/tree/master/script/BilibiliCancelLikes) / [GitHub](https://github.com/liangjiancang/userscript/tree/master/script/BilibiliCancelLikes)** - *by Laster2800*

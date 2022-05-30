@@ -2,6 +2,11 @@
 
 本日志只记录用户友好的更新说明，影响不大的问题修复与修改不作记录，具体修改见 [提交记录](https://gitee.com/liangjiancang/userscript/commits/master/script/BilibiliCancelLikes)。
 
+## V1.1
+
+1. 取消点赞：优化流程，增加「共执行多少页」选项。
+2. UI：优化「取消点赞」按钮位置。
+
 ## V1.0
 
 1. 脚本：实现功能及发布。

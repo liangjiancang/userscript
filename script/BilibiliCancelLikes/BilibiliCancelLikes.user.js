@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站点赞批量取消
-// @version         1.0.0.20220530
+// @version         1.1.0.20220530
 // @namespace       laster2800
 // @author          Laster2800
 // @description     取消对于某个UP主的所有点赞
@@ -27,44 +27,47 @@
     id: 'gm445754',
     fn: {
       async addButton() {
-        const container = await api.wait.$('.h .h-action')
+        const message = await api.wait.$('.h .h-action .h-message')
         const button = document.createElement('div')
         button.textContent = '取消点赞'
         button.className = 'h-f-btn'
         button.addEventListener('click', this.start)
-        container.prepend(button)
+        message.after(button)
       },
       addScriptMenu() {
         GM_registerMenuCommand('取消点赞', this.start)
       },
       async start() {
+        const ps = 30
+        const delay = 300
+        const dTotal = 5
         const uid = await api.message.prompt('请输入待取消点赞UP主的 UID：', /\/(\d+)([#/?]|$)/.exec(location.pathname)?.[1])
         if (/^\d+$/.test(uid)) {
-          let pn = 1
-          pn = await api.message.prompt('从最新投稿的第几页开始执行（每页 30 项）？', '1')
-          if (!/^\d+$/.test(pn)) {
-            pn = 1
+          let start = await api.message.prompt(`从最新投稿的第几页开始执行（每页 ${ps} 项）？一般不需要调整，除非需要继续之前被中断的任务。`, '1')
+          if (!/^\d+$/.test(start)) {
+            start = 1
           } else {
-            pn = Number.parseInt(pn)
+            start = Number.parseInt(start)
           }
-          const result = await api.message.confirm(`是否要取消对UP主 UID ${uid} 自第 ${pn} 页起的所有点赞，该操作不可撤销！`)
+          const total = await api.message.prompt(`共执行多少页（每页 ${ps} 项）？注意：过于旧远的点赞状态其实会被B站丢弃（详见 README），翻老视频其实没什么意义（除非你近期给老视频点了赞）。建议使用默认值，除非目标UP主是个投稿狂魔。`, dTotal)
+          const end = start + ((/^\d+$/.test(total) && Number.parseInt(total) > 0) ? Number.parseInt(total) : dTotal) - 1
+          const result = await api.message.confirm(`是否要取消对UP主 UID ${uid} 第 ${start} ~ ${end} 页的所有点赞，该操作不可撤销！`)
           if (result) {
             api.message.alert(`正在取消对UP主 UID ${uid} 的点赞。执行过程详见控制台，执行完毕前请勿关闭当前标签页或将当前标签页置于后台！`)
-            gm.fn.cancelDislikes(uid, pn)
+            gm.fn.cancelDislikes(uid, start, end, delay)
           }
         } else if (uid !== null) {
           api.message.alert('UID 格式错误。')
         }
       },
-      async cancelDislikes(uid, start) {
-        const delay = 300
+      async cancelDislikes(uid, start, end, delay = 300) {
         const csrf = this.getCSRF()
         let cancelCnt = 0
         const ps = 30
         let pn = start
         let count = -1
         let maxPn = 1
-        api.logger.info(`START: UID = ${uid}, START = ${pn}`)
+        api.logger.info(`START: UID = ${uid}, START = ${start}, END = ${end}`)
         do {
           api.logger.info(`PAGE: ${pn} / ${count < 0 ? '?' : maxPn}`)
           let resp = await api.web.request({
@@ -74,6 +77,9 @@
           if (count < 0) {
             count = resp.data.page.count
             maxPn = Math.ceil(count / ps)
+            if (end > maxPn) {
+              end = maxPn
+            }
             if (pn > maxPn) {
               pn += 1
               break
@@ -104,7 +110,7 @@
             }
             await this.randomDelay(delay)
           }
-        } while (++pn < maxPn)
+        } while (++pn < end)
         api.logger.info(`COMPLETE: 共取消点赞 ${cancelCnt} 次，执行范围为第 ${start} ~ ${pn - 1} 页`)
         api.message.alert(`取消点赞执行完毕，共取消点赞 ${cancelCnt} 次，详细信息请查看控制台。`)
       },
