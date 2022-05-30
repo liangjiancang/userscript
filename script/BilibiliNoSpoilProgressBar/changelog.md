@@ -15,7 +15,7 @@
 9. 进度条：鼠标在上方时总是显示为 `pointer` 形式，防止暴露偏移信息。
 10. 进度条：优化防剧透参数默认值。
 11. 外部：`UserscriptAPI` 更新至 V2.2。详见 [UserscriptAPI 更新日志](https://gitee.com/liangjiancang/userscript/blob/master/lib/UserscriptAPI/changelog.md)。
-12. 外部：`UserscriptAPIDom` 更新至 V1.2，`UserscriptAPILogger` 更新至 V1.2，`UserscriptAPIMessage` 更新至 V1.2。
+12. 外部：`UserscriptAPIDom` 更新至 V1.2，`UserscriptAPILogger` 更新至 V1.2，`UserscriptAPIMessage` 更新至 V1.3。
 13. 外部：`UserscriptAPIBase` 更新至 V1.2，提供更为完善的 `urlchange` 事件。
 14. 外部：`UserscriptAPIWait` 更新至 V1.2，优化错误处理流程。
 15. 外部：`UserscriptAPIWeb` 更新至 V1.2，优化错误处理流程。
