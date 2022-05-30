@@ -1,5 +1,11 @@
 # UserscriptAPIMessage 更新日志
 
+## V1.3
+
+1. `dialog`：增加对话框状态 `state`。
+2. `alert` `confirm` `prompt`：`options` 增加 `btnText` 选项，用于控制按钮文本。
+3. `alert` `confirm` `prompt`：增加 `ret` 参数，通过该对象将必要数据返回。
+
 ## V1.2
 
 1. `info`：回调函数以参数而非 `this` 回传 `infobox` 元素。
