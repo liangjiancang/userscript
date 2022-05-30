@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站点赞批量取消
-// @version         1.1.3.20220530
+// @version         1.1.4.20220530
 // @namespace       laster2800
 // @author          Laster2800
 // @description     取消对于某个UP主的所有点赞
@@ -46,13 +46,19 @@
         const dTotal = 5
         const uid = await api.message.prompt('请输入待取消点赞UP主的 UID：', /\/(\d+)([#/?]|$)/.exec(location.pathname)?.[1])
         if (/^\d+$/.test(uid)) {
-          let start = await api.message.prompt(`从最新投稿的第几页开始执行（每页 ${ps} 项）？一般不需要调整，除非需要继续之前被中断的任务。`, '1')
+          let start = await api.message.prompt(`
+            <p>从最新投稿的第几页开始执行？（每页 ${ps} 项）</p>
+            <p>一般不需要调整，除非需要继续之前被中断的任务。</p>
+          `, '1', { html: true })
           if (!/^\d+$/.test(start)) {
             start = 1
           } else {
             start = Number.parseInt(start)
           }
-          const total = await api.message.prompt(`共执行多少页（每页 ${ps} 项）？注意：过于旧远的点赞状态其实会被B站丢弃（详见 README），翻老视频其实没什么意义（除非你近期给老视频点了赞）。建议使用默认值，除非目标UP主是个投稿狂魔。`, dTotal)
+          const total = await api.message.prompt(`
+            <p>共执行多少页？（每页 ${ps} 项）</p>
+            <p>注意：过于旧远的点赞状态其实会被B站丢弃（详见 README），翻老视频其实没什么意义（除非近期给老视频点了赞）。总之建议使用默认值，除非目标UP主是个投稿狂魔。</p>
+          `, dTotal, { html: true })
           const end = start + ((/^\d+$/.test(total) && Number.parseInt(total) > 0) ? Number.parseInt(total) : dTotal) - 1
           const result = await api.message.confirm(`是否要取消对UP主 UID ${uid} 第 ${start} ~ ${end} 页的所有点赞，该操作不可撤销！`)
           if (result) {
