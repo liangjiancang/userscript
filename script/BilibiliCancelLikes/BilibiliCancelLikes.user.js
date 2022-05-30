@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站点赞批量取消
-// @version         1.1.1.20220530
+// @version         1.1.2.20220530
 // @namespace       laster2800
 // @author          Laster2800
 // @description     取消对于某个UP主的所有点赞
@@ -72,7 +72,7 @@
         let maxPn = 1
         api.logger.info(`START: UID = ${uid}, START = ${start}, END = ${end}`)
         do {
-          api.logger.info(`PAGE: ${pn} / ${count < 0 ? '?' : maxPn}`)
+          api.logger.info(`PAGE: ${pn} / ${end} / ${count < 0 ? '?' : maxPn}`)
           let resp = await api.web.request({
             method: 'GET',
             url: `http://api.bilibili.com/x/space/arc/search?mid=${uid}&pn=${pn}&ps=${ps}`,
