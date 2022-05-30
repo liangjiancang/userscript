@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站点赞批量取消
-// @version         1.1.2.20220530
+// @version         1.1.3.20220530
 // @namespace       laster2800
 // @author          Laster2800
 // @description     取消对于某个UP主的所有点赞
@@ -12,7 +12,7 @@
 // @include         *://space.bilibili.com/*
 // @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=974252
 // @require         https://greasyfork.org/scripts/431998-userscriptapidom/code/UserscriptAPIDom.js?version=1005139
-// @require         https://greasyfork.org/scripts/432000-userscriptapimessage/code/UserscriptAPIMessage.js?version=973744
+// @require         https://greasyfork.org/scripts/432000-userscriptapimessage/code/UserscriptAPIMessage.js?version=1055883
 // @require         https://greasyfork.org/scripts/432002-userscriptapiwait/code/UserscriptAPIWait.js?version=1035042
 // @require         https://greasyfork.org/scripts/432003-userscriptapiweb/code/UserscriptAPIWeb.js?version=977807
 // @grant           GM_xmlhttpRequest
@@ -56,8 +56,13 @@
           const end = start + ((/^\d+$/.test(total) && Number.parseInt(total) > 0) ? Number.parseInt(total) : dTotal) - 1
           const result = await api.message.confirm(`是否要取消对UP主 UID ${uid} 第 ${start} ~ ${end} 页的所有点赞，该操作不可撤销！`)
           if (result) {
-            api.message.alert(`正在取消对UP主 UID ${uid} 的点赞。执行过程详见控制台，执行完毕前请勿关闭当前标签页或将当前标签页置于后台！`)
-            gm.fn.cancelDislikes(uid, start, end, delay)
+            const ret = {}
+            api.message.alert(`正在取消对UP主 UID ${uid} 的点赞。执行过程详见控制台，执行完毕前请勿关闭当前标签页或将当前标签页置于后台！`, null, ret)
+            const cancelCnt = await gm.fn.cancelDislikes(uid, start, end, delay)
+            if (ret.dialog.state < 3) {
+              ret.dialog.close()
+            }
+            api.message.alert(`取消点赞执行完毕，共取消点赞 ${cancelCnt} 次，详细信息请查看控制台。`)
           }
         } else if (uid !== null) {
           api.message.alert('UID 格式错误。')
@@ -115,7 +120,7 @@
           }
         } while (++pn < end)
         api.logger.info(`COMPLETE: 共取消点赞 ${cancelCnt} 次，执行范围为第 ${start} ~ ${pn - 1} 页`)
-        api.message.alert(`取消点赞执行完毕，共取消点赞 ${cancelCnt} 次，详细信息请查看控制台。`)
+        return cancelCnt
       },
       async randomDelay(exp) {
         await new Promise(resolve => setTimeout(resolve, exp * (Math.random() * 0.5 + 0.75)))
