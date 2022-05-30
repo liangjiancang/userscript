@@ -1,12 +1,12 @@
 // ==UserScript==
 // @name            B站点赞批量取消
-// @version         0.1.0.20220530
+// @version         1.0.0.20220530
 // @namespace       laster2800
 // @author          Laster2800
 // @description     取消对于某个UP主的所有点赞
 // @icon            https://www.bilibili.com/favicon.ico
-// @homepageURL     https://greasyfork.org/zh-CN/scripts/__USIDTODO__
-// @supportURL      https://greasyfork.org/zh-CN/scripts/__USIDTODO__/feedback
+// @homepageURL     https://greasyfork.org/zh-CN/scripts/445754
+// @supportURL      https://greasyfork.org/zh-CN/scripts/445754/feedback
 // @license         LGPL-3.0
 // @noframes
 // @include         *://space.bilibili.com/*
@@ -24,7 +24,7 @@
   'use strict'
 
   const gm = {
-    id: 'gm__USIDTODO__',
+    id: 'gm445754',
     fn: {
       async addButton() {
         const container = await api.wait.$('.h .h-action')

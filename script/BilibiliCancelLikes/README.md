@@ -1,4 +1,4 @@
-# [B站点赞批量取消](https://greasyfork.org/zh-CN/scripts/__USIDTODO__)
+# [B站点赞批量取消](https://greasyfork.org/zh-CN/scripts/445754)
 
 相关脚本：**[B站稍后再看功能增强](https://greasyfork.org/zh-CN/scripts/395456)**、**[B站封面获取](https://greasyfork.org/zh-CN/scripts/395575)**、**[B站共同关注快速查看](https://greasyfork.org/zh-CN/scripts/428453)**、**[B站防剧透进度条](https://greasyfork.org/zh-CN/scripts/411092)**
 
