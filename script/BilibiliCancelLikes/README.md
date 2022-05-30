@@ -40,4 +40,8 @@ A: 大概需要给B站点时间同步状态，一两分钟就好了。不过，�
 
 *以上均为个人推测，不保真。*
 
+## 补充说明
+
+* 脚本基于 Microsoft Edge 浏览器和 Tampermonkey 脚本管理器开发，不支持 Greasemonkey。要求 Edge / Chrome / Chromium 内核版本不小于 85，Firefox 版本不小于 90。
+
 **Source: [Gitee](https://gitee.com/liangjiancang/userscript/tree/master/script/BilibiliCancelLikes) / [GitHub](https://github.com/liangjiancang/userscript/tree/master/script/BilibiliCancelLikes)** - *by Laster2800*

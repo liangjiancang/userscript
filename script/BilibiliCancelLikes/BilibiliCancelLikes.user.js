@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站点赞批量取消
-// @version         1.1.0.20220530
+// @version         1.1.1.20220530
 // @namespace       laster2800
 // @author          Laster2800
 // @description     取消对于某个UP主的所有点赞
@@ -18,6 +18,9 @@
 // @grant           GM_xmlhttpRequest
 // @grant           GM_registerMenuCommand
 // @connect         api.bilibili.com
+// @compatible      edge 版本不小于 85
+// @compatible      chrome 版本不小于 85
+// @compatible      firefox 版本不小于 90
 // ==/UserScript==
 
 (function() {
@@ -102,10 +105,10 @@
                 data: sp,
               })
               if (r.code === 0) {
-                api.logger.info(`SUCCESS: ${item.title} (${item.bvid})`)
+                api.logger.info(`CANCEL: ${item.title} (${item.bvid})`)
                 cancelCnt += 1
               } else {
-                api.logger.error(`FAIL: ${item.title} (${item.bvid})`, r ?? '未知错误')
+                api.logger.error(`ERROR: ${item.title} (${item.bvid})`, r ?? '未知错误')
               }
             }
             await this.randomDelay(delay)
