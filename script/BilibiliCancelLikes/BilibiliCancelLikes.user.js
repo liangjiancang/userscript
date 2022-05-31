@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站点赞批量取消
-// @version         1.1.4.20220530
+// @version         1.1.5.20220531
 // @namespace       laster2800
 // @author          Laster2800
 // @description     取消对于某个UP主的所有点赞
@@ -29,17 +29,25 @@
   const gm = {
     id: 'gm445754',
     fn: {
+      init() {
+        api.base.addStyle('.gm445754-link { text-decoration: underline; }')
+        this.addButton()
+        this.addScriptMenu()
+      },
+
       async addButton() {
-        const message = await api.wait.$('.h .h-action .h-message')
+        const container = await api.wait.$('.h .h-action')
         const button = document.createElement('div')
         button.textContent = '取消点赞'
         button.className = 'h-f-btn'
         button.addEventListener('click', this.start)
-        message.after(button)
+        container.lastElementChild.before(button)
       },
+
       addScriptMenu() {
         GM_registerMenuCommand('取消点赞', this.start)
       },
+
       async start() {
         const ps = 30
         const delay = 300
@@ -57,7 +65,7 @@
           }
           const total = await api.message.prompt(`
             <p>共执行多少页？（每页 ${ps} 项）</p>
-            <p>注意：过于旧远的点赞状态其实会被B站丢弃（详见 README），翻老视频其实没什么意义（除非近期给老视频点了赞）。总之建议使用默认值，除非目标UP主是个投稿狂魔。</p>
+            <p>注意：过于旧远的点赞状态其实会被B站丢弃（详见 <a href="https://gitee.com/liangjiancang/userscript/blob/master/script/BilibiliCancelLikes/README.md" target="_blank" class="gm445754-link">README</a>），翻老视频其实没什么意义（除非近期给老视频点了赞）。总之建议使用默认值，除非目标UP主是个投稿狂魔。</p>
           `, dTotal, { html: true })
           const end = start + ((/^\d+$/.test(total) && Number.parseInt(total) > 0) ? Number.parseInt(total) : dTotal) - 1
           const result = await api.message.confirm(`是否要取消对UP主 UID ${uid} 第 ${start} ~ ${end} 页的所有点赞，该操作不可撤销！`)
@@ -68,12 +76,16 @@
             if (ret.dialog.state < 3) {
               ret.dialog.close()
             }
-            api.message.alert(`取消点赞执行完毕，共取消点赞 ${cancelCnt} 次，详细信息请查看控制台。`)
+            api.message.alert(`
+              <p>取消点赞执行完毕，共取消点赞 ${cancelCnt} 次，详细信息请查看控制台。</p>
+              <p>对执行结果有困惑请查看 <a href="https://gitee.com/liangjiancang/userscript/blob/master/script/BilibiliCancelLikes/README.md#faq" target="_blank" class="gm445754-link">README FAQ</a>。</p>
+            `, { html: true })
           }
         } else if (uid !== null) {
           api.message.alert('UID 格式错误。')
         }
       },
+
       async cancelDislikes(uid, start, end, delay = 300) {
         const csrf = this.getCSRF()
         let cancelCnt = 0
@@ -124,13 +136,15 @@
             }
             await this.randomDelay(delay)
           }
-        } while (++pn < end)
+        } while (pn++ < end)
         api.logger.info(`COMPLETE: 共取消点赞 ${cancelCnt} 次，执行范围为第 ${start} ~ ${pn - 1} 页`)
         return cancelCnt
       },
+
       async randomDelay(exp) {
         await new Promise(resolve => setTimeout(resolve, exp * (Math.random() * 0.5 + 0.75)))
       },
+
       getCSRF() {
         return document.cookie.replace(/(?:(?:^|.*;\s*)bili_jct\s*=\s*([^;]*).*$)|^.*$/, '$1')
       },
@@ -143,6 +157,5 @@
     label: GM_info.script.name,
   })
 
-  gm.fn.addButton()
-  gm.fn.addScriptMenu()
+  gm.fn.init()
 })()
