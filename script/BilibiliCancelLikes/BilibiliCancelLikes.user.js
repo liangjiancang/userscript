@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站点赞批量取消
-// @version         1.2.0.20220531
+// @version         1.2.1.20220531
 // @namespace       laster2800
 // @author          Laster2800
 // @description     取消对于某个UP主的所有点赞
@@ -28,6 +28,8 @@
 
   const gm = {
     id: 'gm445754',
+    busy: false,
+    button: null,
     fn: {
       init() {
         api.base.addStyle('.gm445754-link { text-decoration: underline; }')
@@ -35,20 +37,34 @@
         this.addScriptMenu()
       },
 
+      busy(state) {
+        if (state !== undefined) {
+          if (gm.button) {
+            gm.button.style.pointerEvents = state ? 'none' : ''
+            gm.button.textContent = state ? '处理中...' : '取消点赞'
+          }
+          gm.busy = state
+        }
+        return gm.busy
+      },
+
       async addButton() {
         const container = await api.wait.$('.h .h-action')
         const button = document.createElement('div')
         button.textContent = '取消点赞'
         button.className = 'h-f-btn'
-        button.addEventListener('click', this.start)
+        button.addEventListener('click', () => this.start())
         container.lastElementChild.before(button)
+        gm.button = button
       },
 
       addScriptMenu() {
-        GM_registerMenuCommand('取消点赞', this.start)
+        GM_registerMenuCommand('取消点赞', () => this.start())
       },
 
       async start() {
+        if (this.busy()) return
+        this.busy(true)
         const ps = 30
         const delay = 600 // 经实测这个延时不太容易触发后台拦截机制
         const dTotal = 2
@@ -61,10 +77,10 @@
             start = Number.parseInt(start)
           }
           const total = await api.message.prompt(`
-            <p>共执行多少页？（每页 ${ps} 项）</p>
-            <p><b>警告：一次执行多页极有可能导致点赞接口失效！这不仅会使脚本无法正常工作，还会影响到账号的正常使用！</b>一次执行两页是B站后台能接受的（至少本人测试如此），想求稳的可以每次执行一页。</p>
-            <p>对脚本使用有困惑请查看 <a href="https://gitee.com/liangjiancang/userscript/blob/master/script/BilibiliCancelLikes/README.md#faq" target="_blank" class="gm445754-link">README FAQ</a>。</p>
-          `, dTotal, { html: true })
+              <p>共执行多少页？（每页 ${ps} 项）</p>
+              <p><b>警告：一次执行多页极有可能导致点赞接口失效！这不仅会使脚本无法正常工作，还会影响到账号的正常使用！</b>一次执行两页是B站后台能接受的（至少本人测试如此），想求稳的可以每次执行一页。</p>
+              <p>对脚本使用有困惑请查看 <a href="https://gitee.com/liangjiancang/userscript/blob/master/script/BilibiliCancelLikes/README.md#faq" target="_blank" class="gm445754-link">README FAQ</a>。</p>
+            `, dTotal, { html: true })
           const end = start + ((/^\d+$/.test(total) && Number.parseInt(total) > 0) ? Number.parseInt(total) : dTotal) - 1
           const result = await api.message.confirm(`是否要取消对UP主 UID ${uid} 第 ${start} ~ ${end} 页的所有点赞，该操作不可撤销！`)
           if (result) {
@@ -75,13 +91,13 @@
               ret.dialog.close()
             }
             if (result.success) {
-              api.message.alert(`
+              await api.message.alert(`
                 <p>取消点赞执行完毕，共取消点赞 ${result.cancelCnt} 次，详细信息请查看控制台。</p>
                 <p><b>警告：接下来在短时间内请勿使用本脚本功能（建议至少在五分钟以上，时间再短一点似乎也是可以的，但有风险），否则有可能导致点赞接口失效！这不仅会使脚本无法正常工作，还会影响到账号的正常使用！</b></p>
                 <p>对脚本使用有困惑请查看 <a href="https://gitee.com/liangjiancang/userscript/blob/master/script/BilibiliCancelLikes/README.md#faq" target="_blank" class="gm445754-link">README FAQ</a>。</p>
               `, { html: true })
             } else {
-              api.message.alert(`
+              await api.message.alert(`
                 <p>取消点赞执行错误，发生错误前共取消点赞 ${result.cancelCnt} 次，详细信息请查看控制台。</p>
                 <p><b>警告：点赞接口已失效，目前脚本已无法正常工作，账号的正常使用也受到影响！接下来一段时间内请勿使用本脚本功能（建议至少在一小时以上），同时尽可能避免给视频点赞！</b></p>
                 <p>对脚本使用有困惑请查看 <a href="https://gitee.com/liangjiancang/userscript/blob/master/script/BilibiliCancelLikes/README.md#faq" target="_blank" class="gm445754-link">README FAQ</a>。</p>
@@ -89,8 +105,9 @@
             }
           }
         } else if (uid !== null) {
-          api.message.alert('UID 格式错误。')
+          await api.message.alert('UID 格式错误。')
         }
+        this.busy(false)
       },
 
       async cancelDislikes(uid, start, end, delay = 300) {
