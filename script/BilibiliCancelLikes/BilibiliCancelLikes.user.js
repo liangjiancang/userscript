@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站点赞批量取消
-// @version         1.1.5.20220531
+// @version         1.2.0.20220531
 // @namespace       laster2800
 // @author          Laster2800
 // @description     取消对于某个UP主的所有点赞
@@ -50,14 +50,11 @@
 
       async start() {
         const ps = 30
-        const delay = 300
-        const dTotal = 5
+        const delay = 600 // 经实测这个延时不太容易触发后台拦截机制
+        const dTotal = 2
         const uid = await api.message.prompt('请输入待取消点赞UP主的 UID：', /\/(\d+)([#/?]|$)/.exec(location.pathname)?.[1])
         if (/^\d+$/.test(uid)) {
-          let start = await api.message.prompt(`
-            <p>从最新投稿的第几页开始执行？（每页 ${ps} 项）</p>
-            <p>一般不需要调整，除非需要继续之前被中断的任务。</p>
-          `, '1', { html: true })
+          let start = await api.message.prompt(`从最新投稿的第几页开始执行？（每页 ${ps} 项）`, '1')
           if (!/^\d+$/.test(start)) {
             start = 1
           } else {
@@ -65,21 +62,31 @@
           }
           const total = await api.message.prompt(`
             <p>共执行多少页？（每页 ${ps} 项）</p>
-            <p>注意：过于旧远的点赞状态其实会被B站丢弃（详见 <a href="https://gitee.com/liangjiancang/userscript/blob/master/script/BilibiliCancelLikes/README.md" target="_blank" class="gm445754-link">README</a>），翻老视频其实没什么意义（除非近期给老视频点了赞）。总之建议使用默认值，除非目标UP主是个投稿狂魔。</p>
+            <p><b>警告：一次执行多页极有可能导致点赞接口失效！这不仅会使脚本无法正常工作，还会影响到账号的正常使用！</b>一次执行两页是B站后台能接受的（至少本人测试如此），想求稳的可以每次执行一页。</p>
+            <p>对脚本使用有困惑请查看 <a href="https://gitee.com/liangjiancang/userscript/blob/master/script/BilibiliCancelLikes/README.md#faq" target="_blank" class="gm445754-link">README FAQ</a>。</p>
           `, dTotal, { html: true })
           const end = start + ((/^\d+$/.test(total) && Number.parseInt(total) > 0) ? Number.parseInt(total) : dTotal) - 1
           const result = await api.message.confirm(`是否要取消对UP主 UID ${uid} 第 ${start} ~ ${end} 页的所有点赞，该操作不可撤销！`)
           if (result) {
             const ret = {}
             api.message.alert(`正在取消对UP主 UID ${uid} 的点赞。执行过程详见控制台，执行完毕前请勿关闭当前标签页或将当前标签页置于后台！`, null, ret)
-            const cancelCnt = await gm.fn.cancelDislikes(uid, start, end, delay)
+            const result = await gm.fn.cancelDislikes(uid, start, end, delay)
             if (ret.dialog.state < 3) {
               ret.dialog.close()
             }
-            api.message.alert(`
-              <p>取消点赞执行完毕，共取消点赞 ${cancelCnt} 次，详细信息请查看控制台。</p>
-              <p>对执行结果有困惑请查看 <a href="https://gitee.com/liangjiancang/userscript/blob/master/script/BilibiliCancelLikes/README.md#faq" target="_blank" class="gm445754-link">README FAQ</a>。</p>
-            `, { html: true })
+            if (result.success) {
+              api.message.alert(`
+                <p>取消点赞执行完毕，共取消点赞 ${result.cancelCnt} 次，详细信息请查看控制台。</p>
+                <p><b>警告：接下来在短时间内请勿使用本脚本功能（建议至少在五分钟以上，时间再短一点似乎也是可以的，但有风险），否则有可能导致点赞接口失效！这不仅会使脚本无法正常工作，还会影响到账号的正常使用！</b></p>
+                <p>对脚本使用有困惑请查看 <a href="https://gitee.com/liangjiancang/userscript/blob/master/script/BilibiliCancelLikes/README.md#faq" target="_blank" class="gm445754-link">README FAQ</a>。</p>
+              `, { html: true })
+            } else {
+              api.message.alert(`
+                <p>取消点赞执行错误，发生错误前共取消点赞 ${result.cancelCnt} 次，详细信息请查看控制台。</p>
+                <p><b>警告：点赞接口已失效，目前脚本已无法正常工作，账号的正常使用也受到影响！接下来一段时间内请勿使用本脚本功能（建议至少在一小时以上），同时尽可能避免给视频点赞！</b></p>
+                <p>对脚本使用有困惑请查看 <a href="https://gitee.com/liangjiancang/userscript/blob/master/script/BilibiliCancelLikes/README.md#faq" target="_blank" class="gm445754-link">README FAQ</a>。</p>
+              `, { html: true })
+            }
           }
         } else if (uid !== null) {
           api.message.alert('UID 格式错误。')
@@ -96,7 +103,7 @@
         api.logger.info(`START: UID = ${uid}, START = ${start}, END = ${end}`)
         do {
           api.logger.info(`PAGE: ${pn} / ${end} / ${count < 0 ? '?' : maxPn}`)
-          let resp = await api.web.request({
+          const resp = await api.web.request({
             method: 'GET',
             url: `http://api.bilibili.com/x/space/arc/search?mid=${uid}&pn=${pn}&ps=${ps}`,
           }, { check: r => r.code === 0 })
@@ -113,32 +120,31 @@
           }
           const { vlist } = resp.data.list
           for (const item of vlist) {
-            resp = await api.web.request({
-              method: 'GET',
-              url: `http://api.bilibili.com/x/web-interface/archive/has/like?bvid=${item.bvid}`,
-            }, { check: r => r.code === 0 })
-            if (resp.data !== 0) { // 已点赞视频
-              const sp = new URLSearchParams()
-              sp.append('bvid', item.bvid)
-              sp.append('like', '2') // 取消点赞
-              sp.append('csrf', csrf)
-              const r = await api.web.request({
-                method: 'POST',
-                url: 'http://api.bilibili.com/x/web-interface/archive/like',
-                data: sp,
-              })
-              if (r.code === 0) {
-                api.logger.info(`CANCEL: ${item.title} (${item.bvid})`)
-                cancelCnt += 1
-              } else {
-                api.logger.error(`ERROR: ${item.title} (${item.bvid})`, r ?? '未知错误')
-              }
+            // 无法判断用户是否给目标视频点过赞，只能判断用户是否在近期给目标视频点过赞，必须跳过检测直接操作
+            const sp = new URLSearchParams()
+            sp.append('bvid', item.bvid)
+            sp.append('like', '2') // 取消点赞
+            sp.append('csrf', csrf)
+            const r = await api.web.request({
+              method: 'POST',
+              url: 'http://api.bilibili.com/x/web-interface/archive/like',
+              data: sp,
+            })
+            // r.code:
+            // -412   - 请求被拦截
+            // 65004  - 取消赞失败 未点赞过
+            if (r.code === 0) {
+              api.logger.info(`CANCEL: ${item.title} (${item.bvid})`)
+              cancelCnt += 1
+            } else if (r.code < 0) {
+              api.logger.error('ERROR: 请求被拦截，点赞接口已失效，接下来一段时间内请勿使用本脚本功能（建议至少在一小时以上），同时尽可能避免给视频点赞！', r)
+              return { success: false, cancelCnt, error: r }
             }
             await this.randomDelay(delay)
           }
         } while (pn++ < end)
         api.logger.info(`COMPLETE: 共取消点赞 ${cancelCnt} 次，执行范围为第 ${start} ~ ${pn - 1} 页`)
-        return cancelCnt
+        return { success: true, cancelCnt }
       },
 
       async randomDelay(exp) {
