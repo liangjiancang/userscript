@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.26.17.20220530
+// @version         4.27.0.20220605
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -33,7 +33,6 @@
 // @grant           GM_listValues
 // @grant           GM_addValueChangeListener
 // @connect         api.bilibili.com
-// @connect         api.vc.bilibili.com
 // @run-at          document-start
 // @compatible      edge 版本不小于 85
 // @compatible      chrome 版本不小于 85
@@ -336,8 +335,7 @@
    * @property {string} api_clearWatchlater 清空稍后再看，要求 POST 一个含 `csrf` 的表单
    * @property {string} api_listFav 列出所有收藏夹
    * @property {string} api_dealFav 将视频添加/移除至收藏夹
-   * @property {string} api_dynamicNew 动态列表（首次）
-   * @property {string} api_dynamicHistory 动态列表（后续）
+   * @property {string} api_dynamicList 动态列表
    * @property {string} page_watchlaterList 列表页面
    * @property {string} page_videoNormalMode 常规播放页
    * @property {string} page_videoWatchlaterMode 稍后再看播放页
@@ -379,7 +377,7 @@
   const gm = {
     id: gmId,
     configVersion: GM_getValue('configVersion'),
-    configUpdate: 20220513,
+    configUpdate: 20220605,
     searchParams: new URL(location.href).searchParams,
     config: {},
     configMap: {
@@ -443,8 +441,7 @@
       api_clearWatchlater: 'http://api.bilibili.com/x/v2/history/toview/clear',
       api_listFav: 'http://api.bilibili.com/x/v3/fav/folder/created/list-all',
       api_dealFav: 'http://api.bilibili.com/x/v3/fav/resource/deal',
-      api_dynamicNew: 'https://api.vc.bilibili.com/dynamic_svr/v1/dynamic_svr/dynamic_new',
-      api_dynamicHistory: 'https://api.vc.bilibili.com/dynamic_svr/v1/dynamic_svr/dynamic_history',
+      api_dynamicList: 'https://api.bilibili.com/x/polymer/web-dynamic/v1/feed/all',
       page_watchlaterList: 'https://www.bilibili.com/watchlater/#/list',
       page_videoNormalMode: 'https://www.bilibili.com/video',
       page_videoWatchlaterMode: 'https://www.bilibili.com/medialist/play/watchlater',
@@ -470,7 +467,7 @@
       noticeTimeout: 5600,
       updateHighlightColor: '#4cff9c',
       inputThrottleWait: 250,
-      batchAddRequestInterval: 300,
+      batchAddRequestInterval: 350,
       fixerHint: '固定在列表最后，并禁用自动移除及排序功能\n右键点击可取消所有固定项',
     },
     panel: {
@@ -717,19 +714,10 @@
      * 版本更新处理
      */
     updateVersion() {
-      if (gm.configVersion >= 20210911) { // 4.21.1.20210911
+      if (gm.configVersion >= 20211013) { // 4.23.12.20211013
         if (gm.configVersion < gm.configUpdate) {
           // 必须按从旧到新的顺序写
           // 内部不能使用 gm.configUpdate，必须手写更新后的配置版本号！
-
-          // 4.23.12.20211013
-          if (gm.configVersion < 20211013) {
-            GM_deleteValue('removeHistoryData')
-            GM_notification({
-              text: '因存储结构变动，已重置稍后再看历史数据。',
-              timeout: gm.const.noticeTimeout,
-            })
-          }
 
           // 4.24.1.20220104
           if (gm.configVersion < 20220104) {
@@ -745,6 +733,15 @@
           // 4.26.13.20220513
           if (gm.configVersion < 20220513) {
             GM_deleteValue('batchAddLoadAfterTimeSync')
+          }
+
+          // 4.27.0.20220605
+          if (gm.configVersion < 20220605) {
+            const bp = GM_getValue('batchParams')
+            if (bp && (!bp.id4a || Number.parseInt(bp.id4a) < 350)) {
+              bp.id4a = '350'
+              GM_setValue('batchParams', bp)
+            }
           }
 
           // 功能性更新后更新此处配置版本，通过时跳过功能性更新设置，否则转至 readConfig() 中处理
@@ -1665,8 +1662,8 @@
             <div class="gm-batchAddManager-page gm-modal">
               <div class="gm-title">批量添加管理器</div>
               <div class="gm-comment">
-                <div>请执行以下步骤以将投稿批量添加到稍后再看（可以跳过部分步骤）。执行过程中可以关闭对话框，但不能关闭页面——且将当前页面置于后台时，浏览器会暂缓甚至暂停任务执行。</div>
-                <div>脚本会优先添加投稿时间较早的投稿，达到稍后再看容量上限 100 时终止执行。注意，该功能会向后台发起大量请求，滥用可能会导致一段时间内无法正常访问B站，你可以增加平均请求间隔以降低被 BAN 的概率。</div>
+                <div>请执行以下步骤以将投稿批量添加到稍后再看（可以跳过部分步骤）。执行过程中可以关闭对话框，但不能关闭页面；也不建议将当前页面置于后台，否则浏览器可能会暂缓甚至暂停任务执行。</div>
+                <div>脚本会优先添加投稿时间较早的投稿，达到稍后再看容量上限 100 时终止执行。注意，该功能会在短时间内向后台发起大量请求，滥用可能会导致一段时间内无法正常访问B站，你可以增加平均请求间隔以降低触发拦截机制的概率。</div>
                 <div>第一步：加载最近 <input is="laster2800-input-number" id="gm-batch-1a" value="24" digits="Infinity"> <select id="gm-batch-1b" style="border:none;margin: 0 -4px">
                   <option value="${3600 * 24}">天</option>
                   <option value="3600" selected>小时</option>
@@ -1678,7 +1675,7 @@
                   <option value="60">分钟</option>
                 </select> 以内；可使用上下方向键（配合 Alt/Shift/Ctrl）调整数值大小<button id="gm-batch-2c" disabled hidden>执行</button></div>
                 <div>第三步：筛选 <input id="gm-batch-3a" type="text" style="width:10em">，过滤 <input id="gm-batch-3b" type="text" style="width:10em">；支持通配符 ( ? * )，使用 | 分隔关键词<button id="gm-batch-3c" disabled hidden>执行</button></div>
-                <div>第四步：将选定稿件添加到稍后再看（平均请求间隔：<input is="laster2800-input-number" id="gm-batch-4a" value="${gm.const.batchAddRequestInterval}" min="200">ms）<button id="gm-batch-4b" disabled>执行</button><button id="gm-batch-4c" disabled>终止</button></div>
+                <div>第四步：将选定稿件添加到稍后再看（平均请求间隔：<input is="laster2800-input-number" id="gm-batch-4a" value="${gm.const.batchAddRequestInterval}" min="250">ms）<button id="gm-batch-4b" disabled>执行</button><button id="gm-batch-4c" disabled>终止</button></div>
               </div>
               <div class="gm-items"></div>
               <div class="gm-bottom">
@@ -1795,6 +1792,9 @@
             let error = false
             try {
               executing = true
+              let page = 1
+              let offset = -1
+              const tzo = new Date().getTimezoneOffset()
               const v1a = Number.parseFloat(el.id1a.value)
               if (Number.isNaN(v1a)) throw new TypeError('v1a is NaN')
               el.id1a.value = v1a
@@ -1805,53 +1805,45 @@
               el.id2a.defaultValue = el.id2a.max = v1a
               el.id2b.syncVal = el.id1b.value
               el.items.textContent = ''
-              loadTime = Date.now()
-              const uid = webpage.method.getDedeUserID()
-              let dynamicOffset = await (async () => {
-                // 一定要确保取到的是视频投稿的 dynamic_id
-                // 某些动态（如直播）会显示在动态列表前方，但它们 dynamic_id 对应的时间点却可以是几天前的，非常诡异
-                const data = new URLSearchParams()
-                data.append('uid', uid)
-                data.append('type_list', 8) // 视频（8 表示视频列表是猜的，目前测试下来应该没问题）
-                const resp = await api.web.request({
-                  url: `${gm.url.api_dynamicNew}?${data.toString()}`,
-                }, { check: r => r.code === 0 })
-                const items = resp.data.cards
-                if (items.length === 0) return // -> finally
-                // dynamic_id 数值过大，直接运算会丢失精度，必须转为 BigInt 运算
-                return BigInt(items[0].desc.dynamic_id_str) + 1n // +1 才能获取到当前首项
-              })()
+              loadTime = Date.now() // 提前记录 loadTime，这样衔接时绝对不会遗漏动态
               const end = loadTime - v1a * el.id1b.value * 1000
               const avSet = new Set()
               gm.runtime.reloadWatchlaterListData = true
               // eslint-disable-next-line no-unmodified-loop-condition
               while (!stopLoad) {
                 const data = new URLSearchParams()
-                data.append('uid', uid)
-                data.append('offset_dynamic_id', dynamicOffset)
-                data.append('type', 8) // 视频（参考旧版动态面板的请求）
+                data.append('timezone_offset', tzo)
+                data.append('type', 'all') // video 分类会遗漏一些内容，需手动筛选
+                data.append('page', page++) // page 似乎只在第 1 页有意义
+                if (offset > 0) { // 后续通过 offset 而非 page 确定位置
+                  data.append('offset', offset)
+                }
                 const resp = await api.web.request({
-                  url: `${gm.url.api_dynamicHistory}?${data.toString()}`,
+                  url: `${gm.url.api_dynamicList}?${data.toString()}`,
                 }, { check: r => r.code === 0 })
-                const items = resp.data.cards
-                if (items.length === 0) return // -> finally
-                // 不要用 json.data.next_offset，会丢失精度
-                // offset 本身不会被获取，末项 offset 即下次查询 offset
-                dynamicOffset = items[items.length - 1].desc.dynamic_id_str
+                const { items } = resp.data
+                if (!resp.data.has_more || !items || items.length === 0) return // -> finally
+                offset = resp.data.offset // data.offset 是字符串类型，不会丢失精度；无需 +1 额外偏移
                 let html = ''
                 for (const item of items) {
-                  const info = JSON.parse(item.card)
-                  if (item.desc.timestamp * 1000 < end) {
-                    el.items.insertAdjacentHTML('afterbegin', html)
-                    return // -> finally
-                  }
-                  const aid = String(info.aid)
-                  if (!await webpage.method.getVideoWatchlaterStatusByAid(aid, false, true)) { // 完全跳过存在于稍后再看的视频
-                    if (avSet.has(aid)) continue
-                    avSet.add(aid)
-                    const uncheck = history?.has(aid)
-                    const displayNone = uncheck && el.uncheckedDisplay._hide
-                    html = `<label class="gm-item" data-aid="${info.aid}" data-timestamp="${item.desc.timestamp}"${displayNone ? ' style="display:none"' : ''}><input type="checkbox"${uncheck ? '' : ' checked'}> <span>[${info.owner.name}] ${info.title}</span></label>` + html
+                  // [视频投稿, 已订阅合集]
+                  if (['DYNAMIC_TYPE_AV', 'DYNAMIC_TYPE_UGC_SEASON'].includes(item.type)) {
+                    const { modules } = item
+                    const author = modules.module_author
+                    if (author.pub_ts * 1000 < end) {
+                      el.items.insertAdjacentHTML('afterbegin', html)
+                      return // -> finally
+                    }
+                    const { major } = modules.module_dynamic
+                    const core = major[major.type.replace(/MAJOR_TYPE_/, '').toLowerCase()]
+                    const aid = String(core.aid)
+                    if (!await webpage.method.getVideoWatchlaterStatusByAid(aid, false, true)) { // 完全跳过存在于稍后再看的视频
+                      if (avSet.has(aid)) continue
+                      avSet.add(aid)
+                      const uncheck = history?.has(aid)
+                      const displayNone = uncheck && el.uncheckedDisplay._hide
+                      html = `<label class="gm-item" data-aid="${aid}" data-timestamp="${author.pub_ts}"${displayNone ? ' style="display:none"' : ''}><input type="checkbox"${uncheck ? '' : ' checked'}> <span>${author.label ? `[${author.label}]` : ''}[${author.name}] ${core.title}</span></label>` + html
+                    }
                   }
                 }
                 el.items.insertAdjacentHTML('afterbegin', html)
@@ -1945,7 +1937,8 @@
                 str = str.trim()
                 if (str !== '') {
                   try {
-                    str = str.replace(/[$()+.[\\\]^{}]/g, '\\$&') // escape regex except |
+                    str = str.replace(/\s*\|\s*/g, '|') // 移除关键词首末空白符
+                      .replace(/[$()+.[\\\]^{}]/g, '\\$&') // escape regex except |
                       .replaceAll('?', '.').replaceAll('*', '.*') // 通配符
                     result = new RegExp(str, 'i')
                   } catch {}
@@ -1953,8 +1946,8 @@
                 return result
               }
               executing = true
-              el.id3a.value = el.id3a.value.trim()
-              el.id3b.value = el.id3b.value.trim()
+              el.id3a.value = el.id3a.value.trimStart()
+              el.id3b.value = el.id3b.value.trimStart()
               const v3a = getRegex(el.id3a.value)
               const v3b = getRegex(el.id3b.value)
               for (let i = 0; i < el.items.childElementCount; i++) {
@@ -1989,7 +1982,7 @@
               if (Number.isNaN(v4a)) {
                 v4a = gm.const.batchAddRequestInterval
               } else {
-                v4a = Math.max(v4a, 200)
+                v4a = Math.max(v4a, 250)
               }
               el.id4a.value = v4a
               el.id4b.disabled = true
