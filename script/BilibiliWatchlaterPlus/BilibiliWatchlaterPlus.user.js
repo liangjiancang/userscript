@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.27.0.20220605
+// @version         4.27.1.20220606
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -1835,7 +1835,7 @@
                       return // -> finally
                     }
                     const { major } = modules.module_dynamic
-                    const core = major[major.type.replace(/MAJOR_TYPE_/, '').toLowerCase()]
+                    const core = major[major.type.replace(/^MAJOR_TYPE_/, '').toLowerCase()]
                     const aid = String(core.aid)
                     if (!await webpage.method.getVideoWatchlaterStatusByAid(aid, false, true)) { // 完全跳过存在于稍后再看的视频
                       if (avSet.has(aid)) continue
