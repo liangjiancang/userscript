@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.27.1.20220606
+// @version         4.27.2.20220606
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -16,6 +16,7 @@
 // @include         *://account.bilibili.com/*
 // @exclude         *://message.bilibili.com/*/*
 // @exclude         *://t.bilibili.com/h5/*
+// @exclude         *://www.bilibili.com/correspond/*
 // @exclude         *://www.bilibili.com/page-proxy/*
 // @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=974252
 // @require         https://greasyfork.org/scripts/431998-userscriptapidom/code/UserscriptAPIDom.js?version=1005139
@@ -225,6 +226,7 @@
    * @property {number} removeHistorySearchTimes 历史回溯深度
    * @property {boolean} batchAddLoadAfterTimeSync 批量添加：执行时间同步后是否自动加载稿件
    * @property {fillWatchlaterStatus} fillWatchlaterStatus 填充稍后再看状态
+   * @property {boolean} searchDefaultValue 激活搜索框默认值功能
    * @property {autoSort} autoSort 自动排序
    * @property {boolean} videoButton 视频播放页稍后再看状态快速切换
    * @property {autoRemove} autoRemove 自动将视频从播放列表移除
@@ -377,7 +379,7 @@
   const gm = {
     id: gmId,
     configVersion: GM_getValue('configVersion'),
-    configUpdate: 20220605,
+    configUpdate: 20220606,
     searchParams: new URL(location.href).searchParams,
     config: {},
     configMap: {
@@ -406,6 +408,7 @@
       removeHistorySearchTimes: { default: 100, type: 'int', attr: 'value', manual: true, needNotReload: true, min: 1, max: 500, configVersion: 20210819 },
       batchAddLoadAfterTimeSync: { default: true, attr: 'checked', configVersion: 20220513, needNotReload: true },
       fillWatchlaterStatus: { default: Enums.fillWatchlaterStatus.dynamic, attr: 'value', configVersion: 20200819 },
+      searchDefaultValue: { default: true, attr: 'checked', configVersion: 20220606 },
       autoSort: { default: Enums.autoSort.auto, attr: 'value', configVersion: 20220115 },
       videoButton: { default: true, attr: 'checked' },
       autoRemove: { default: Enums.autoRemove.openFromList, attr: 'value', configVersion: 20210612 },
@@ -469,6 +472,7 @@
       inputThrottleWait: 250,
       batchAddRequestInterval: 350,
       fixerHint: '固定在列表最后，并禁用自动移除及排序功能\n右键点击可取消所有固定项',
+      searchDefaultValueHint: '右键点击保存默认值，中键点击清空默认值\n当前默认值：$1',
     },
     panel: {
       setting: { state: 0, wait: 0, el: null },
@@ -564,6 +568,12 @@
         this.initGMObject()
         this.updateVersion()
         this.readConfig()
+
+        if (self === top) {
+          if (gm.config.searchDefaultValue) {
+            GM_addValueChangeListener('searchDefaultValue_value', (name, oldVal, newVal) => window.dispatchEvent(new CustomEvent('updateSearchTitle', { detail: { value: newVal } })))
+          }
+        }
       } catch (e) {
         api.logger.error(e)
         api.message.confirm('初始化错误！是否彻底清空内部数据以重置脚本？').then(result => {
@@ -745,7 +755,7 @@
           }
 
           // 功能性更新后更新此处配置版本，通过时跳过功能性更新设置，否则转至 readConfig() 中处理
-          if (gm.configVersion >= 20220513) {
+          if (gm.configVersion >= 20220606) {
             gm.configVersion = gm.configUpdate
             GM_setValue('configVersion', gm.configVersion)
           }
@@ -998,6 +1008,14 @@
               </select>
               <span id="gm-fwsInformation" class="gm-information" title>💬</span>
             </div>`,
+          })
+          itemsHTML += getItemHTML('全局功能', {
+            desc: '激活后在搜索框上右键点击保存默认值，中键点击清空默认值。',
+            html: `<label>
+              <span>搜索：激活搜索框默认值功能</span>
+              <span id="gm-sdvInformation" class="gm-information" title>💬</span>
+              <input id="gm-searchDefaultValue" type="checkbox">
+            </label>`,
           })
           itemsHTML += getItemHTML('全局功能', {
             desc: '决定首次打开列表页面或弹出面板时，如何对稍后再看列表内容进行排序。',
@@ -1253,6 +1271,8 @@
           `, null, { width: '36em', position: { top: '80%' } })
           el.balatsInformation = gm.el.setting.querySelector('#gm-balatsInformation')
           api.message.hoverInfo(el.balatsInformation, '若同步时间距离当前时间超过 48 小时，则不会执行自动加载。', null, { width: '28em', position: { top: '80%' } })
+          el.sdvInformation = gm.el.setting.querySelector('#gm-sdvInformation')
+          api.message.hoverInfo(el.sdvInformation, '激活后在搜索框上右键点击保存默认值，中键点击清空默认值。', null, { width: '28em', position: { top: '80%' } })
           el.fwsInformation = gm.el.setting.querySelector('#gm-fwsInformation')
           api.message.hoverInfo(el.fwsInformation, `
             <div style="text-indent:2em;line-height:1.6em">
@@ -1739,7 +1759,7 @@
             }
           })
           // 避免不同标签页中脚本实例互相影响而产生的同步时间错误
-          GM_addValueChangeListener('batchLastAddTime', (name, oldVal, newVal, remote) => remote && setLastAddTime(newVal))
+          GM_addValueChangeListener('batchLastAddTime', (name, oldVal, newVal, remote) => remote && setLastAddTime(newVal, false))
 
           // 非选显示
           const setUncheckedDisplayText = () => {
@@ -3242,8 +3262,9 @@
             el.entryRemovedList = gm.el.entryPopup.querySelector('.gm-entry-removed-list')
             el.entryListEmpty = gm.el.entryPopup.querySelector('.gm-entry-list-empty')
             el.entryHeader = gm.el.entryPopup.querySelector('.gm-popup-header')
-            el.search = gm.el.entryPopup.querySelector('.gm-search input')
-            el.searchClear = gm.el.entryPopup.querySelector('.gm-search-clear')
+            el.searchBox = gm.el.entryPopup.querySelector('.gm-search')
+            el.search = el.searchBox.querySelector('.gm-search input')
+            el.searchClear = el.searchBox.querySelector('.gm-search-clear')
             el.popupTotal = gm.el.entryPopup.querySelector('.gm-popup-total')
             el.entryBottom = gm.el.entryPopup.querySelector('.gm-entry-bottom')
           }
@@ -3344,6 +3365,28 @@
                 el.search.value = ''
                 el.search.dispatchEvent(new Event('input'))
               })
+              if (gm.config.searchDefaultValue) {
+                el.search.addEventListener('mousedown', e => {
+                  if (e.button === 1) {
+                    GM_deleteValue('searchDefaultValue_value')
+                    api.message.info('已清空搜索框默认值')
+                    e.preventDefault()
+                  } else if (e.button === 2) {
+                    GM_setValue('searchDefaultValue_value', el.search.value)
+                    api.message.info('已保存搜索框默认值')
+                    e.preventDefault()
+                  }
+                })
+                el.search.addEventListener('contextmenu', e => e.preventDefault())
+
+                const updateSearchTitle = e => {
+                  let v = e ? e.detail.value : GM_getValue('searchDefaultValue_value')
+                  if (!v) v = v === '' ? '[ 空 ]' : '[ 未设置 ]'
+                  el.searchBox.title = gm.const.searchDefaultValueHint.replace('$1', v)
+                }
+                updateSearchTitle()
+                window.addEventListener('updateSearchTitle', updateSearchTitle)
+              }
             } else {
               el.entryHeader.style.display = 'none'
             }
@@ -3769,6 +3812,13 @@
 
             const sortType = el.entryFn.sortControl.control.selected.dataset.value
             sortType && sort(sortType)
+
+            if (gm.config.searchDefaultValue) {
+              const sdv = GM_getValue('searchDefaultValue_value')
+              if (typeof sdv === 'string') {
+                el.search.value = sdv
+              }
+            }
             if (el.search.value.length > 0) {
               el.search.dispatchEvent(new Event('input'))
             }
@@ -4284,6 +4334,9 @@
           processLink(item, link, autoRemoveControl)
         }
       }
+      if (gm.config.searchDefaultValue) {
+        await this.searchWatchlaterList()
+      }
       this.updateWatchlaterListTotal()
 
       // 移除无效固定项
@@ -4782,6 +4835,34 @@
           search.value = ''
           search.dispatchEvent(new Event('input'))
         })
+        if (gm.config.searchDefaultValue) {
+          search.addEventListener('mousedown', e => {
+            if (e.button === 1) {
+              GM_deleteValue('searchDefaultValue_value')
+              api.message.info('已清空搜索框默认值')
+              e.preventDefault()
+            } else if (e.button === 2) {
+              GM_setValue('searchDefaultValue_value', search.value)
+              api.message.info('已保存搜索框默认值')
+              e.preventDefault()
+            }
+          })
+          search.addEventListener('contextmenu', e => e.preventDefault())
+
+          const sdv = GM_getValue('searchDefaultValue_value')
+          if (sdv) {
+            search.value = sdv
+            searchBox.classList.add('gm-active')
+            searchClear.style.visibility = 'visible'
+          }
+          const updateSearchTitle = e => {
+            let v = e ? e.detail.value : sdv
+            if (!v) v = v === '' ? '[ 空 ]' : '[ 未设置 ]'
+            searchBox.title = gm.const.searchDefaultValueHint.replace('$1', v)
+          }
+          updateSearchTitle()
+          window.addEventListener('updateSearchTitle', updateSearchTitle)
+        }
       }
 
       // 增加排序控制
