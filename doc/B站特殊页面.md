@@ -7,6 +7,7 @@
 | 排除规则                                 | 说明                                     |
 | ---------------------------------------- | ---------------------------------------- |
 | `*://www.bilibili.com/watchlater/`       | 稍后再看列表页面（及旧稍后再看播放页面） |
+| `*://www.bilibili.com/correspond/*`      | 信息同步 frame                           |
 | `*://www.bilibili.com/page-proxy/*`      | 主站 frame                               |
 | `*://t.bilibili.com/pages/nav/index_new` | 旧版动态入口弹出面板页面                 |
 | `*://t.bilibili.com/h5/*`                | 动态 frame（除旧版动态入口弹出面板）     |
@@ -23,6 +24,7 @@
 ### `www.bilibili.com`
 
 * <https://www.bilibili.com/watchlater/#/list>
+* <https://www.bilibili.com/correspond/refresh>
 * <https://www.bilibili.com/page-proxy/game-nav.html>
 
 ### `t.bilibili.com`
