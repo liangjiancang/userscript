@@ -2,6 +2,11 @@
 
 本日志只记录用户友好的更新说明，影响不大的问题修复与修改不作记录，具体修改见 [提交记录](https://gitee.com/liangjiancang/userscript/commits/master/script/BilibiliSameFollowing)。
 
+## V1.10
+
+1. 共同关注：通过悬停提示显示共同关注账号的额外信息——认证、签名、本账号关注时间。
+2. UI：优化文本。
+
 ## V1.9
 
 1. 脚本：优化直播间的匹配方式，支持各种特殊直播间页面，尽可能向前兼容。

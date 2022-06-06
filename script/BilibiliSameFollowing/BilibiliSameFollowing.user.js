@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站共同关注快速查看
-// @version         1.9.9.20220428
+// @version         1.10.0.20220606
 // @namespace       laster2800
 // @author          Laster2800
 // @description     快速查看与特定用户的共同关注（视频播放页、动态页、用户空间、直播间）
@@ -49,9 +49,9 @@
     },
     configMap: {
       dispMessage: { default: true, name: '无共同关注或查询失败时提示信息', needNotReload: true },
-      dispInReverse: { default: false, name: '以关注时间降序显示', needNotReload: true },
+      dispInReverse: { default: false, name: '以目标 [最新关注 → 最早关注] 排序', needNotReload: true },
       dispInText: { default: false, name: '以纯文本形式显示', needNotReload: true },
-      dispRelation: { default: true, name: '显示目标用户与自己的关系', needNotReload: true },
+      dispRelation: { default: true, name: '显示目标与本账号的关系', needNotReload: true },
       userSpace: { default: true, name: '在用户空间启用' },
       rareCard: { default: false, name: '在非常规用户卡片启用' },
     },
@@ -329,7 +329,7 @@
             const totalPages = Math.ceil(total / 50)
             for (let i = 2; i <= totalPages; i++) {
               resp = await api.web.request({
-                url: gm.url.api_sameFollowings(uid) + `&pn=${i}`,
+                url: `${gm.url.api_sameFollowings(uid)}&pn=${i}`,
               })
               if (resp.code !== 0 || !resp.data.list) break
               data.list.push(...resp.data.list)
@@ -349,7 +349,7 @@
               if (gm.config.dispInText) {
                 dispEl.innerHTML = `<div class="gm-pre">共同关注</div><div class="same-following">${sameFollowings.join('，&nbsp;')}</div>`
               } else {
-                let innerHTML = '<div class="gm-pre" title="加粗：特别关注；下划线：互粉">共同关注</div><div>'
+                let innerHTML = `<div class="gm-pre" title="加粗：本账号特别关注\n下划线：与本账号互粉\n目标的关注时间：${gm.config.dispInReverse ? '最新关注 → 最早关注' : '最早关注 → 最新关注'}">共同关注</div><div>`
                 for (const item of sameFollowings) {
                   let className = 'same-following'
                   if (item.special === 1) { // 特别关注
@@ -358,7 +358,15 @@
                   if (item.attribute === 6) { // 互粉
                     className += ' gm-mutual'
                   }
-                  innerHTML += `<a href="${gm.url.page_space(item.mid)}" target="_blank" class="${className}">${item.uname}</a><span>，&nbsp;</span>`
+                  const mtime = new Date(item.mtime * 1000)
+                  const myFollowingTime = `${mtime.toLocaleDateString()} ${mtime.toLocaleTimeString()}`
+                  const { sign } = item
+                  const verify = item.official_verify?.desc
+                  let title = ''
+                  if (verify) title += `认证：${verify}\n`
+                  if (sign) title += `签名：${sign}\n`
+                  title += `本账号关注时间：${myFollowingTime}`
+                  innerHTML += `<a href="${gm.url.page_space(item.mid)}" target="_blank" class="${className}" title="${title}">${item.uname}</a><span>，&nbsp;</span>`
                 }
                 dispEl.innerHTML = innerHTML.slice(0, -'<span>，&nbsp;</span>'.length) + '</div>'
               }
