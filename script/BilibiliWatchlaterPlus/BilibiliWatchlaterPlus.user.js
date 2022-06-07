@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.27.2.20220606
+// @version         4.27.3.20220607
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -224,6 +224,7 @@
    * @property {number} removeHistorySaves 稍后再看历史数据记录保存数
    * @property {boolean} removeHistoryTimestamp 使用时间戳优化移除记录
    * @property {number} removeHistorySearchTimes 历史回溯深度
+   * @property {boolean} batchAddLoadForward 批量添加：加载关注者转发的稿件
    * @property {boolean} batchAddLoadAfterTimeSync 批量添加：执行时间同步后是否自动加载稿件
    * @property {fillWatchlaterStatus} fillWatchlaterStatus 填充稍后再看状态
    * @property {boolean} searchDefaultValue 激活搜索框默认值功能
@@ -379,7 +380,7 @@
   const gm = {
     id: gmId,
     configVersion: GM_getValue('configVersion'),
-    configUpdate: 20220606,
+    configUpdate: 20220607,
     searchParams: new URL(location.href).searchParams,
     config: {},
     configMap: {
@@ -406,6 +407,7 @@
       removeHistorySaves: { default: 100, type: 'int', attr: 'value', manual: true, needNotReload: true, min: 10, max: 500, configVersion: 20210808 },
       removeHistoryTimestamp: { default: true, attr: 'checked', needNotReload: true, configVersion: 20210703 },
       removeHistorySearchTimes: { default: 100, type: 'int', attr: 'value', manual: true, needNotReload: true, min: 1, max: 500, configVersion: 20210819 },
+      batchAddLoadForward: { default: true, attr: 'checked', configVersion: 20220607, needNotReload: true },
       batchAddLoadAfterTimeSync: { default: true, attr: 'checked', configVersion: 20220513, needNotReload: true },
       fillWatchlaterStatus: { default: Enums.fillWatchlaterStatus.dynamic, attr: 'value', configVersion: 20200819 },
       searchDefaultValue: { default: true, attr: 'checked', configVersion: 20220606 },
@@ -755,7 +757,7 @@
           }
 
           // 功能性更新后更新此处配置版本，通过时跳过功能性更新设置，否则转至 readConfig() 中处理
-          if (gm.configVersion >= 20220606) {
+          if (gm.configVersion >= 20220607) {
             gm.configVersion = gm.configUpdate
             GM_setValue('configVersion', gm.configVersion)
           }
@@ -987,6 +989,13 @@
               <span>默认历史回溯深度</span>
               <input is="laster2800-input-number" id="gm-removeHistorySearchTimes" value="${gm.configMap.removeHistorySearchTimes.default}" min="${gm.configMap.removeHistorySearchTimes.min}" max="${gm.configMap.removeHistorySearchTimes.max}">
             </div>`,
+          })
+          itemsHTML += getItemHTML('全局功能', {
+            desc: '在批量添加管理器中，执行加载步骤时是否加载关注者转发的稿件？',
+            html: `<label>
+              <span>批量添加：加载关注者转发的稿件</span>
+              <input id="gm-batchAddLoadForward" type="checkbox">
+            </label>`,
           })
           itemsHTML += getItemHTML('全局功能', {
             desc: '在批量添加管理器中，执行时间同步后，是否自动执行稿件加载步骤？',
@@ -1845,12 +1854,19 @@
                 if (!resp.data.has_more || !items || items.length === 0) return // -> finally
                 offset = resp.data.offset // data.offset 是字符串类型，不会丢失精度；无需 +1 额外偏移
                 let html = ''
-                for (const item of items) {
+                for (let item of items) {
+                  let ts = -1
+                  // 关注者转发的动态
+                  if (gm.config.batchAddLoadForward && item.type === 'DYNAMIC_TYPE_FORWARD') {
+                    ts = item.modules.module_author.pub_ts // 使用转发时间
+                    item = item.orig
+                  }
                   // [视频投稿, 已订阅合集]
                   if (['DYNAMIC_TYPE_AV', 'DYNAMIC_TYPE_UGC_SEASON'].includes(item.type)) {
                     const { modules } = item
                     const author = modules.module_author
-                    if (author.pub_ts * 1000 < end) {
+                    if (ts < 0) ts = author.pub_ts
+                    if (ts * 1000 < end) {
                       el.items.insertAdjacentHTML('afterbegin', html)
                       return // -> finally
                     }
@@ -1862,7 +1878,7 @@
                       avSet.add(aid)
                       const uncheck = history?.has(aid)
                       const displayNone = uncheck && el.uncheckedDisplay._hide
-                      html = `<label class="gm-item" data-aid="${aid}" data-timestamp="${author.pub_ts}"${displayNone ? ' style="display:none"' : ''}><input type="checkbox"${uncheck ? '' : ' checked'}> <span>${author.label ? `[${author.label}]` : ''}[${author.name}] ${core.title}</span></label>` + html
+                      html = `<label class="gm-item" data-aid="${aid}" data-timestamp="${ts}"${displayNone ? ' style="display:none"' : ''}><input type="checkbox"${uncheck ? '' : ' checked'}> <span>${author.label ? `[${author.label}]` : ''}[${author.name}] ${core.title}</span></label>` + html
                     }
                   }
                 }
