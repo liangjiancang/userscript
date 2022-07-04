@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站共同关注快速查看
-// @version         1.10.1.20220606
+// @version         1.10.2.20220704
 // @namespace       laster2800
 // @author          Laster2800
 // @description     快速查看与特定用户的共同关注（视频播放页、动态页、用户空间、直播间）
@@ -272,11 +272,12 @@
         timeout: 0,
         callback: async card => {
           let userLink = null
+          // 存在两种情况，不能简单套用一个 waitQuerySelector 来处理，否则可能会引入无效等待
           if (options.lazy) {
+            // 情况 1：往「正在加载」状态的 card 中添加元素，使其转化为「已完成」状态
             userLink = await api.wait.$(options.user, card)
           } else {
-            // 此时并不是在「正在加载」状态的 user-card 中添加新元素以转向「已完成」状态
-            // 而是将「正在加载」的 user-card 彻底移除，然后直接将「已完成」的 user-card 添加到 DOM 中
+            // 情况 2：将「正在加载」状态的 card 移除，然后将「已完成」状态的 card 添加到 DOM 中
             userLink = card.querySelector(options.user)
           }
           if (userLink) {
@@ -574,10 +575,19 @@
     webpage.addStyle()
 
     // 遍布全站的常规用户卡片，如视频评论区、动态评论区、用户空间评论区……
+    // 旧版用户卡片
     webpage.cardLogic({
       card: '.user-card',
       user: '.face',
       info: '.info',
+      lazy: false,
+    })
+    // 新版用户卡片
+    webpage.cardLogic({
+      card: '.user-card',
+      user: '.card-user-name',
+      info: '.card-content',
+      before: '.card-btn-warp',
       lazy: false,
     })
 
