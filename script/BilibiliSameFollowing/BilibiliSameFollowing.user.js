@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站共同关注快速查看
-// @version         1.10.2.20220704
+// @version         1.10.3.20220706
 // @namespace       laster2800
 // @author          Laster2800
 // @description     快速查看与特定用户的共同关注（视频播放页、动态页、用户空间、直播间）
@@ -222,7 +222,7 @@
        * @returns {string} UID
        */
       getUid(url = location.pathname) {
-        return /\/(\d+)([#/?]|$)/.exec(url)?.[1]
+        return /\/(\d+)([#/?]|$)/.exec(url)?.[1] ?? null
       },
 
       /**
