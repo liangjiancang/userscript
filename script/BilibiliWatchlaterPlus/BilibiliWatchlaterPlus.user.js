@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.27.4.20220611
+// @version         4.27.5.20220706
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -2563,6 +2563,7 @@
         } else if ((m = /\/(av)?(\d+)([#/?]|$)/i.exec(url))) { // 兼容 URL 中 BV 号被第三方修改为 AV 号的情况
           return { id: m[2], type: 'aid' }
         }
+        return null
       },
 
       /**
@@ -4215,7 +4216,13 @@
           atr.append(btn)
         }
 
-        const aid = this.method.getAid()
+        let aid = this.method.getAid()
+        if (aid === null) {
+          aid = await api.wait.waitForConditionPassed({
+            condition: () => this.method.getAid(),
+            interval: 1000,
+          })
+        }
         bus = { btn, cb, aid }
         initButtonStatus()
         original.parentElement.style.display = 'none'
@@ -6016,8 +6023,7 @@
 
     script.initAtDocumentStart()
     if (api.base.urlMatch(gm.regex.page_videoWatchlaterMode)) {
-      const disableRedirect = gm.searchParams.get(`${gm.id}_disable_redirect`) === 'true'
-      if (gm.config.redirect && !disableRedirect) { // 重定向，document-start 就执行，尽可能快地将原页面掩盖过去
+      if (gm.config.redirect && gm.searchParams.get(`${gm.id}_disable_redirect`) !== 'true') {
         webpage.redirect()
         return
       }
