@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站封面获取
-// @version         5.7.7.20220530
+// @version         5.7.8.20220706
 // @namespace       laster2800
 // @author          Laster2800
 // @description     获取B站各播放页及直播间封面，支持手动及实时预览等多种模式，支持点击下载、封面预览、快速复制，可高度自定义
@@ -444,6 +444,7 @@
         } else if ((m = /\/(av)?(\d+)([#/?]|$)/i.exec(url))) { // 兼容 URL 中 BV 号被第三方修改为 AV 号的情况
           return { id: m[2], type: 'aid' }
         }
+        return null
       },
 
       /**
@@ -458,6 +459,7 @@
         } else if ((m = /\/(ep\d+)([#/?]|$)/.exec(url))) {
           return { id: m[1], type: 'epid' }
         }
+        return null
       },
 
       /**
