@@ -1,6 +1,6 @@
 // ==UserScript==
-// @name            B站防剧透进度条
-// @version         2.5.11@Deprecated.20220706
+// @name            B站防剧透进度条@Deprecated
+// @version         2.5.12@Deprecated.20220706
 // @namespace       laster2800
 // @author          Laster2800
 // @description     看比赛、看番总是被进度条剧透？装上这个脚本再也不用担心这些问题了
