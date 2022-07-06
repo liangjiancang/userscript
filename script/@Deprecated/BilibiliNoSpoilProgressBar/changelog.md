@@ -1,6 +1,6 @@
 # [B站防剧透进度条](https://greasyfork.org/zh-CN/scripts/411092) 更新日志
 
-本日志只记录用户友好的更新说明，影响不大的问题修复与修改不作记录，具体修改见 [提交记录](https://gitee.com/liangjiancang/userscript/commits/master/script/BilibiliNoSpoilProgressBar)。
+本日志只记录用户友好的更新说明，影响不大的问题修复与修改不作记录，具体修改见 [提交记录](https://gitee.com/liangjiancang/userscript/commits/master/script/@Deprecated/BilibiliNoSpoilProgressBar)。
 
 ## V2.5
 

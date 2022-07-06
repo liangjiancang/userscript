@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站防剧透进度条
-// @version         2.5.10.20220530
+// @version         2.5.11@Deprecated.20220706
 // @namespace       laster2800
 // @author          Laster2800
 // @description     看比赛、看番总是被进度条剧透？装上这个脚本再也不用担心这些问题了
@@ -184,8 +184,8 @@
     },
     url: {
       api_videoInfo: (id, type) => `https://api.bilibili.com/x/web-interface/view?${type}=${id}`,
-      gm_readme: 'https://gitee.com/liangjiancang/userscript/blob/master/script/BilibiliNoSpoilProgressBar/README.md',
-      gm_changelog: 'https://gitee.com/liangjiancang/userscript/blob/master/script/BilibiliNoSpoilProgressBar/changelog.md',
+      gm_readme: 'https://gitee.com/liangjiancang/userscript/blob/master/script/@Deprecated/BilibiliNoSpoilProgressBar/README.md',
+      gm_changelog: 'https://gitee.com/liangjiancang/userscript/blob/master/script/@Deprecated/BilibiliNoSpoilProgressBar/changelog.md',
     },
     regex: {
       page_videoNormalMode: /\.com\/video([#/?]|$)/,
@@ -1021,6 +1021,7 @@
         } else if ((m = /\/(av)?(\d+)([#/?]|$)/i.exec(url))) { // 兼容 URL 中 BV 号被第三方修改为 AV 号的情况
           return { id: m[2], type: 'aid' }
         }
+        return null
       },
 
       /**
@@ -1177,7 +1178,7 @@
           if (ulSet.has('*')) {
             return true
           }
-          const vid = await this.method.getVid()
+          const vid = this.method.getVid()
           const videoInfo = await this.method.getVideoInfo(vid.id, vid.type)
           const uid = String(videoInfo.owner.mid)
           if (ulSet.has(uid)) {
@@ -1609,7 +1610,7 @@
               this.scriptControl.uploaderEnabled.addEventListener('click', async () => {
                 const target = this.scriptControl.uploaderEnabled
                 const ulSet = gm.data.uploaderListSet() // 必须每次读取
-                const vid = await this.method.getVid()
+                const vid = this.method.getVid()
                 const videoInfo = await this.method.getVideoInfo(vid.id, vid.type)
                 const uid = String(videoInfo.owner.mid)
 
@@ -2057,8 +2058,10 @@
     webpage.addStyle()
     api.base.initUrlchangeEvent()
 
-    webpage.initNoSpoil().then(() => {
-      webpage.initSwitch()
-    })
+    api.wait.waitForConditionPassed({
+      condition: () => webpage.method.getVid() !== null,
+      interval: 500,
+    }).then(() => webpage.initNoSpoil())
+      .then(() => webpage.initSwitch())
   }
 })()
