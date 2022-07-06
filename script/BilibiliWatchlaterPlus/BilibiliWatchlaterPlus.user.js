@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.27.5.20220706
+// @version         4.27.6.20220706
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -4217,7 +4217,7 @@
         }
 
         let aid = this.method.getAid()
-        if (aid === null) {
+        if (!aid) {
           aid = await api.wait.waitForConditionPassed({
             condition: () => this.method.getAid(),
             interval: 1000,
