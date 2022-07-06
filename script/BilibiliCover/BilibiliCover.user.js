@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站封面获取
-// @version         5.7.8.20220706
+// @version         5.8.0.20220706
 // @namespace       laster2800
 // @author          Laster2800
 // @description     获取B站各播放页及直播间封面，支持手动及实时预览等多种模式，支持点击下载、封面预览、快速复制，可高度自定义
@@ -29,6 +29,7 @@
 // @grant           GM_registerMenuCommand
 // @grant           GM_unregisterMenuCommand
 // @connect         api.bilibili.com
+// @run-at          document-start
 // @compatible      edge 版本不小于 85
 // @compatible      chrome 版本不小于 85
 // @compatible      firefox 版本不小于 90
@@ -41,10 +42,9 @@
   const defaultRealtimeStyle = `
     #${gmId}-realtime-cover {
       display: block;
-      margin-bottom: 10px;
+      margin-bottom: 18px;
       border-radius: 3px;
       overflow: hidden;
-      box-shadow: #00000038 0px 3px 6px;
     }
     #${gmId}-realtime-cover img {
       display: block;
@@ -306,7 +306,7 @@
         msg = `
           <p style="margin-bottom:0.5em">请认真阅读以下说明：</p>
           <p>1. 应填入 CSS 选择器，脚本会以此选择定位元素，将封面元素「<code>#${gm.id}-realtime-cover</code>」插入到其附近（相对位置稍后设置）。</p>
-          <p>2. 确保该选择器在「常规播放页」「稍后再看播放页」「番剧播放页」中均有对应元素，否则脚本在对应页面无法工作。PS：逗号「<code>,</code>」以 OR 规则拼接多个选择器。</p>
+          <p>2. 确保该选择器在各种播放页面中均有对应元素，否则脚本在对应页面无法工作。PS：逗号「<code>,</code>」以 OR 规则拼接多个选择器。</p>
           <p>3. 不要选择广告为定位元素，否则封面元素可能会插入失败或被误杀。</p>
           <p>4. 不要选择时有时无的元素，或第三方插入的元素作为定位元素，否则封面元素可能会插入失败。</p>
           <p>5. 在 A 时间点插入的图片元素，有可能被 B 时间点插入的新元素 C 挤到目标以外的位置。只要将定位元素选择为 C 再更改相对位置即可解决问题。</p>
@@ -1087,7 +1087,11 @@
     }
   }
 
-  document.readyState !== 'complete' ? window.addEventListener('load', main) : main()
+  // B站 2022 年的一系列更新后，无论是新版还是旧版的播放页面中，load 时点的到来晚得不合常理，如果还等到 load 再执行后续逻
+  // 辑会使得脚本功能切入过慢——本来打开页面就理应能获取到封面，却要等页面加载半天，这着实是一个非常糟糕的体验。特别是对于本
+  // 脚本开启实时预览模式的情况而言，很容易导致「进入页面后，立即移动鼠标去切换分P/选集，结果实时预览恰巧生成，导致鼠标点击
+  // 到错误的地方」这种尴尬的情况。
+  document.readyState === 'loading' ? document.addEventListener('DOMContentLoaded', main) : main()
 
   function main() {
     script = new Script()
