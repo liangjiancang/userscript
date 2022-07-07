@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站封面获取
-// @version         5.8.1.20220706
+// @version         5.8.2.20220707
 // @namespace       laster2800
 // @author          Laster2800
 // @description     获取B站各播放页及直播间封面，支持手动及实时预览等多种模式，支持点击下载、封面预览、快速复制，可高度自定义
@@ -43,7 +43,7 @@
     #${gmId}-realtime-cover {
       display: block;
       margin-bottom: 18px;
-      border-radius: 3px;
+      border-radius: 6px;
       overflow: hidden;
     }
     #${gmId}-realtime-cover img {
