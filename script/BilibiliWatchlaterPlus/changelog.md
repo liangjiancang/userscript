@@ -2,6 +2,10 @@
 
 本日志只记录用户友好的更新说明，影响不大的问题修复与修改不作记录，具体修改见 [提交记录](https://gitee.com/liangjiancang/userscript/commits/master/script/BilibiliWatchlaterPlus)。
 
+## V4.28
+
+1. 列表页面：提供「刷新列表」按钮，点击可触发页内刷新。
+
 ## V4.27
 
 1. 批量添加：改用新版 API 实现。旧版 API 加载到的视频投稿在时间上会有一定的滞后，无法加载到近十几分钟到几十分钟的稿件。新版 API 还有设计合理、使用方便、便于扩展等诸多优势。

@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.27.6.20220706
+// @version         4.28.0.20220708
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -4322,8 +4322,9 @@
 
     /**
      * 对稍后再看列表页面进行处理
+     * @param {boolean} reload 是否由页内刷新触发
      */
-    async processWatchlaterList() {
+    async processWatchlaterList(reload) {
       const _self = this
       const data = await gm.data.watchlaterListData(true)
       const fixedItems = GM_getValue('fixedItems') ?? []
@@ -4336,6 +4337,10 @@
       const listBox = await api.wait.$('.list-box', listContainer)
       const items = listBox.querySelectorAll('.av-item')
       for (const [idx, item] of items.entries()) {
+        if (item.serial != null) {
+          item.serial = idx
+          continue
+        }
         // info
         const d = data[idx]
         item.state = d.state
@@ -4372,7 +4377,7 @@
 
       if (sortable) {
         const sortControl = await api.wait.$('#gm-list-sort-control')
-        if (sortControl.value !== sortControl.prevVal) {
+        if (reload || sortControl.value !== sortControl.prevVal) {
           this.sortWatchlaterList()
         }
       }
@@ -4483,8 +4488,9 @@
           if (progress) {
             if (item.multiP) return
           } else {
-            progress = state.insertAdjacentElement('afterbegin', document.createElement('span'))
+            progress = document.createElement('span')
             progress.className = 'looked'
+            state.prepend(progress)
           }
           progress.textContent = item.multiP ? '已观看' : _self.method.getSTimeString(item.progress)
         }
@@ -4657,6 +4663,33 @@
     }
 
     /**
+     * 刷新稍后再看列表页面
+     */
+    async reloadWatchlaterListPage() {
+      const list = await api.wait.$('.watch-later-list')
+      const vue = await api.wait.waitForConditionPassed({
+        condition: () => list.__vue__,
+      })
+      vue.state = 'loading' // 内部刷新过程中 state 依然保留原来的 loaded / error，很呆，手动改一下
+      vue.getListData() // 更新内部 listData，其数据会同步到 DOM 上
+      await api.wait.waitForConditionPassed({
+        condition: () => vue.state !== 'loading',
+        stopOnTimeout: false,
+      })
+      if (vue.state === 'loaded') {
+        // 刷新成功后，所有不存在的 item 都会被移除，没有被移除就说明该 item 又被重新加回稍后再看中
+        for (const item of list.querySelectorAll('.av-item.gm-removed')) {
+          item.classList.remove('gm-removed')
+          item.querySelector('.gm-list-item-switcher').checked = true
+        }
+        await this.processWatchlaterList(true)
+        api.message.info('刷新成功')
+      } else {
+        api.message.info('刷新失败')
+      }
+    }
+
+    /**
      * 触发列表页面内容加载
      */
     triggerWatchlaterListContentLoad() {
@@ -4793,6 +4826,15 @@
       plusButton.textContent = '增强设置'
       plusButton.className = 's-btn'
       plusButton.addEventListener('click', () => script.openUserSetting())
+      // 增加页内刷新
+      const reload = document.createElement('div')
+      reload.id = 'gm-list-reload'
+      reload.textContent = '刷新列表'
+      reload.className = 's-btn'
+      r_con.prepend(reload)
+      reload.addEventListener('click', () => {
+        this.reloadWatchlaterListPage()
+      })
       // 移除「一键清空」按钮
       if (gm.config.removeButton_removeAll) {
         r_con.children[1].style.display = 'none'
@@ -4890,7 +4932,7 @@
 
       // 增加排序控制
       {
-        const sortControlButton = r_con.insertAdjacentElement('afterbegin', document.createElement('div'))
+        const sortControlButton = document.createElement('div')
         const control = sortControlButton.appendChild(document.createElement('select'))
         sortControlButton.className = 'gm-list-sort-control-container'
         control.id = 'gm-list-sort-control'
@@ -4907,6 +4949,7 @@
           <option value="${Enums.sortType.fixed}">排序：固定</option>
         `
         control.prevVal = control.value
+        r_con.prepend(sortControlButton)
 
         if (gm.config.autoSort !== Enums.autoSort.default) {
           let type = gm.config.autoSort
