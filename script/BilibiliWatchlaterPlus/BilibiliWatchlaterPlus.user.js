@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.28.1.20220708
+// @version         4.28.2.20220708
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -2045,7 +2045,7 @@
               lastAddTime = loadTime
               api.message.info('批量添加：已将所有选定稿件添加到稍后再看', 1800)
             } catch (e) {
-              api.message.alert('执行失败：可能是因为该稿件不可用或稍后再看不支持该稿件类型（如互动视频），请尝试取消勾选当前列表中第一个选定的稿件后重新执行')
+              api.message.alert('执行失败：可能是因为目标稿件不可用或稍后再看不支持该稿件类型（如互动视频），请尝试取消勾选当前列表中第一个选定的稿件后重新执行')
               api.logger.error(e)
             } finally {
               if (lastAddTime) {
