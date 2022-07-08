@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.28.2.20220708
+// @version         4.28.3.20220708
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -2011,6 +2011,7 @@
           let stopAdd = false
           el.id4b.addEventListener('click', async () => {
             if (executing) return
+            let added = false
             let lastAddTime = 0
             try {
               executing = true
@@ -2040,6 +2041,7 @@
                   item.style.display = 'none'
                 }
                 available -= 1
+                added = true
                 await new Promise(resolve => setTimeout(resolve, v4a * (Math.random() * 0.5 + 0.75)))
               }
               lastAddTime = loadTime
@@ -2064,6 +2066,10 @@
               el.id1c.disabled = false
               gm.runtime.reloadWatchlaterListData = true
               window.dispatchEvent(new CustomEvent('reloadWatchlaterListData'))
+
+              if (added && api.base.urlMatch(gm.regex.page_watchlaterList)) {
+                webpage.reloadWatchlaterListPage(true)
+              }
             }
           })
           el.id4c.addEventListener('click', () => {
@@ -4664,8 +4670,9 @@
 
     /**
      * 刷新稍后再看列表页面
+     * @param {boolean} silent 静默执行
      */
-    async reloadWatchlaterListPage() {
+    async reloadWatchlaterListPage(silent) {
       const list = await api.wait.$('.watch-later-list')
       const vue = await api.wait.waitForConditionPassed({
         condition: () => list.__vue__,
@@ -4676,16 +4683,17 @@
         condition: () => vue.state !== 'loading',
         stopOnTimeout: false,
       })
-      if (vue.state === 'loaded') {
+      const success = vue.state === 'loaded'
+      if (success) {
         // 刷新成功后，所有不存在的 item 都会被移除，没有被移除就说明该 item 又被重新加回稍后再看中
         for (const item of list.querySelectorAll('.av-item.gm-removed')) {
           item.classList.remove('gm-removed')
           item.querySelector('.gm-list-item-switcher').checked = true
         }
         await this.processWatchlaterList(true)
-        api.message.info('刷新成功')
-      } else {
-        api.message.info('刷新失败')
+      }
+      if (!silent) {
+        api.message.info(success ? '刷新成功' : '刷新失败')
       }
     }
 
