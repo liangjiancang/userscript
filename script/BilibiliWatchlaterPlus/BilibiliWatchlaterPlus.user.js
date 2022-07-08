@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.28.0.20220708
+// @version         4.28.1.20220708
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -4807,6 +4807,14 @@
         })
         ob.observe(playAll, { attributeFilter: ['href'] })
       }
+      // 移除「一键清空」按钮
+      if (gm.config.removeButton_removeAll) {
+        r_con.children[1].style.display = 'none'
+      }
+      // 移除「移除已观看视频」按钮
+      if (gm.config.removeButton_removeWatched) {
+        r_con.children[2].style.display = 'none'
+      }
       // 加入「批量添加」
       if (gm.config.listBatchAddManagerButton) {
         const batchButton = r_con.appendChild(document.createElement('div'))
@@ -4835,14 +4843,6 @@
       reload.addEventListener('click', () => {
         this.reloadWatchlaterListPage()
       })
-      // 移除「一键清空」按钮
-      if (gm.config.removeButton_removeAll) {
-        r_con.children[1].style.display = 'none'
-      }
-      // 移除「移除已观看视频」按钮
-      if (gm.config.removeButton_removeWatched) {
-        r_con.children[2].style.display = 'none'
-      }
 
       // 增加搜索框
       if (gm.config.listSearch) {
