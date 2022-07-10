@@ -1,10 +1,10 @@
 // ==UserScript==
 // @name            B站URL清理（掩耳盗铃）
-// @version         1.0.0.20220708
+// @version         1.0.1.20220710
 // @namespace       laster2800
 // @author          Laster2800
-// @description     清理B站 URL 中多余的内容——这种清理只是将 URL 中多余的部分简单隐藏起来，不会阻止其完成自身的使命
-// @note            提供真实清理的脚本有很多，但本人其实并不反感这种跟踪，不能以最坏的恶意来推测每一种设计，但在 URL 上添加各种奇奇怪怪的内容实在是太难看了，让 URL 在显示上更简洁才是该脚本的本意
+// @description     清理B站 URL 中多余的内容——这种清理只是将 URL 中多余的部分简单隐藏起来，不会过分阻止其完成自身的使命
+// @note            提供真实清理的脚本有很多，但本人认为不能以最坏的恶意来推测每一种设计（尽管 vd_source 确实已经被证实是会暴露分享者信息的邪恶设计），只不过在 URL 上添加各种奇奇怪怪的内容实在是太难看了，让 URL 在显示上更简洁才是该脚本的本意。
 // @icon            https://www.bilibili.com/favicon.ico
 // @homepageURL     https://greasyfork.org/zh-CN/scripts/447604
 // @supportURL      https://greasyfork.org/zh-CN/scripts/447604/feedback
