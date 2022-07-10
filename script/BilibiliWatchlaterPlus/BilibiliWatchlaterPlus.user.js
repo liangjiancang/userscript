@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.28.3.20220708
+// @version         4.28.4.20220710
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -24,7 +24,7 @@
 // @require         https://greasyfork.org/scripts/432002-userscriptapiwait/code/UserscriptAPIWait.js?version=1035042
 // @require         https://greasyfork.org/scripts/432003-userscriptapiweb/code/UserscriptAPIWeb.js?version=977807
 // @require         https://greasyfork.org/scripts/432936-pushqueue/code/PushQueue.js?version=978730
-// @require         https://greasyfork.org/scripts/432807-inputnumber/code/InputNumber.js?version=973690
+// @require         https://greasyfork.org/scripts/432807-inputnumber/code/InputNumber.js?version=1068774
 // @grant           GM_registerMenuCommand
 // @grant           GM_notification
 // @grant           GM_xmlhttpRequest
@@ -233,6 +233,7 @@
    * @property {autoRemove} autoRemove 自动将视频从播放列表移除
    * @property {boolean} redirect 稍后再看模式重定向至常规模式播放
    * @property {boolean} dynamicBatchAddManagerButton 动态主页批量添加管理器按钮
+   * @property {number} autoReloadList 自动刷新列表页面
    * @property {openListVideo} openListVideo 列表页面视频点击行为
    * @property {boolean} listStickControl 列表页面控制栏随页面滚动
    * @property {boolean} listSearch 列表页面搜索框
@@ -275,6 +276,7 @@
    * @property {boolean} reloadWatchlaterListData 刷新稍后再看列表数据
    * @property {boolean} loadingWatchlaterListData 正在加载稍后再看列表数据
    * @property {boolean} savingRemoveHistoryData 正在存储稍后再看历史数据
+   * @property {number} autoReloadListTid 列表页面自动刷新定时器 ID
    */
   /**
    * @callback removeHistoryData 通过懒加载方式获取稍后再看历史数据
@@ -380,7 +382,7 @@
   const gm = {
     id: gmId,
     configVersion: GM_getValue('configVersion'),
-    configUpdate: 20220607,
+    configUpdate: 20220710,
     searchParams: new URL(location.href).searchParams,
     config: {},
     configMap: {
@@ -416,6 +418,7 @@
       autoRemove: { default: Enums.autoRemove.openFromList, attr: 'value', configVersion: 20210612 },
       redirect: { default: false, attr: 'checked', configVersion: 20210322.1 },
       dynamicBatchAddManagerButton: { default: true, attr: 'checked', configVersion: 20210902 },
+      autoReloadList: { default: 0, type: 'int', attr: 'value', min: 5, max: 600, configVersion: 20220710 },
       openListVideo: { default: Enums.openListVideo.openInCurrent, attr: 'value', configVersion: 20200717 },
       listStickControl: { default: true, attr: 'checked', configVersion: 20220410 },
       listSearch: { default: true, attr: 'checked', configVersion: 20210810.1 },
@@ -757,7 +760,7 @@
           }
 
           // 功能性更新后更新此处配置版本，通过时跳过功能性更新设置，否则转至 readConfig() 中处理
-          if (gm.configVersion >= 20220607) {
+          if (gm.configVersion >= 20220710) {
             gm.configVersion = gm.configUpdate
             GM_setValue('configVersion', gm.configVersion)
           }
@@ -1086,6 +1089,14 @@
             </label>`,
           })
           itemsHTML += getItemHTML('列表页面', {
+            desc: `设置「${gm.url.page_watchlaterList}」页面的自动刷新策略。`,
+            html: `<div>
+              <span>自动刷新时间间隔（单位：分钟）</span>
+              <span id="gm-arlInformation" class="gm-information" title>💬</span>
+              <input is="laster2800-input-number" id="gm-autoReloadList" value="${gm.configMap.autoReloadList.default}" min="${gm.configMap.autoReloadList.min}" max="${gm.configMap.autoReloadList.max}" allow-zero="true">
+            </div>`,
+          })
+          itemsHTML += getItemHTML('列表页面', {
             desc: `设置在「${gm.url.page_watchlaterList}」页面点击视频时的行为。`,
             html: `<div>
               <span>点击视频时</span>
@@ -1296,6 +1307,13 @@
               <p><b>load</b>：在页面初步加载完成时运行。从理论上来说这个时间点更为合适，且能保证脚本在网页加载速度极慢时仍可正常工作。但要注意的是，以上所说「网页加载速度极慢」的情况并不常见，以下为常见原因：1. 短时间内（在后台）打开十几乃至数十个网页；2. 网络问题。</p>
             </div>
           `, null, { width: '36em', flagSize: '2em', position: { top: '80%' } })
+          el.arlInformation = gm.el.setting.querySelector('#gm-arlInformation')
+          api.message.hoverInfo(el.arlInformation, `
+            <div style="line-height:1.6em">
+              <p>设置列表页面自动刷新的时间间隔。</p>
+              <p>设置为 <b>0</b> 时禁用自动刷新。</p>
+            </div>
+          `)
           el.wlcvpInformation = gm.el.setting.querySelector('#gm-wlcvpInformation')
           api.message.hoverInfo(el.wlcvpInformation, `
             <div style="line-height:1.6em">
@@ -2068,7 +2086,7 @@
               window.dispatchEvent(new CustomEvent('reloadWatchlaterListData'))
 
               if (added && api.base.urlMatch(gm.regex.page_watchlaterList)) {
-                webpage.reloadWatchlaterListPage(true)
+                webpage.reloadWatchlaterListPage(null)
               }
             }
           })
@@ -4327,10 +4345,314 @@
     }
 
     /**
-     * 对稍后再看列表页面进行处理
-     * @param {boolean} reload 是否由页内刷新触发
+     * 初始化列表页面
      */
-    async processWatchlaterList(reload) {
+    async initWatchlaterListPage() {
+      const r_con = await api.wait.$('.watch-later-list header .r-con')
+      // 页面上本来就存在的「全部播放」按钮不要触发重定向
+      const setPlayAll = el => {
+        el.href = gm.url.page_watchlaterPlayAll
+        el.target = gm.config.openListVideo === Enums.openListVideo.openInCurrent ? '_self' : '_blank'
+      }
+      const playAll = r_con.children[0]
+      if (playAll.classList.contains('s-btn')) {
+        // 理论上不会进来
+        setPlayAll(playAll)
+      } else {
+        const ob = new MutationObserver((records, observer) => {
+          setPlayAll(records[0].target)
+          observer.disconnect()
+        })
+        ob.observe(playAll, { attributeFilter: ['href'] })
+      }
+      // 移除「一键清空」按钮
+      if (gm.config.removeButton_removeAll) {
+        r_con.children[1].style.display = 'none'
+      }
+      // 移除「移除已观看视频」按钮
+      if (gm.config.removeButton_removeWatched) {
+        r_con.children[2].style.display = 'none'
+      }
+      // 加入「批量添加」
+      if (gm.config.listBatchAddManagerButton) {
+        const batchButton = r_con.appendChild(document.createElement('div'))
+        batchButton.textContent = '批量添加'
+        batchButton.className = 's-btn'
+        batchButton.addEventListener('click', () => script.openBatchAddManager())
+      }
+      // 加入「移除记录」
+      if (gm.config.removeHistory) {
+        const removeHistoryButton = r_con.appendChild(document.createElement('div'))
+        removeHistoryButton.textContent = '移除记录'
+        removeHistoryButton.className = 's-btn'
+        removeHistoryButton.addEventListener('click', () => script.openRemoveHistory())
+      }
+      // 加入「增强设置」
+      const plusButton = r_con.appendChild(document.createElement('div'))
+      plusButton.textContent = '增强设置'
+      plusButton.className = 's-btn'
+      plusButton.addEventListener('click', () => script.openUserSetting())
+      // 加入「刷新列表」
+      const reload = document.createElement('div')
+      reload.id = 'gm-list-reload'
+      reload.textContent = '刷新列表'
+      reload.className = 's-btn'
+      r_con.prepend(reload)
+      reload.addEventListener('click', () => {
+        this.reloadWatchlaterListPage()
+      })
+
+      // 增加搜索框
+      if (gm.config.listSearch) {
+        api.base.addStyle(`
+          #gm-list-search.gm-search {
+            display: inline-block;
+            font-size: 1.6em;
+            line-height: 2em;
+            margin: 10px 21px 0;
+            padding: 0 0.5em;
+            border-radius: 3px;
+            transition: box-shadow ${gm.const.fadeTime}ms ease-in-out;
+          }
+          #gm-list-search.gm-search:hover,
+          #gm-list-search.gm-search.gm-active {
+            box-shadow: var(--${gm.id}-box-shadow);
+          }
+          #gm-list-search.gm-search input[type=text] {
+            border: none;
+            width: 18em;
+          }
+        `)
+        const searchContainer = r_con.insertAdjacentElement('afterend', document.createElement('div'))
+        searchContainer.className = 'gm-list-search-container'
+        searchContainer.innerHTML = `
+          <div id="gm-list-search" class="gm-search">
+            <input type="text" placeholder="搜索... 支持关键字排除 ( - ) 及通配符 ( ? * )">
+            <div class="gm-search-clear">✖</div>
+          </div>
+        `
+        const searchBox = searchContainer.firstElementChild
+        const [search, searchClear] = searchBox.children
+
+        search.addEventListener('mouseenter', () => search.focus())
+        search.addEventListener('input', () => {
+          const m = /^\s+(.*)/.exec(search.value)
+          if (m) {
+            search.value = m[1]
+            search.setSelectionRange(0, 0)
+          }
+          if (search.value.length > 0) {
+            searchBox.classList.add('gm-active')
+            searchClear.style.visibility = 'visible'
+          } else {
+            searchBox.classList.remove('gm-active')
+            searchClear.style.visibility = ''
+          }
+        })
+        search.addEventListener('input', api.base.throttle(async () => {
+          await this.searchWatchlaterListPage()
+          await this.updateWatchlaterListPageTotal()
+          this.triggerWatchlaterListPageContentLoad()
+        }, gm.const.inputThrottleWait))
+        searchClear.addEventListener('click', () => {
+          search.value = ''
+          search.dispatchEvent(new Event('input'))
+        })
+        if (gm.config.searchDefaultValue) {
+          search.addEventListener('mousedown', e => {
+            if (e.button === 1) {
+              GM_deleteValue('searchDefaultValue_value')
+              api.message.info('已清空搜索框默认值')
+              e.preventDefault()
+            } else if (e.button === 2) {
+              GM_setValue('searchDefaultValue_value', search.value)
+              api.message.info('已保存搜索框默认值')
+              e.preventDefault()
+            }
+          })
+          search.addEventListener('contextmenu', e => e.preventDefault())
+
+          const sdv = GM_getValue('searchDefaultValue_value')
+          if (sdv) {
+            search.value = sdv
+            searchBox.classList.add('gm-active')
+            searchClear.style.visibility = 'visible'
+          }
+          const updateSearchTitle = e => {
+            let v = e ? e.detail.value : sdv
+            if (!v) v = v === '' ? '[ 空 ]' : '[ 未设置 ]'
+            searchBox.title = gm.const.searchDefaultValueHint.replace('$1', v)
+          }
+          updateSearchTitle()
+          window.addEventListener('updateSearchTitle', updateSearchTitle)
+        }
+      }
+
+      // 增加排序控制
+      {
+        const sortControlButton = document.createElement('div')
+        const control = sortControlButton.appendChild(document.createElement('select'))
+        sortControlButton.className = 'gm-list-sort-control-container'
+        control.id = 'gm-list-sort-control'
+        control.innerHTML = `
+          <option value="${Enums.sortType.default}" selected>排序：默认</option>
+          <option value="${Enums.sortType.defaultR}">排序：默认↓</option>
+          <option value="${Enums.sortType.duration}">排序：时长</option>
+          <option value="${Enums.sortType.durationR}">排序：时长↓</option>
+          <option value="${Enums.sortType.pubtime}">排序：发布</option>
+          <option value="${Enums.sortType.pubtimeR}">排序：发布↓</option>
+          <option value="${Enums.sortType.progress}">排序：进度</option>
+          <option value="${Enums.sortType.uploader}">排序：UP主</option>
+          <option value="${Enums.sortType.title}">排序：标题</option>
+          <option value="${Enums.sortType.fixed}">排序：固定</option>
+        `
+        control.prevVal = control.value
+        r_con.prepend(sortControlButton)
+
+        if (gm.config.autoSort !== Enums.autoSort.default) {
+          let type = gm.config.autoSort
+          if (type === Enums.autoSort.auto) {
+            type = GM_getValue('autoSort_auto')
+            if (!type) {
+              type = Enums.sortType.default
+              GM_setValue('autoSort_auto', type)
+            }
+          }
+          control.value = type
+        }
+
+        if (gm.config.listSortControl) {
+          /*
+           * 在 control 外套一层，借助这层给 control 染色的原因是：
+           * 如果不这样做，那么点击 control 弹出的下拉框与 control 之间有几个像素的距离，鼠标从 control 移动到
+           * 下拉框的过程中，若鼠标移动速度较慢，会使 control 脱离 hover 状态。
+           * 不管是标准还是浏览器的的锅：凭什么鼠标移动到 option 上 select「不一定」是 hover 状态——哪怕设计成
+           * 「一定不」都是合理的。
+           */
+          api.base.addStyle(`
+            .gm-list-sort-control-container {
+              display: inline-block;
+              padding-bottom: 5px;
+            }
+            .gm-list-sort-control-container:hover select {
+              background: #00a1d6;
+              color: #fff;
+            }
+            .gm-list-sort-control-container select {
+              appearance: none;
+              text-align-last: center;
+              line-height: 16.6px;
+            }
+            .gm-list-sort-control-container option {
+              background: var(--${gm.id}-background-color);
+              color: var(--${gm.id}-text-color);
+            }
+          `)
+          control.className = 's-btn'
+
+          control.addEventListener('change', () => {
+            if (gm.config.autoSort === Enums.autoSort.auto) {
+              GM_setValue('autoSort_auto', control.value)
+            }
+            this.sortWatchlaterListPage()
+          })
+        } else {
+          sortControlButton.style.display = 'none'
+        }
+      }
+
+      // 增加自动移除控制器
+      {
+        const autoRemoveControl = document.createElement('div')
+        autoRemoveControl.id = 'gm-list-auto-remove-control'
+        autoRemoveControl.textContent = '自动移除'
+        if (!gm.config.listAutoRemoveControl) {
+          autoRemoveControl.style.display = 'none'
+        }
+        r_con.prepend(autoRemoveControl)
+        if (gm.config.autoRemove !== Enums.autoRemove.absoluteNever) {
+          api.base.addStyle(`
+            #gm-list-auto-remove-control {
+              background: #fff;
+              color: #00a1d6;
+            }
+            #gm-list-auto-remove-control[enabled] {
+              background: #00a1d6;
+              color: #fff;
+            }
+          `)
+          const autoRemove = gm.config.autoRemove === Enums.autoRemove.always || gm.config.autoRemove === Enums.autoRemove.openFromList
+          autoRemoveControl.className = 's-btn'
+          autoRemoveControl.title = '临时切换在当前页面打开视频后是否将其自动移除出「稍后再看」。若要默认开启/关闭自动移除功能，请在「用户设置」中配置。'
+          autoRemoveControl.autoRemove = autoRemove
+          if (autoRemove) {
+            autoRemoveControl.setAttribute('enabled', '')
+          }
+          autoRemoveControl.addEventListener('click', () => {
+            if (autoRemoveControl.autoRemove) {
+              autoRemoveControl.removeAttribute('enabled')
+              api.message.info('已临时关闭自动移除功能')
+            } else {
+              autoRemoveControl.setAttribute('enabled', '')
+              api.message.info('已临时开启自动移除功能')
+            }
+            autoRemoveControl.autoRemove = !autoRemoveControl.autoRemove
+          })
+        } else {
+          autoRemoveControl.className = 'd-btn'
+          autoRemoveControl.style.cursor = 'not-allowed'
+          autoRemoveControl.addEventListener('click', () => {
+            api.message.info('当前彻底禁用自动移除功能，无法执行操作')
+          })
+        }
+      }
+
+      // 将顶栏固定在页面顶部
+      if (gm.config.listStickControl) {
+        let p1 = '-0.3em'
+        let p2 = '2.8em'
+
+        if (gm.config.headerCompatible === Enums.headerCompatible.bilibiliEvolved) {
+          api.base.addStyle(`
+            .custom-navbar.transparent::before {
+              height: calc(1.3 * var(--navbar-height)) !important;
+            }
+          `)
+          p1 = '-3.5em'
+          p2 = '6em'
+        } else {
+          const header = await api.wait.$('#internationalHeader .mini-header')
+          const style = window.getComputedStyle(header)
+          const isGm430292Fixed = style.position === 'fixed' && style.backgroundImage.startsWith('linear-gradient')
+          if (isGm430292Fixed) { // https://greasyfork.org/zh-CN/scripts/430292
+            p1 = '-3.1em'
+            p2 = '5.6em'
+          }
+        }
+
+        api.base.addStyle(`
+          .watch-later-list {
+            position: relative;
+            top: ${p1};
+          }
+
+          .watch-later-list > header {
+            position: sticky;
+            top: 0;
+            margin-top: 0;
+            padding-top: ${p2};
+            background: white;
+            z-index: 1;
+          }
+        `)
+      }
+    }
+
+    /**
+     * 对稍后再看列表页面进行处理
+     * @param {boolean} byReload 由页内刷新触发
+     */
+    async processWatchlaterListPage(byReload) {
       const _self = this
       const data = await gm.data.watchlaterListData(true)
       const fixedItems = GM_getValue('fixedItems') ?? []
@@ -4369,9 +4691,9 @@
         }
       }
       if (gm.config.searchDefaultValue) {
-        await this.searchWatchlaterList()
+        await this.searchWatchlaterListPage()
       }
-      this.updateWatchlaterListTotal()
+      this.updateWatchlaterListPageTotal()
 
       // 移除无效固定项
       // 仅在列表项不为空时才执行移除，因为「列表项为空」有可能是一些特殊情况造成的误判
@@ -4383,9 +4705,13 @@
 
       if (sortable) {
         const sortControl = await api.wait.$('#gm-list-sort-control')
-        if (reload || sortControl.value !== sortControl.prevVal) {
-          this.sortWatchlaterList()
+        if (byReload || sortControl.value !== sortControl.prevVal) {
+          this.sortWatchlaterListPage()
         }
+      }
+
+      if (!byReload) {
+        this.handleAutoReloadWatchlaterListPage()
       }
 
       /**
@@ -4431,9 +4757,9 @@
             dispInfo && api.message.info(`${note}成功`)
             setTimeout(() => {
               if (sortable) {
-                _self.sortWatchlaterList()
+                _self.sortWatchlaterListPage()
               }
-              _self.updateWatchlaterListTotal()
+              _self.updateWatchlaterListPageTotal()
             }, 100)
           } else {
             if (item.added) {
@@ -4550,9 +4876,9 @@
                   base.switcher.checked = false
                   setTimeout(() => {
                     if (sortable) {
-                      _self.sortWatchlaterList()
+                      _self.sortWatchlaterListPage()
                     }
-                    _self.updateWatchlaterListTotal()
+                    _self.updateWatchlaterListPageTotal()
                   }, 100)
                 }
               }
@@ -4567,7 +4893,7 @@
     /**
      * 对稍后再看列表进行搜索
      */
-    async searchWatchlaterList() {
+    async searchWatchlaterListPage() {
       const search = await api.wait.$('#gm-list-search input')
       let val = search.value.trim()
       let include = null
@@ -4629,7 +4955,7 @@
     /**
      * 对稍后再看列表页面进行排序
      */
-    async sortWatchlaterList() {
+    async sortWatchlaterListPage() {
       const sortControl = await api.wait.$('#gm-list-sort-control')
       const listBox = await api.wait.$('.watch-later-list .list-box')
       let type = sortControl.value
@@ -4665,14 +4991,14 @@
           item.style.order = order++
         }
       }
-      this.triggerWatchlaterListContentLoad()
+      this.triggerWatchlaterListPageContentLoad()
     }
 
     /**
      * 刷新稍后再看列表页面
-     * @param {boolean} silent 静默执行
+     * @param {[string, string]} msg [执行成功信息, 执行失败信息]，设置为 null 或对应项为空时静默执行
      */
-    async reloadWatchlaterListPage(silent) {
+    async reloadWatchlaterListPage(msg = ['刷新成功', '刷新失败']) {
       const list = await api.wait.$('.watch-later-list')
       const vue = await api.wait.waitForConditionPassed({
         condition: () => list.__vue__,
@@ -4690,24 +5016,46 @@
           item.classList.remove('gm-removed')
           item.querySelector('.gm-list-item-switcher').checked = true
         }
-        await this.processWatchlaterList(true)
+        await this.processWatchlaterListPage(true)
+
+        if (gm.runtime.autoReloadListTid != null) {
+          this.handleAutoReloadWatchlaterListPage() // 重新计时
+        }
       }
-      if (!silent) {
-        api.message.info(success ? '刷新成功' : '刷新失败')
+      (await api.wait.$('#gm-list-reload')).title = `上次刷新时间：${new Date().toLocaleString()}`
+      msg &&= success ? msg[0] : msg[1]
+      msg && api.message.info(msg)
+    }
+
+    /**
+     * 处理稍后再看列表页面自动刷新
+     */
+    handleAutoReloadWatchlaterListPage() {
+      if (gm.config.autoReloadList > 0) {
+        if (gm.runtime.autoReloadListTid != null) {
+          clearTimeout(gm.runtime.autoReloadListTid)
+        }
+        const interval = gm.config.autoReloadList * 60 * 1000
+        const autoReload = async () => {
+          gm.runtime.autoReloadListTid = null
+          await this.reloadWatchlaterListPage(null)
+          gm.runtime.autoReloadListTid = setTimeout(autoReload, interval)
+        }
+        gm.runtime.autoReloadListTid = setTimeout(autoReload, interval)
       }
     }
 
     /**
      * 触发列表页面内容加载
      */
-    triggerWatchlaterListContentLoad() {
+    triggerWatchlaterListPageContentLoad() {
       window.dispatchEvent(new Event('scroll'))
     }
 
     /**
      * 更新列表页面上方的视频总数统计
      */
-    async updateWatchlaterListTotal() {
+    async updateWatchlaterListPageTotal() {
       const container = await api.wait.$('.watch-later-list')
       const listBox = await api.wait.$('.list-box', container)
       const elTotal = await api.wait.$('header .t em')
@@ -4791,310 +5139,6 @@
             this.method.updateRemoveHistoryData()
           }
           break
-      }
-    }
-
-    /**
-     * 调整列表页面的 UI
-     */
-    async adjustWatchlaterListUI() {
-      const r_con = await api.wait.$('.watch-later-list header .r-con')
-      // 页面上本来就存在的「全部播放」按钮不要触发重定向
-      const setPlayAll = el => {
-        el.href = gm.url.page_watchlaterPlayAll
-        el.target = gm.config.openListVideo === Enums.openListVideo.openInCurrent ? '_self' : '_blank'
-      }
-      const playAll = r_con.children[0]
-      if (playAll.classList.contains('s-btn')) {
-        // 理论上不会进来
-        setPlayAll(playAll)
-      } else {
-        const ob = new MutationObserver((records, observer) => {
-          setPlayAll(records[0].target)
-          observer.disconnect()
-        })
-        ob.observe(playAll, { attributeFilter: ['href'] })
-      }
-      // 移除「一键清空」按钮
-      if (gm.config.removeButton_removeAll) {
-        r_con.children[1].style.display = 'none'
-      }
-      // 移除「移除已观看视频」按钮
-      if (gm.config.removeButton_removeWatched) {
-        r_con.children[2].style.display = 'none'
-      }
-      // 加入「批量添加」
-      if (gm.config.listBatchAddManagerButton) {
-        const batchButton = r_con.appendChild(document.createElement('div'))
-        batchButton.textContent = '批量添加'
-        batchButton.className = 's-btn'
-        batchButton.addEventListener('click', () => script.openBatchAddManager())
-      }
-      // 加入「移除记录」
-      if (gm.config.removeHistory) {
-        const removeHistoryButton = r_con.appendChild(document.createElement('div'))
-        removeHistoryButton.textContent = '移除记录'
-        removeHistoryButton.className = 's-btn'
-        removeHistoryButton.addEventListener('click', () => script.openRemoveHistory())
-      }
-      // 加入「增强设置」
-      const plusButton = r_con.appendChild(document.createElement('div'))
-      plusButton.textContent = '增强设置'
-      plusButton.className = 's-btn'
-      plusButton.addEventListener('click', () => script.openUserSetting())
-      // 增加页内刷新
-      const reload = document.createElement('div')
-      reload.id = 'gm-list-reload'
-      reload.textContent = '刷新列表'
-      reload.className = 's-btn'
-      r_con.prepend(reload)
-      reload.addEventListener('click', () => {
-        this.reloadWatchlaterListPage()
-      })
-
-      // 增加搜索框
-      if (gm.config.listSearch) {
-        api.base.addStyle(`
-          #gm-list-search.gm-search {
-            display: inline-block;
-            font-size: 1.6em;
-            line-height: 2em;
-            margin: 10px 21px 0;
-            padding: 0 0.5em;
-            border-radius: 3px;
-            transition: box-shadow ${gm.const.fadeTime}ms ease-in-out;
-          }
-          #gm-list-search.gm-search:hover,
-          #gm-list-search.gm-search.gm-active {
-            box-shadow: var(--${gm.id}-box-shadow);
-          }
-          #gm-list-search.gm-search input[type=text] {
-            border: none;
-            width: 18em;
-          }
-        `)
-        const searchContainer = r_con.insertAdjacentElement('afterend', document.createElement('div'))
-        searchContainer.className = 'gm-list-search-container'
-        searchContainer.innerHTML = `
-          <div id="gm-list-search" class="gm-search">
-            <input type="text" placeholder="搜索... 支持关键字排除 ( - ) 及通配符 ( ? * )">
-            <div class="gm-search-clear">✖</div>
-          </div>
-        `
-        const searchBox = searchContainer.firstElementChild
-        const [search, searchClear] = searchBox.children
-
-        search.addEventListener('mouseenter', () => search.focus())
-        search.addEventListener('input', () => {
-          const m = /^\s+(.*)/.exec(search.value)
-          if (m) {
-            search.value = m[1]
-            search.setSelectionRange(0, 0)
-          }
-          if (search.value.length > 0) {
-            searchBox.classList.add('gm-active')
-            searchClear.style.visibility = 'visible'
-          } else {
-            searchBox.classList.remove('gm-active')
-            searchClear.style.visibility = ''
-          }
-        })
-        search.addEventListener('input', api.base.throttle(async () => {
-          await this.searchWatchlaterList()
-          await this.updateWatchlaterListTotal()
-          this.triggerWatchlaterListContentLoad()
-        }, gm.const.inputThrottleWait))
-        searchClear.addEventListener('click', () => {
-          search.value = ''
-          search.dispatchEvent(new Event('input'))
-        })
-        if (gm.config.searchDefaultValue) {
-          search.addEventListener('mousedown', e => {
-            if (e.button === 1) {
-              GM_deleteValue('searchDefaultValue_value')
-              api.message.info('已清空搜索框默认值')
-              e.preventDefault()
-            } else if (e.button === 2) {
-              GM_setValue('searchDefaultValue_value', search.value)
-              api.message.info('已保存搜索框默认值')
-              e.preventDefault()
-            }
-          })
-          search.addEventListener('contextmenu', e => e.preventDefault())
-
-          const sdv = GM_getValue('searchDefaultValue_value')
-          if (sdv) {
-            search.value = sdv
-            searchBox.classList.add('gm-active')
-            searchClear.style.visibility = 'visible'
-          }
-          const updateSearchTitle = e => {
-            let v = e ? e.detail.value : sdv
-            if (!v) v = v === '' ? '[ 空 ]' : '[ 未设置 ]'
-            searchBox.title = gm.const.searchDefaultValueHint.replace('$1', v)
-          }
-          updateSearchTitle()
-          window.addEventListener('updateSearchTitle', updateSearchTitle)
-        }
-      }
-
-      // 增加排序控制
-      {
-        const sortControlButton = document.createElement('div')
-        const control = sortControlButton.appendChild(document.createElement('select'))
-        sortControlButton.className = 'gm-list-sort-control-container'
-        control.id = 'gm-list-sort-control'
-        control.innerHTML = `
-          <option value="${Enums.sortType.default}" selected>排序：默认</option>
-          <option value="${Enums.sortType.defaultR}">排序：默认↓</option>
-          <option value="${Enums.sortType.duration}">排序：时长</option>
-          <option value="${Enums.sortType.durationR}">排序：时长↓</option>
-          <option value="${Enums.sortType.pubtime}">排序：发布</option>
-          <option value="${Enums.sortType.pubtimeR}">排序：发布↓</option>
-          <option value="${Enums.sortType.progress}">排序：进度</option>
-          <option value="${Enums.sortType.uploader}">排序：UP主</option>
-          <option value="${Enums.sortType.title}">排序：标题</option>
-          <option value="${Enums.sortType.fixed}">排序：固定</option>
-        `
-        control.prevVal = control.value
-        r_con.prepend(sortControlButton)
-
-        if (gm.config.autoSort !== Enums.autoSort.default) {
-          let type = gm.config.autoSort
-          if (type === Enums.autoSort.auto) {
-            type = GM_getValue('autoSort_auto')
-            if (!type) {
-              type = Enums.sortType.default
-              GM_setValue('autoSort_auto', type)
-            }
-          }
-          control.value = type
-        }
-
-        if (gm.config.listSortControl) {
-          /*
-           * 在 control 外套一层，借助这层给 control 染色的原因是：
-           * 如果不这样做，那么点击 control 弹出的下拉框与 control 之间有几个像素的距离，鼠标从 control 移动到
-           * 下拉框的过程中，若鼠标移动速度较慢，会使 control 脱离 hover 状态。
-           * 不管是标准还是浏览器的的锅：凭什么鼠标移动到 option 上 select「不一定」是 hover 状态——哪怕设计成
-           * 「一定不」都是合理的。
-           */
-          api.base.addStyle(`
-            .gm-list-sort-control-container {
-              display: inline-block;
-              padding-bottom: 5px;
-            }
-            .gm-list-sort-control-container:hover select {
-              background: #00a1d6;
-              color: #fff;
-            }
-            .gm-list-sort-control-container select {
-              appearance: none;
-              text-align-last: center;
-              line-height: 16.6px;
-            }
-            .gm-list-sort-control-container option {
-              background: var(--${gm.id}-background-color);
-              color: var(--${gm.id}-text-color);
-            }
-          `)
-          control.className = 's-btn'
-
-          control.addEventListener('change', () => {
-            if (gm.config.autoSort === Enums.autoSort.auto) {
-              GM_setValue('autoSort_auto', control.value)
-            }
-            this.sortWatchlaterList()
-          })
-        } else {
-          sortControlButton.style.display = 'none'
-        }
-      }
-
-      // 增加自动移除控制器
-      {
-        const autoRemoveControl = document.createElement('div')
-        autoRemoveControl.id = 'gm-list-auto-remove-control'
-        autoRemoveControl.textContent = '自动移除'
-        if (!gm.config.listAutoRemoveControl) {
-          autoRemoveControl.style.display = 'none'
-        }
-        r_con.prepend(autoRemoveControl)
-        if (gm.config.autoRemove !== Enums.autoRemove.absoluteNever) {
-          api.base.addStyle(`
-            #gm-list-auto-remove-control {
-              background: #fff;
-              color: #00a1d6;
-            }
-            #gm-list-auto-remove-control[enabled] {
-              background: #00a1d6;
-              color: #fff;
-            }
-          `)
-          const autoRemove = gm.config.autoRemove === Enums.autoRemove.always || gm.config.autoRemove === Enums.autoRemove.openFromList
-          autoRemoveControl.className = 's-btn'
-          autoRemoveControl.title = '临时切换在当前页面打开视频后是否将其自动移除出「稍后再看」。若要默认开启/关闭自动移除功能，请在「用户设置」中配置。'
-          autoRemoveControl.autoRemove = autoRemove
-          if (autoRemove) {
-            autoRemoveControl.setAttribute('enabled', '')
-          }
-          autoRemoveControl.addEventListener('click', () => {
-            if (autoRemoveControl.autoRemove) {
-              autoRemoveControl.removeAttribute('enabled')
-              api.message.info('已临时关闭自动移除功能')
-            } else {
-              autoRemoveControl.setAttribute('enabled', '')
-              api.message.info('已临时开启自动移除功能')
-            }
-            autoRemoveControl.autoRemove = !autoRemoveControl.autoRemove
-          })
-        } else {
-          autoRemoveControl.className = 'd-btn'
-          autoRemoveControl.style.cursor = 'not-allowed'
-          autoRemoveControl.addEventListener('click', () => {
-            api.message.info('当前彻底禁用自动移除功能，无法执行操作')
-          })
-        }
-      }
-
-      // 将顶栏固定在页面顶部
-      if (gm.config.listStickControl) {
-        let p1 = '-0.3em'
-        let p2 = '2.8em'
-
-        if (gm.config.headerCompatible === Enums.headerCompatible.bilibiliEvolved) {
-          api.base.addStyle(`
-            .custom-navbar.transparent::before {
-              height: calc(1.3 * var(--navbar-height)) !important;
-            }
-          `)
-          p1 = '-3.5em'
-          p2 = '6em'
-        } else {
-          const header = await api.wait.$('#internationalHeader .mini-header')
-          const style = window.getComputedStyle(header)
-          const isGm430292Fixed = style.position === 'fixed' && style.backgroundImage.startsWith('linear-gradient')
-          if (isGm430292Fixed) { // https://greasyfork.org/zh-CN/scripts/430292
-            p1 = '-3.1em'
-            p2 = '5.6em'
-          }
-        }
-
-        api.base.addStyle(`
-          .watch-later-list {
-            position: relative;
-            top: ${p1};
-          }
-
-          .watch-later-list > header {
-            position: sticky;
-            top: 0;
-            margin-top: 0;
-            padding-top: ${p2};
-            background: white;
-            z-index: 1;
-          }
-        `)
       }
     }
 
@@ -6105,8 +6149,8 @@
         }
 
         if (api.base.urlMatch(gm.regex.page_watchlaterList)) {
-          webpage.adjustWatchlaterListUI()
-          webpage.processWatchlaterList()
+          webpage.initWatchlaterListPage()
+          webpage.processWatchlaterListPage()
         } else if (api.base.urlMatch([gm.regex.page_videoNormalMode, gm.regex.page_videoWatchlaterMode])) {
           if (gm.config.videoButton) {
             webpage.addVideoButton()
