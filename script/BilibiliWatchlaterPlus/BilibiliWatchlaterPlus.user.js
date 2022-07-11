@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.28.4.20220710
+// @version         4.28.5.20220711
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -3799,7 +3799,7 @@
               el.entryList.total = data.length
               el.entryListEmpty.style.display = ''
 
-              // 移除无效固定项
+              // 现在仍在 fixedItems 中的是无效固定项，将它们移除
               // 仅在列表项不为空时才执行移除，因为「列表项为空」有可能是一些特殊情况造成的误判
               for (const item of fixedItems) {
                 gm.data.fixedItem(item, false)
@@ -4695,14 +4695,6 @@
       }
       this.updateWatchlaterListPageTotal()
 
-      // 移除无效固定项
-      // 仅在列表项不为空时才执行移除，因为「列表项为空」有可能是一些特殊情况造成的误判
-      if (items.length > 0) {
-        for (const item of fixedItems) {
-          gm.data.fixedItem(item, false)
-        }
-      }
-
       if (sortable) {
         const sortControl = await api.wait.$('#gm-list-sort-control')
         if (byReload || sortControl.value !== sortControl.prevVal) {
@@ -4711,6 +4703,14 @@
       }
 
       if (!byReload) {
+        // 现在仍在 fixedItems 中的是无效固定项，将它们移除
+        // 仅在列表项不为空时才执行移除，因为「列表项为空」有可能是一些特殊情况造成的误判
+        if (items.length > 0) {
+          for (const item of fixedItems) {
+            gm.data.fixedItem(item, false)
+          }
+        }
+
         this.handleAutoReloadWatchlaterListPage()
       }
 
