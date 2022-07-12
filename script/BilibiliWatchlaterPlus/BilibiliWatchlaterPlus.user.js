@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.28.5.20220711
+// @version         4.28.6.20220712
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -5017,6 +5017,9 @@
           item.querySelector('.gm-list-item-switcher').checked = true
         }
         await this.processWatchlaterListPage(true)
+        if (gm.config.removeHistory) {
+          this.method.updateRemoveHistoryData()
+        }
 
         if (gm.runtime.autoReloadListTid != null) {
           this.handleAutoReloadWatchlaterListPage() // 重新计时
