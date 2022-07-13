@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.28.7.20220713
+// @version         4.28.8.20220713
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -4659,15 +4659,6 @@
      */
     async processWatchlaterListPage(byReload) {
       const _self = this
-      const data = await gm.data.watchlaterListData(true)
-      if (gm.runtime.watchlaterListDataError != null) {
-        if (byReload) {
-          api.message.alert('加载稍后再看列表数据失败，无法处理稍后再看列表页面。你可以点击「刷新列表」按钮或刷新标签页以重试。')
-        } else {
-          api.message.alert('加载稍后再看列表数据失败，无法处理稍后再看列表页面。你可以刷新标签页以重试（点击「刷新列表」按钮无法确保完整的处理）。')
-        }
-        return false
-      }
       const fixedItems = GM_getValue('fixedItems') ?? []
       const sortable = gm.config.autoSort !== Enums.autoSort.default || gm.config.listSortControl
       let autoRemoveControl = null
@@ -4677,6 +4668,23 @@
       const listContainer = await api.wait.$('.watch-later-list')
       const listBox = await api.wait.$('.list-box', listContainer)
       const items = listBox.querySelectorAll('.av-item')
+
+      // data 的获取必须放在 listBox 的获取后：
+      // 如果 listBox 能够被获取到，说明页面能够正常加载，这至少说明 a. 网络没有问题、b. 当前页面没有被浏览器视为二等公民。
+      // 因此，此时获取稍后再看列表数据，必然不会因为各种奇葩的原因获取失败。否则，在后台打开很多个标签页（其中包含列表页
+      // 面），或是刚打开列表页面就将浏览器切到后台，那么当用户回到列表页面时，会发现 data 加载失败而导致报错。如果将 data
+      // 获取置于 listBox 获取之后（也就是当前方案），那么当用户回到列表页面时，代码才会运行至此，此时再加载 data 就能得
+      // 到正确的数据（说到这里，不禁感叹 UserscriptAPI.wait 这一套方案是真的太好用了！）。
+      const data = await gm.data.watchlaterListData(true)
+      if (gm.runtime.watchlaterListDataError != null) {
+        if (byReload) {
+          api.message.alert('加载稍后再看列表数据失败，无法处理稍后再看列表页面。你可以点击「刷新列表」按钮或刷新标签页以重试。')
+        } else {
+          api.message.alert('加载稍后再看列表数据失败，无法处理稍后再看列表页面。你可以刷新标签页以重试（点击「刷新列表」按钮无法确保完整的处理）。')
+        }
+        return false
+      }
+
       for (const [idx, item] of items.entries()) {
         if (item.serial != null) {
           item.serial = idx
