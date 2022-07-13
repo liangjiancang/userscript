@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.28.6.20220712
+// @version         4.28.7.20220713
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -275,6 +275,7 @@
    * @property {'old' | '2022' | '3rd-party'} headerType 顶栏版本
    * @property {boolean} reloadWatchlaterListData 刷新稍后再看列表数据
    * @property {boolean} loadingWatchlaterListData 正在加载稍后再看列表数据
+   * @property {*} watchlaterListDataError 稍后再看列表数据加载过程错误（无错误为 `null`）；发现错误时 `gm.data.watchlaterListData()` 将获取到旧列表数据
    * @property {boolean} savingRemoveHistoryData 正在存储稍后再看历史数据
    * @property {number} autoReloadListTid 列表页面自动刷新定时器 ID
    */
@@ -621,6 +622,7 @@
         },
         watchlaterListData: async (reload, pageCache, localCache = true) => {
           const $data = this.#data
+          gm.runtime.watchlaterListDataError = null
           if (gm.runtime.reloadWatchlaterListData) {
             reload = true
             gm.runtime.reloadWatchlaterListData = false
@@ -639,6 +641,7 @@
                   },
                 })
               } catch (e) {
+                gm.runtime.watchlaterListDataError = e
                 gm.runtime.loadingWatchlaterListData = false
                 api.logger.error(e)
                 return $data.watchlaterListData ?? []
@@ -687,6 +690,7 @@
               return current
             } catch (e) {
               api.logger.error(e)
+              gm.runtime.watchlaterListDataError = e
               return $data.watchlaterListData ?? []
             } finally {
               gm.runtime.loadingWatchlaterListData = false
@@ -4651,10 +4655,19 @@
     /**
      * 对稍后再看列表页面进行处理
      * @param {boolean} byReload 由页内刷新触发
+     * @returns {Promise<boolean>} 是否成功处理
      */
     async processWatchlaterListPage(byReload) {
       const _self = this
       const data = await gm.data.watchlaterListData(true)
+      if (gm.runtime.watchlaterListDataError != null) {
+        if (byReload) {
+          api.message.alert('加载稍后再看列表数据失败，无法处理稍后再看列表页面。你可以点击「刷新列表」按钮或刷新标签页以重试。')
+        } else {
+          api.message.alert('加载稍后再看列表数据失败，无法处理稍后再看列表页面。你可以刷新标签页以重试（点击「刷新列表」按钮无法确保完整的处理）。')
+        }
+        return false
+      }
       const fixedItems = GM_getValue('fixedItems') ?? []
       const sortable = gm.config.autoSort !== Enums.autoSort.default || gm.config.listSortControl
       let autoRemoveControl = null
@@ -4713,6 +4726,7 @@
 
         this.handleAutoReloadWatchlaterListPage()
       }
+      return true
 
       /**
        * 初始化项目
@@ -5009,20 +5023,23 @@
         condition: () => vue.state !== 'loading',
         stopOnTimeout: false,
       })
-      const success = vue.state === 'loaded'
+      let success = vue.state === 'loaded'
       if (success) {
         // 刷新成功后，所有不存在的 item 都会被移除，没有被移除就说明该 item 又被重新加回稍后再看中
         for (const item of list.querySelectorAll('.av-item.gm-removed')) {
           item.classList.remove('gm-removed')
           item.querySelector('.gm-list-item-switcher').checked = true
         }
-        await this.processWatchlaterListPage(true)
-        if (gm.config.removeHistory) {
-          this.method.updateRemoveHistoryData()
-        }
-
-        if (gm.runtime.autoReloadListTid != null) {
-          this.handleAutoReloadWatchlaterListPage() // 重新计时
+        // 虽然 state === 'loaded'，但事实上 DOM 未调整完毕，需要等待一小段时间
+        await new Promise(resolve => setTimeout(resolve, 400))
+        success = await this.processWatchlaterListPage(true)
+        if (success) {
+          if (gm.config.removeHistory) {
+            this.method.updateRemoveHistoryData()
+          }
+          if (gm.runtime.autoReloadListTid != null) {
+            this.handleAutoReloadWatchlaterListPage() // 重新计时
+          }
         }
       }
       (await api.wait.$('#gm-list-reload')).title = `上次刷新时间：${new Date().toLocaleString()}`
