@@ -11,6 +11,8 @@
 5. 脚本：适配新版用户卡片（约在 2022.07 推出）。
 6. 脚本：API 一律通过 HTTPS 访问。[141090](https://greasyfork.org/zh-CN/scripts/428453/discussions/141090) [142955](https://greasyfork.org/zh-CN/scripts/428453/discussions/142955)
 
+> 近期（2022/07/29），部分B站用户 SESSDATA 会被设置 `Secure` 标记，导致通过 `HTTP` 访问部分 API 时无法通过认证。根据本人多个账号测试以及部分用户的反馈，猜测与实名认证相关，只要B站账号经过了实名认证，那么 SESSDATA 就不会被设置为 `Secure`，这一区别导致了问题重现与排查的困难，以至于在 [141090](https://greasyfork.org/zh-CN/scripts/428453/discussions/141090) 提出 18 天以及多个同因 BUG 反馈后，才从 [142955](https://greasyfork.org/zh-CN/scripts/428453/discussions/142955) 的用户反馈中锁定问题所在。
+
 ## V1.9
 
 1. 脚本：优化直播间的匹配方式，支持各种特殊直播间页面，尽可能向前兼容。
