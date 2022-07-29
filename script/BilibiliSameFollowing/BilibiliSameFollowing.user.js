@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站共同关注快速查看
-// @version         1.10.3.20220706
+// @version         1.10.4.20220729
 // @namespace       laster2800
 // @author          Laster2800
 // @description     快速查看与特定用户的共同关注（视频播放页、动态页、用户空间、直播间）
@@ -58,7 +58,7 @@
     },
     url: {
       api_sameFollowings: uid => `https://api.bilibili.com/x/relation/same/followings?vmid=${uid}`,
-      api_relation: uid => `http://api.bilibili.com/x/space/acc/relation?mid=${uid}`,
+      api_relation: uid => `https://api.bilibili.com/x/space/acc/relation?mid=${uid}`,
       page_space: uid => `https://space.bilibili.com/${uid}`,
       gm_changelog: 'https://gitee.com/liangjiancang/userscript/blob/master/script/BilibiliSameFollowing/changelog.md',
     },

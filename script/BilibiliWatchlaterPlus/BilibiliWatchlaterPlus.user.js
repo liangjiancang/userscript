@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.28.8.20220713
+// @version         4.28.9.20220729
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -447,9 +447,9 @@
       api_queryWatchlaterList: 'https://api.bilibili.com/x/v2/history/toview/web',
       api_addToWatchlater: 'https://api.bilibili.com/x/v2/history/toview/add',
       api_removeFromWatchlater: 'https://api.bilibili.com/x/v2/history/toview/del',
-      api_clearWatchlater: 'http://api.bilibili.com/x/v2/history/toview/clear',
-      api_listFav: 'http://api.bilibili.com/x/v3/fav/folder/created/list-all',
-      api_dealFav: 'http://api.bilibili.com/x/v3/fav/resource/deal',
+      api_clearWatchlater: 'https://api.bilibili.com/x/v2/history/toview/clear',
+      api_listFav: 'https://api.bilibili.com/x/v3/fav/folder/created/list-all',
+      api_dealFav: 'https://api.bilibili.com/x/v3/fav/resource/deal',
       api_dynamicList: 'https://api.bilibili.com/x/polymer/web-dynamic/v1/feed/all',
       page_watchlaterList: 'https://www.bilibili.com/watchlater/#/list',
       page_videoNormalMode: 'https://www.bilibili.com/video',

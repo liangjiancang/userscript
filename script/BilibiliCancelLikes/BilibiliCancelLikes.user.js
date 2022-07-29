@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站点赞批量取消
-// @version         1.2.1.20220531
+// @version         1.2.3.20220729
 // @namespace       laster2800
 // @author          Laster2800
 // @description     取消对于某个UP主的所有点赞
@@ -122,7 +122,7 @@
           api.logger.info(`PAGE: ${pn} / ${end} / ${count < 0 ? '?' : maxPn}`)
           const resp = await api.web.request({
             method: 'GET',
-            url: `http://api.bilibili.com/x/space/arc/search?mid=${uid}&pn=${pn}&ps=${ps}`,
+            url: `https://api.bilibili.com/x/space/arc/search?mid=${uid}&pn=${pn}&ps=${ps}`,
           }, { check: r => r.code === 0 })
           if (count < 0) {
             count = resp.data.page.count
@@ -144,7 +144,7 @@
             sp.append('csrf', csrf)
             const r = await api.web.request({
               method: 'POST',
-              url: 'http://api.bilibili.com/x/web-interface/archive/like',
+              url: 'https://api.bilibili.com/x/web-interface/archive/like',
               data: sp,
             })
             // r.code:

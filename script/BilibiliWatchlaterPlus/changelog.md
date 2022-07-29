@@ -7,7 +7,8 @@
 1. 列表页面：提供「刷新列表」按钮，点击可触发页内刷新。
 2. 列表页面：提供自动刷新功能，及配套的设置选项。
 3. 列表页面：优化稍后再看列表页面的处理过程。
-4. 外部：`InputNumber` 更新至 V1.0。
+4. 脚本：API 一律通过 HTTPS 访问。[142885](https://greasyfork.org/zh-CN/scripts/395456/discussions/142885)
+5. 外部：`InputNumber` 更新至 V1.0。
 
 ## V4.27
 

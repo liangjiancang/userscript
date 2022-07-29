@@ -9,6 +9,7 @@
 3. 约定：「目标用户」->「目标」。
 4. 脚本：优化 URL 匹配。
 5. 脚本：适配新版用户卡片（约在 2022.07 推出）。
+6. 脚本：API 一律通过 HTTPS 访问。[141090](https://greasyfork.org/zh-CN/scripts/428453/discussions/141090) [142955](https://greasyfork.org/zh-CN/scripts/428453/discussions/142955)
 
 ## V1.9
 
