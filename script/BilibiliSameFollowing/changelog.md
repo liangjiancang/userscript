@@ -11,7 +11,7 @@
 5. 脚本：适配新版用户卡片（约在 2022.07 推出）。
 6. 脚本：API 一律通过 HTTPS 访问。[141090](https://greasyfork.org/zh-CN/scripts/428453/discussions/141090) [142955](https://greasyfork.org/zh-CN/scripts/428453/discussions/142955)
 
-> 近期（2022/07/29），部分B站用户 SESSDATA 会被设置 `Secure` 标记，导致通过 `HTTP` 访问部分 API 时无法通过认证。根据本人多个账号测试以及部分用户的反馈，猜测与实名认证相关，只要B站账号经过了实名认证，那么 SESSDATA 就不会被设置为 `Secure`，这一区别导致了问题重现与排查的困难，以至于在 [141090](https://greasyfork.org/zh-CN/scripts/428453/discussions/141090) 提出 18 天以及多个同因 BUG 反馈后，才从 [142955](https://greasyfork.org/zh-CN/scripts/428453/discussions/142955) 的用户反馈中锁定问题所在。
+> 近期（2022/07/29），部分B站用户 SESSDATA 会被设置 `Secure` 标记，导致通过 `HTTP` 访问部分 API 时无法通过认证。这一情况只发生在部分用户上（初步猜测与实名认证以及一些敏感操作相关），导致了问题重现与排查的困难，以至于在 [141090](https://greasyfork.org/zh-CN/scripts/428453/discussions/141090) 提出 18 天以及多个同因 BUG 反馈后，才从 [142955](https://greasyfork.org/zh-CN/scripts/428453/discussions/142955) 的用户反馈中锁定问题所在。
 
 > 当然这里要辩解下为什么不一开始全部 API 就用 HTTPS 访问——因为这些 API 在第三方的文档上一开始写的就是 HTTP，总之在当时用 HTTP 访问绝对没有问题，但用 HTTPS 访问就不一定……
 
