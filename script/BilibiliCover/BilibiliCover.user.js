@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站封面获取
-// @version         5.8.3.20220710
+// @version         5.8.4.20220806
 // @namespace       laster2800
 // @author          Laster2800
 // @description     获取B站各播放页及直播间封面，支持手动及实时预览等多种模式，支持点击下载、封面预览、快速复制，可高度自定义
@@ -979,7 +979,7 @@
     async initLive() {
       const container = await api.wait.$('#head-info-vm .right-ctnr, #head-info-vm .upper-right-ctnr')
       // 这里再获取 hiVm，提前获取到的 hiVm 有可能会被替换成新的
-      const hiVm = api.dom.findAncestor(container, el => el.id === 'head-info-vm')
+      const hiVm = container.closest('#head-info-vm')
       await api.wait.waitForConditionPassed({
         condition: () => hiVm.__vue__,
       })

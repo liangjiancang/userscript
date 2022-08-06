@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.28.9.20220729
+// @version         4.28.10.20220806
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -1260,7 +1260,7 @@
               el.maintitle.innerHTML += '<br><span style="font-size:0.8em">(功能性更新设置)</span>'
               for (const [name, item] of Object.entries({ ...gm.configMap, ...gm.infoMap })) {
                 if (item.configVersion > gm.configVersion) {
-                  const updated = api.dom.findAncestor(el[name], el => el.matches('.gm-item, .gm-lineitem'))
+                  const updated = el[name].closest('.gm-item, .gm-lineitem')
                   updated?.classList.add('gm-updated')
                 }
               }
@@ -1350,7 +1350,7 @@
         const processConfigItem = () => {
           // 子项与父项相关联
           const subitemChange = (target, disabled) => {
-            const content = api.dom.findAncestor(target, el => el.classList.contains('gm-item-content'))
+            const content = target.closest('.gm-item-content')
             for (const option of content.querySelectorAll('[id|=gm]:not(:first-child)')) {
               if (!target.contains(option)) {
                 option.disabled = disabled
