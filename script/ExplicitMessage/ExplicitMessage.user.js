@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            [DEBUG] 信息显式化
-// @version         2.8.0.20220813
+// @version         2.8.1.20220813
 // @namespace       laster2800
 // @author          Laster2800
 // @description     用 alert() 提示符合匹配规则的日志或未捕获异常，帮助开发者在日常使用网页时发现潜藏问题
@@ -210,7 +210,7 @@
             innerError(e)
           }
         })
-        menuMap.help = GM_registerMenuCommand('使用说明', () => window.open('https://gitee.com/liangjiancang/userscript/tree/master/script/ExplicitMessage#使用说明'))
+        menuMap.help = GM_registerMenuCommand('使用说明', () => window.open('https://gitee.com/liangjiancang/userscript/blob/master/script/ExplicitMessage/README.md#使用说明'))
         menuMap.inject = GM_registerMenuCommand('获取注入版', () => window.open('https://greasyfork.org/zh-CN/scripts/429525'))
       }
       initScriptMenu()
