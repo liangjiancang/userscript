@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            S1战斗力屏蔽
-// @version         3.8.2.20220403
+// @version         3.9.0.20220813
 // @namespace       laster2800
 // @author          Laster2800
 // @description     屏蔽S1的战斗力系统，眼不见为净
@@ -9,7 +9,7 @@
 // @homepageURL     https://greasyfork.org/zh-CN/scripts/394407
 // @supportURL      https://greasyfork.org/zh-CN/scripts/394407/feedback
 // @license         LGPL-3.0
-// @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=974252
+// @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=1081030
 // @require         https://greasyfork.org/scripts/432002-userscriptapiwait/code/UserscriptAPIWait.js?version=1035042
 // @include         *.saraba1st.com/*
 // @exclude         *.saraba1st.com/2b/search*
@@ -137,12 +137,16 @@
     if (api.base.urlMatch(/thread-|mod=viewthread/)) {
       api.base.addStyle(`
         /* 层主头像下方的战斗力显示 */
-        ${enabledSelector} .favatar > div.tns.xg2 > table > tbody > tr > th:nth-child(2) {
+        ${enabledSelector} .favatar > .tns.xg2 > table tr > th:nth-child(2) {
+          display: none;
+        }
+        /* 鼠标悬浮在层主头像时，浮动面板中包含战斗力显示的一栏 */
+        ${enabledSelector} .favatar > .p_pop > .i.y > .cl > p:nth-child(2) {
           display: none;
         }
         /* 楼层评分 */
-        ${enabledSelector} .plhin > tbody > tr:nth-child(1) > .plc > .pct > .pcb > .psth,
-        ${enabledSelector} .plhin > tbody > tr:nth-child(1) > .plc > .pct > .pcb > .rate {
+        ${enabledSelector} .plhin tr:first-child > .plc > .pct > .pcb > .psth,
+        ${enabledSelector} .plhin tr:first-child > .plc > .pct > .pcb > .rate {
           display: none;
         }
       `)
@@ -152,7 +156,7 @@
         /* [我的积分] 页中战斗力显示 */
         ${enabledSelector} #ct .creditl > li:nth-child(2),
         /* [我的积分] 页中的 [积分显示] */
-        ${enabledSelector} #ct table.dt.mtm,
+        ${enabledSelector} #ct .dt.mtm,
         /* [积分记录] */
         ${enabledSelector} #ct li:nth-child(4) {
           display: none;
