@@ -4,7 +4,8 @@
 
 1. `initUrlchangeEvent()`：完善涉及捕获冒泡、执行顺序等细节的处理，并支持事件处理器属性 `window.onurlchange`，使其达到原生事件的标准。
 2. `initUrlchangeEvent()`：提供符合标准且携带 URL 更改前后信息的 `UrlchangeEvent` 事件。
-3. 代码：`prefer-rest-params`。
+3. `initUrlchangeEvent()`：支持 `@grant none` 脚本。
+4. 代码：`prefer-rest-params`。
 
 > [论如何实现一个完善的 urlchange 事件](../../../doc/论如何实现一个完善的%20urlchange%20事件.md)
 
