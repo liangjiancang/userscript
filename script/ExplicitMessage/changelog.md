@@ -2,6 +2,11 @@
 
 本日志只记录用户友好的更新说明，影响不大的问题修复与修改不作记录，具体修改见 [提交记录](https://gitee.com/liangjiancang/userscript/commits/master/script/ExplicitMessage)。
 
+## V2.8
+
+1. 脚本：支持 `@grant none` 脚本。
+2. 注入版 `v1.5`：支持 `@grant none` 脚本。
+
 ## V2.7
 
 1. 未捕获异常：在能访问到异常堆栈时，将异常堆栈作为匹配目标及显式信息。

@@ -1,7 +1,7 @@
 /**
  * ExplicitMessage_Inject
  * @file [DEBUG] 信息显式化（注入版）
- * @version 1.4.0.20210927
+ * @version 1.5.0.20220813
  * @author Laster2800
  */
 
@@ -9,8 +9,9 @@
   'use strict'
 
   let updateAlerted = false
-  const injectVersion = 20210927
-  const m = unsafeWindow[Symbol.for('ExplicitMessage')]
+  const injectVersion = 20220813
+  const win = typeof unsafeWindow === 'object' ? unsafeWindow : window
+  const m = win[Symbol.for('ExplicitMessage')]
   for (const n of ['log', 'debug', 'info', 'warn', 'error']) {
     const log = console[n]
     console[n] = (...args) => {
