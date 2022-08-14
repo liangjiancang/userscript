@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站封面获取
-// @version         5.8.5.20220813
+// @version         5.8.6.20220814
 // @namespace       laster2800
 // @author          Laster2800
 // @description     获取B站各播放页及直播间封面，支持手动及实时预览等多种模式，支持点击下载、封面预览、快速复制，可高度自定义
@@ -665,10 +665,20 @@
         const ref = await api.wait.$(gm.runtime.realtimeSelector)
         const cover = ref.insertAdjacentElement(gm.runtime.realtimePosition, document.createElement('a'))
         cover.id = `${gm.id}-realtime-cover`
-        // B站会将一些容器设置为 pointer-events: none，然后再针对其中的元素将它们设置回可交互的
-        // 不是很懂这种设计的意义何在，反正这里假定实时预览元素在不可交互容器内（事实上就 2022.07 而言，默认位置确实如此）
+        // 实时封面元素生成会导致页面中某些元素发生位置变动，若用户在刚打开页面时便去点击这些元素，可能会
+        // 误点到刚生成的实时封面元素上，产生预期外的影响。为了将这种影响降至最少，实时封面元素在刚生成时
+        // 应该是不可交互的，待位置变动结束一段时间后再恢复可交互状态。
+        cover.style.pointerEvents = 'none'
+        // 2022 版将绝大多数常见元素默认设为 pointer-event: none，再通过样式将部分元素设置回可交互的
+        // 这里假定实时预览元素被设为不可交互的（就 2022.07 而言确实如此），最后要设为 auto 而非单纯清掉
         // 不要写进样式表，避免被不清楚原理的用户用样式覆盖掉
-        cover.style.pointerEvents = 'auto'
+        const peCover = () => {
+          if (cover.style.pointerEvents === 'none') {
+            setTimeout(() => {
+              cover.style.pointerEvents = 'auto'
+            }, 1357)
+          }
+        }
         cover.img = cover.appendChild(document.createElement('img'))
         // 首次加载待完成再显示，避免观察到加载过程；后续加载浏览器会做优化，无需再手动处理
         // 不要写进样式表，避免被不清楚原理的用户用样式覆盖掉
@@ -678,6 +688,7 @@
         cover.img.addEventListener('load', () => {
           cover.img.style.display = ''
           cover.error.style.display = ''
+          peCover()
         })
         cover.img.addEventListener('error', /** @param {Event} e */ e => {
           const { img } = cover
@@ -695,6 +706,7 @@
             cover.error.style.display = 'block'
             api.logger.error(e)
           }
+          peCover()
         })
         if (gm.runtime.realtimeStyle !== 'disable') {
           api.base.addStyle(gm.runtime.realtimeStyle)
