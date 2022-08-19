@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.28.11.20220813
+// @version         4.29.0.20220819
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -4685,13 +4685,33 @@
         return false
       }
 
+      const vueData = listContainer.__vue__.listData
       for (const [idx, item] of items.entries()) {
-        if (item.serial != null) {
+        if (item._uninit) {
+          delete item._uninit
+        } else if (item.serial != null) {
           item.serial = idx
           continue
         }
         // info
-        const d = data[idx]
+        const targetBvid = vueData[idx].bvid
+        let d = data[idx]
+        // 若页面完全正常加载，item[idx] 与 data[idx] 一一对应，然而现实情况并无法保证这种对应关系
+        // 只用 idx 来对应，每周总会出现两三次对应错误，非常恼火，终究还是得借助 vueData 来确保数据同步
+        if (d.bvid !== targetBvid) {
+          d = null
+          for (const e of data) {
+            if (e.bvid === targetBvid) {
+              d = e
+              break
+            }
+          }
+          if (!d) {
+            item.serial = idx
+            item._uninit = true
+            continue
+          }
+        }
         item.state = d.state
         item.serial = idx
         item.aid = String(d.aid)
@@ -5002,6 +5022,14 @@
           let result = 0
           const va = a[k]
           const vb = b[k]
+
+          // 无数据时排在最后（出现在未初始化的 item 上）
+          if (va == null) {
+            return 1
+          } else if (vb == null) {
+            return -1
+          }
+
           if (typeof va === 'string') {
             result = va.localeCompare(vb)
           } else {

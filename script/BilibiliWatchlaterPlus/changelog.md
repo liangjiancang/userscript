@@ -2,6 +2,10 @@
 
 本日志只记录用户友好的更新说明，影响不大的问题修复与修改不作记录，具体修改见 [提交记录](https://gitee.com/liangjiancang/userscript/commits/master/script/BilibiliWatchlaterPlus)。
 
+## V4.29
+
+1. 列表页面：彻底修复页内刷新后，重新处理列表页面时，数据对应可能出现错误的问题。
+
 ## V4.28
 
 1. 列表页面：提供「刷新列表」按钮，点击可触发页内刷新。
