@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.29.0.20220819
+// @version         4.29.1.20220826
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -4694,23 +4694,16 @@
           continue
         }
         // info
-        const targetBvid = vueData[idx].bvid
-        let d = data[idx]
-        // 若页面完全正常加载，item[idx] 与 data[idx] 一一对应，然而现实情况并无法保证这种对应关系
-        // 只用 idx 来对应，每周总会出现两三次对应错误，非常恼火，终究还是得借助 vueData 来确保数据同步
-        if (d.bvid !== targetBvid) {
-          d = null
-          for (const e of data) {
-            if (e.bvid === targetBvid) {
-              d = e
-              break
-            }
-          }
-          if (!d) {
-            item.serial = idx
-            item._uninit = true
-            continue
-          }
+        const d = data[idx]
+        const vueBvid = vueData[idx].bvid
+        const itemBvid = this.method.getBvid(item.querySelector('a.t').href)
+        // 若页面正常加载，item[idx]、data[idx]、vueData[idx] 必然一一对应，如果不对应则必有一方出问题
+        if (itemBvid !== vueBvid || d.bvid !== vueBvid) {
+          item.serial = idx
+          item._uninit = true
+          api.logger.error('item[idx]、data[idx]、vueData[idx] 无法建立对应关系：')
+          api.logger.error(item, d, vueData[idx])
+          continue
         }
         item.state = d.state
         item.serial = idx
