@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.29.1.20220826
+// @version         4.29.2.20220910
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -4402,9 +4402,7 @@
       reload.textContent = '刷新列表'
       reload.className = 's-btn'
       r_con.prepend(reload)
-      reload.addEventListener('click', () => {
-        this.reloadWatchlaterListPage()
-      })
+      reload.addEventListener('click', () => this.reloadWatchlaterListPage())
 
       // 增加搜索框
       if (gm.config.listSearch) {
@@ -4685,6 +4683,7 @@
         return false
       }
 
+      let success = true
       const vueData = listContainer.__vue__.listData
       for (const [idx, item] of items.entries()) {
         if (item._uninit) {
@@ -4703,6 +4702,8 @@
           item._uninit = true
           api.logger.error('item[idx]、data[idx]、vueData[idx] 无法建立对应关系：')
           api.logger.error(item, d, vueData[idx])
+          processItem(item)
+          success = false
           continue
         }
         item.state = d.state
@@ -4719,7 +4720,7 @@
         }
         item.progress = (d.videos > 1 && d.progress > 0) ? d.duration : d.progress
 
-        initItem(item)
+        processItem(item)
         for (const link of item.querySelectorAll('a:not([class=user])')) {
           processLink(item, link, autoRemoveControl)
         }
@@ -4747,14 +4748,34 @@
 
         this.handleAutoReloadWatchlaterListPage()
       }
-      return true
+      return success
 
       /**
-       * 初始化项目
+       * 处理项目
+       *
+       * 初始化正常项目，给非正常项目添加初始化失败提示。
        * @param {HTMLElement} item 目标项元素
        */
-      function initItem(item) {
+      function processItem(item) {
         const state = item.querySelector('.info .state')
+
+        let tooltip = item.querySelector('.gm-list-item-fail-tooltip')
+        if (item._uninit) {
+          if (!tooltip) {
+            tooltip = document.createElement('span')
+            tooltip.className = 'gm-list-item-fail-tooltip'
+            tooltip.textContent = '初始化失败'
+            tooltip.addEventListener('click', () => webpage.reloadWatchlaterListPage())
+            api.message.hoverInfo(tooltip, '稿件初始化失败，点击失败提示或「刷新列表」可重新初始化稿件。如果仍然无法解决问题，请重新加载页面。', null, { width: '25em' })
+            state.append(tooltip)
+          }
+          return
+        } else {
+          if (tooltip) {
+            tooltip.remove()
+          }
+        }
+
         state.insertAdjacentHTML('beforeend', `
           <span class="gm-list-item-tools">
             <span class="gm-list-item-fixer" title="${gm.const.fixerHint}">固定</span>
@@ -6082,10 +6103,19 @@
           .watch-later-list .btn-del {
             display: none;
           }
-          .watch-later-list .gm-list-item-tools {
+          .watch-later-list .gm-list-item-fail-tooltip {
+            font-weight: bold;
+            text-decoration: underline;
+          }
+          .watch-later-list .gm-list-item-fail-tooltip:hover {
+            color: black;
+          }
+          .watch-later-list .gm-list-item-tools,
+          .watch-later-list .gm-list-item-fail-tooltip {
             color: #999;
           }
-          .watch-later-list .gm-list-item-tools > * {
+          .watch-later-list .gm-list-item-tools > *,
+          .watch-later-list .gm-list-item-fail-tooltip {
             margin: 0 5px;
             cursor: pointer;
           }
