@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.29.2.20220910
+// @version         4.29.3.20220917
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -4653,7 +4653,7 @@
     /**
      * 对稍后再看列表页面进行处理
      * @param {boolean} byReload 由页内刷新触发
-     * @returns {Promise<boolean>} 是否成功处理
+     * @returns {Promise<0 | 1 | 2>} 处理状态 - [0]初始化失败 | [1]存在处理错误的项目 | [2]成功
      */
     async processWatchlaterListPage(byReload) {
       const _self = this
@@ -4680,10 +4680,10 @@
         } else {
           api.message.alert('加载稍后再看列表数据失败，无法处理稍后再看列表页面。你可以刷新标签页以重试（点击「刷新列表」按钮无法确保完整的处理）。')
         }
-        return false
+        return 0
       }
 
-      let success = true
+      let success = 2
       const vueData = listContainer.__vue__.listData
       for (const [idx, item] of items.entries()) {
         if (item._uninit) {
@@ -4703,7 +4703,7 @@
           api.logger.error('item[idx]、data[idx]、vueData[idx] 无法建立对应关系：')
           api.logger.error(item, d, vueData[idx])
           processItem(item)
-          success = false
+          success = 1
           continue
         }
         item.state = d.state
@@ -5082,8 +5082,9 @@
         }
         // 虽然 state === 'loaded'，但事实上 DOM 未调整完毕，需要等待一小段时间
         await new Promise(resolve => setTimeout(resolve, 400))
-        success = await this.processWatchlaterListPage(true)
-        if (success) {
+        const status = await this.processWatchlaterListPage(true)
+        success = status === 2
+        if (status >= 1) {
           if (gm.config.removeHistory) {
             this.method.updateRemoveHistoryData()
           }
