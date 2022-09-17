@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.29.3.20220917
+// @version         4.29.4.20220917
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -4694,12 +4694,18 @@
         }
         // info
         const d = data[idx]
-        const vueBvid = vueData[idx].bvid
-        const itemBvid = this.method.getBvid(item.querySelector('a.t').href)
+        const vd = vueData[idx]
+        const vueBvid = vd.bvid
+        // 稿件失效时 a.t href 为空，不妨使用 vueBvid 代替（不一定准确）
+        const itemBvid = this.method.getBvid(item.querySelector('a.t').href) ?? vueBvid
         // 若页面正常加载，item[idx]、data[idx]、vueData[idx] 必然一一对应，如果不对应则必有一方出问题
         if (itemBvid !== vueBvid || d.bvid !== vueBvid) {
-          item.serial = idx
           item._uninit = true
+          // 这里附加一些绝对正确的属性，使得初始化失败的情况下依然能使用一些基本功能
+          item.state = itemBvid === vueBvid ? vd.state : -987.654
+          item.serial = idx
+          item.aid = this.method.bvTool.bv2av(itemBvid)
+          item.bvid = itemBvid
           api.logger.error('item[idx]、data[idx]、vueData[idx] 无法建立对应关系：')
           api.logger.error(item, d, vueData[idx])
           processItem(item)
@@ -4769,12 +4775,13 @@
             api.message.hoverInfo(tooltip, '稿件初始化失败，点击失败提示或「刷新列表」可重新初始化稿件。如果仍然无法解决问题，请重新加载页面。', null, { width: '25em' })
             state.append(tooltip)
           }
-          return
         } else {
           if (tooltip) {
             tooltip.remove()
           }
         }
+
+        if (state.querySelector('.gm-list-item-tools')) return
 
         state.insertAdjacentHTML('beforeend', `
           <span class="gm-list-item-tools">
