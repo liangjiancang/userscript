@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.29.4.20220917
+// @version         4.29.5.20220918
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -20,9 +20,9 @@
 // @exclude         *://www.bilibili.com/page-proxy/*
 // @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=1081030
 // @require         https://greasyfork.org/scripts/431998-userscriptapidom/code/UserscriptAPIDom.js?version=1005139
-// @require         https://greasyfork.org/scripts/432000-userscriptapimessage/code/UserscriptAPIMessage.js?version=1055883
+// @require         https://greasyfork.org/scripts/432000-userscriptapimessage/code/UserscriptAPIMessage.js?version=1095149
 // @require         https://greasyfork.org/scripts/432002-userscriptapiwait/code/UserscriptAPIWait.js?version=1035042
-// @require         https://greasyfork.org/scripts/432003-userscriptapiweb/code/UserscriptAPIWeb.js?version=977807
+// @require         https://greasyfork.org/scripts/432003-userscriptapiweb/code/UserscriptAPIWeb.js?version=1095148
 // @require         https://greasyfork.org/scripts/432936-pushqueue/code/PushQueue.js?version=978730
 // @require         https://greasyfork.org/scripts/432807-inputnumber/code/InputNumber.js?version=1068774
 // @grant           GM_registerMenuCommand
@@ -4693,24 +4693,39 @@
           continue
         }
         // info
-        const d = data[idx]
+        let d = data[idx]
         const vd = vueData[idx]
         const vueBvid = vd.bvid
         // 稿件失效时 a.t href 为空，不妨使用 vueBvid 代替（不一定准确）
         const itemBvid = this.method.getBvid(item.querySelector('a.t').href) ?? vueBvid
-        // 若页面正常加载，item[idx]、data[idx]、vueData[idx] 必然一一对应，如果不对应则必有一方出问题
+        // 若页面正常加载，DOM、VUE、DATA 理应一一对应
         if (itemBvid !== vueBvid || d.bvid !== vueBvid) {
-          item._uninit = true
-          // 这里附加一些绝对正确的属性，使得初始化失败的情况下依然能使用一些基本功能
-          item.state = itemBvid === vueBvid ? vd.state : -987.654
-          item.serial = idx
-          item.aid = this.method.bvTool.bv2av(itemBvid)
-          item.bvid = itemBvid
-          api.logger.error('item[idx]、data[idx]、vueData[idx] 无法建立对应关系：')
-          api.logger.error(item, d, vueData[idx])
-          processItem(item)
-          success = 1
-          continue
+          let error = true
+          // DOM、VUE 在绝大多数情况下都是一致的，不必关注
+          // 但 DOM / VUE 偶尔会出现相邻两项顺序调换的情况，这会使得与 DATA 不一致
+          // 这种情况很诡异，不知道怎么发生的，而且多刷新几遍 DOM / VUE 中的顺序又可能会变成正确的
+          // 由于这种情况的发生过于频繁，如果列表较大几乎必出现，不得不将 DATA 遍历一遍以最大程度地修正这一问题
+          if (itemBvid === vueBvid) {
+            for (const e of data) {
+              if (e.bvid === itemBvid) {
+                d = e
+                error = false
+                break
+              }
+            }
+          }
+          if (error) {
+            item._uninit = true
+            // 这里附加一些绝对正确的属性，使得初始化失败的情况下依然能使用一些基本功能
+            item.state = itemBvid === vueBvid ? vd.state : -987.654
+            item.serial = idx
+            item.aid = this.method.bvTool.bv2av(itemBvid)
+            item.bvid = itemBvid
+            api.logger.error('DOM-VUE-DATA 不一致', item.bvid, `${vueBvid}(${vd.title?.slice(0, 6) ?? '[NO TITLE]'})`, `${d.bvid}(${d.title?.slice(0, 6) ?? '[NO TITLE]'})`)
+            processItem(item)
+            success = 1
+            continue
+          }
         }
         item.state = d.state
         item.serial = idx
@@ -4772,7 +4787,7 @@
             tooltip.className = 'gm-list-item-fail-tooltip'
             tooltip.textContent = '初始化失败'
             tooltip.addEventListener('click', () => webpage.reloadWatchlaterListPage())
-            api.message.hoverInfo(tooltip, '稿件初始化失败，点击失败提示或「刷新列表」可重新初始化稿件。如果仍然无法解决问题，请重新加载页面。', null, { width: '25em' })
+            api.message.hoverInfo(tooltip, '稿件初始化失败，部分功能在该稿件上无法正常使用。点击失败提示或「刷新列表」可重新初始化稿件。如果仍然无法解决问题，请重新加载页面。', null, { width: '25em' })
             state.append(tooltip)
           }
         } else {
