@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.29.5.20220918
+// @version         4.29.6.20220918
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -4787,7 +4787,7 @@
             tooltip.className = 'gm-list-item-fail-tooltip'
             tooltip.textContent = '初始化失败'
             tooltip.addEventListener('click', () => webpage.reloadWatchlaterListPage())
-            api.message.hoverInfo(tooltip, '稿件初始化失败，部分功能在该稿件上无法正常使用。点击失败提示或「刷新列表」可重新初始化稿件。如果仍然无法解决问题，请重新加载页面。', null, { width: '25em' })
+            api.message.hoverInfo(tooltip, '稿件初始化失败，部分功能在该稿件上无法正常使用。点击失败提示或「刷新列表」可重新初始化稿件。如果仍然无法解决问题，请重新加载页面。')
             state.append(tooltip)
           }
         } else {
