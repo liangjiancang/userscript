@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.29.6.20220918
+// @version         4.29.7.20220928
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -4717,7 +4717,7 @@
           if (error) {
             item._uninit = true
             // 这里附加一些绝对正确的属性，使得初始化失败的情况下依然能使用一些基本功能
-            item.state = itemBvid === vueBvid ? vd.state : -987.654
+            item.state = itemBvid === vueBvid ? vd.state : 0
             item.serial = idx
             item.aid = this.method.bvTool.bv2av(itemBvid)
             item.bvid = itemBvid
