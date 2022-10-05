@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.29.7.20220928
+// @version         4.29.8.20221006
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -4913,7 +4913,8 @@
        * @param {HTMLElement} [arc] 自动移除按钮，为 `null` 时表示彻底禁用自动移除功能
        */
       function processLink(base, link, arc) {
-        if (base.state >= 0) { // 过滤视频被和谐或其他特殊情况
+        // 过滤视频被和谐或其他特殊情况，注意存在 state == 0 稿件却不可用的情况
+        if (base.state >= 0 || !link.href) {
           link.target = gm.config.openListVideo === Enums.openListVideo.openInCurrent ? '_self' : '_blank'
           if (gm.config.redirect) {
             link.href = `${gm.url.page_videoNormalMode}/${base.bvid}`
