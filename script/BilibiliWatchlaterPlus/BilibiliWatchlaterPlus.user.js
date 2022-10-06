@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.29.8.20221006
+// @version         4.29.9.20221006
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -4887,9 +4887,14 @@
           script.clearFixedItems()
         })
 
+        // 存在 state == 0 稿件却不可用的情况，此时将稿件标识为未知状态
+        const title = item.querySelector('.av-about .t')
+        const href = title.getAttribute('href')
+        if (!href || href === '') {
+          item.state = -20221006
+        }
         if (item.state < 0) {
           item.classList.add('gm-invalid')
-          const title = item.querySelector('.av-about .t')
           title.innerHTML = `<b>[${_self.method.getItemStateDesc(item.state)}]</b> ${title.textContent}`
         }
 
@@ -4913,8 +4918,8 @@
        * @param {HTMLElement} [arc] 自动移除按钮，为 `null` 时表示彻底禁用自动移除功能
        */
       function processLink(base, link, arc) {
-        // 过滤视频被和谐或其他特殊情况，注意存在 state == 0 稿件却不可用的情况
-        if (base.state >= 0 || !link.href) {
+        // 过滤视频被和谐或其他特殊情况
+        if (base.state >= 0) {
           link.target = gm.config.openListVideo === Enums.openListVideo.openInCurrent ? '_self' : '_blank'
           if (gm.config.redirect) {
             link.href = `${gm.url.page_videoNormalMode}/${base.bvid}`
