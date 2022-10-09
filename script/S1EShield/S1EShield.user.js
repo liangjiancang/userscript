@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            S1战斗力屏蔽
-// @version         3.9.0.20220813
+// @version         3.9.1.20221009
 // @namespace       laster2800
 // @author          Laster2800
 // @description     屏蔽S1的战斗力系统，眼不见为净
@@ -103,7 +103,7 @@
             // 常规情况下，此时 title 仍未被改变，添加一个 ob 来跟踪变化
             const ob = new MutationObserver(replaceTitle)
             ob.observe(title, { childList: true })
-            // 若在后台打开新标签页后很长时间都不切换过去，则切换过去时 title 可能已发生变化需立即处理
+            // 若在后台打开新页面后很长时间都不切换过去，则切换过去时 title 可能已发生变化需立即处理
             replaceTitle()
           })
         }

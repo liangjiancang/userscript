@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站封面获取
-// @version         5.8.8.20220918
+// @version         5.8.9.20221009
 // @namespace       laster2800
 // @author          Laster2800
 // @description     获取B站各播放页及直播间封面，支持手动及实时预览等多种模式，支持点击下载、封面预览、快速复制，可高度自定义
@@ -94,9 +94,9 @@
     const: {
       hintText: `
         <div style="display:grid;grid-template-columns:auto auto;column-gap:1.5em;font-size:0.8em">
-          <div>左键：下载 / 在新标签页打开</div>
+          <div>左键：下载 / 在新页面打开</div>
           <div>右键：复制链接 / 内容</div>
-          <div>中键：在新标签页打开</div>
+          <div>中键：在新页面打开</div>
           <div>Ctrl+右键：复制内容 / 链接</div>
         </div>
       `,
@@ -481,7 +481,7 @@
               this.download(target.href, document.title)
             }
           })
-          // 开启下载时，若没有以下处理器，则鼠标左键长按图片按钮，过一段时间后再松开，松开时依然会触发默认点击事件（在新标签页打开封面）
+          // 开启下载时，若没有以下处理器，则鼠标左键长按图片按钮，过一段时间后再松开，松开时依然会触发默认点击事件（在新页面打开封面）
           target.addEventListener('click', e => {
             if (target.loaded && gm.config.download) {
               e.preventDefault()
