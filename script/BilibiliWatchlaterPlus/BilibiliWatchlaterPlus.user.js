@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.29.9.20221006
+// @version         4.30.0.20221009
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -81,6 +81,7 @@
       openUserSetting: 'openUserSetting',
       openRemoveHistory: 'openRemoveHistory',
       openBatchAddManager: 'openBatchAddManager',
+      exportWatchlaterList: 'exportWatchlaterList',
       noOperation: 'noOperation',
     },
     /**
@@ -213,6 +214,8 @@
    * @property {boolean} headerMenuAutoRemoveControl 弹出面板自动移除控制器
    * @property {boolean} headerMenuFnSetting 弹出面板：设置
    * @property {boolean} headerMenuFnHistory 弹出面板：历史
+   * @property {boolean} headerMenuFnExport 弹出面板：导出
+   * @property {boolean} headerMenuFnBatchAdd 弹出面板：批量添加
    * @property {boolean} headerMenuFnRemoveAll 弹出面板：清空
    * @property {boolean} headerMenuFnRemoveWatched 弹出面板：移除已看
    * @property {boolean} headerMenuFnShowAll 弹出面板：显示
@@ -239,7 +242,9 @@
    * @property {boolean} listSearch 列表页面搜索框
    * @property {boolean} listSortControl 列表页面排序控制器
    * @property {boolean} listAutoRemoveControl 列表页面自动移除控制器
+   * @property {boolean} listExportWatchlaterListButton 列表页面列表导出按钮
    * @property {boolean} listBatchAddManagerButton 列表页面批量添加管理器按钮
+   * @property {boolean} removeButton_playAll 移除「全部播放」按钮
    * @property {boolean} removeButton_removeAll 移除「一键清空」按钮
    * @property {boolean} removeButton_removeWatched 移除「移除已观看视频」按钮
    * @property {boolean} headerCompatible 兼容第三方顶栏
@@ -383,14 +388,14 @@
   const gm = {
     id: gmId,
     configVersion: GM_getValue('configVersion'),
-    configUpdate: 20220710,
+    configUpdate: 20221009,
     searchParams: new URL(location.href).searchParams,
     config: {},
     configMap: {
       headerButton: { default: true, attr: 'checked' },
-      headerButtonOpL: { default: Enums.headerButtonOp.openListInCurrent, attr: 'value', configVersion: 20210902.1 },
-      headerButtonOpR: { default: Enums.headerButtonOp.openUserSetting, attr: 'value', configVersion: 20210902.1 },
-      headerButtonOpM: { default: Enums.headerButtonOp.openListInNew, attr: 'value', configVersion: 20210902.1 },
+      headerButtonOpL: { default: Enums.headerButtonOp.openListInCurrent, attr: 'value', configVersion: 20221008 },
+      headerButtonOpR: { default: Enums.headerButtonOp.openUserSetting, attr: 'value', configVersion: 20221008 },
+      headerButtonOpM: { default: Enums.headerButtonOp.openListInNew, attr: 'value', configVersion: 20221008 },
       headerMenu: { default: Enums.headerMenu.enable, attr: 'value', configVersion: 20210706 },
       openHeaderMenuLink: { default: Enums.openHeaderMenuLink.openInCurrent, attr: 'value', configVersion: 20200717 },
       headerMenuKeepRemoved: { default: true, attr: 'checked', needNotReload: true, configVersion: 20210724 },
@@ -399,6 +404,8 @@
       headerMenuAutoRemoveControl: { default: true, attr: 'checked', configVersion: 20210723 },
       headerMenuFnSetting: { default: true, attr: 'checked', configVersion: 20210322 },
       headerMenuFnHistory: { default: true, attr: 'checked', configVersion: 20210322 },
+      headerMenuFnExport: { default: false, attr: 'checked', configVersion: 20221008 },
+      headerMenuFnBatchAdd: { default: false, attr: 'checked', configVersion: 20221008 },
       headerMenuFnRemoveAll: { default: false, attr: 'checked', configVersion: 20210322 },
       headerMenuFnRemoveWatched: { default: false, attr: 'checked', configVersion: 20210723 },
       headerMenuFnShowAll: { default: false, attr: 'checked', configVersion: 20210322 },
@@ -425,7 +432,9 @@
       listSearch: { default: true, attr: 'checked', configVersion: 20210810.1 },
       listSortControl: { default: true, attr: 'checked', configVersion: 20210810 },
       listAutoRemoveControl: { default: true, attr: 'checked', configVersion: 20210908 },
+      listExportWatchlaterListButton: { default: true, attr: 'checked', configVersion: 20221008 },
       listBatchAddManagerButton: { default: true, attr: 'checked', configVersion: 20210908 },
+      removeButton_playAll: { default: false, attr: 'checked', configVersion: 20221008 },
       removeButton_removeAll: { default: false, attr: 'checked', configVersion: 20200722 },
       removeButton_removeWatched: { default: false, attr: 'checked', configVersion: 20200722 },
       headerCompatible: { default: Enums.headerCompatible.none, attr: 'value', configVersion: 20220410 },
@@ -438,6 +447,7 @@
     infoMap: {
       clearRemoveHistoryData: {},
       watchlaterMediaList: { configVersion: 20210822 },
+      exportWatchlaterList: { configVersion: 20221008 },
       fixHeader: { configVersion: 20210810.1 },
     },
     runtime: {},
@@ -479,6 +489,7 @@
       batchAddRequestInterval: 350,
       fixerHint: '固定在列表最后，并禁用自动移除及排序功能\n右键点击可取消所有固定项',
       searchDefaultValueHint: '右键点击保存默认值，中键点击清空默认值\n当前默认值：$1',
+      exportWatchlaterList_default: '导出至剪贴板 = 是\n导出至新页面 = 否\n导出至文件 = 否\n稿件导出模板 = \'https://www.bilibili.com/video/${ITEM.bvid}\'',
     },
     panel: {
       setting: { state: 0, wait: 0, el: null },
@@ -764,7 +775,7 @@
           }
 
           // 功能性更新后更新此处配置版本，通过时跳过功能性更新设置，否则转至 readConfig() 中处理
-          if (gm.configVersion >= 20220710) {
+          if (gm.configVersion >= 20221009) {
             gm.configVersion = gm.configUpdate
             GM_setValue('configVersion', gm.configVersion)
           }
@@ -811,6 +822,7 @@
         // 稍后再看移除记录
         GM_registerMenuCommand('稍后再看移除记录', () => this.openRemoveHistory())
       }
+      GM_registerMenuCommand('导出稍后再看列表', () => this.exportWatchlaterList())
       // 强制初始化
       GM_registerMenuCommand('初始化脚本', () => this.resetScript())
     }
@@ -855,7 +867,7 @@
           itemsHTML += getItemHTML('全局功能', {
             desc: '在顶栏「动态」和「收藏」之间加入稍后再看入口，鼠标移至上方时弹出列表面板，支持点击功能设置。',
             html: `<label>
-              <span>在顶栏中加入稍后再看入口</span>
+              <span>顶栏稍后再看入口</span>
               <input id="gm-headerButton" type="checkbox">
             </label>`,
           }, {
@@ -892,7 +904,7 @@
               <span>在弹出面板中点击链接时</span>
               <select id="gm-openHeaderMenuLink">
                 <option value="${Enums.openHeaderMenuLink.openInCurrent}">在当前页面打开</option>
-                <option value="${Enums.openHeaderMenuLink.openInNew}">在新标签页打开</option>
+                <option value="${Enums.openHeaderMenuLink.openInNew}">在新页面打开</option>
               </select>
             </div>`,
           }, {
@@ -931,6 +943,12 @@
                   <span>历史</span><input id="gm-headerMenuFnHistory" type="checkbox">
                 </label>
                 <label class="gm-lineitem">
+                  <span>导出</span><input id="gm-headerMenuFnExport" type="checkbox">
+                </label>
+                <label class="gm-lineitem">
+                  <span>批量添加</span><input id="gm-headerMenuFnBatchAdd" type="checkbox">
+                </label>
+                <label class="gm-lineitem">
                   <span>清空</span><input id="gm-headerMenuFnRemoveAll" type="checkbox">
                 </label>
                 <label class="gm-lineitem">
@@ -948,14 +966,14 @@
           itemsHTML += getItemHTML('全局功能', {
             desc: '保留稍后再看列表中的数据，以查找出一段时间内将哪些视频移除出稍后再看，用于拯救误删操作。关闭该选项会将内部历史数据清除！',
             html: `<label>
-              <span>开启稍后再看移除记录</span>
+              <span>稍后再看移除记录</span>
               <input id="gm-removeHistory" type="checkbox">
               <span id="gm-rhWarning" class="gm-warning" title>⚠</span>
             </label>`,
           }, {
             desc: '选择在何时保存稍后再看历史数据。',
             html: `<div>
-              <span>为了生成移除记录，</span>
+              <span>为生成移除记录，</span>
               <select id="gm-removeHistorySavePoint">
                 <option value="${Enums.removeHistorySavePoint.list}">在打开列表页面时保存数据</option>
                 <option value="${Enums.removeHistorySavePoint.listAndMenu}">在打开列表页面或弹出面板时保存数据</option>
@@ -998,16 +1016,17 @@
             </div>`,
           })
           itemsHTML += getItemHTML('全局功能', {
+            html: '<div class="gm-holder-item">批量添加：</div>',
+          }, {
             desc: '在批量添加管理器中，执行加载步骤时是否加载关注者转发的稿件？',
             html: `<label>
-              <span>批量添加：加载关注者转发的稿件</span>
+              <span>加载关注者转发的稿件</span>
               <input id="gm-batchAddLoadForward" type="checkbox">
             </label>`,
-          })
-          itemsHTML += getItemHTML('全局功能', {
+          }, {
             desc: '在批量添加管理器中，执行时间同步后，是否自动执行稿件加载步骤？',
             html: `<label>
-              <span>批量添加：执行时间同步后是否自动加载稿件</span>
+              <span>执行时间同步后是否自动加载稿件</span>
               <span id="gm-balatsInformation" class="gm-information" title>💬</span>
               <input id="gm-batchAddLoadAfterTimeSync" type="checkbox">
             </label>`,
@@ -1059,6 +1078,13 @@
               <span id="gm-watchlaterMediaList" class="gm-info">设置</span>
             </div>`,
           })
+          itemsHTML += getItemHTML('全局功能', {
+            desc: '设置稍后再看列表导出方式。',
+            html: `<div>
+              <span>导出稍后再看列表</span>
+              <span id="gm-exportWatchlaterList" class="gm-info">设置</span>
+            </div>`,
+          })
           itemsHTML += getItemHTML('播放页面', {
             desc: '在播放页面中加入能将视频快速切换添加或移除出稍后再看列表的按钮。',
             html: `<label>
@@ -1106,7 +1132,7 @@
               <span>点击视频时</span>
               <select id="gm-openListVideo">
                 <option value="${Enums.openListVideo.openInCurrent}">在当前页面打开</option>
-                <option value="${Enums.openListVideo.openInNew}">在新标签页打开</option>
+                <option value="${Enums.openListVideo.openInNew}">在新页面打开</option>
               </select>
             </div>`,
           })
@@ -1118,46 +1144,44 @@
             </label>`,
           })
           itemsHTML += getItemHTML('列表页面', {
-            desc: '在列表页面显示搜索框。',
-            html: `<label>
-              <span>显示搜索框</span>
-              <input id="gm-listSearch" type="checkbox">
-            </label>`,
+            desc: '在列表页面显示……',
+            html: `<div>
+              <span>显示组件：</span>
+              <span class="gm-lineitems">
+                <label class="gm-lineitem">
+                  <span>搜索框</span><input id="gm-listSearch" type="checkbox">
+                </label>
+                <label class="gm-lineitem">
+                  <span>排序控制器</span><input id="gm-listSortControl" type="checkbox">
+                </label>
+                <label class="gm-lineitem">
+                  <span>自动移除控制器</span><input id="gm-listAutoRemoveControl" type="checkbox">
+                </label>
+                <label class="gm-lineitem">
+                  <span>列表导出按钮</span><input id="gm-listExportWatchlaterListButton" type="checkbox">
+                </label>
+                <label class="gm-lineitem">
+                  <span>批量添加管理器按钮</span><input id="gm-listBatchAddManagerButton" type="checkbox">
+                </label>
+              </span>
+            </div>`,
           })
           itemsHTML += getItemHTML('列表页面', {
-            desc: '在列表页面显示排序控制器。',
-            html: `<label>
-              <span>显示排序控制器</span>
-              <input id="gm-listSortControl" type="checkbox">
-            </label>`,
-          })
-          itemsHTML += getItemHTML('列表页面', {
-            desc: '在列表页面显示自动移除控制器。',
-            html: `<label>
-              <span>显示自动移除控制器</span>
-              <input id="gm-listAutoRemoveControl" type="checkbox">
-            </label>`,
-          })
-          itemsHTML += getItemHTML('列表页面', {
-            desc: '批量添加管理器可以将投稿批量添加到稍后再看。',
-            html: `<label>
-              <span>显示批量添加管理器按钮</span>
-              <input id="gm-listBatchAddManagerButton" type="checkbox">
-            </label>`,
-          })
-          itemsHTML += getItemHTML('列表页面', {
-            desc: '这个按钮太危险了……',
-            html: `<label>
-              <span>移除「一键清空」按钮</span>
-              <input id="gm-removeButton_removeAll" type="checkbox">
-            </label>`,
-          })
-          itemsHTML += getItemHTML('列表页面', {
-            desc: '这个按钮太危险了……',
-            html: `<label>
-              <span>移除「移除已观看视频」按钮</span>
-              <input id="gm-removeButton_removeWatched" type="checkbox">
-            </label>`,
+            desc: '在列表页面移除……',
+            html: `<div>
+              <span>移除组件：</span>
+              <span class="gm-lineitems">
+                <label class="gm-lineitem">
+                  <span>全部播放</span><input id="gm-removeButton_playAll" type="checkbox">
+                </label>
+                <label class="gm-lineitem">
+                  <span>一键清空</span><input id="gm-removeButton_removeAll" type="checkbox">
+                </label>
+                <label class="gm-lineitem">
+                  <span>移除已观看视频</span><input id="gm-removeButton_removeWatched" type="checkbox">
+                </label>
+              </span>
+            </div>`,
           })
           itemsHTML += getItemHTML('相关调整', {
             desc: '无须兼容第三方顶栏时务必选择「无」，否则脚本无法正常工作！\n若列表中没有提供你需要的第三方顶栏，且该第三方顶栏有一定用户基数，可在脚本反馈页发起请求。',
@@ -1332,14 +1356,15 @@
 
           el.headerButtonOpL.innerHTML = el.headerButtonOpR.innerHTML = el.headerButtonOpM.innerHTML = `
             <option value="${Enums.headerButtonOp.openListInCurrent}">在当前页面打开列表页面</option>
-            <option value="${Enums.headerButtonOp.openListInNew}">在新标签页打开列表页面</option>
+            <option value="${Enums.headerButtonOp.openListInNew}">在新页面打开列表页面</option>
             <option value="${Enums.headerButtonOp.playAllInCurrent}">在当前页面播放全部</option>
-            <option value="${Enums.headerButtonOp.playAllInNew}">在新标签页播放全部</option>
+            <option value="${Enums.headerButtonOp.playAllInNew}">在新页面播放全部</option>
             <option value="${Enums.headerButtonOp.clearWatchlater}">清空稍后再看</option>
             <option value="${Enums.headerButtonOp.clearWatchedInWatchlater}">移除稍后再看已观看视频</option>
             <option value="${Enums.headerButtonOp.openUserSetting}">打开用户设置</option>
             <option value="${Enums.headerButtonOp.openRemoveHistory}">打开稍后再看移除记录</option>
             <option value="${Enums.headerButtonOp.openBatchAddManager}">打开批量添加管理器</option>
+            <option value="${Enums.headerButtonOp.exportWatchlaterList}">导出稍后再看列表</option>
             <option value="${Enums.headerButtonOp.noOperation}">不执行操作</option>
           `
         }
@@ -1412,6 +1437,7 @@
               api.message.info('已保存稍后再看收藏夹设置')
             }
           })
+          el.exportWatchlaterList.addEventListener('click', () => this.setExportWatchlaterList())
           if (type > 0) {
             if (type === 2) {
               el.save.title = '向下滚动……'
@@ -1789,7 +1815,7 @@
               api.message.info(`已同步到 ${new Date(target.val).toLocaleString()}`)
             }
           })
-          // 避免不同标签页中脚本实例互相影响而产生的同步时间错误
+          // 避免不同页面中脚本实例互相影响而产生的同步时间错误
           GM_addValueChangeListener('batchLastAddTime', (name, oldVal, newVal, remote) => remote && setLastAddTime(newVal))
 
           // 非选显示
@@ -2491,6 +2517,123 @@
       }
       return false
     }
+
+    /**
+     * 导出稍后再看列表
+     */
+    async exportWatchlaterList() {
+      try {
+        const ITEMS = await gm.data.watchlaterListData(true)
+
+        /* eslint-disable no-eval */
+        /* eslint-disable no-unused-vars */
+        const 是 = true
+        const 否 = false
+        /* eslint-disable prefer-const */
+        let 导出至剪贴板 = true
+        let 导出至新页面 = false
+        let 导出至文件 = false
+        let 导出文件名 = null
+        let 相邻稿件换行 = true
+        let 前置内容 = null
+        let 后置内容 = null
+        let 稿件导出模板 = null
+        /* eslint-enable prefer-const */
+
+        let config = GM_getValue('exportWatchlaterListConfig')
+        if (!config || config.trim() === '') {
+          config = gm.const.exportWatchlaterList_default
+          GM_setValue('exportWatchlaterListConfig', config)
+        }
+        eval(config)
+
+        const front = 前置内容 ? eval('`' + 前置内容 + '`') : ''
+        const rear = 后置内容 ? eval('`' + 后置内容 + '`') : ''
+        const items = []
+        for (const [idx, ITEM] of ITEMS.entries()) {
+          const INDEX = idx + 1
+          items.push(eval('`' + 稿件导出模板 + '`'))
+        }
+
+        if (导出至剪贴板 || 导出至文件) {
+          const content = `${front}${相邻稿件换行 ? items.join('\n') : items.join('')}${rear}`
+          if (导出至剪贴板) {
+            await navigator.clipboard.writeText(content).then(
+              () => api.message.info('稍后再看列表已导出至剪贴板'),
+              () => api.message.info('稍后再看列表写入剪贴板失败', 3000),
+            )
+          }
+          if (导出至文件) {
+            const filename = 导出文件名 ? eval('`' + 导出文件名 + '`') : `'稍后再看列表.${Date.now()}.txt`
+            const file = new Blob([content], { type: 'text/plain' })
+            const a = document.createElement('a')
+            a.href = URL.createObjectURL(file)
+            a.download = filename
+            a.click()
+          }
+        }
+        if (导出至新页面) {
+          const center = 相邻稿件换行 ? items.join('</p><p>') : items.join('')
+          const content = `${front !== '' ? `<p>${front}</p>` : ''}<p>${center}</p>${rear !== '' ? `<p>${rear}</p>` : ''}`.replace(/\n(?!<\/p>)/g, '<br>').replaceAll('\n', '')
+          const w = window.open()
+          w.document.write(content)
+          w.document.close()
+          w.document.title = `稍后再看列表@${new Date().toLocaleString()}`
+        }
+        /* eslint-enable no-eval */
+        /* eslint-enable no-unused-vars */
+      } catch (e) {
+        api.logger.error(e)
+        const result = await api.message.confirm('稍后再看列表导出失败，可能是导出方式配置错误（错误信息详见控制台）。是否打开导出设置？')
+        if (result) {
+          this.setExportWatchlaterList()
+        }
+      }
+    }
+
+    /**
+     * 设置稍后再看列表导出方式
+     */
+    setExportWatchlaterList() {
+      const msg = '设置稍后再看列表导出方式。默认情况下简单地导出各稿件的普通播放页 URL 到剪贴板，如需使用其他导出模板或使用文件等方式导出，请参考「示例」进行定义。置空时使用默认值。'
+      const btnText = ['示例', '重置', '确定', '取消']
+      const dialog = api.message.dialog(msg, {
+        buttons: btnText,
+        boxInput: true,
+      })
+      const [input, example, reset, confirm, cancel] = dialog.interactives
+      input.value = GM_getValue('exportWatchlaterListConfig') ?? ''
+      input.style.height = '20em'
+      input.style.fontSize = '0.8em'
+      input.style.fontFamily = 'monospace'
+      input.focus({ preventScroll: true })
+      example.addEventListener('click', async () => {
+        let ref = ''
+        const data = await gm.data.watchlaterListData(true)
+        if (data[0]) {
+          const attrs = []
+          for (const attr in data[0]) {
+            if (Object.prototype.hasOwnProperty.call(data[0], attr)) {
+              attrs.push(attr)
+            }
+          }
+          ref = `//    ITEM 属性如下行所示，可在点击「示例」后在控制台查看详细内容结构\n//      ${attrs.join(', ')}\n`
+          api.logger.info('ITEM 内容结构如下：')
+          api.logger.info(data[0])
+        }
+        input.value = `// 不需要的配置直接删除行即可，缺省配置会使用默认值\n// 使用 \${} 引用变量，配合单引号 '' 或双引号 "" 使用（而非反引号 \`\`）\n// - \${INDEX}: 稿件在列表中的位置（从 1 开始）\n// - \${ITEMS}: 稿件项目数组\n// -  \${ITEM}: 稿件项目\n${ref}\n导出至剪贴板 = 否\n导出至新页面 = 否\n导出至文件 = 是\n导出文件名 = '稍后再看列表.\${Date.now()}.txt' // 注意文件名是否合法\n相邻稿件换行 = 是\n\n前置内容 = '稍后再看列表@\${new Date().toLocaleString()}\\n'\n后置内容 = '\\n--------------- 共 \${ITEMS.length} 个稿件 ---------------'\n稿件导出模板 = '[\${INDEX}] www.bilibili.com/video/\${ITEM.bvid}'`
+      })
+      reset.addEventListener('click', () => {
+        input.value = gm.const.exportWatchlaterList_default
+      })
+      confirm.addEventListener('click', () => {
+        dialog.close()
+        GM_setValue('exportWatchlaterListConfig', input.value)
+        api.message.info('已保存稍后再看列表导出设置')
+      })
+      cancel.addEventListener('click', () => dialog.close())
+      dialog.open()
+    }
   }
 
   /**
@@ -3120,6 +3263,9 @@
             case Enums.headerButtonOp.openBatchAddManager:
               script.openBatchAddManager()
               break
+            case Enums.headerButtonOp.exportWatchlaterList:
+              script.exportWatchlaterList()
+              break
             default:
               break
           }
@@ -3276,6 +3422,8 @@
                 <div class="gm-entry-bottom">
                   <a class="gm-entry-button" fn="setting">设置</a>
                   <a class="gm-entry-button" fn="history">历史</a>
+                  <a class="gm-entry-button" fn="export" title="右键点击可进行导出设置">导出</a>
+                  <a class="gm-entry-button" fn="batchAdd">批量添加</a>
                   <a class="gm-entry-button" fn="removeAll">清空</a>
                   <a class="gm-entry-button" fn="removeWatched">移除已看</a>
                   <a class="gm-entry-button" fn="showAll" href="${gm.url.page_watchlaterList}" target="${target}">显示</a>
@@ -3551,6 +3699,18 @@
             if (gm.config.headerMenuFnHistory) {
               el.entryFn.history.setAttribute('enabled', '')
               el.entryFn.history.addEventListener('click', () => script.openRemoveHistory())
+            }
+            if (gm.config.headerMenuFnExport) {
+              el.entryFn.export.setAttribute('enabled', '')
+              el.entryFn.export.addEventListener('click', () => script.exportWatchlaterList())
+              el.entryFn.export.addEventListener('contextmenu', e => {
+                e.preventDefault()
+                script.setExportWatchlaterList()
+              })
+            }
+            if (gm.config.headerMenuFnBatchAdd) {
+              el.entryFn.batchAdd.setAttribute('enabled', '')
+              el.entryFn.batchAdd.addEventListener('click', () => script.openBatchAddManager())
             }
             if (gm.config.headerMenuFnRemoveAll) {
               el.entryFn.removeAll.setAttribute('enabled', '')
@@ -4353,21 +4513,26 @@
      */
     async initWatchlaterListPage() {
       const r_con = await api.wait.$('.watch-later-list header .r-con')
-      // 页面上本来就存在的「全部播放」按钮不要触发重定向
-      const setPlayAll = el => {
-        el.href = gm.url.page_watchlaterPlayAll
-        el.target = gm.config.openListVideo === Enums.openListVideo.openInCurrent ? '_self' : '_blank'
-      }
-      const playAll = r_con.children[0]
-      if (playAll.classList.contains('s-btn')) {
-        // 理论上不会进来
-        setPlayAll(playAll)
+      // 移除「播放全部」按钮
+      if (gm.config.removeButton_playAll) {
+        r_con.children[0].style.display = 'none'
       } else {
-        const ob = new MutationObserver((records, observer) => {
-          setPlayAll(records[0].target)
-          observer.disconnect()
-        })
-        ob.observe(playAll, { attributeFilter: ['href'] })
+        // 页面上本来就存在的「全部播放」按钮不要触发重定向
+        const setPlayAll = el => {
+          el.href = gm.url.page_watchlaterPlayAll
+          el.target = gm.config.openListVideo === Enums.openListVideo.openInCurrent ? '_self' : '_blank'
+        }
+        const playAll = r_con.children[0]
+        if (playAll.classList.contains('s-btn')) {
+          // 理论上不会进来
+          setPlayAll(playAll)
+        } else {
+          const ob = new MutationObserver((records, observer) => {
+            setPlayAll(records[0].target)
+            observer.disconnect()
+          })
+          ob.observe(playAll, { attributeFilter: ['href'] })
+        }
       }
       // 移除「一键清空」按钮
       if (gm.config.removeButton_removeAll) {
@@ -4396,13 +4561,26 @@
       plusButton.textContent = '增强设置'
       plusButton.className = 's-btn'
       plusButton.addEventListener('click', () => script.openUserSetting())
+      // 加入「导出列表」
+      if (gm.config.listExportWatchlaterListButton) {
+        const exportButton = document.createElement('div')
+        exportButton.textContent = '导出列表'
+        exportButton.className = 's-btn'
+        exportButton.title = '导出稍后再看列表。\n右键点击可进行导出设置。'
+        r_con.prepend(exportButton)
+        exportButton.addEventListener('click', () => script.exportWatchlaterList())
+        exportButton.addEventListener('contextmenu', e => {
+          e.preventDefault()
+          script.setExportWatchlaterList()
+        })
+      }
       // 加入「刷新列表」
-      const reload = document.createElement('div')
-      reload.id = 'gm-list-reload'
-      reload.textContent = '刷新列表'
-      reload.className = 's-btn'
-      r_con.prepend(reload)
-      reload.addEventListener('click', () => this.reloadWatchlaterListPage())
+      const reloadButton = document.createElement('div')
+      reloadButton.id = 'gm-list-reload'
+      reloadButton.textContent = '刷新列表'
+      reloadButton.className = 's-btn'
+      r_con.prepend(reloadButton)
+      reloadButton.addEventListener('click', () => this.reloadWatchlaterListPage())
 
       // 增加搜索框
       if (gm.config.listSearch) {
@@ -4669,16 +4847,16 @@
 
       // data 的获取必须放在 listBox 的获取后：
       // 如果 listBox 能够被获取到，说明页面能够正常加载，这至少说明 a. 网络没有问题、b. 当前页面没有被浏览器视为二等公民。
-      // 因此，此时获取稍后再看列表数据，必然不会因为各种奇葩的原因获取失败。否则，在后台打开很多个标签页（其中包含列表页
+      // 因此，此时获取稍后再看列表数据，必然不会因为各种奇葩的原因获取失败。否则，在后台打开很多个页面（其中包含列表页
       // 面），或是刚打开列表页面就将浏览器切到后台，那么当用户回到列表页面时，会发现 data 加载失败而导致报错。如果将 data
       // 获取置于 listBox 获取之后（也就是当前方案），那么当用户回到列表页面时，代码才会运行至此，此时再加载 data 就能得
       // 到正确的数据（说到这里，不禁感叹 UserscriptAPI.wait 这一套方案是真的太好用了！）。
       const data = await gm.data.watchlaterListData(true)
       if (gm.runtime.watchlaterListDataError != null) {
         if (byReload) {
-          api.message.alert('加载稍后再看列表数据失败，无法处理稍后再看列表页面。你可以点击「刷新列表」按钮或刷新标签页以重试。')
+          api.message.alert('加载稍后再看列表数据失败，无法处理稍后再看列表页面。你可以点击「刷新列表」按钮或刷新页面以重试。')
         } else {
-          api.message.alert('加载稍后再看列表数据失败，无法处理稍后再看列表页面。你可以刷新标签页以重试（点击「刷新列表」按钮无法确保完整的处理）。')
+          api.message.alert('加载稍后再看列表数据失败，无法处理稍后再看列表页面。你可以刷新页面以重试（点击「刷新列表」按钮无法确保完整的处理）。')
         }
         return 0
       }
@@ -5722,6 +5900,7 @@
           }
           #${gm.id} .gm-setting .gm-item-container {
             display: flex;
+            align-items: baseline;
             gap: 1em;
           }
           #${gm.id} .gm-setting .gm-item-label {
@@ -5744,13 +5923,15 @@
             display: flex;
             align-items: center;
           }
-          #${gm.id} .gm-setting .gm-item:hover,
-          #${gm.id} .gm-setting .gm-lineitem:hover {
+          #${gm.id} .gm-setting .gm-item:not(.gm-holder-item):hover,
+          #${gm.id} .gm-setting .gm-lineitem:not(.gm-holder-item):hover {
             color: var(--${gm.id}-hightlight-color);
           }
           #${gm.id} .gm-setting .gm-lineitems {
             display: inline-flex;
+            flex-flow: wrap;
             gap: 0.3em;
+            width: 24em;
             color: var(--${gm.id}-text-color);
           }
           #${gm.id} .gm-setting .gm-lineitem {
