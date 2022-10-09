@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.30.0.20221009
+// @version         4.30.1.20221009
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -2602,7 +2602,8 @@
         boxInput: true,
       })
       const [input, example, reset, confirm, cancel] = dialog.interactives
-      input.value = GM_getValue('exportWatchlaterListConfig') ?? ''
+      const config = GM_getValue('exportWatchlaterListConfig')
+      input.value = (config && config.trim() !== '') ? config : gm.const.exportWatchlaterList_default
       input.style.height = '20em'
       input.style.fontSize = '0.8em'
       input.style.fontFamily = 'monospace'
