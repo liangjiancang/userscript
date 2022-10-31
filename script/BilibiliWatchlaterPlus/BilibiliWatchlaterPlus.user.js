@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.30.1.20221009
+// @version         4.30.2.20221031
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -5069,7 +5069,7 @@
         // 存在 state == 0 稿件却不可用的情况，此时将稿件标识为未知状态
         const title = item.querySelector('.av-about .t')
         const href = title.getAttribute('href')
-        if (!href || href === '') {
+        if ((href ?? '') === '') {
           item.state = -20221006
         }
         if (item.state < 0) {
