@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站共同关注快速查看
-// @version         1.10.6.20220918
+// @version         1.11.0.20221031
 // @namespace       laster2800
 // @author          Laster2800
 // @description     快速查看与特定用户的共同关注（视频播放页、动态页、用户空间、直播间）
@@ -66,6 +66,8 @@
       page_videoNormalMode: /\.com\/video([#/?]|$)/,
       page_videoWatchlaterMode: /\.com\/medialist\/play\/(watchlater|ml\d+)([#/?]|$)/,
       page_dynamic: /\/t\.bilibili\.com(\/|$)/,
+      page_dynamicDetail: /\/t\.bilibili\.com\/\d+([#/?]|$)/,
+      page_article: /\.com\/read\/cv\d+([#/?]|$)/,
       page_space: /space\.bilibili\.com\/\d+([#/?]|$)/,
       page_live: /live\.bilibili\.com\/(blanc\/)?\d+([#/?]|$)/, // 只含具体的直播间页面
     },
@@ -351,8 +353,11 @@
               if (gm.config.dispInText) {
                 dispEl.innerHTML = `<div class="gm-pre">共同关注</div><div class="same-following">${sameFollowings.join('，&nbsp;')}</div>`
               } else {
+                const highlights = this.getHighlightFollowings()
                 let innerHTML = `<div class="gm-pre" title="加粗：本账号特别关注\n下划线：与本账号互粉\n目标的关注时间：${gm.config.dispInReverse ? '最新关注 → 最早关注' : '最早关注 → 最新关注'}">共同关注</div><div>`
                 for (const item of sameFollowings) {
+                  const { uname, sign } = item
+                  const mid = String(item.mid)
                   let className = 'same-following'
                   if (item.special === 1) { // 特别关注
                     className += ' gm-special'
@@ -360,15 +365,19 @@
                   if (item.attribute === 6) { // 互粉
                     className += ' gm-mutual'
                   }
+                  for (const highlight of highlights) { // 高亮显示
+                    if (highlight === mid || highlight === uname) {
+                      className += ' gm-highlight'
+                    }
+                  }
                   const mtime = new Date(item.mtime * 1000)
                   const myFollowingTime = `${mtime.toLocaleDateString()} ${mtime.toLocaleTimeString()}`
-                  const { sign } = item
                   const verify = item.official_verify?.desc
                   let title = ''
                   if (verify) title += `认证：${verify}\n`
                   if (sign) title += `签名：${sign}\n`
                   title += `本账号关注时间：${myFollowingTime}`
-                  innerHTML += `<a href="${gm.url.page_space(item.mid)}" target="_blank" class="${className}" title="${title}">${item.uname}</a><span>，&nbsp;</span>`
+                  innerHTML += `<a href="${gm.url.page_space(mid)}" target="_blank" class="${className}" title="${title}">${uname}</a><span>，&nbsp;</span>`
                 }
                 dispEl.innerHTML = innerHTML.slice(0, -'<span>，&nbsp;</span>'.length) + '</div>'
               }
@@ -419,6 +428,38 @@
       if (dispEl.textContent) {
         dispEl.style.display = ''
       }
+    }
+
+    /**
+     * 获取当前页面高亮关注
+     *
+     * @returns {string[]} 高亮关注（数组元素为 uid 或用户名）
+     */
+    getHighlightFollowings() {
+      const highlights = []
+      if (api.base.urlMatch(gm.regex.page_videoNormalMode)) {
+        const uploader = '#v_upinfo .u-face a.u-face__avatar' // 单独投稿（新旧版一致）
+        const oldGroup = '.members-info .up-card a.avatar' // 旧版集体投稿
+        const newGroup = '.members-info-v1 .up-card a.avatar' // 新版集体投稿
+        const highlightEls = document.querySelectorAll(`${uploader},${oldGroup},${newGroup}`)
+        for (const el of highlightEls) {
+          const uid = this.method.getUid(el)
+          uid && highlights.push(uid)
+        }
+      } else if (api.base.urlMatch(gm.regex.page_dynamicDetail)) {
+        const author = '.card .bili-dyn-item .bili-dyn-title' // 动态所有者
+        const origAuthor = '.card .bili-dyn-item .dyn-orig-author' // 原动态所有者（对于转发动态）
+        const highlightEls = document.querySelectorAll(`${author},${origAuthor}`)
+        for (const el of highlightEls) {
+          const text = el.textContent.replace(/^\s*/, '').replace(/\s*$/, '')
+          highlights.push(text)
+        }
+      } else if (api.base.urlMatch(gm.regex.page_article)) {
+        const el = document.querySelector('.article-up-info .avatar-container a')
+        const uid = this.method.getUid(el)
+        uid && highlights.push(uid)
+      }
+      return highlights
     }
 
     /**
@@ -514,8 +555,12 @@
           word-break: break-all;
           line-height: 1.42em; /* 解决换行后仅剩英文时行高不一致的问题 */
         }
-        .${gm.id} a.same-following:hover {
+        .${gm.id} a.same-following:hover,
+        .${gm.id} .gm-highlight {
           color: #00a1d6;
+        }
+        .${gm.id} .same-following.gm-highlight:hover {
+          color: #3f51b5;
         }
         .${gm.id} .gm-relation {
           display: block;
