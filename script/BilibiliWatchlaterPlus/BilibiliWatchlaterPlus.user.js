@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.30.2.20221031
+// @version         4.30.3.20221122
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -5284,6 +5284,7 @@
       if (success) {
         // 刷新成功后，所有不存在的 item 都会被移除，没有被移除就说明该 item 又被重新加回稍后再看中
         for (const item of list.querySelectorAll('.av-item.gm-removed')) {
+          item.added = true
           item.classList.remove('gm-removed')
           item.querySelector('.gm-list-item-switcher').checked = true
         }
@@ -5359,21 +5360,16 @@
      * 根据 URL 上的查询参数作进一步处理
      */
     async processSearchParams() {
-      if (api.base.urlMatch(gm.regex.page_videoNormalMode)) {
-        // 常规播放页
+      if (api.base.urlMatch([gm.regex.page_videoNormalMode, gm.regex.page_videoWatchlaterMode])) {
         await this.processAutoRemove()
-      } else if (api.base.urlMatch(gm.regex.page_videoWatchlaterMode)) {
-        // 稍后再看播放页；推迟执行，否则稍后再看播放页会因为检测不到视频在稍后再看中而出错
-        await this.processAutoRemove(5000)
       }
     }
 
     /**
      * 根据用户配置或 URL 上的查询参数，将视频从稍后再看移除
-     * @param {number} [delay=0] 延迟执行（单位：ms）
      * @returns {Promise<boolean>} 执行后视频是否已经不在稍后再看中（可能是在本方法内被移除，也可能是本身就不在）
      */
-    async processAutoRemove(delay = 0) {
+    async processAutoRemove() {
       try {
         const alwaysAutoRemove = gm.config.autoRemove === Enums.autoRemove.always
         const spRemove = gm.searchParams.get(`${gm.id}_remove`) === 'true'
@@ -5381,8 +5377,10 @@
         if ((alwaysAutoRemove || spRemove) && !spDisableRemove) {
           if (gm.data.fixedItem(this.method.getBvid())) return
           const aid = this.method.getAid()
-          if (delay > 0) {
-            await new Promise(resolve => setTimeout(resolve, delay))
+          // 稍后再看播放页中，必须等右侧稍后再看列表初始化完成再移除，否则会影响其初始化
+          if (api.base.urlMatch(gm.regex.page_videoWatchlaterMode)) {
+            await api.wait.$('.player-auxiliary-wraplist-playlist')
+            await new Promise(resolve => setTimeout(resolve, 5000))
           }
           const success = await this.method.switchVideoWatchlaterStatus(aid, false)
           if (!success) {
