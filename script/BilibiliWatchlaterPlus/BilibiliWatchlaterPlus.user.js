@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.30.3.20221122
+// @version         4.30.4.20221207
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -5107,6 +5107,12 @@
             link.addEventListener('mousedown', e => {
               if (e.button === 0 || e.button === 1) { // 左键或中键
                 if (base.fixed) return
+                // 若点击前已选择了内容，清空之；必须在这样做以后，下次在 mouseup 获取到不为空
+                // 的 selection 时，才能说明此次 mousedown 到下次 mouseup 之间选择了内容
+                const selection = window.getSelection()
+                if (selection.toString() !== '') {
+                  selection.removeAllRanges()
+                }
                 if (!link._href) {
                   link._href = link.href
                 }
@@ -5132,6 +5138,7 @@
             link.addEventListener('mouseup', e => {
               if (e.button === 0 || e.button === 1) { // 左键或中键
                 if (base.fixed) return
+                if (window.getSelection().toString() !== '') return // 选中文字并释放也会触发 mouseup
                 if (arc.autoRemove) {
                   // 添加移除样式并移动至列表末尾
                   base.classList.add('gm-removed')
