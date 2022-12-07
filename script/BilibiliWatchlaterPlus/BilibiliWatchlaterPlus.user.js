@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.30.4.20221207
+// @version         4.30.5.20221207
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -4581,7 +4581,20 @@
       reloadButton.textContent = '刷新列表'
       reloadButton.className = 's-btn'
       r_con.prepend(reloadButton)
-      reloadButton.addEventListener('click', () => this.reloadWatchlaterListPage())
+      reloadButton.addEventListener('click', async () => {
+        let search = null
+        if (gm.config.listSearch && gm.config.searchDefaultValue) {
+          const sdv = GM_getValue('searchDefaultValue_value')
+          if (typeof sdv === 'string') {
+            search = document.querySelector('#gm-list-search > input')
+            search.value = sdv
+          }
+        }
+        const success = await this.reloadWatchlaterListPage()
+        if (!success && search) { // 若刷新成功，说明已执行搜索逻辑，否则需手动执行
+          search.dispatchEvent(new Event('input'))
+        }
+      })
 
       // 增加搜索框
       if (gm.config.listSearch) {
@@ -4925,9 +4938,7 @@
           processLink(item, link, autoRemoveControl)
         }
       }
-      if (gm.config.searchDefaultValue) {
-        await this.searchWatchlaterListPage()
-      }
+      await this.searchWatchlaterListPage()
       this.updateWatchlaterListPageTotal()
 
       if (sortable) {
@@ -5275,6 +5286,7 @@
     /**
      * 刷新稍后再看列表页面
      * @param {[string, string]} msg [执行成功信息, 执行失败信息]，设置为 null 或对应项为空时静默执行
+     * @returns {Promise<boolean>} 刷新是否成功
      */
     async reloadWatchlaterListPage(msg = ['刷新成功', '刷新失败']) {
       const list = await api.wait.$('.watch-later-list')
@@ -5311,6 +5323,7 @@
       (await api.wait.$('#gm-list-reload')).title = `上次刷新时间：${new Date().toLocaleString()}`
       msg &&= success ? msg[0] : msg[1]
       msg && api.message.info(msg)
+      return success
     }
 
     /**
