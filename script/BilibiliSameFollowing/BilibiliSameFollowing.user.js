@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站共同关注快速查看
-// @version         1.11.0.20221031
+// @version         1.12.0.20221211
 // @namespace       laster2800
 // @author          Laster2800
 // @description     快速查看与特定用户的共同关注（视频播放页、动态页、用户空间、直播间）
@@ -17,7 +17,7 @@
 // @exclude         *://www.bilibili.com/page-proxy/*
 // @exclude         *://t.bilibili.com/*/*
 // @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=1081030
-// @require         https://greasyfork.org/scripts/432002-userscriptapiwait/code/UserscriptAPIWait.js?version=1035042
+// @require         https://greasyfork.org/scripts/432002-userscriptapiwait/code/UserscriptAPIWait.js?version=1126985
 // @require         https://greasyfork.org/scripts/432003-userscriptapiweb/code/UserscriptAPIWeb.js?version=1095148
 // @grant           GM_notification
 // @grant           GM_xmlhttpRequest
@@ -387,7 +387,8 @@
           }
         } else {
           if (gm.config.dispMessage && resp.message) {
-            dispEl.innerHTML = `<div class="gm-pre">共同关注</div><div>[ ${resp.message} ]</div>`
+            const message = resp.code === 22115 ? '关注列表不可见' : resp.message
+            dispEl.innerHTML = `<div class="gm-pre">共同关注</div><div title="查询失败 [ code: ${resp.code}, message: ${resp.message} ]" class="same-following">[ ${message} ]</div>`
           }
           const msg = [resp.code, resp.message]
           if (resp.code > 0) {
@@ -398,7 +399,7 @@
         }
       } catch (e) {
         if (gm.config.dispMessage) {
-          dispEl.innerHTML = '<div class="gm-pre">共同关注</div><div>[ 网络请求错误 ]</div>'
+          dispEl.innerHTML = '<div class="gm-pre">共同关注</div><div class="same-following">[ 网络请求错误 ]</div>'
         }
         api.logger.error(e)
       }
@@ -553,7 +554,6 @@
           vertical-align: baseline;
           white-space: pre-wrap;
           word-break: break-all;
-          line-height: 1.42em; /* 解决换行后仅剩英文时行高不一致的问题 */
         }
         .${gm.id} a.same-following:hover,
         .${gm.id} .gm-highlight {
