@@ -1,5 +1,9 @@
 # UserscriptAPIWait 更新日志
 
+## V1.3
+
+1. `executeAfterElementLoaded()`：支持检测通过 `DocumentFragment` 插入的元素。
+
 ## V1.2
 
 1. 模块：回调函数以参数而非 `this` 传递 `options`。
