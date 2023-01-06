@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.31.0.20230106
+// @version         4.31.1.20230106
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -3005,12 +3005,13 @@
        * 清理 URL 上的查询参数
        */
       cleanSearchParams() {
+        if (!location.search.includes(gm.id)) return
         let removed = false
         const url = new URL(location.href)
         for (const key of gm.searchParams.keys()) {
-          if (key.startsWith(gm.id) || ['aid', 'bvid', 'oid'].includes(key)) {
+          if (key.startsWith(gm.id)) {
             url.searchParams.delete(key)
-            removed = true
+            removed ||= true
           }
         }
         if (removed && location.href !== url.href) {
@@ -4499,7 +4500,21 @@
           }, { check: r => r.code === 0 })
           id = resp.data.list[0].bvid
         }
-        location.replace(`${gm.url.page_videoNormalMode}/${id}${location.search}${location.hash}`)
+        let { search } = location
+        if (search) {
+          let removed = false
+          const url = new URL(location.href)
+          for (const key of gm.searchParams.keys()) {
+            if (['aid', 'bvid', 'oid'].includes(key)) {
+              url.searchParams.delete(key)
+              removed ||= true
+            }
+          }
+          if (removed) {
+            search = url.search
+          }
+        }
+        location.replace(`${gm.url.page_videoNormalMode}/${id}/${search}${location.hash}`)
       } catch (e) {
         api.logger.error(e)
         const result = await api.message.confirm('重定向错误，是否临时关闭此功能？')
