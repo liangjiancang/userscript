@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站共同关注快速查看
-// @version         1.12.1.20221218
+// @version         1.13.0.20230106
 // @namespace       laster2800
 // @author          Laster2800
 // @description     快速查看与特定用户的共同关注（视频播放页、动态页、用户空间、直播间）
@@ -65,6 +65,7 @@
     regex: {
       page_videoNormalMode: /\.com\/video([#/?]|$)/,
       page_videoWatchlaterMode: /\.com\/medialist\/play\/(watchlater|ml\d+)([#/?]|$)/,
+      page_listMode: /\.com\/list\/.+/,
       page_dynamic: /\/t\.bilibili\.com(\/|$)/,
       page_dynamicDetail: /\/t\.bilibili\.com\/\d+([#/?]|$)/,
       page_article: /\.com\/read\/cv\d+([#/?]|$)/,
@@ -220,10 +221,10 @@
     method = {
       /**
        * 从 URL 中获取 UID
-       * @param {string} [url=location.pathname] URL
+       * @param {string} [url=location.href] URL
        * @returns {string} UID
        */
-      getUid(url = location.pathname) {
+      getUid(url = location.href) {
         return /\/(\d+)([#/?]|$)/.exec(url)?.[1] ?? null
       },
 
@@ -636,16 +637,16 @@
       lazy: false,
     })
 
-    if (api.base.urlMatch(gm.regex.page_videoNormalMode)) {
+    if (api.base.urlMatch([gm.regex.page_videoNormalMode, gm.regex.page_listMode])) {
       // 常规播放页中的UP主头像
-      // 旧版播放页：     #app .v-wrap                |   .user-card-m
-      // 2022 版播放页：  #app .video-container-v1    |   .user-card-m-exp
+      // 旧版播放页：     .user-card-m
+      // 2022 版播放页：  .user-card-m-exp
       webpage.cardLogic({
-        container: '#app .v-wrap, #app .video-container-v1',
         card: '.user-card-m, .user-card-m-exp',
         user: '.face',
         info: '.info',
         before: '.btn-box',
+        ancestor: true,
       })
     } else if (api.base.urlMatch(gm.regex.page_videoWatchlaterMode)) {
       // 稍后再看播放页中的UP主头像

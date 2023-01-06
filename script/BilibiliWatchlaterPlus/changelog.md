@@ -2,6 +2,10 @@
 
 本日志只记录用户友好的更新说明，影响不大的问题修复与修改不作记录，具体修改见 [提交记录](https://gitee.com/liangjiancang/userscript/commits/master/script/BilibiliWatchlaterPlus)。
 
+## V4.31
+
+1. 脚本：支持「列表播放页」`www.bilibili.com/list/*`。
+
 ## V4.30
 
 1. 列表导出：功能实现。该功能可将稍后再看列表导出，且支持较高自由度的配置。相应地，在顶栏入口、列表页面、脚本菜单等相关位置添加该功能的入口。[148066](https://greasyfork.org/zh-CN/scripts/395456/discussions/152592)

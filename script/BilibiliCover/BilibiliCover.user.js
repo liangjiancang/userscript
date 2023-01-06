@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站封面获取
-// @version         5.8.13.20221218
+// @version         5.9.0.20230106
 // @namespace       laster2800
 // @author          Laster2800
 // @description     获取B站各播放页及直播间封面，支持手动及实时预览等多种模式，支持点击下载、封面预览、快速复制，可高度自定义
@@ -9,6 +9,7 @@
 // @supportURL      https://greasyfork.org/zh-CN/scripts/395575/feedback
 // @license         LGPL-3.0
 // @include         *://www.bilibili.com/video/*
+// @include         *://www.bilibili.com/list/*
 // @include         *://www.bilibili.com/bangumi/play/*
 // @include         *://www.bilibili.com/medialist/play/watchlater
 // @include         *://www.bilibili.com/medialist/play/watchlater/*
@@ -88,6 +89,7 @@
     regex: {
       page_videoNormalMode: /\.com\/video([#/?]|$)/,
       page_videoWatchlaterMode: /\.com\/medialist\/play\/(watchlater|ml\d+)([#/?]|$)/,
+      page_listMode: /\.com\/list\/.+/,
       page_bangumi: /\/bangumi\/play([#/?]|$)/,
       page_live: /live\.bilibili\.com\/(blanc\/)?\d+([#/?]|$)/, // 只含具体的直播间页面
     },
@@ -441,25 +443,25 @@
 
       /**
        * 从 URL 获取视频 ID
-       * @param {string} [url=location.pathname] 提取视频 ID 的源字符串
+       * @param {string} [url=location.href] 提取视频 ID 的源字符串
        * @returns {{id: string, type: 'aid' | 'bvid'}} `{id, type}`
        */
-      getVid(url = location.pathname) {
+      getVid(url = location.href) {
         let m = null
-        if ((m = /\/bv([\da-z]+)([#/?]|$)/i.exec(url))) {
-          return { id: 'BV' + m[1], type: 'bvid' }
-        } else if ((m = /\/(av)?(\d+)([#/?]|$)/i.exec(url))) { // 兼容 URL 中 BV 号被第三方修改为 AV 号的情况
-          return { id: m[2], type: 'aid' }
+        if ((m = /(\/|bvid=)bv([\da-z]+)([#&/?]|$)/i.exec(url))) {
+          return { id: 'BV' + m[2], type: 'bvid' }
+        } else if ((m = /(\/(av)?|aid=)(\d+)([#&/?]|$)/i.exec(url))) { // 兼容 BV 号被第三方修改为 AV 号的情况
+          return { id: m[3], type: 'aid' }
         }
         return null
       },
 
       /**
        * 从 URL 获取番剧 ID
-       * @param {string} [url=location.pathname] 提取视频 ID 的源字符串
+       * @param {string} [url=location.href] 提取视频 ID 的源字符串
        * @returns {{id: string, type: 'ssid' | 'epid'}} `{id, type}`
        */
-      getBgmid(url = location.pathname) {
+      getBgmid(url = location.href) {
         let m = null
         if ((m = /\/(ss\d+)([#/?]|$)/.exec(url))) {
           return { id: m[1], type: 'ssid' }
@@ -814,7 +816,7 @@
 
     async initVideo() {
       const app = await api.wait.$('#app')
-      const atr = await api.wait.$('#arc_toolbar_report') // 无论如何都卡一下时间
+      const atr = await api.wait.$('#arc_toolbar_report, #playlistToolbar') // 无论如何都卡一下时间
       await api.wait.waitForConditionPassed({
         condition: () => app.__vue__,
       })
@@ -828,14 +830,14 @@
           cover.style.cursor = 'none'
         }
 
-        const version = atr.classList.contains('video-toolbar-v1') ? '2022' : 'old'
+        const version = (atr.classList.contains('video-toolbar-v1') || atr.id === 'playlistToolbar') ? '2022' : 'old'
         cover.dataset.toolbarVersion = version
         const gm395456 = atr.querySelector('[id|=gm395456]') // 确保与其他脚本配合时组件排列顺序不会乱
         if (version === '2022') {
           if (gm395456) {
             gm395456.after(cover)
           } else {
-            const right = await api.wait.$('.toolbar-right', atr)
+            const right = await api.wait.$('.toolbar-right, .video-toolbar-right', atr)
             right.prepend(cover)
           }
         } else {
@@ -1128,7 +1130,7 @@
     webpage.addStyle()
     api.base.initUrlchangeEvent()
 
-    if (api.base.urlMatch([gm.regex.page_videoNormalMode, gm.regex.page_videoWatchlaterMode])) {
+    if (api.base.urlMatch([gm.regex.page_videoNormalMode, gm.regex.page_videoWatchlaterMode, gm.regex.page_listMode])) {
       webpage.initVideo()
     } else if (api.base.urlMatch(gm.regex.page_bangumi)) {
       webpage.initBangumi()

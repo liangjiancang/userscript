@@ -2,6 +2,10 @@
 
 本日志只记录用户友好的更新说明，影响不大的问题修复与修改不作记录，具体修改见 [提交记录](https://gitee.com/liangjiancang/userscript/commits/master/script/BilibiliSameFollowing)。
 
+## V1.13
+
+1. 脚本：支持「列表播放页」`www.bilibili.com/list/*`。[164021](https://greasyfork.org/zh-CN/scripts/395575/discussions/164021)
+
 ## V1.12
 
 1. 共同关注：适配B站近段时间引入的 `DocumentFragment` 技术。

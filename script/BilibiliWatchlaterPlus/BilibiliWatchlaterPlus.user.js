@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.30.7.20221218
+// @version         4.31.0.20230106
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -359,6 +359,8 @@
    * @property {RegExp} page_watchlaterList 匹配列表页面
    * @property {RegExp} page_videoNormalMode 匹配常规播放页
    * @property {RegExp} page_videoWatchlaterMode 匹配稍后再看播放页
+   * @property {RegExp} page_listMode 匹配列表播放页
+   * @property {RegExp} page_listWatchlaterMode 匹配列表播放页（稍后再看）
    * @property {RegExp} page_dynamic 匹配动态页面
    * @property {RegExp} page_dynamicMenu 匹配旧版动态面板
    * @property {RegExp} page_userSpace 匹配用户空间
@@ -475,6 +477,8 @@
       page_watchlaterList: /\.com\/watchlater\/[^#]*#\/list([#/?]|$)/,
       page_videoNormalMode: /\.com\/video([#/?]|$)/,
       page_videoWatchlaterMode: /\.com\/medialist\/play\/(watchlater|ml\d+)([#/?]|$)/,
+      page_listMode: /\.com\/list\/.+/,
+      page_listWatchlaterMode: /\.com\/list\/watchlater([#/?]|$)/,
       page_dynamic: /\/t\.bilibili\.com(\/|$)/,
       page_dynamicMenu: /\.com\/pages\/nav\/index_new([#/?]|$)/,
       page_userSpace: /space\.bilibili\.com([#/?]|$)/,
@@ -2725,25 +2729,25 @@
 
       /**
        * 从 URL 获取视频 ID
-       * @param {string} [url=location.pathname] 提取视频 ID 的源字符串
+       * @param {string} [url=location.href] 提取视频 ID 的源字符串
        * @returns {{id: string, type: 'aid' | 'bvid'}} `{id, type}`
        */
-      getVid(url = location.pathname) {
+      getVid(url = location.href) {
         let m = null
-        if ((m = /\/bv([\da-z]+)([#/?]|$)/i.exec(url))) {
-          return { id: 'BV' + m[1], type: 'bvid' }
-        } else if ((m = /\/(av)?(\d+)([#/?]|$)/i.exec(url))) { // 兼容 URL 中 BV 号被第三方修改为 AV 号的情况
-          return { id: m[2], type: 'aid' }
+        if ((m = /(\/|bvid=)bv([\da-z]+)([#&/?]|$)/i.exec(url))) {
+          return { id: 'BV' + m[2], type: 'bvid' }
+        } else if ((m = /(\/(av)?|aid=)(\d+)([#&/?]|$)/i.exec(url))) { // 兼容 BV 号被第三方修改为 AV 号的情况
+          return { id: m[3], type: 'aid' }
         }
         return null
       },
 
       /**
        * 从 URL 获取视频 `aid`
-       * @param {string} [url=location.pathname] 提取视频 `aid` 的源字符串
+       * @param {string} [url=location.href] 提取视频 `aid` 的源字符串
        * @returns {string} `aid`
        */
-      getAid(url = location.pathname) {
+      getAid(url = location.href) {
         const vid = this.getVid(url)
         if (vid) {
           if (vid.type === 'bvid') {
@@ -2756,10 +2760,10 @@
 
       /**
        * 从 URL 获取视频 `bvid`
-       * @param {string} [url=location.pathname] 提取视频 `bvid` 的源字符串
+       * @param {string} [url=location.href] 提取视频 `bvid` 的源字符串
        * @returns {string} `bvid`
        */
-      getBvid(url = location.pathname) {
+      getBvid(url = location.href) {
         const vid = this.getVid(url)
         if (vid) {
           if (vid.type === 'aid') {
@@ -3001,11 +3005,10 @@
        * 清理 URL 上的查询参数
        */
       cleanSearchParams() {
-        if (!location.search.includes(gm.id)) return
         let removed = false
         const url = new URL(location.href)
         for (const key of gm.searchParams.keys()) {
-          if (key.startsWith(gm.id)) {
+          if (key.startsWith(gm.id) || ['aid', 'bvid', 'oid'].includes(key)) {
             url.searchParams.delete(key)
             removed = true
           }
@@ -4185,7 +4188,7 @@
           // 两部分 URL 刚好不会冲突，放到 else 中即可
           switch (gm.config.fillWatchlaterStatus) {
             case Enums.fillWatchlaterStatus.dynamicAndVideo:
-              if (api.base.urlMatch([gm.regex.page_videoNormalMode, gm.regex.page_videoWatchlaterMode])) {
+              if (api.base.urlMatch([gm.regex.page_videoNormalMode, gm.regex.page_videoWatchlaterMode, gm.regex.page_listMode])) {
                 fillWatchlaterStatus_main()
               }
               break
@@ -4382,7 +4385,7 @@
       let bus = {}
 
       const app = await api.wait.$('#app')
-      const atr = await api.wait.$('#arc_toolbar_report', app)
+      const atr = await api.wait.$('#arc_toolbar_report, #playlistToolbar', app)
       const original = await api.wait.$('.van-watchlater', atr)
       api.wait.waitForConditionPassed({
         condition: () => app.__vue__,
@@ -4395,10 +4398,10 @@
         text.textContent = '稍后再看'
         cb.addEventListener('click', () => processSwitch())
 
-        const version = atr.classList.contains('video-toolbar-v1') ? '2022' : 'old'
+        const version = (atr.classList.contains('video-toolbar-v1') || atr.id === 'playlistToolbar') ? '2022' : 'old'
         btn.dataset.toolbarVersion = version
         if (version === '2022') {
-          const right = await api.wait.$('.toolbar-right', atr)
+          const right = await api.wait.$('.toolbar-right, .video-toolbar-right', atr)
           right.prepend(btn)
         } else {
           btn.className = 'appeal-text'
@@ -4416,9 +4419,10 @@
         initButtonStatus()
         original.parentElement.style.display = 'none'
 
-        window.addEventListener('urlchange', async e => {
-          if (location.pathname === e.detail.prev.pathname) return // 并非切换视频（如切分P）
-          bus.aid = this.method.getAid()
+        window.addEventListener('urlchange', async () => {
+          const aid = this.method.getAid()
+          if (bus.aid === aid) return // 并非切换视频（如切分P）
+          bus.aid = aid
           let reloaded = false
           gm.searchParams = new URL(location.href).searchParams
           const removed = await this.processAutoRemove()
@@ -4485,11 +4489,11 @@
         const vid = this.method.getVid() // 必须从 URL 直接反推 bvid，其他方式都比这个慢
         if (vid) {
           if (vid.type === 'aid') {
-            id = 'av' + vid.id
+            id = `av${vid.id}`
           } else {
             id = vid.id
           }
-        } else { // pathname 以 watchlater/ 结尾，等同于稍后再看中的第一个视频
+        } else { // URL 中无 vid 时等同于稍后再看中的第一个视频
           const resp = await api.web.request({
             url: gm.url.api_queryWatchlaterList,
           }, { check: r => r.code === 0 })
@@ -5380,7 +5384,7 @@
      * 根据 URL 上的查询参数作进一步处理
      */
     async processSearchParams() {
-      if (api.base.urlMatch([gm.regex.page_videoNormalMode, gm.regex.page_videoWatchlaterMode])) {
+      if (api.base.urlMatch([gm.regex.page_videoNormalMode, gm.regex.page_videoWatchlaterMode, gm.regex.page_listMode])) {
         await this.processAutoRemove()
       }
     }
@@ -5397,7 +5401,9 @@
         if ((alwaysAutoRemove || spRemove) && !spDisableRemove) {
           if (gm.data.fixedItem(this.method.getBvid())) return
           const aid = this.method.getAid()
-          // 稍后再看播放页中，必须等右侧稍后再看列表初始化完成再移除，否则会影响其初始化
+          // 稍后再看播放页中，必须等右侧稍后再看列表初始化完成再移除，否则会影响其初始化。
+          // 列表播放页（稍后再看）并不需要进行这一操作，因为该页面可以是给收藏夹列表的，猜测
+          // 官方在设计时就考虑到播放过程中视频被移除出列表的问题。
           if (api.base.urlMatch(gm.regex.page_videoWatchlaterMode)) {
             await api.wait.$('.player-auxiliary-wraplist-playlist')
             await new Promise(resolve => setTimeout(resolve, 5000))
@@ -6425,7 +6431,7 @@
     }
 
     script.initAtDocumentStart()
-    if (api.base.urlMatch(gm.regex.page_videoWatchlaterMode)) {
+    if (api.base.urlMatch([gm.regex.page_videoWatchlaterMode, gm.regex.page_listWatchlaterMode])) {
       if (gm.config.redirect && gm.searchParams.get(`${gm.id}_disable_redirect`) !== 'true') {
         webpage.redirect()
         return
@@ -6459,7 +6465,7 @@
         if (api.base.urlMatch(gm.regex.page_watchlaterList)) {
           webpage.initWatchlaterListPage()
           webpage.processWatchlaterListPage()
-        } else if (api.base.urlMatch([gm.regex.page_videoNormalMode, gm.regex.page_videoWatchlaterMode])) {
+        } else if (api.base.urlMatch([gm.regex.page_videoNormalMode, gm.regex.page_videoWatchlaterMode, gm.regex.page_listMode])) {
           if (gm.config.videoButton) {
             webpage.addVideoButton()
           }
