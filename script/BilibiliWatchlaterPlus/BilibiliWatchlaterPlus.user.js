@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.31.1.20230106
+// @version         4.31.2.20230106
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -335,7 +335,7 @@
    */
   /**
    * @callback page_userSpace
-   * @param {number} [uid] `uid`
+   * @param {string} [uid] `uid`
    * @returns {string} 用户空间 URL
    */
   /**
@@ -350,6 +350,7 @@
    * @property {string} page_watchlaterList 列表页面
    * @property {string} page_videoNormalMode 常规播放页
    * @property {string} page_videoWatchlaterMode 稍后再看播放页
+   * @property {string} page_listWatchlaterMode 列表播放页（稍后再看）
    * @property {string} page_watchlaterPlayAll 稍后再看播放全部（临时禁用重定向）
    * @property {page_userSpace} page_userSpace 用户空间
    * @property {string} gm_changelog 更新日志
@@ -466,7 +467,8 @@
       page_watchlaterList: 'https://www.bilibili.com/watchlater/#/list',
       page_videoNormalMode: 'https://www.bilibili.com/video',
       page_videoWatchlaterMode: 'https://www.bilibili.com/medialist/play/watchlater',
-      page_watchlaterPlayAll: `https://www.bilibili.com/medialist/play/watchlater/?${gmId}_disable_redirect=true`,
+      page_listWatchlaterMode: 'https://www.bilibili.com/list/watchlater',
+      page_watchlaterPlayAll: `https://www.bilibili.com/list/watchlater?${gmId}_disable_redirect=true`,
       page_userSpace: uid => `https://space.bilibili.com/${uid}`,
       gm_changelog: 'https://gitee.com/liangjiancang/userscript/blob/master/script/BilibiliWatchlaterPlus/changelog.md',
       external_fixHeader: 'https://greasyfork.org/zh-CN/scripts/430292',
@@ -1109,7 +1111,7 @@
             </div>`,
           })
           itemsHTML += getItemHTML('播放页面', {
-            desc: `打开「${gm.url.page_videoWatchlaterMode}」页面时，自动切换至「${gm.url.page_videoNormalMode}」页面进行播放，但不影响「播放全部」等相关功能。`,
+            desc: `打开「${gm.url.page_videoWatchlaterMode}」或「${gm.url.page_listWatchlaterMode}」页面时，自动切换至「${gm.url.page_videoNormalMode}」页面进行播放，但不影响「播放全部」等相关功能。`,
             html: `<label>
               <span>从稍后再看模式强制切换到常规模式播放（重定向）</span>
               <input id="gm-redirect" type="checkbox">
