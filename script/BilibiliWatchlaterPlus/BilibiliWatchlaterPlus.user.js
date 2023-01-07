@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.31.2.20230106
+// @version         4.31.3.20230107
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -208,7 +208,7 @@
    * @property {headerButtonOp} headerButtonOpM 顶栏入口中键点击行为
    * @property {headerMenu} headerMenu 顶栏入口弹出面板设置
    * @property {openHeaderMenuLink} openHeaderMenuLink 弹出面板内链接点击行为
-   * @property {boolean} headerMenuKeepRemoved 弹出面板保留被移除视频
+   * @property {boolean} headerMenuKeepRemoved 弹出面板保留被移除稿件
    * @property {boolean} headerMenuSearch 弹出面板搜索框
    * @property {boolean} headerMenuSortControl 弹出面板排序控制器
    * @property {boolean} headerMenuAutoRemoveControl 弹出面板自动移除控制器
@@ -233,11 +233,11 @@
    * @property {boolean} searchDefaultValue 激活搜索框默认值功能
    * @property {autoSort} autoSort 自动排序
    * @property {boolean} videoButton 视频播放页稍后再看状态快速切换
-   * @property {autoRemove} autoRemove 自动将视频从播放列表移除
+   * @property {autoRemove} autoRemove 自动将稿件从播放列表移除
    * @property {boolean} redirect 稍后再看模式重定向至常规模式播放
    * @property {boolean} dynamicBatchAddManagerButton 动态主页批量添加管理器按钮
    * @property {number} autoReloadList 自动刷新列表页面
-   * @property {openListVideo} openListVideo 列表页面视频点击行为
+   * @property {openListVideo} openListVideo 列表页面稿件点击行为
    * @property {boolean} listStickControl 列表页面控制栏随页面滚动
    * @property {boolean} listSearch 列表页面搜索框
    * @property {boolean} listSortControl 列表页面排序控制器
@@ -297,27 +297,27 @@
    * @returns {Promise<GMObject_data_item0[]>} 稍后再看列表数据
    */
   /**
-   * `api_queryWatchlaterList` 返回数据中的视频单元
+   * `api_queryWatchlaterList` 返回数据中的稿件单元
    * @typedef GMObject_data_item0
-   * @property {number} aid 视频 AV 号，务必统一为字符串格式再使用
-   * @property {string} bvid 视频 BV 号
-   * @property {string} title 视频标题
-   * @property {number} state 视频状态
-   * @property {string} [pic] 视频封面
+   * @property {number} aid 稿件 AV 号，务必统一为字符串格式再使用
+   * @property {string} bvid 稿件 BV 号
+   * @property {string} title 稿件标题
+   * @property {number} state 稿件状态
+   * @property {string} [pic] 稿件封面
    * @property {Object} [owner] UP主信息
    * @property {number} [owner.mid] UP主 ID
    * @property {string} [owner.name] UP主名字
-   * @property {number} [progress] 视频播放进度
-   * @property {number} [duration] 视频时长
-   * @property {number} [pubdate] 视频发布时间
+   * @property {number} [progress] 稿件播放进度
+   * @property {number} [duration] 稿件时长
+   * @property {number} [pubdate] 稿件发布时间
    * @property {number} [videos] 稿件分P数
    * @see {@link https://github.com/SocialSisterYi/bilibili-API-collect/blob/master/history%26toview/toview.md#获取稍后再看视频列表 获取稍后再看视频列表}
    */
   /**
    * @typedef {[bvid: string, title: string, lastModified: number]} GMObject_data_item
-   * `bvid` 视频 BV 号
+   * `bvid` 稿件 BV 号
    *
-   * `title` 视频标题
+   * `title` 稿件标题
    *
    * `[lastModified]` 时间戳：最后被观察到的时间点
    */
@@ -341,11 +341,11 @@
   /**
    * @typedef GMObject_url
    * @property {string} api_queryWatchlaterList 稍后再看列表数据
-   * @property {string} api_addToWatchlater 将视频添加至稍后再看
-   * @property {string} api_removeFromWatchlater 将视频从稍后再看移除
+   * @property {string} api_addToWatchlater 将稿件添加至稍后再看
+   * @property {string} api_removeFromWatchlater 将稿件从稍后再看移除
    * @property {string} api_clearWatchlater 清空稍后再看，要求 POST 一个含 `csrf` 的表单
    * @property {string} api_listFav 列出所有收藏夹
-   * @property {string} api_dealFav 将视频添加/移除至收藏夹
+   * @property {string} api_dealFav 将稿件添加/移除至收藏夹
    * @property {string} api_dynamicList 动态列表
    * @property {string} page_watchlaterList 列表页面
    * @property {string} page_videoNormalMode 常规播放页
@@ -909,14 +909,14 @@
             html: `<div>
               <span>在弹出面板中点击链接时</span>
               <select id="gm-openHeaderMenuLink">
-                <option value="${Enums.openHeaderMenuLink.openInCurrent}">在当前页面打开</option>
-                <option value="${Enums.openHeaderMenuLink.openInNew}">在新页面打开</option>
+                <option value="${Enums.openHeaderMenuLink.openInCurrent}">在当前页面打开稿件</option>
+                <option value="${Enums.openHeaderMenuLink.openInNew}">在新页面打开稿件</option>
               </select>
             </div>`,
           }, {
-            desc: '在弹出面板中显示自当前页面打开以来从弹出面板移除的视频。',
+            desc: '在弹出面板中显示自当前页面打开以来从弹出面板移除的稿件。',
             html: `<label>
-              <span>在弹出面板中显示被移除的视频</span>
+              <span>在弹出面板中显示被移除的稿件</span>
               <input id="gm-headerMenuKeepRemoved" type="checkbox">
             </label>`,
           }, {
@@ -970,7 +970,7 @@
             </div>`,
           })
           itemsHTML += getItemHTML('全局功能', {
-            desc: '保留稍后再看列表中的数据，以查找出一段时间内将哪些视频移除出稍后再看，用于拯救误删操作。关闭该选项会将内部历史数据清除！',
+            desc: '保留稍后再看列表中的数据，以查找出一段时间内将哪些稿件移除出稍后再看，用于拯救误删操作。关闭该选项会将内部历史数据清除！',
             html: `<label>
               <span>稍后再看移除记录</span>
               <input id="gm-removeHistory" type="checkbox">
@@ -1015,7 +1015,7 @@
               <input id="gm-removeHistoryTimestamp" type="checkbox">
             </label>`,
           }, {
-            desc: '搜寻时在最近多少条数据记录中查找，设置较小的值能较好地定位最近被添加到稍后再看的视频。',
+            desc: '搜寻时在最近多少条数据记录中查找，设置较小的值能较好地定位最近被添加到稍后再看的稿件。',
             html: `<div>
               <span>默认历史回溯深度</span>
               <input is="laster2800-input-number" id="gm-removeHistorySearchTimes" value="${gm.configMap.removeHistorySearchTimes.default}" min="${gm.configMap.removeHistorySearchTimes.min}" max="${gm.configMap.removeHistorySearchTimes.max}">
@@ -1078,7 +1078,7 @@
             </div>`,
           })
           itemsHTML += getItemHTML('全局功能', {
-            desc: '指定使用收藏功能时，将视频从稍后再看移动至哪个收藏夹。',
+            desc: '指定使用收藏功能时，将稿件从稍后再看移动至哪个收藏夹。',
             html: `<div>
               <span>稍后再看收藏夹</span>
               <span id="gm-watchlaterMediaList" class="gm-info">设置</span>
@@ -1092,18 +1092,18 @@
             </div>`,
           })
           itemsHTML += getItemHTML('播放页面', {
-            desc: '在播放页面中加入能将视频快速切换添加或移除出稍后再看列表的按钮。',
+            desc: '在播放页面中加入能将稿件快速切换添加或移除出稍后再看列表的按钮。',
             html: `<label>
-              <span>加入快速切换视频稍后再看状态的按钮</span>
+              <span>加入快速切换稿件稍后再看状态的按钮</span>
               <input id="gm-videoButton" type="checkbox">
             </label>`,
           })
           itemsHTML += getItemHTML('播放页面', {
-            desc: '打开播放页面时，自动将视频从稍后再看列表中移除，或在特定条件下执行自动移除。',
+            desc: '打开播放页面时，自动将稿件从稍后再看列表中移除，或在特定条件下执行自动移除。',
             html: `<div>
               <span>打开页面时，</span>
               <select id="gm-autoRemove">
-                <option value="${Enums.autoRemove.always}">若视频在稍后再看中，则移除出稍后再看</option>
+                <option value="${Enums.autoRemove.always}">若稿件在稍后再看中，则移除出稍后再看</option>
                 <option value="${Enums.autoRemove.openFromList}">若是从列表页面或弹出面板点击进入，则移除出稍后再看</option>
                 <option value="${Enums.autoRemove.never}">不执行自动移除功能（可通过自动移除控制器临时开启）</option>
                 <option value="${Enums.autoRemove.absoluteNever}">彻底禁用自动移除功能</option>
@@ -1133,9 +1133,9 @@
             </div>`,
           })
           itemsHTML += getItemHTML('列表页面', {
-            desc: `设置在「${gm.url.page_watchlaterList}」页面点击视频时的行为。`,
+            desc: `设置在「${gm.url.page_watchlaterList}」页面点击稿件时的行为。`,
             html: `<div>
-              <span>点击视频时</span>
+              <span>点击稿件时</span>
               <select id="gm-openListVideo">
                 <option value="${Enums.openListVideo.openInCurrent}">在当前页面打开</option>
                 <option value="${Enums.openListVideo.openInNew}">在新页面打开</option>
@@ -1307,7 +1307,7 @@
           el.rhfcInformation = gm.el.setting.querySelector('#gm-rhfcInformation')
           api.message.hoverInfo(el.rhfcInformation, `
             <div style="text-indent:2em;line-height:1.6em">
-              <p>模糊比对模式：设当前时间点获取到的稍后再看列表数据为 A，上一次获取到的数据为 B。若 A 与 B 的前 <b>N</b> 项均一致就认为这段时间没有往稍后再看中添加新视频，直接跳过后续处理。</p>
+              <p>模糊比对模式：设当前时间点获取到的稍后再看列表数据为 A，上一次获取到的数据为 B。若 A 与 B 的前 <b>N</b> 项均一致就认为这段时间没有往稍后再看中添加新稿件，直接跳过后续处理。</p>
               <p>其中，<b>N</b> 即为模糊比对深度。注意，<b>深度设置过大反而会降低比对效率</b>，建议先设置较小的值，若后续观察到有记录被误丢弃，再增加该项的值。最佳参数与个人使用习惯相关，请根据自身情况微调。你也可以选择设置 <b>0</b> 以关闭模糊比对模式（不推荐）。</p>
             </div>
           `, null, { width: '36em', position: { top: '80%' } })
@@ -1320,7 +1320,7 @@
           el.rhtInformation = gm.el.setting.querySelector('#gm-rhtInformation')
           api.message.hoverInfo(el.rhtInformation, `
             <div style="line-height:1.6em">
-              在历史数据记录中添加时间戳，用于改善移除记录中的数据排序，使得排序以「视频『最后一次』被观察到处于稍后再看的时间点」为基准，而非以「视频『第一次』被观察到处于稍后再看的时间点」为基准；同时也利于数据展示与查看。注意，此功能在数据存读及处理上都有额外开销。
+              在历史数据记录中添加时间戳，用于改善移除记录中的数据排序，使得排序以「稿件『最后一次』被观察到处于稍后再看的时间点」为基准，而非以「稿件『第一次』被观察到处于稍后再看的时间点」为基准；同时也利于数据展示与查看。注意，此功能在数据存读及处理上都有额外开销。
             </div>
           `, null, { width: '36em', position: { top: '80%' } })
           el.balatsInformation = gm.el.setting.querySelector('#gm-balatsInformation')
@@ -1330,8 +1330,8 @@
           el.fwsInformation = gm.el.setting.querySelector('#gm-fwsInformation')
           api.message.hoverInfo(el.fwsInformation, `
             <div style="text-indent:2em;line-height:1.6em">
-              <p>在动态页、视频播放页以及其他页面，视频卡片的右下角方存在一个将视频加入或移除出稍后再看的快捷按钮。然而，在刷新页面后，B站不会为之加载稍后再看的状态——即使视频已经在稍后再看中，也不会显示出来。启用该功能后，会自动填充这些缺失的状态信息。</p>
-              <p>第三项「所有页面」，会用一套固定的逻辑对脚本能匹配到的所有非特殊页面尝试进行信息填充。脚本本身没有匹配所有B站页面，如果有需要，请在脚本管理器（如 Tampermonkey）中为脚本设置额外的页面匹配规则。由于B站各页面的设计不是很规范，某些页面中视频卡片的设计可能跟其他地方不一致，所以不保证必定能填充成功。</p>
+              <p>在动态页、视频播放页以及其他页面，稿件卡片的右下角方存在一个将稿件加入或移除出稍后再看的快捷按钮。然而，在刷新页面后，B站不会为之加载稍后再看的状态——即使稿件已经在稍后再看中，也不会显示出来。启用该功能后，会自动填充这些缺失的状态信息。</p>
+              <p>第三项「所有页面」，会用一套固定的逻辑对脚本能匹配到的所有非特殊页面尝试进行信息填充。脚本本身没有匹配所有B站页面，如果有需要，请在脚本管理器（如 Tampermonkey）中为脚本设置额外的页面匹配规则。由于B站各页面的设计不是很规范，某些页面中稿件卡片的设计可能跟其他地方不一致，所以不保证必定能填充成功。</p>
             </div>
           `, null, { width: '36em', position: { top: '80%' } })
           el.mraInformation = gm.el.setting.querySelector('#gm-mraInformation')
@@ -1435,7 +1435,7 @@
           el.watchlaterMediaList.addEventListener('click', async () => {
             const uid = webpage.method.getDedeUserID()
             const mlid = await api.message.prompt(`
-              <p>指定使用收藏功能时，将视频从稍后再看移动至哪个收藏夹。</p>
+              <p>指定使用收藏功能时，将稿件从稍后再看移动至哪个收藏夹。</p>
               <p>下方应填入目标收藏夹 ID，置空时使用默认收藏夹。收藏夹页面网址为「https://space.bilibili.com/\${uid}/favlist?fid=\${mlid}」，mlid 即收藏夹 ID。</p>
             `, GM_getValue(`watchlaterMediaList_${uid}`) ?? undefined, { html: true })
             if (mlid != null) {
@@ -1927,7 +1927,7 @@
                     const { major } = modules.module_dynamic
                     const core = major[major.type.replace(/^MAJOR_TYPE_/, '').toLowerCase()]
                     const aid = String(core.aid)
-                    if (!await webpage.method.getVideoWatchlaterStatusByAid(aid, false, true)) { // 完全跳过存在于稍后再看的视频
+                    if (!await webpage.method.getVideoWatchlaterStatusByAid(aid, false, true)) { // 完全跳过存在于稍后再看的稿件
                       if (avSet.has(aid)) continue
                       avSet.add(aid)
                       const uncheck = history?.has(aid)
@@ -2199,7 +2199,7 @@
             <div class="gm-history-page gm-modal">
               <div class="gm-title">稍后再看移除记录</div>
               <div class="gm-comment">
-                <div>根据<span id="gm-history-new-or-old" style="padding-right:0"></span><span id="gm-history-save-times">0</span>条不重复数据记录生成，共筛选出<span id="gm-history-removed-num">0</span>条移除记录。排序由视频<span id="gm-history-time-point"></span>被观察到处于稍后再看的时间决定，与被移除出稍后再看的时间无关。如果记录太少请设置增加历史回溯深度；记录太多则减少之，并善用浏览器搜索功能辅助定位。</div>
+                <div>根据<span id="gm-history-new-or-old" style="padding-right:0"></span><span id="gm-history-save-times">0</span>条不重复数据记录生成，共筛选出<span id="gm-history-removed-num">0</span>条移除记录。排序由稿件<span id="gm-history-time-point"></span>被观察到处于稍后再看的时间决定，与被移除出稍后再看的时间无关。如果记录太少请设置增加历史回溯深度；记录太多则减少之，并善用浏览器搜索功能辅助定位。</div>
                 <div style="text-align:right;font-weight:bold">
                   <span id="gm-history-sort" style="text-decoration:underline;cursor:pointer"></span>
                   <span title="搜寻时在最近/最早保存的多少条稍后再看历史数据记录中查找。按下回车键或输入框失去焦点时刷新数据。">历史回溯深度：<input is="laster2800-input-number" id="gm-history-search-times" value="${gm.config.removeHistorySearchTimes}" min="${gm.configMap.removeHistorySearchTimes.min}" max="${gm.configMap.removeHistorySearchTimes.max}"></span>
@@ -2730,8 +2730,8 @@
       }(),
 
       /**
-       * 从 URL 获取视频 ID
-       * @param {string} [url=location.href] 提取视频 ID 的源字符串
+       * 从 URL 获取稿件 ID
+       * @param {string} [url=location.href] 提取稿件 ID 的源字符串
        * @returns {{id: string, type: 'aid' | 'bvid'}} `{id, type}`
        */
       getVid(url = location.href) {
@@ -2745,8 +2745,8 @@
       },
 
       /**
-       * 从 URL 获取视频 `aid`
-       * @param {string} [url=location.href] 提取视频 `aid` 的源字符串
+       * 从 URL 获取稿件 `aid`
+       * @param {string} [url=location.href] 提取稿件 `aid` 的源字符串
        * @returns {string} `aid`
        */
       getAid(url = location.href) {
@@ -2761,8 +2761,8 @@
       },
 
       /**
-       * 从 URL 获取视频 `bvid`
-       * @param {string} [url=location.href] 提取视频 `bvid` 的源字符串
+       * 从 URL 获取稿件 `bvid`
+       * @param {string} [url=location.href] 提取稿件 `bvid` 的源字符串
        * @returns {string} `bvid`
        */
       getBvid(url = location.href) {
@@ -2777,12 +2777,12 @@
       },
 
       /**
-       * 根据 `aid` 获取视频的稍后再看状态
-       * @param {string} aid 视频 `aid`
+       * 根据 `aid` 获取稿件的稍后再看状态
+       * @param {string} aid 稿件 `aid`
        * @param {boolean} [reload] 是否重新加载
        * @param {boolean} [pageCache] 是否禁用页面缓存
        * @param {boolean} [localCache=true] 是否使用本地缓存
-       * @returns {Promise<boolean>} 视频是否在稍后再看中
+       * @returns {Promise<boolean>} 稿件是否在稍后再看中
        */
       async getVideoWatchlaterStatusByAid(aid, reload, pageCache, localCache = true) {
         const map = await this.getWatchlaterDataMap(item => String(item.aid), 'aid', reload, pageCache, localCache)
@@ -2790,10 +2790,10 @@
       },
 
       /**
-       * 将视频加入稍后再看，或从稍后再看移除
-       * @param {string} id 视频 `aid` 或 `bvid`（执行移除时优先选择 `aid`）
+       * 将稿件加入稍后再看，或从稍后再看移除
+       * @param {string} id 稿件 `aid` 或 `bvid`（执行移除时优先选择 `aid`）
        * @param {boolean} [status=true] 添加 `true` / 移除 `false`
-       * @returns {Promise<boolean>} 操作是否成功（视频不在稍后在看中不被判定为失败）
+       * @returns {Promise<boolean>} 操作是否成功（稿件不在稍后在看中不被判定为失败）
        */
       async switchVideoWatchlaterStatus(id, status = true) {
         try {
@@ -2845,7 +2845,7 @@
       },
 
       /**
-       * 移除稍后再看已观看视频
+       * 移除稍后再看已观看稿件
        * @returns {Promise<boolean>} 操作是否成功
        */
       async clearWatchedInWatchlater() {
@@ -3074,7 +3074,7 @@
       },
 
       /**
-       * 将视频添加到收藏夹
+       * 将稿件添加到收藏夹
        * @param {string} aid `aid`
        * @param {string} mlid 收藏夹 ID
        * @returns {Promise<boolean>} 操作是否成功
@@ -3748,7 +3748,7 @@
            * 打开时弹出面板时执行
            */
           const onOpen = async () => {
-            // 上半区被移除卡片先于下半区被查询到，恰巧使得后移除视频最后生成在被移除列表前方，无须额外排序
+            // 上半区被移除卡片先于下半区被查询到，恰巧使得后移除稿件最后生成在被移除列表前方，无须额外排序
             const rmCards = gm.config.headerMenuKeepRemoved ? gm.el.entryPopup.querySelectorAll('.gm-removed') : null
             let rmBvid = null
             if (rmCards?.length > 0) {
@@ -3825,7 +3825,7 @@
                       <div class="gm-card-corner">
                         <span class="gm-card-progress">${progress}</span>
                         <span class="gm-card-fixer gm-hover" title="${gm.const.fixerHint}">固定</span>
-                        <span class="gm-card-collector gm-hover" title="将视频移动至指定收藏夹">收藏</span>
+                        <span class="gm-card-collector gm-hover" title="将稿件移动至指定收藏夹">收藏</span>
                       </div>
                     </div>
                   `
@@ -3979,7 +3979,7 @@
               el.entryListEmpty.style.display = 'unset'
             }
 
-            // 添加已移除视频
+            // 添加已移除稿件
             if (rmCards?.length > 0) {
               const addedBvid = new Set()
               for (const rmCard of rmCards) {
@@ -4424,7 +4424,7 @@
 
         window.addEventListener('urlchange', async () => {
           const aid = this.method.getAid()
-          if (bus.aid === aid) return // 并非切换视频（如切分P）
+          if (bus.aid === aid) return // 并非切换稿件（如切分P）
           bus.aid = aid
           let reloaded = false
           gm.searchParams = new URL(location.href).searchParams
@@ -4459,13 +4459,13 @@
             setStatus()
           }
         }
-        // 如果当前视频应当被移除，那就不必读取状态了
+        // 如果当前稿件应当被移除，那就不必读取状态了
         // 注意，哪处代码先执行不确定，不过从理论上来说这里应该是会晚执行
-        // 当然，自动移除的操作有可能会失败，但两处代码联动太麻烦了，还会涉及到切换其他视频的问题，综合考虑之下对这种小概率事件不作处理
+        // 当然，自动移除的操作有可能会失败，但两处代码联动太麻烦了，还会涉及到切换其他稿件的问题，综合考虑之下对这种小概率事件不作处理
       }
 
       /**
-       * 处理视频状态的切换
+       * 处理稿件状态的切换
        */
       async function processSwitch() {
         const { btn, cb } = bus
@@ -4496,7 +4496,7 @@
           } else {
             id = vid.id
           }
-        } else { // URL 中无 vid 时等同于稍后再看中的第一个视频
+        } else { // URL 中无 vid 时等同于稍后再看中的第一个稿件
           const resp = await api.web.request({
             url: gm.url.api_queryWatchlaterList,
           }, { check: r => r.code === 0 })
@@ -4798,7 +4798,7 @@
           `)
           const autoRemove = gm.config.autoRemove === Enums.autoRemove.always || gm.config.autoRemove === Enums.autoRemove.openFromList
           autoRemoveControl.className = 's-btn'
-          autoRemoveControl.title = '临时切换在当前页面打开视频后是否将其自动移除出「稍后再看」。若要默认开启/关闭自动移除功能，请在「用户设置」中配置。'
+          autoRemoveControl.title = '临时切换在当前页面打开稿件后是否将其自动移除出「稍后再看」。若要默认开启/关闭自动移除功能，请在「用户设置」中配置。'
           autoRemoveControl.autoRemove = autoRemove
           if (autoRemove) {
             autoRemoveControl.setAttribute('enabled', '')
@@ -5012,7 +5012,7 @@
         state.insertAdjacentHTML('beforeend', `
           <span class="gm-list-item-tools">
             <span class="gm-list-item-fixer" title="${gm.const.fixerHint}">固定</span>
-            <span class="gm-list-item-collector" title="将视频移动至指定收藏夹">收藏</span>
+            <span class="gm-list-item-collector" title="将稿件移动至指定收藏夹">收藏</span>
             <input class="gm-list-item-switcher" type="checkbox" checked>
           </span>
         `)
@@ -5129,7 +5129,7 @@
        * @param {HTMLElement} [arc] 自动移除按钮，为 `null` 时表示彻底禁用自动移除功能
        */
       function processLink(base, link, arc) {
-        // 过滤视频被和谐或其他特殊情况
+        // 过滤稿件被和谐或其他特殊情况
         if (base.state >= 0) {
           link.target = gm.config.openListVideo === Enums.openListVideo.openInCurrent ? '_self' : '_blank'
           if (gm.config.redirect) {
@@ -5373,7 +5373,7 @@
     }
 
     /**
-     * 更新列表页面上方的视频总数统计
+     * 更新列表页面上方的稿件总数统计
      */
     async updateWatchlaterListPageTotal() {
       const container = await api.wait.$('.watch-later-list')
@@ -5407,8 +5407,8 @@
     }
 
     /**
-     * 根据用户配置或 URL 上的查询参数，将视频从稍后再看移除
-     * @returns {Promise<boolean>} 执行后视频是否已经不在稍后再看中（可能是在本方法内被移除，也可能是本身就不在）
+     * 根据用户配置或 URL 上的查询参数，将稿件从稍后再看移除
+     * @returns {Promise<boolean>} 执行后稿件是否已经不在稍后再看中（可能是在本方法内被移除，也可能是本身就不在）
      */
     async processAutoRemove() {
       try {
@@ -5420,7 +5420,7 @@
           const aid = this.method.getAid()
           // 稍后再看播放页中，必须等右侧稍后再看列表初始化完成再移除，否则会影响其初始化。
           // 列表播放页（稍后再看）并不需要进行这一操作，因为该页面可以是给收藏夹列表的，猜测
-          // 官方在设计时就考虑到播放过程中视频被移除出列表的问题。
+          // 官方在设计时就考虑到播放过程中稿件被移除出列表的问题。
           if (api.base.urlMatch(gm.regex.page_videoWatchlaterMode)) {
             await api.wait.$('.player-auxiliary-wraplist-playlist')
             await new Promise(resolve => setTimeout(resolve, 5000))
