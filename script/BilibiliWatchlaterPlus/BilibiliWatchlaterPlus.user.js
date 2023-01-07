@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.31.3.20230107
+// @version         4.31.4.20230107
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -1092,7 +1092,7 @@
             </div>`,
           })
           itemsHTML += getItemHTML('播放页面', {
-            desc: '在播放页面中加入能将稿件快速切换添加或移除出稍后再看列表的按钮。',
+            desc: '在播放页面中加入能将稿件快速添加或移除出稍后再看列表的按钮。',
             html: `<label>
               <span>加入快速切换稿件稍后再看状态的按钮</span>
               <input id="gm-videoButton" type="checkbox">
