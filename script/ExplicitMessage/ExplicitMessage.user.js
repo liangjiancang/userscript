@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            [DEBUG] 信息显式化
-// @version         2.8.2.20221009
+// @version         2.9.0.20230121
 // @namespace       laster2800
 // @author          Laster2800
 // @description     用 alert() 提示符合匹配规则的日志或未捕获异常，帮助开发者在日常使用网页时发现潜藏问题
@@ -22,11 +22,9 @@
   'use strict'
 
   const errorLog = console.error
-  const win = typeof unsafeWindow === 'object' ? unsafeWindow : window
-
   const gm = {
     id: 'gm429521',
-    injectUpdate: 20220813,
+    injectUpdate: 20230121,
     config: {},
     fn: {
       /**
@@ -135,7 +133,7 @@
       },
     },
   }
-  win[Symbol.for('ExplicitMessage')] = gm
+  unsafeWindow[Symbol.for('ExplicitMessage')] = gm
 
   try {
     // 配置
@@ -147,13 +145,13 @@
     gm.config.exclude = gmExclude ? new RegExp(gmExclude) : null
 
     // 日志
-    const { console } = win
+    const { console } = unsafeWindow
     for (const n of ['log', 'debug', 'info', 'warn', 'error']) {
       console[n] = gm.fn.wrappedLog(console, console[n], n.toUpperCase())
     }
 
     // 未捕获异常
-    win.addEventListener('error', /** @param {ErrorEvent} event */ event => { // 常规
+    unsafeWindow.addEventListener('error', /** @param {ErrorEvent} event */ event => { // 常规
       try {
         if (!gm.config.enabled) return
         const message = event.error?.stack ?? event.message
@@ -165,7 +163,7 @@
         innerError(e)
       }
     })
-    win.addEventListener('unhandledrejection', /** @param {PromiseRejectionEvent} event */ event => { // Promise
+    unsafeWindow.addEventListener('unhandledrejection', /** @param {PromiseRejectionEvent} event */ event => { // Promise
       try {
         if (!gm.config.enabled) return
         const message = event.reason.stack ?? event.reason
