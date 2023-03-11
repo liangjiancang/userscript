@@ -25,4 +25,8 @@ My API for userscripts.
 // @require     https://www.example.com/UserscriptAPIWeb.js
 ```
 
+## 补充说明
+
+* 脚本库基于 Microsoft Edge 浏览器和 Tampermonkey 脚本管理器开发，不支持 Greasemonkey。要求 Edge / Chrome / Chromium 内核版本不小于 93，Firefox 版本不小于 92。
+
 **Source: [Gitee](https://gitee.com/liangjiancang/userscript/tree/master/lib/UserscriptAPI) / [GitHub](https://github.com/liangjiancang/userscript/tree/master/lib/UserscriptAPI)** - *by Laster2800*
