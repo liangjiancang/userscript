@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.31.4.20230107
+// @version         4.31.5.20230311
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -5336,12 +5336,9 @@
           if (gm.config.removeHistory) {
             this.method.updateRemoveHistoryData()
           }
-          if (gm.runtime.autoReloadListTid != null) {
-            this.handleAutoReloadWatchlaterListPage() // 重新计时
-          }
+          this.handleAutoReloadWatchlaterListPage()
         }
       }
-      (await api.wait.$('#gm-list-reload')).title = `上次刷新时间：${new Date().toLocaleString()}`
       msg &&= success ? msg[0] : msg[1]
       msg && api.message.info(msg)
       return success
@@ -5350,18 +5347,21 @@
     /**
      * 处理稍后再看列表页面自动刷新
      */
-    handleAutoReloadWatchlaterListPage() {
+    async handleAutoReloadWatchlaterListPage() {
       if (gm.config.autoReloadList > 0) {
         if (gm.runtime.autoReloadListTid != null) {
           clearTimeout(gm.runtime.autoReloadListTid)
         }
         const interval = gm.config.autoReloadList * 60 * 1000
-        const autoReload = async () => {
+        const autoReload = () => {
           gm.runtime.autoReloadListTid = null
-          await this.reloadWatchlaterListPage(null)
-          gm.runtime.autoReloadListTid = setTimeout(autoReload, interval)
+          this.reloadWatchlaterListPage(null)
         }
         gm.runtime.autoReloadListTid = setTimeout(autoReload, interval)
+        gm.runtime.autoReloadTimeNext = Date.now() + interval
+
+        const reloadBtn = await api.wait.$('#gm-list-reload')
+        reloadBtn.title = `刷新时间：${new Date().toLocaleString()}\n下次自动刷新时间：${new Date(Date.now() + interval).toLocaleString()}`
       }
     }
 
@@ -5448,7 +5448,7 @@
           }
           break
         case Enums.removeHistorySavePoint.listAndMenu:
-        default:
+        default: 
           if (api.base.urlMatch(gm.regex.page_watchlaterList)) {
             this.method.updateRemoveHistoryData()
           }
