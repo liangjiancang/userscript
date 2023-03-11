@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站共同关注快速查看
-// @version         1.13.0.20230106
+// @version         1.13.1.20230311
 // @namespace       laster2800
 // @author          Laster2800
 // @description     快速查看与特定用户的共同关注（视频播放页、动态页、用户空间、直播间）
@@ -18,7 +18,7 @@
 // @exclude         *://t.bilibili.com/*/*
 // @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=1081030
 // @require         https://greasyfork.org/scripts/432002-userscriptapiwait/code/UserscriptAPIWait.js?version=1129540
-// @require         https://greasyfork.org/scripts/432003-userscriptapiweb/code/UserscriptAPIWeb.js?version=1095148
+// @require         https://greasyfork.org/scripts/432003-userscriptapiweb/code/UserscriptAPIWeb.js?version=1160007
 // @grant           GM_notification
 // @grant           GM_xmlhttpRequest
 // @grant           GM_setValue
@@ -28,9 +28,9 @@
 // @grant           GM_registerMenuCommand
 // @grant           GM_unregisterMenuCommand
 // @connect         api.bilibili.com
-// @compatible      edge 版本不小于 85
-// @compatible      chrome 版本不小于 85
-// @compatible      firefox 版本不小于 90
+// @compatible      edge 版本不小于 93
+// @compatible      chrome 版本不小于 93
+// @compatible      firefox 版本不小于 92
 // ==/UserScript==
 
 (function() {
@@ -308,7 +308,7 @@
     async generalLogic(options) {
       const { uid, target, before } = options
       if (webpage.method.isUserSelf(uid)) return
-      let dispEl = target.sameFollowings ?? (options.className ? target.querySelector(options.className.replace(/(^|\s+)(?=\w)/g, '.')) : null)
+      let dispEl = target.sameFollowings ?? (options.className ? target.querySelector(options.className.replaceAll(/(^|\s+)(?=\w)/g, '.')) : null)
       if (dispEl) {
         dispEl.textContent = ''
       } else {

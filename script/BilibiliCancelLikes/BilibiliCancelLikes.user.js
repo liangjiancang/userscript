@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站点赞批量取消
-// @version         1.2.8.20221218
+// @version         1.2.9.20230311
 // @namespace       laster2800
 // @author          Laster2800
 // @description     取消对于某个UP主的所有点赞
@@ -14,13 +14,13 @@
 // @require         https://greasyfork.org/scripts/431998-userscriptapidom/code/UserscriptAPIDom.js?version=1005139
 // @require         https://greasyfork.org/scripts/432000-userscriptapimessage/code/UserscriptAPIMessage.js?version=1095149
 // @require         https://greasyfork.org/scripts/432002-userscriptapiwait/code/UserscriptAPIWait.js?version=1129540
-// @require         https://greasyfork.org/scripts/432003-userscriptapiweb/code/UserscriptAPIWeb.js?version=1095148
+// @require         https://greasyfork.org/scripts/432003-userscriptapiweb/code/UserscriptAPIWeb.js?version=1160007
 // @grant           GM_xmlhttpRequest
 // @grant           GM_registerMenuCommand
 // @connect         api.bilibili.com
-// @compatible      edge 版本不小于 85
-// @compatible      chrome 版本不小于 85
-// @compatible      firefox 版本不小于 90
+// @compatible      edge 版本不小于 93
+// @compatible      chrome 版本不小于 93
+// @compatible      firefox 版本不小于 92
 // ==/UserScript==
 
 (function() {

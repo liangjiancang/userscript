@@ -10,8 +10,7 @@
 
 ## 补充说明
 
-* 脚本基于 Microsoft Edge 浏览器和 Tampermonkey 脚本管理器开发，不支持 Greasemonkey。要求 Edge / Chrome / Chromium 内核版本不小于 85，Firefox 版本不小于 90。
-* 脚本包含 [B站「稍后再看」重定向](https://greasyfork.org/zh-CN/scripts/383441) 的功能，请勿重复安装。
+* 脚本基于 Microsoft Edge 浏览器和 Tampermonkey 脚本管理器开发，不支持 Greasemonkey。要求 Edge / Chrome / Chromium 内核版本不小于 93，Firefox 版本不小于 92。
 
 ## 截图
 

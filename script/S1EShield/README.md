@@ -6,4 +6,8 @@
 
 ![屏蔽开关](https://gitee.com/liangjiancang/userscript/raw/master/script/S1EShield/screenshot/屏蔽开关-p)
 
+## 补充说明
+
+* 脚本基于 Microsoft Edge 浏览器和 Tampermonkey 脚本管理器开发，不支持 Greasemonkey。要求 Edge / Chrome / Chromium 内核版本不小于 93，Firefox 版本不小于 92。
+
 **Source: [Gitee](https://gitee.com/liangjiancang/userscript/tree/master/script/S1EShield) / [GitHub](https://github.com/liangjiancang/userscript/tree/master/script/S1EShield)** - *by Laster2800*

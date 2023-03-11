@@ -5,6 +5,8 @@
 ## V1.13
 
 1. 脚本：支持「列表播放页」`www.bilibili.com/list/*`。[164021](https://greasyfork.org/zh-CN/scripts/395575/discussions/164021)
+2. 代码：`unicorn/prefer-string-replace-all`。
+3. 外部：`UserScriptAPIWeb` 更新至 V1.3。
 
 ## V1.12
 

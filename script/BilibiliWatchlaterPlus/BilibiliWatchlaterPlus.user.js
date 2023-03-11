@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.31.5.20230311
+// @version         4.32.0.20230311
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -22,7 +22,7 @@
 // @require         https://greasyfork.org/scripts/431998-userscriptapidom/code/UserscriptAPIDom.js?version=1005139
 // @require         https://greasyfork.org/scripts/432000-userscriptapimessage/code/UserscriptAPIMessage.js?version=1095149
 // @require         https://greasyfork.org/scripts/432002-userscriptapiwait/code/UserscriptAPIWait.js?version=1129540
-// @require         https://greasyfork.org/scripts/432003-userscriptapiweb/code/UserscriptAPIWeb.js?version=1095148
+// @require         https://greasyfork.org/scripts/432003-userscriptapiweb/code/UserscriptAPIWeb.js?version=1160007
 // @require         https://greasyfork.org/scripts/432936-pushqueue/code/PushQueue.js?version=978730
 // @require         https://greasyfork.org/scripts/432807-inputnumber/code/InputNumber.js?version=1068774
 // @grant           GM_registerMenuCommand
@@ -35,9 +35,9 @@
 // @grant           GM_addValueChangeListener
 // @connect         api.bilibili.com
 // @run-at          document-start
-// @compatible      edge 版本不小于 85
-// @compatible      chrome 版本不小于 85
-// @compatible      firefox 版本不小于 90
+// @compatible      edge 版本不小于 93
+// @compatible      chrome 版本不小于 93
+// @compatible      firefox 版本不小于 92
 // ==/UserScript==
 
 /* global UserscriptAPI, PushQueue */
@@ -1281,11 +1281,12 @@
           el.maintitle = gm.el.setting.querySelector('.gm-maintitle')
           el.changelog = gm.el.setting.querySelector('.gm-changelog')
           switch (type) {
-            case 1:
+            case 1: {
               el.settingPage.dataset.type = 'init'
               el.maintitle.innerHTML += '<br><span style="font-size:0.8em">(初始化设置)</span>'
               break
-            case 2:
+            }
+            case 2: {
               el.settingPage.dataset.type = 'updated'
               el.maintitle.innerHTML += '<br><span style="font-size:0.8em">(功能性更新设置)</span>'
               for (const [name, item] of Object.entries({ ...gm.configMap, ...gm.infoMap })) {
@@ -1295,8 +1296,10 @@
                 }
               }
               break
-            default:
+            }
+            default: {
               break
+            }
           }
           el.save = gm.el.setting.querySelector('.gm-save')
           el.cancel = gm.el.setting.querySelector('.gm-cancel')
@@ -2027,8 +2030,8 @@
                 str = str.trim()
                 if (str !== '') {
                   try {
-                    str = str.replace(/\s*\|\s*/g, '|') // 移除关键词首末空白符
-                      .replace(/[$()+.[\\\]^{}]/g, '\\$&') // escape regex except |
+                    str = str.replaceAll(/\s*\|\s*/g, '|') // 移除关键词首末空白符
+                      .replaceAll(/[$()+.[\\\]^{}]/g, '\\$&') // escape regex except |
                       .replaceAll('?', '.').replaceAll('*', '.*') // 通配符
                     result = new RegExp(str, 'i')
                   } catch {}
@@ -2580,7 +2583,7 @@
         }
         if (导出至新页面) {
           const center = 相邻稿件换行 ? items.join('</p><p>') : items.join('')
-          const content = `${front !== '' ? `<p>${front}</p>` : ''}<p>${center}</p>${rear !== '' ? `<p>${rear}</p>` : ''}`.replace(/\n(?!<\/p>)/g, '<br>').replaceAll('\n', '')
+          const content = `${front !== '' ? `<p>${front}</p>` : ''}<p>${center}</p>${rear !== '' ? `<p>${rear}</p>` : ''}`.replaceAll(/\n(?!<\/p>)/g, '<br>').replaceAll('\n', '')
           const w = window.open()
           w.document.write(content)
           w.document.close()
@@ -2620,7 +2623,7 @@
         if (data[0]) {
           const attrs = []
           for (const attr in data[0]) {
-            if (Object.prototype.hasOwnProperty.call(data[0], attr)) {
+            if (Object.hasOwn(data[0], attr)) {
               attrs.push(attr)
             }
           }
@@ -3255,26 +3258,33 @@
               action.href && window.open(action.href, action.target)
               break
             }
-            case Enums.headerButtonOp.clearWatchlater:
+            case Enums.headerButtonOp.clearWatchlater: {
               clearWatchlater()
               break
-            case Enums.headerButtonOp.clearWatchedInWatchlater:
+            }
+            case Enums.headerButtonOp.clearWatchedInWatchlater: {
               clearWatchedInWatchlater()
               break
-            case Enums.headerButtonOp.openUserSetting:
+            }
+            case Enums.headerButtonOp.openUserSetting: {
               script.openUserSetting()
               break
-            case Enums.headerButtonOp.openRemoveHistory:
+            }
+            case Enums.headerButtonOp.openRemoveHistory: {
               script.openRemoveHistory()
               break
-            case Enums.headerButtonOp.openBatchAddManager:
+            }
+            case Enums.headerButtonOp.openBatchAddManager: {
               script.openBatchAddManager()
               break
-            case Enums.headerButtonOp.exportWatchlaterList:
+            }
+            case Enums.headerButtonOp.exportWatchlaterList: {
               script.exportWatchlaterList()
               break
-            default:
+            }
+            default: {
               break
+            }
           }
         }
         watchlater.addEventListener('mousedown', e => {
@@ -3500,7 +3510,7 @@
                 const lists = gm.config.headerMenuKeepRemoved ? [el.entryList, el.entryRemovedList] : [el.entryList]
                 if (val.length > 0) {
                   try {
-                    val = val.replace(/[$()+.[\\\]^{|}]/g, '\\$&') // escape regex
+                    val = val.replaceAll(/[$()+.[\\\]^{|}]/g, '\\$&') // escape regex
                       .replaceAll('?', '.').replaceAll('*', '.*') // 通配符
                     for (const part of val.split(' ')) {
                       if (part) {
@@ -3523,8 +3533,8 @@
                     if (!include && exclude) {
                       include = '.*'
                     }
-                    include = include && new RegExp(include, 'i')
-                    exclude = exclude && new RegExp(exclude, 'i')
+                    include &&= new RegExp(include, 'i')
+                    exclude &&= new RegExp(exclude, 'i')
                   } catch {
                     include = exclude = null
                   }
@@ -4107,24 +4117,29 @@
         const result = {}
         switch (op) {
           case Enums.headerButtonOp.openListInCurrent:
-          case Enums.headerButtonOp.openListInNew:
+          case Enums.headerButtonOp.openListInNew: {
             result.href = gm.url.page_watchlaterList
             break
+          }
           case Enums.headerButtonOp.playAllInCurrent:
-          case Enums.headerButtonOp.playAllInNew:
+          case Enums.headerButtonOp.playAllInNew: {
             result.href = gm.url.page_watchlaterPlayAll
             break
-          default:
+          }
+          default: {
             break
+          }
         }
         if (result.href) {
           switch (op) {
             case Enums.headerButtonOp.openListInNew:
-            case Enums.headerButtonOp.playAllInNew:
+            case Enums.headerButtonOp.playAllInNew: {
               result.target = '_blank'
               break
-            default:
+            }
+            default: {
               result.target = '_self'
+            }
           }
         }
         return result
@@ -4190,16 +4205,19 @@
         } else {
           // 两部分 URL 刚好不会冲突，放到 else 中即可
           switch (gm.config.fillWatchlaterStatus) {
-            case Enums.fillWatchlaterStatus.dynamicAndVideo:
+            case Enums.fillWatchlaterStatus.dynamicAndVideo: {
               if (api.base.urlMatch([gm.regex.page_videoNormalMode, gm.regex.page_videoWatchlaterMode, gm.regex.page_listMode])) {
                 fillWatchlaterStatus_main()
               }
               break
-            case Enums.fillWatchlaterStatus.anypage:
+            }
+            case Enums.fillWatchlaterStatus.anypage: {
               fillWatchlaterStatus_main()
               break
-            default:
+            }
+            default: {
               break
+            }
           }
         }
         fillWatchlaterStatus_dynamicPopup()
@@ -5204,7 +5222,7 @@
       const isExcluded = str => str && exclude?.test(str)
       if (val.length > 0) {
         try {
-          val = val.replace(/[$()+.[\\\]^{|}]/g, '\\$&') // escape regex
+          val = val.replaceAll(/[$()+.[\\\]^{|}]/g, '\\$&') // escape regex
             .replaceAll('?', '.').replaceAll('*', '.*') // 通配符
           for (const part of val.split(' ')) {
             if (part) {
@@ -5227,8 +5245,8 @@
           if (!include && exclude) {
             include = '.*'
           }
-          include = include && new RegExp(include, 'i')
-          exclude = exclude && new RegExp(exclude, 'i')
+          include &&= new RegExp(include, 'i')
+          exclude &&= new RegExp(exclude, 'i')
         } catch {
           include = exclude = null
         }
@@ -5358,7 +5376,6 @@
           this.reloadWatchlaterListPage(null)
         }
         gm.runtime.autoReloadListTid = setTimeout(autoReload, interval)
-        gm.runtime.autoReloadTimeNext = Date.now() + interval
 
         const reloadBtn = await api.wait.$('#gm-list-reload')
         reloadBtn.title = `刷新时间：${new Date().toLocaleString()}\n下次自动刷新时间：${new Date(Date.now() + interval).toLocaleString()}`
@@ -5442,22 +5459,25 @@
      */
     processWatchlaterListDataSaving() {
       switch (gm.config.removeHistorySavePoint) {
-        case Enums.removeHistorySavePoint.list:
+        case Enums.removeHistorySavePoint.list: {
           if (api.base.urlMatch(gm.regex.page_watchlaterList)) {
             this.method.updateRemoveHistoryData()
           }
           break
+        }
         case Enums.removeHistorySavePoint.listAndMenu:
-        default: 
+        default: {
           if (api.base.urlMatch(gm.regex.page_watchlaterList)) {
             this.method.updateRemoveHistoryData()
           }
           break
-        case Enums.removeHistorySavePoint.anypage:
+        }
+        case Enums.removeHistorySavePoint.anypage: {
           if (!api.base.urlMatch(gm.regex.page_dynamicMenu)) {
             this.method.updateRemoveHistoryData()
           }
           break
+        }
       }
     }
 
@@ -5485,7 +5505,7 @@
       const oldTooltip = '[role=tooltip]' // 旧版顶栏弹出面板
       const oldDynamic = '#app > .out-container > .container' // 旧版动态弹出面板
       switch (gm.config.menuScrollbarSetting) {
-        case Enums.menuScrollbarSetting.beautify:
+        case Enums.menuScrollbarSetting.beautify: {
           // 目前在不借助 JavaScript 的情况下，无法完美实现类似于移动端滚动条浮动在内容上的效果
           api.base.addStyle(`
             :root {
@@ -5530,7 +5550,8 @@
             }
           `)
           break
-        case Enums.menuScrollbarSetting.hidden:
+        }
+        case Enums.menuScrollbarSetting.hidden: {
           api.base.addStyle(`
             ${popup}::-webkit-scrollbar,
             ${oldTooltip} ::-webkit-scrollbar,
@@ -5547,8 +5568,10 @@
             }
           `)
           break
-        default:
+        }
+        default: {
           break
+        }
       }
     }
 

@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            S1战斗力屏蔽
-// @version         3.9.3.20221218
+// @version         3.9.4.20230311
 // @namespace       laster2800
 // @author          Laster2800
 // @description     屏蔽S1的战斗力系统，眼不见为净
@@ -15,9 +15,9 @@
 // @exclude         *.saraba1st.com/2b/search*
 // @grant           none
 // @run-at          document-start
-// @compatible      edge 版本不小于 85
-// @compatible      chrome 版本不小于 85
-// @compatible      firefox 版本不小于 90
+// @compatible      edge 版本不小于 93
+// @compatible      chrome 版本不小于 93
+// @compatible      firefox 版本不小于 92
 // ==/UserScript==
 
 (function() {

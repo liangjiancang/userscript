@@ -2,6 +2,12 @@
 
 本日志只记录用户友好的更新说明，影响不大的问题修复与修改不作记录，具体修改见 [提交记录](https://gitee.com/liangjiancang/userscript/commits/master/script/BilibiliWatchlaterPlus)。
 
+## V4.32
+
+1. 代码：`prefer-object-has-own` `unicorn/prefer-string-replace-all` `unicorn/switch-case-braces`。（此项更新变更了兼容性要求）
+2. 脚本：更新兼容性说明。
+3. 外部：`UserScriptAPIWeb` 更新至 V1.3。
+
 ## V4.31
 
 1. 脚本：支持「列表播放页」`www.bilibili.com/list/*`。
