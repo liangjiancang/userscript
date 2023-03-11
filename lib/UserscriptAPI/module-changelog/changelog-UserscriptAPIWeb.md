@@ -2,7 +2,7 @@
 
 ## V1.3
 
-1. 代码：`unicorn/prefer-at`。
+1. 代码：`unicorn/prefer-at`。（此项更新变更了兼容性要求）
 
 ## V1.2
 
