@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站URL清理（掩耳盗铃）
-// @version         1.1.0.20220804
+// @version         1.1.1.20230314
 // @namespace       laster2800
 // @author          Laster2800
 // @description     清理B站 URL 中多余的内容——这种清理只是将 URL 中多余的部分简单隐藏起来，不会过分阻止其完成自身的使命
@@ -39,18 +39,16 @@
 
   function tryClean(url, k) {
     const m = new RegExp(`^\\?((.*)&)?((?<=[?&])${k}(=[^&]*)?)(&(.+))?$`).exec(url.search)
-    if (m) {
-      let a = m[2] ?? ''
-      const b = m[6] ?? ''
-      if (a && b) {
-        a += `&${b}`
-      } else if (a || b) {
-        a += b
-      }
-      url.search = a ? `?${a}` : ''
-      return true
+    if (!m) return false
+    let a = m[2] ?? ''
+    const b = m[6] ?? ''
+    if (a && b) {
+      a += `&${b}`
+    } else if (a || b) {
+      a += b
     }
-    return false
+    url.search = a ? `?${a}` : ''
+    return true
   }
 
   /**
