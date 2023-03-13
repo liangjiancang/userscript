@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            [DEBUG] 对象观察器
-// @version         2.2.0.20210925
+// @version         2.2.1.20230314
 // @namespace       laster2800
 // @author          Laster2800
 // @description     右键菜单激活，向 window 中注入 ObjectInspector 工具类，用于查找特定对象上符合条件的属性；激活无显式提醒，请自行打开控制台获取信息
@@ -45,8 +45,8 @@
      */
     constructor(obj, regex, options) {
       this.options = {
-        obj: obj,
-        regex: regex,
+        obj,
+        regex,
         depth: 6,
         inspectKey: true,
         inspectValue: true,
