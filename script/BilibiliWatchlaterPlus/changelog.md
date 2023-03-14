@@ -4,9 +4,10 @@
 
 ## V4.32
 
-1. 代码：`prefer-object-has-own` `unicorn/prefer-string-replace-all` `unicorn/switch-case-braces`。（此项更新变更了兼容性要求）
-2. 脚本：更新兼容性说明。
-3. 外部：`UserScriptAPIWeb` 更新至 V1.3。
+1. 代码：`prefer-object-has-own` `object-shorthand` `unicorn/prefer-string-replace-all` `unicorn/switch-case-braces`。（此项更新变更了兼容性要求）
+2. 代码：减少代码嵌套。
+3. 脚本：更新兼容性说明。
+4. 外部：`UserScriptAPIWeb` 更新至 V1.3。
 
 ## V4.31
 
@@ -42,7 +43,6 @@
 2. 列表页面：提供自动刷新功能，及配套的设置选项。
 3. 列表页面：优化稍后再看列表页面的处理过程。
 4. 脚本：API 一律通过 HTTPS 访问。[142885](https://greasyfork.org/zh-CN/scripts/395456/discussions/142885)
-5. 外部：`InputNumber` 更新至 V1.0。
 
 ## V4.27
 
@@ -54,6 +54,7 @@
 6. 搜索：为搜索框添加默认值功能，通过右键点击搜索框保存、中键点击搜索框清空。相应地，增加该功能的开关选项。
 7. 快速切换：修复打开「播放全部」页面后，快速切换按钮没有正确显示稍后再看状态的问题。
 8. 脚本：优化 URL 匹配。
+9. 外部：`InputNumber` 更新至 V1.1。
 
 > 「搜索框默认值」这一功能的设计本意实际上与「固定」「收藏」类似，将搜索框默认值与关键字排除相结合便可达到一种高级的「条件式『稍后再看』的『稍后再看』」。
 >

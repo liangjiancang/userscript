@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.32.0.20230311
+// @version         4.32.1.20230314
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -18,13 +18,13 @@
 // @exclude         *://t.bilibili.com/h5/*
 // @exclude         *://www.bilibili.com/correspond/*
 // @exclude         *://www.bilibili.com/page-proxy/*
-// @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=1081030
-// @require         https://greasyfork.org/scripts/431998-userscriptapidom/code/UserscriptAPIDom.js?version=1005139
+// @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=1161014
+// @require         https://greasyfork.org/scripts/431998-userscriptapidom/code/UserscriptAPIDom.js?version=1161016
 // @require         https://greasyfork.org/scripts/432000-userscriptapimessage/code/UserscriptAPIMessage.js?version=1095149
-// @require         https://greasyfork.org/scripts/432002-userscriptapiwait/code/UserscriptAPIWait.js?version=1129540
+// @require         https://greasyfork.org/scripts/432002-userscriptapiwait/code/UserscriptAPIWait.js?version=1161015
 // @require         https://greasyfork.org/scripts/432003-userscriptapiweb/code/UserscriptAPIWeb.js?version=1160007
-// @require         https://greasyfork.org/scripts/432936-pushqueue/code/PushQueue.js?version=978730
-// @require         https://greasyfork.org/scripts/432807-inputnumber/code/InputNumber.js?version=1068774
+// @require         https://greasyfork.org/scripts/432936-pushqueue/code/PushQueue.js?version=1161000
+// @require         https://greasyfork.org/scripts/432807-inputnumber/code/InputNumber.js?version=1160998
 // @grant           GM_registerMenuCommand
 // @grant           GM_notification
 // @grant           GM_xmlhttpRequest
@@ -105,7 +105,7 @@
      * @readonly
      * @enum {string}
      */
-    sortType: sortType,
+    sortType,
     /**
      * @readonly
      * @enum {string}
@@ -618,24 +618,24 @@
           const $data = this.#data
           if (remove) {
             $data.removeHistoryData = undefined
-          } else {
-            if ($data.removeHistoryData == null) {
-              /** @type {PushQueue<GMObject_data_item>} */
-              let data = GM_getValue('removeHistoryData')
-              if (data && typeof data === 'object') {
-                Reflect.setPrototypeOf(data, PushQueue.prototype) // 初始化替换原型不会影响内联缓存
-                if (data.maxSize !== gm.config.removeHistorySaves) {
-                  data.setMaxSize(gm.config.removeHistorySaves)
-                  GM_setValue('removeHistoryData', data)
-                }
-              } else {
-                data = new PushQueue(gm.config.removeHistorySaves)
+            return
+          }
+          if ($data.removeHistoryData == null) {
+            /** @type {PushQueue<GMObject_data_item>} */
+            let data = GM_getValue('removeHistoryData')
+            if (data && typeof data === 'object') {
+              Reflect.setPrototypeOf(data, PushQueue.prototype) // 初始化替换原型不会影响内联缓存
+              if (data.maxSize !== gm.config.removeHistorySaves) {
+                data.setMaxSize(gm.config.removeHistorySaves)
                 GM_setValue('removeHistoryData', data)
               }
-              $data.removeHistoryData = data
+            } else {
+              data = new PushQueue(gm.config.removeHistorySaves)
+              GM_setValue('removeHistoryData', data)
             }
-            return $data.removeHistoryData
+            $data.removeHistoryData = data
           }
+          return $data.removeHistoryData
         },
         watchlaterListData: async (reload, pageCache, localCache = true) => {
           const $data = this.#data
@@ -720,9 +720,8 @@
           const items = GM_getValue('fixedItems') ?? []
           const idx = items.indexOf(id)
           const fixed = idx >= 0
-          if (op == null) {
-            return fixed
-          } else if (op) {
+          if (op == null) return fixed
+          if (op) {
             if (!fixed) {
               items.push(id)
               GM_setValue('fixedItems', items)
@@ -1543,11 +1542,7 @@
             // 需要等所有配置读取完成后再进行选项初始化
             el[name].init?.()
           }
-          if (gm.config.removeHistory) {
-            el.clearRemoveHistoryData.textContent = `清空数据(${gm.data.removeHistoryData().size}条)`
-          } else {
-            el.clearRemoveHistoryData.textContent = '清空数据(0条)'
-          }
+          el.clearRemoveHistoryData.textContent = gm.config.removeHistory ? `清空数据(${gm.data.removeHistoryData().size}条)` : '清空数据(0条)'
         }
 
         /**
@@ -1653,12 +1648,10 @@
               val = gm.configMap[name].default
             }
           }
-          if (gm.config[name] !== val) {
-            gm.config[name] = val
-            GM_setValue(name, gm.config[name])
-            return true
-          }
-          return false
+          if (gm.config[name] === val) return false
+          gm.config[name] = val
+          GM_setValue(name, gm.config[name])
+          return true
         }
 
         /**
@@ -1717,7 +1710,7 @@
      */
     openBatchAddManager() {
       if (gm.el.batchAddManager) {
-        script.openPanelItem('batchAddManager')
+        this.openPanelItem('batchAddManager')
       } else {
         /** @type {{[n: string]: HTMLElement}} */
         const el = {}
@@ -1734,7 +1727,7 @@
         setTimeout(() => {
           initManager()
           processItem()
-          script.openPanelItem('batchAddManager')
+          this.openPanelItem('batchAddManager')
         })
 
         /**
@@ -1798,7 +1791,7 @@
          */
         const processItem = () => {
           gm.el.batchAddManager.fadeInDisplay = 'flex'
-          el.shadow.addEventListener('click', () => script.closePanelItem('batchAddManager'))
+          el.shadow.addEventListener('click', () => this.closePanelItem('batchAddManager'))
 
           // 时间同步
           const setLastAddTime = (time = null, writeBack = true) => {
@@ -1847,10 +1840,8 @@
             }
           })
           el.items.addEventListener('click', e => {
-            if (e.target.type === 'checkbox' && el.uncheckedDisplay._hide) {
-              if (!e.target.checked) {
-                e.target.parentElement.style.display = 'none'
-              }
+            if (e.target.type === 'checkbox' && !e.target.checked && el.uncheckedDisplay._hide) {
+              e.target.parentElement.style.display = 'none'
             }
           })
 
@@ -1907,8 +1898,8 @@
                 const resp = await api.web.request({
                   url: `${gm.url.api_dynamicList}?${data.toString()}`,
                 }, { check: r => r.code === 0 })
-                const { items } = resp.data
-                if (!resp.data.has_more || !items || items.length === 0) return // -> finally
+                const { items, has_more } = resp.data
+                if (!has_more || !items || items.length === 0) return // -> finally
                 offset = resp.data.offset // data.offset 是字符串类型，不会丢失精度；无需 +1 额外偏移
                 let html = ''
                 for (let item of items) {
@@ -2073,11 +2064,7 @@
             try {
               executing = true
               let v4a = Number.parseFloat(el.id4a.value)
-              if (Number.isNaN(v4a)) {
-                v4a = gm.const.batchAddRequestInterval
-              } else {
-                v4a = Math.max(v4a, 250)
-              }
+              v4a = Number.isNaN(v4a) ? gm.const.batchAddRequestInterval : Math.max(v4a, 250)
               el.id4a.value = v4a
               el.id4b.disabled = true
               el.id4b.textContent = '执行中'
@@ -2269,8 +2256,8 @@
             '升序回溯历史，升序显示结果',
           ]
           Reflect.defineProperty(el.sort, 'type', {
-            get: function() { return Number.parseInt(this.dataset.type) },
-            set: function(val) {
+            get() { return Number.parseInt(this.dataset.type) },
+            set(val) {
               this.dataset.type = val
               this.textContent = typeText[val]
               this.title = typeDesc[val]
@@ -2754,13 +2741,8 @@
        */
       getAid(url = location.href) {
         const vid = this.getVid(url)
-        if (vid) {
-          if (vid.type === 'bvid') {
-            return this.bvTool.bv2av(vid.id)
-          }
-          return vid.id
-        }
-        return null
+        if (!vid) return null
+        return (vid.type === 'bvid') ? this.bvTool.bv2av(vid.id) : vid.id
       },
 
       /**
@@ -2770,13 +2752,8 @@
        */
       getBvid(url = location.href) {
         const vid = this.getVid(url)
-        if (vid) {
-          if (vid.type === 'aid') {
-            return this.bvTool.av2bv(vid.id)
-          }
-          return vid.id
-        }
-        return null
+        if (!vid) return null
+        return (vid.type === 'aid') ? this.bvTool.av2bv(vid.id) : vid.id
       },
 
       /**
@@ -2815,7 +2792,7 @@
           return await api.web.request({
             method: 'POST',
             url: status ? gm.url.api_addToWatchlater : gm.url.api_removeFromWatchlater,
-            data: data,
+            data,
           }, { parser: 'check', check: r => r.code === 0 })
         } catch (e) {
           api.logger.error(e)
@@ -2834,7 +2811,7 @@
           const success = await api.web.request({
             method: 'POST',
             url: gm.url.api_clearWatchlater,
-            data: data,
+            data,
           }, { parser: 'check', check: r => r.code === 0 })
           if (success) {
             gm.runtime.reloadWatchlaterListData = true
@@ -2859,7 +2836,7 @@
           const success = await api.web.request({
             method: 'POST',
             url: gm.url.api_removeFromWatchlater,
-            data: data,
+            data,
           }, { parser: 'check', check: r => r.code === 0 })
           if (success) {
             gm.runtime.reloadWatchlaterListData = true
@@ -2880,92 +2857,90 @@
         if (gm.config.removeHistory) {
           const removeHistorySaveTime = GM_getValue('removeHistorySaveTime') ?? 0
           const removeHistorySavePeriod = GM_getValue('removeHistorySavePeriod') ?? gm.configMap.removeHistorySavePeriod.default
-          if (Date.now() - removeHistorySaveTime > removeHistorySavePeriod * 1000) {
-            if (!gm.runtime.savingRemoveHistoryData) {
-              gm.runtime.savingRemoveHistoryData = true
-              await gm.data.watchlaterListData(reload).then(current => {
-                if (current.length > 0) {
-                  if (gm.config.removeHistoryFuzzyCompare > 0) {
-                    const ref = GM_getValue('removeHistoryFuzzyCompareReference')
-                    let same = true
-                    if (ref) {
-                      for (let i = 0; i < gm.config.removeHistoryFuzzyCompare; i++) {
-                        const c = current[i]
-                        const r = ref[i]
-                        if (c) { // 如果 current 没有数据直接跳过得了
-                          if (r) {
-                            if (c.bvid !== r) {
-                              same = false
-                              break
-                            }
-                          } else {
+          if ((Date.now() - removeHistorySaveTime > removeHistorySavePeriod * 1000) && !gm.runtime.savingRemoveHistoryData) {
+            gm.runtime.savingRemoveHistoryData = true
+            await gm.data.watchlaterListData(reload).then(current => {
+              if (current.length > 0) {
+                if (gm.config.removeHistoryFuzzyCompare > 0) {
+                  const ref = GM_getValue('removeHistoryFuzzyCompareReference')
+                  let same = true
+                  if (ref) {
+                    for (let i = 0; i < gm.config.removeHistoryFuzzyCompare; i++) {
+                      const c = current[i]
+                      const r = ref[i]
+                      if (c) { // 如果 current 没有数据直接跳过得了
+                        if (r) {
+                          if (c.bvid !== r) {
                             same = false
                             break
                           }
+                        } else {
+                          same = false
+                          break
                         }
                       }
-                    } else {
-                      same = false
                     }
-                    if (same) {
-                      GM_setValue('removeHistorySaveTime', Date.now())
-                      return
-                    } else {
-                      if (current.length >= gm.config.removeHistoryFuzzyCompare) {
-                        const newRef = []
-                        for (let i = 0; i < gm.config.removeHistoryFuzzyCompare; i++) {
-                          newRef.push(current[i].bvid)
-                        }
-                        GM_setValue('removeHistoryFuzzyCompareReference', newRef)
-                      } else {
-                        // 若 current 长度不够，那么加进去也白搭
-                        GM_deleteValue('removeHistoryFuzzyCompareReference')
-                      }
+                  } else {
+                    same = false
+                  }
+                  if (same) {
+                    GM_setValue('removeHistorySaveTime', Date.now())
+                    return
+                  }
+                  if (current.length >= gm.config.removeHistoryFuzzyCompare) {
+                    const newRef = []
+                    for (let i = 0; i < gm.config.removeHistoryFuzzyCompare; i++) {
+                      newRef.push(current[i].bvid)
                     }
+                    GM_setValue('removeHistoryFuzzyCompareReference', newRef)
+                  } else {
+                    // 若 current 长度不够，那么加进去也白搭
+                    GM_deleteValue('removeHistoryFuzzyCompareReference')
                   }
 
-                  const data = gm.data.removeHistoryData()
-                  let updated = false
-                  if (gm.config.removeHistoryTimestamp) {
-                    const timestamp = Date.now()
-                    const map = new Map()
-                    for (const [index, record] of data.entries()) {
-                      map.set(record[0], index)
-                    }
-                    for (let i = current.length - 1; i >= 0; i--) {
-                      const item = current[i]
-                      if (map.has(item.bvid)) {
-                        const idx = map.get(item.bvid)
-                        data.data[idx][2] = timestamp
-                      } else {
-                        data.enqueue([item.bvid, item.title, timestamp])
-                      }
-                    }
-                    updated = true
-                  } else {
-                    const set = new Set()
-                    for (const record of data) {
-                      set.add(record[0])
-                    }
-                    for (let i = current.length - 1; i >= 0; i--) {
-                      const item = current[i]
-                      if (!set.has(item.bvid)) {
-                        data.enqueue([item.bvid, item.title])
-                        updated = true
-                      }
-                    }
-                  }
-                  if (updated) {
-                    GM_setValue('removeHistoryData', data)
-                  }
-                  // current.length === 0 时不更新
-                  // 不要提到前面，否则时间不准确
-                  GM_setValue('removeHistorySaveTime', Date.now())
                 }
-              }).finally(() => {
-                gm.runtime.savingRemoveHistoryData = false
-              })
-            }
+
+                const data = gm.data.removeHistoryData()
+                let updated = false
+                if (gm.config.removeHistoryTimestamp) {
+                  const timestamp = Date.now()
+                  const map = new Map()
+                  for (const [index, record] of data.entries()) {
+                    map.set(record[0], index)
+                  }
+                  for (let i = current.length - 1; i >= 0; i--) {
+                    const item = current[i]
+                    if (map.has(item.bvid)) {
+                      const idx = map.get(item.bvid)
+                      data.data[idx][2] = timestamp
+                    } else {
+                      data.enqueue([item.bvid, item.title, timestamp])
+                    }
+                  }
+                  updated = true
+                } else {
+                  const set = new Set()
+                  for (const record of data) {
+                    set.add(record[0])
+                  }
+                  for (let i = current.length - 1; i >= 0; i--) {
+                    const item = current[i]
+                    if (!set.has(item.bvid)) {
+                      data.enqueue([item.bvid, item.title])
+                      updated = true
+                    }
+                  }
+                }
+                if (updated) {
+                  GM_setValue('removeHistoryData', data)
+                }
+                // current.length === 0 时不更新
+                // 不要提到前面，否则时间不准确
+                GM_setValue('removeHistorySaveTime', Date.now())
+              }
+            }).finally(() => {
+              gm.runtime.savingRemoveHistoryData = false
+            })
           }
         }
       },
@@ -3092,7 +3067,7 @@
           return await api.web.request({
             method: 'POST',
             url: gm.url.api_dealFav,
-            data: data,
+            data,
           }, { parser: 'check', check: r => r.code === 0 })
         } catch (e) {
           api.logger.error(e)
@@ -3546,10 +3521,8 @@
                       let valid = false
                       const card = list.children[j]
                       if (include || exclude) {
-                        if (isIncluded(card.vTitle) || isIncluded(card.uploader)) {
-                          if (!isExcluded(card.vTitle) && !isExcluded(card.uploader)) {
-                            valid = true
-                          }
+                        if ((isIncluded(card.vTitle) || isIncluded(card.uploader)) && !(isExcluded(card.vTitle) || isExcluded(card.uploader))) {
+                          valid = true
                         }
                       } else {
                         valid = true
@@ -3565,11 +3538,7 @@
                   }
                 }
                 el.popupTotal.textContent = `${cnt[0]}${cnt[1] > 0 ? `/${cnt[0] + cnt[1]}` : ''}`
-                if (cnt[0]) {
-                  el.entryListEmpty.style.display = ''
-                } else {
-                  el.entryListEmpty.style.display = 'unset'
-                }
+                el.entryListEmpty.style.display = cnt[0] ? '' : 'unset'
               }, gm.const.inputThrottleWait))
               el.searchClear.addEventListener('click', () => {
                 el.search.value = ''
@@ -3789,10 +3758,8 @@
                 card.bvid = item.bvid
                 card.duration = item.duration
                 card.pubtime = item.pubdate
-                if (rmBvid?.size > 0) {
-                  if (rmBvid.has(card.bvid)) {
-                    rmBvid.delete(card.bvid)
-                  }
+                if ((rmBvid?.size > 0) && rmBvid.has(card.bvid)) {
+                  rmBvid.delete(card.bvid)
                 }
                 if (simplePopup) {
                   if (valid) {
@@ -3813,11 +3780,7 @@
                   card.progress = (multiP && played) ? card.duration : item.progress
                   let progress = ''
                   if (played) {
-                    if (multiP) {
-                      progress = '已观看'
-                    } else {
-                      progress = _self.method.getSTimeString(item.progress)
-                    }
+                    progress = multiP ? '已观看' : _self.method.getSTimeString(item.progress)
                   }
                   card.className = `gm-entry-list-item${multiP ? ' gm-card-multiP' : ''}`
                   card.innerHTML = `
@@ -3926,11 +3889,7 @@
                 }
                 if (valid) {
                   card.target = openLinkInCurrent ? '_self' : '_blank'
-                  if (gm.config.redirect) {
-                    card.href = `${gm.url.page_videoNormalMode}/${card.bvid}`
-                  } else {
-                    card.href = `${gm.url.page_videoWatchlaterMode}/${card.bvid}`
-                  }
+                  card.href = gm.config.redirect ? `${gm.url.page_videoNormalMode}/${card.bvid}` : `${gm.url.page_videoWatchlaterMode}/${card.bvid}`
                   if (gm.config.autoRemove !== Enums.autoRemove.absoluteNever) {
                     const excludes = '.gm-card-switcher, .gm-card-uploader, .gm-card-fixer, .gm-card-collector'
                     card._href = card.href
@@ -4074,15 +4033,9 @@
               if (k !== prevBase) {
                 const cards = [...list.querySelectorAll('.gm-entry-list-item')]
                 cards.sort((a, b) => {
-                  let result = 0
                   const va = a[k]
                   const vb = b[k]
-                  if (typeof va === 'string') {
-                    result = va.localeCompare(vb)
-                  } else {
-                    result = va - vb
-                  }
-                  return result
+                  return (typeof va === 'string') ? va.localeCompare(vb) : (va - vb)
                 })
                 for (const [idx, card] of cards.entries()) {
                   card.style.order = idx
@@ -4375,11 +4328,7 @@
               const vue = video.__vue__
               if (vue && vue.data.aid && vue.mark) {
                 const aid = String(vue.data.aid)
-                if (map.has(aid)) {
-                  vue.mark.done = true
-                } else {
-                  vue.mark.done = false
-                }
+                vue.mark.done = map.has(aid)
               }
             }
           }
@@ -4389,11 +4338,7 @@
         for (const item of document.querySelectorAll('.dynamic-video-item')) {
           const aid = webpage.method.getAid(item.href)
           const svg = await api.wait.$('.watch-later svg', item)
-          if (map.has(aid)) {
-            svg.innerHTML = '<path d="M176.725 56.608c1.507 1.508 2.44 3.591 2.44 5.892s-.932 4.384-2.44 5.892l-92.883 92.892c-2.262 2.264-5.388 3.664-8.842 3.664s-6.579-1.4-8.842-3.664l-51.217-51.225a8.333 8.333 0 1 1 11.781-11.785l48.277 48.277 89.942-89.942c1.508-1.507 3.591-2.44 5.892-2.44s4.384.932 5.892 2.44z" fill="currentColor"></path>'
-          } else {
-            svg.innerHTML = '<path d="M17.5 100c0-45.563 36.937-82.5 82.501-82.5 44.504 0 80.778 35.238 82.442 79.334l-7.138-7.137a7.5 7.5 0 0 0-10.607 10.606l20.001 20a7.5 7.5 0 0 0 10.607 0l20.002-20a7.5 7.5 0 0 0-10.607-10.606l-7.245 7.245c-1.616-52.432-44.63-94.441-97.455-94.441-53.848 0-97.501 43.652-97.501 97.5s43.653 97.5 97.501 97.5c32.719 0 61.673-16.123 79.346-40.825a7.5 7.5 0 0 0-12.199-8.728c-14.978 20.934-39.472 34.553-67.147 34.553-45.564 0-82.501-36.937-82.501-82.5zm109.888-12.922c9.215 5.743 9.215 20.101 0 25.843l-29.62 18.46c-9.215 5.742-20.734-1.436-20.734-12.922V81.541c0-11.486 11.519-18.664 20.734-12.921l29.62 18.459z" fill="currentColor"></path>'
-          }
+          svg.innerHTML = map.has(aid) ? '<path d="M176.725 56.608c1.507 1.508 2.44 3.591 2.44 5.892s-.932 4.384-2.44 5.892l-92.883 92.892c-2.262 2.264-5.388 3.664-8.842 3.664s-6.579-1.4-8.842-3.664l-51.217-51.225a8.333 8.333 0 1 1 11.781-11.785l48.277 48.277 89.942-89.942c1.508-1.507 3.591-2.44 5.892-2.44s4.384.932 5.892 2.44z" fill="currentColor"></path>' : '<path d="M17.5 100c0-45.563 36.937-82.5 82.501-82.5 44.504 0 80.778 35.238 82.442 79.334l-7.138-7.137a7.5 7.5 0 0 0-10.607 10.606l20.001 20a7.5 7.5 0 0 0 10.607 0l20.002-20a7.5 7.5 0 0 0-10.607-10.606l-7.245 7.245c-1.616-52.432-44.63-94.441-97.455-94.441-53.848 0-97.501 43.652-97.501 97.5s43.653 97.5 97.501 97.5c32.719 0 61.673-16.123 79.346-40.825a7.5 7.5 0 0 0-12.199-8.728c-14.978 20.934-39.472 34.553-67.147 34.553-45.564 0-82.501-36.937-82.501-82.5zm109.888-12.922c9.215 5.743 9.215 20.101 0 25.843l-29.62 18.46c-9.215 5.742-20.734-1.436-20.734-12.922V81.541c0-11.486 11.519-18.664 20.734-12.921l29.62 18.459z" fill="currentColor"></path>'
         }
       }
     }
@@ -4486,9 +4431,9 @@
        * 处理稿件状态的切换
        */
       async function processSwitch() {
-        const { btn, cb } = bus
+        const { aid, btn, cb } = bus
         const note = btn.added ? '从稍后再看移除' : '添加到稍后再看'
-        const success = await _self.method.switchVideoWatchlaterStatus(bus.aid, !btn.added)
+        const success = await _self.method.switchVideoWatchlaterStatus(aid, !btn.added)
         if (success) {
           btn.added = !btn.added
           cb.checked = btn.added
@@ -4509,11 +4454,7 @@
         let id = null
         const vid = this.method.getVid() // 必须从 URL 直接反推 bvid，其他方式都比这个慢
         if (vid) {
-          if (vid.type === 'aid') {
-            id = `av${vid.id}`
-          } else {
-            id = vid.id
-          }
+          id = (vid.type === 'aid') ? `av${vid.id}` : vid.id
         } else { // URL 中无 vid 时等同于稍后再看中的第一个稿件
           const resp = await api.web.request({
             url: gm.url.api_queryWatchlaterList,
@@ -5256,10 +5197,8 @@
       for (const item of listBox.querySelectorAll('.av-item')) {
         let valid = false
         if (include || exclude) {
-          if (isIncluded(item.vTitle) || isIncluded(item.uploader)) {
-            if (!isExcluded(item.vTitle) && !isExcluded(item.uploader)) {
-              valid = true
-            }
+          if ((isIncluded(item.vTitle) || isIncluded(item.uploader)) && !(isExcluded(item.vTitle) || isExcluded(item.uploader))) {
+            valid = true
           }
         } else {
           valid = true
@@ -5308,11 +5247,7 @@
             return -1
           }
 
-          if (typeof va === 'string') {
-            result = va.localeCompare(vb)
-          } else {
-            result = va - vb
-          }
+          result = (typeof va === 'string') ? va.localeCompare(vb) : (va - vb)
           return reverse ? -result : result
         })
         for (const item of items) {
@@ -5465,15 +5400,15 @@
           }
           break
         }
-        case Enums.removeHistorySavePoint.listAndMenu:
-        default: {
-          if (api.base.urlMatch(gm.regex.page_watchlaterList)) {
+        case Enums.removeHistorySavePoint.anypage: {
+          if (!api.base.urlMatch(gm.regex.page_dynamicMenu)) {
             this.method.updateRemoveHistoryData()
           }
           break
         }
-        case Enums.removeHistorySavePoint.anypage: {
-          if (!api.base.urlMatch(gm.regex.page_dynamicMenu)) {
+        case Enums.removeHistorySavePoint.listAndMenu:
+        default: {
+          if (api.base.urlMatch(gm.regex.page_watchlaterList)) {
             this.method.updateRemoveHistoryData()
           }
           break
