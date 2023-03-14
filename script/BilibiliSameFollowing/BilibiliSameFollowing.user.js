@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站共同关注快速查看
-// @version         1.13.1.20230311
+// @version         1.13.2.20230314
 // @namespace       laster2800
 // @author          Laster2800
 // @description     快速查看与特定用户的共同关注（视频播放页、动态页、用户空间、直播间）
@@ -16,8 +16,8 @@
 // @exclude         *://www.bilibili.com/correspond/*
 // @exclude         *://www.bilibili.com/page-proxy/*
 // @exclude         *://t.bilibili.com/*/*
-// @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=1081030
-// @require         https://greasyfork.org/scripts/432002-userscriptapiwait/code/UserscriptAPIWait.js?version=1129540
+// @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=1161014
+// @require         https://greasyfork.org/scripts/432002-userscriptapiwait/code/UserscriptAPIWait.js?version=1161015
 // @require         https://greasyfork.org/scripts/432003-userscriptapiweb/code/UserscriptAPIWeb.js?version=1160007
 // @grant           GM_notification
 // @grant           GM_xmlhttpRequest
@@ -341,11 +341,7 @@
             }
           }
           let sameFollowings = null
-          if (gm.config.dispInText) {
-            sameFollowings = data.list?.map(item => item.uname) ?? []
-          } else {
-            sameFollowings = data.list ?? []
-          }
+          sameFollowings = (gm.config.dispInText ? data.list?.map(item => item.uname) : data.list) ?? []
           if (sameFollowings.length > 0 || gm.config.dispMessage) {
             if (sameFollowings.length > 0) {
               if (!gm.config.dispInReverse) {
@@ -501,7 +497,7 @@
         const uid = webpage.method.getUid(userLink.href)
         if (uid) {
           webpage.generalLogic({
-            uid: uid,
+            uid,
             target: await api.wait.$('.bili-user-profil1e__info__body', container),
             className: `${gm.id} card-same-followings`,
           })
@@ -524,7 +520,7 @@
         const uid = container.__vue__.info?.uid
         if (uid) {
           webpage.generalLogic({
-            uid: uid,
+            uid,
             target: container,
             className: `${gm.id} live-same-followings`,
           })

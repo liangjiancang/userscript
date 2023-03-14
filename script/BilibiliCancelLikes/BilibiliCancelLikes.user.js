@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站点赞批量取消
-// @version         1.2.9.20230311
+// @version         1.2.10.20230314
 // @namespace       laster2800
 // @author          Laster2800
 // @description     取消对于某个UP主的所有点赞
@@ -10,10 +10,10 @@
 // @license         LGPL-3.0
 // @noframes
 // @include         *://space.bilibili.com/*
-// @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=1081030
-// @require         https://greasyfork.org/scripts/431998-userscriptapidom/code/UserscriptAPIDom.js?version=1005139
+// @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=1161014
+// @require         https://greasyfork.org/scripts/431998-userscriptapidom/code/UserscriptAPIDom.js?version=1161016
 // @require         https://greasyfork.org/scripts/432000-userscriptapimessage/code/UserscriptAPIMessage.js?version=1095149
-// @require         https://greasyfork.org/scripts/432002-userscriptapiwait/code/UserscriptAPIWait.js?version=1129540
+// @require         https://greasyfork.org/scripts/432002-userscriptapiwait/code/UserscriptAPIWait.js?version=1161015
 // @require         https://greasyfork.org/scripts/432003-userscriptapiweb/code/UserscriptAPIWeb.js?version=1160007
 // @grant           GM_xmlhttpRequest
 // @grant           GM_registerMenuCommand
@@ -71,11 +71,7 @@
         const uid = await api.message.prompt('请输入待取消点赞UP主的 UID：', /\/(\d+)([#/?]|$)/.exec(location.pathname)?.[1])
         if (/^\d+$/.test(uid)) {
           let start = await api.message.prompt(`从最新投稿的第几页开始执行？（每页 ${ps} 项）`, '1')
-          if (!/^\d+$/.test(start)) {
-            start = 1
-          } else {
-            start = Number.parseInt(start)
-          }
+          start = !/^\d+$/.test(start) ? 1 : Number.parseInt(start)
           const total = await api.message.prompt(`
               <p>共执行多少页？（每页 ${ps} 项）</p>
               <p><b>警告：一次执行多页极有可能导致点赞接口失效！这不仅会使脚本无法正常工作，还会影响到账号的正常使用！</b>一次执行两页是B站后台能接受的（至少本人测试如此），想求稳的可以每次执行一页。</p>
