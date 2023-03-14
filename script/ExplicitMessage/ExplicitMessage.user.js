@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            [DEBUG] 信息显式化
-// @version         2.9.1.20230311
+// @version         2.9.2.20230314
 // @namespace       laster2800
 // @author          Laster2800
 // @description     用 alert() 提示符合匹配规则的日志或未捕获异常，帮助开发者在日常使用网页时发现潜藏问题
@@ -45,11 +45,7 @@
               if (fn.match(m, config.include) && !fn.match(m, config.exclude)) {
                 let msg = null
                 if (args.length === 1) {
-                  if (args[0] && typeof args[0] === 'object') {
-                    msg = JSON.stringify(args[0], null, 2)
-                  } else {
-                    msg = args[0]
-                  }
+                  msg = (args[0] && typeof args[0] === 'object') ? JSON.stringify(args[0], null, 2) : args[0]
                 } else {
                   msg = JSON.stringify(args, null, 2)
                 }
@@ -77,42 +73,32 @@
        * @returns {boolean} 是否匹配成功
        */
       match(obj, regex, depth = 5) {
-        if (obj && regex && depth > 0) {
-          return inner(obj, depth, new WeakSet())
-        } else {
-          return false
-        }
+        return (obj && regex && depth > 0) ? inner(obj, depth, new WeakSet()) : false
 
         function inner(obj, depth, objSet) {
           if (!obj) return false
+          // eslint-disable-next-line guard-for-in
           innerLoop: for (const key in obj) {
-            if (regex.test(key)) {
-              return true
-            } else {
-              try {
-                const value = obj[key]
-                if (value && (typeof value === 'object' || typeof value === 'function')) {
-                  if (value === obj) continue
-                  if (value === value.window) continue // exclude Window
-                  for (const type of [Function, Node, StyleSheet]) {
-                    if (value instanceof type) continue innerLoop
-                  }
-
-                  if (regex.test(value.toString())) {
-                    return true
-                  } else if (depth > 1) {
-                    if (!objSet.has(value)) {
-                      objSet.add(value)
-                      if (inner(value, depth - 1, objSet)) {
-                        return true
-                      }
-                    }
-                  }
-                } else if (regex.test(String(value))) {
-                  return true
+            if (regex.test(key)) return true
+            try {
+              const value = obj[key]
+              if (value && (typeof value === 'object' || typeof value === 'function')) {
+                if (value === obj) continue
+                if (value === value.window) continue // exclude Window
+                for (const type of [Function, Node, StyleSheet]) {
+                  if (value instanceof type) continue innerLoop
                 }
-              } catch { /* value that cannot be accessed */ }
-            }
+
+                if (regex.test(value.toString())) return true
+                if (depth > 1) {
+                  if (!objSet.has(value)) {
+                    objSet.add(value)
+                    if (inner(value, depth - 1, objSet)) return true
+                  }
+                }
+              } else if (regex.test(String(value))) return true
+            } catch { /* value that cannot be accessed */ }
+
           }
           return false
         }
