@@ -148,7 +148,7 @@
 1. 外部：`UserscriptAPI` 更新至 V2.1。详见 [UserscriptAPI 更新日志](https://gitee.com/liangjiancang/userscript/blob/master/lib/UserscriptAPI/changelog.md)。
 2. 外部：`UserscriptAPIDom` 更新至 V1.1，`UserscriptAPILogger` 更新至 V1.1，`UserscriptAPIWait` 更新至 V1.1，`UserscriptAPIWeb` 更新至 V1.1。
 3. 移除记录：优化生成流程，大幅提高生成效率。理论上可以大幅放宽稍后再看历史数据保存数限制，但基于该功能的设计目的（作为误删后的挽回手段）考虑，不放宽限制。
-4. 移除记录：修复稍后再看历史数据容量无法更新，导致无法有效修改实际保存数修改的问题。
+4. 移除记录：修复稍后再看历史数据容量无法更新，导致无法有效修改实际保存数量的问题。
 5. 移除记录：修复不开启时间戳时，无法正确按「完全升序」排序的问题。
 6. 移除记录：零碎的问题修复及改进。
 7. 批量添加：增加时间同步功能，作用是将上一次成功执行添加步骤的时间同步到加载步骤中。
