@@ -4,7 +4,7 @@
 
 ## V4.32
 
-1. 批量添加：关注者转发的稿件后增加「来源」（点击跳转到转发的动态）。
+1. 批量添加：关注者转发的稿件增加「来源」说明（点击跳转到转发的动态）。
 2. 代码：`prefer-object-has-own` `object-shorthand` `unicorn/prefer-string-replace-all` `unicorn/switch-case-braces`。（此项更新变更了兼容性要求）
 3. 代码：减少代码嵌套。
 4. 脚本：更新兼容性说明。
