@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.32.3.20230414
+// @version         4.32.4.20230414
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -2083,7 +2083,7 @@
               el.id1c.disabled = true
 
               let available = 100 - (await gm.data.watchlaterListData()).length
-              const checks = el.items.querySelectorAll('label:not([class*=gm-filtered-]) input:checked')
+              const checks = el.items.querySelectorAll('.gm-item:not([class*=gm-filtered-]) input:checked')
               for (const check of checks) {
                 if (stopAdd) return api.message.info('批量添加：任务终止', 1800) // -> finally
                 if (available <= 0) return api.message.info('批量添加：稍后再看已满', 1800) // -> finally
