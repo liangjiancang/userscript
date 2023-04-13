@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.32.2.20230413
+// @version         4.32.3.20230414
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -1907,9 +1907,11 @@
                 for (let item of items) {
                   let ts = -1
                   let fwSrc = null // 转发源
+                  let fwSrcHint = null // 转发源说明
                   // 关注者转发的动态
                   if (gm.config.batchAddLoadForward && item.type === 'DYNAMIC_TYPE_FORWARD') {
                     fwSrc = `${gm.url.page_dynamic}/${item.id_str}`
+                    fwSrcHint = item.modules.module_author.name
                     ts = item.modules.module_author.pub_ts // 使用转发时间
                     item = item.orig
                   }
@@ -1930,7 +1932,7 @@
                       avSet.add(aid)
                       const uncheck = history?.has(aid)
                       const displayNone = uncheck && el.uncheckedDisplay._hide
-                      html = `<div class="gm-item" data-aid="${aid}" data-timestamp="${ts}"${displayNone ? ' style="display:none"' : ''}><label><input type="checkbox"${uncheck ? '' : ' checked'}> <span>${author.label ? `[${author.label}]` : ''}[${author.name}] ${core.title}</span></label>${fwSrc ? `<a href="${fwSrc}" target="_blank">来源</a>` : ''}</div>` + html
+                      html = `<div class="gm-item" data-aid="${aid}" data-timestamp="${ts}"${fwSrcHint ? ` data-src-hint="${fwSrcHint}" ` : ''}${displayNone ? ' style="display:none"' : ''}><label><input type="checkbox"${uncheck ? '' : ' checked'}> <span>${author.label ? `[${author.label}]` : ''}[${author.name}] ${core.title}</span></label>${fwSrc ? `<a href="${fwSrc}" target="_blank">来源</a>` : ''}</div>` + html
                     }
                   }
                 }
@@ -1945,6 +1947,11 @@
               api.message.alert('执行失败')
               api.logger.error(e)
             } finally {
+              const hintEls = el.items.querySelectorAll('[data-src-hint]')
+              for (const el of hintEls) {
+                api.message.hoverInfo(el, `转发者：${el.dataset.srcHint}`)
+              }
+
               if (!error && !stopLoad) {
                 api.message.info('批量添加：稿件加载完成', 1800)
                 if (loadTime > 0 && el.items.querySelectorAll('label input:checked').length === 0) {
