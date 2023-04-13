@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.32.1.20230314
+// @version         4.32.2.20230413
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -352,6 +352,7 @@
    * @property {string} page_videoWatchlaterMode 稍后再看播放页
    * @property {string} page_listWatchlaterMode 列表播放页（稍后再看）
    * @property {string} page_watchlaterPlayAll 稍后再看播放全部（临时禁用重定向）
+   * @property {string} page_dynamic 动态页
    * @property {page_userSpace} page_userSpace 用户空间
    * @property {string} gm_changelog 更新日志
    */
@@ -469,6 +470,7 @@
       page_videoWatchlaterMode: 'https://www.bilibili.com/medialist/play/watchlater',
       page_listWatchlaterMode: 'https://www.bilibili.com/list/watchlater',
       page_watchlaterPlayAll: `https://www.bilibili.com/list/watchlater?${gmId}_disable_redirect=true`,
+      page_dynamic: 'https://t.bilibili.com',
       page_userSpace: uid => `https://space.bilibili.com/${uid}`,
       gm_changelog: 'https://gitee.com/liangjiancang/userscript/blob/master/script/BilibiliWatchlaterPlus/changelog.md',
       external_fixHeader: 'https://greasyfork.org/zh-CN/scripts/430292',
@@ -1834,14 +1836,14 @@
             const display = target._hide ? 'none' : ''
             for (let i = 0; i < el.items.childElementCount; i++) {
               const item = el.items.children[i]
-              if (!item.firstElementChild.checked) {
+              if (!item.querySelector('input').checked) {
                 item.style.display = display
               }
             }
           })
           el.items.addEventListener('click', e => {
             if (e.target.type === 'checkbox' && !e.target.checked && el.uncheckedDisplay._hide) {
-              e.target.parentElement.style.display = 'none'
+              e.target.closest('.gm-item').style.display = 'none'
             }
           })
 
@@ -1904,8 +1906,10 @@
                 let html = ''
                 for (let item of items) {
                   let ts = -1
+                  let fwSrc = null // 转发源
                   // 关注者转发的动态
                   if (gm.config.batchAddLoadForward && item.type === 'DYNAMIC_TYPE_FORWARD') {
+                    fwSrc = `${gm.url.page_dynamic}/${item.id_str}`
                     ts = item.modules.module_author.pub_ts // 使用转发时间
                     item = item.orig
                   }
@@ -1926,7 +1930,7 @@
                       avSet.add(aid)
                       const uncheck = history?.has(aid)
                       const displayNone = uncheck && el.uncheckedDisplay._hide
-                      html = `<label class="gm-item" data-aid="${aid}" data-timestamp="${ts}"${displayNone ? ' style="display:none"' : ''}><input type="checkbox"${uncheck ? '' : ' checked'}> <span>${author.label ? `[${author.label}]` : ''}[${author.name}] ${core.title}</span></label>` + html
+                      html = `<div class="gm-item" data-aid="${aid}" data-timestamp="${ts}"${displayNone ? ' style="display:none"' : ''}><label><input type="checkbox"${uncheck ? '' : ' checked'}> <span>${author.label ? `[${author.label}]` : ''}[${author.name}] ${core.title}</span></label>${fwSrc ? `<a href="${fwSrc}" target="_blank">来源</a>` : ''}</div>` + html
                     }
                   }
                 }
@@ -2076,7 +2080,7 @@
               for (const check of checks) {
                 if (stopAdd) return api.message.info('批量添加：任务终止', 1800) // -> finally
                 if (available <= 0) return api.message.info('批量添加：稍后再看已满', 1800) // -> finally
-                const item = check.parentElement
+                const item = check.closest('.gm-item')
                 const success = await webpage.method.switchVideoWatchlaterStatus(item.dataset.aid)
                 if (!success) throw new Error('add request error')
                 lastAddTime = item.dataset.timestamp
@@ -5525,16 +5529,16 @@
             --${gm.id}-hint-text-color: gray;
             --${gm.id}-light-hint-text-color: #909090;
             --${gm.id}-hint-text-emphasis-color: #666666;
-            --${gm.id}-hint-text-hightlight-color: #555555;
+            --${gm.id}-hint-text-highlight-color: #555555;
             --${gm.id}-background-color: white;
-            --${gm.id}-background-hightlight-color: #ebebeb;
-            --${gm.id}-update-hightlight-color: ${gm.const.updateHighlightColor};
-            --${gm.id}-update-hightlight-hover-color: red;
+            --${gm.id}-background-highlight-color: #ebebeb;
+            --${gm.id}-update-highlight-color: ${gm.const.updateHighlightColor};
+            --${gm.id}-update-highlight-hover-color: red;
             --${gm.id}-border-color: black;
             --${gm.id}-light-border-color: #e7e7e7;
             --${gm.id}-shadow-color: #000000bf;
             --${gm.id}-text-shadow-color: #00000080;
-            --${gm.id}-hightlight-color: #0075ff;
+            --${gm.id}-highlight-color: #0075ff;
             --${gm.id}-important-color: red;
             --${gm.id}-warn-color: #e37100;
             --${gm.id}-disabled-color: gray;
@@ -5827,8 +5831,8 @@
             padding: 0.15em 0.6em;
           }
           #${gm.id} .gm-entrypopup .gm-entry-bottom .gm-entry-button .gm-option:hover {
-            color: var(--${gm.id}-hightlight-color);
-            background-color: var(--${gm.id}-background-hightlight-color);
+            color: var(--${gm.id}-highlight-color);
+            background-color: var(--${gm.id}-background-highlight-color);
           }
           #${gm.id} .gm-entrypopup .gm-entry-bottom .gm-entry-button .gm-option.gm-option-selected {
             font-weight: bold;
@@ -5839,14 +5843,14 @@
             color: var(--${gm.id}-text-color);
           }
           #${gm.id} .gm-entrypopup .gm-entry-bottom .gm-entry-button.gm-popup-auto-remove[fn=autoRemoveControl] {
-            color: var(--${gm.id}-hightlight-color);
+            color: var(--${gm.id}-highlight-color);
           }
 
           #${gm.id} .gm-entrypopup .gm-entry-list .gm-entry-list-item:hover,
           #${gm.id} .gm-entrypopup .gm-entry-list .gm-entry-list-simple-item:hover,
           #${gm.id} .gm-entrypopup .gm-entry-bottom .gm-entry-button:hover {
-            color: var(--${gm.id}-hightlight-color);
-            background-color: var(--${gm.id}-background-hightlight-color);
+            color: var(--${gm.id}-highlight-color);
+            background-color: var(--${gm.id}-background-highlight-color);
           }
 
           #${gm.id} .gm-modal-container {
@@ -5884,7 +5888,7 @@
             color: var(--${gm.id}-text-color);
           }
           #${gm.id} .gm-setting .gm-maintitle:hover {
-            color: var(--${gm.id}-hightlight-color);
+            color: var(--${gm.id}-highlight-color);
           }
 
           #${gm.id} .gm-setting .gm-items {
@@ -5925,7 +5929,7 @@
           }
           #${gm.id} .gm-setting .gm-item:not(.gm-holder-item):hover,
           #${gm.id} .gm-setting .gm-lineitem:not(.gm-holder-item):hover {
-            color: var(--${gm.id}-hightlight-color);
+            color: var(--${gm.id}-highlight-color);
           }
           #${gm.id} .gm-setting .gm-lineitems {
             display: inline-flex;
@@ -6052,7 +6056,7 @@
           }
           #${gm.id} .gm-history .gm-content > *:hover a {
             font-weight: bold;
-            color: var(--${gm.id}-hightlight-color);
+            color: var(--${gm.id}-highlight-color);
           }
           #${gm.id} .gm-history .gm-content .gm-empty {
             display: flex;
@@ -6082,7 +6086,7 @@
             border-radius: 2px;
           }
           #${gm.id} .gm-bottom button:hover {
-            background-color: var(--${gm.id}-background-hightlight-color);
+            background-color: var(--${gm.id}-background-highlight-color);
           }
           #${gm.id} .gm-bottom button[disabled] {
             border-color: var(--${gm.id}-disabled-color);
@@ -6119,27 +6123,27 @@
           }
           #${gm.id} [data-type=updated] .gm-changelog {
             font-weight: bold;
-            color: var(--${gm.id}-update-hightlight-hover-color);
+            color: var(--${gm.id}-update-highlight-hover-color);
           }
           #${gm.id} [data-type=updated] .gm-changelog:hover {
-            color: var(--${gm.id}-update-hightlight-hover-color);
+            color: var(--${gm.id}-update-highlight-hover-color);
           }
           #${gm.id} [data-type=updated] .gm-updated,
           #${gm.id} [data-type=updated] .gm-updated input,
           #${gm.id} [data-type=updated] .gm-updated select {
-            background-color: var(--${gm.id}-update-hightlight-color);
+            background-color: var(--${gm.id}-update-highlight-color);
           }
           #${gm.id} [data-type=updated] .gm-updated option {
             background-color: var(--${gm.id}-background-color);
           }
           #${gm.id} [data-type=updated] .gm-updated:hover {
-            color: var(--${gm.id}-update-hightlight-hover-color);
+            color: var(--${gm.id}-update-highlight-hover-color);
             font-weight: bold;
           }
 
           #${gm.id} .gm-reset:hover,
           #${gm.id} .gm-changelog:hover {
-            color: var(--${gm.id}-hint-text-hightlight-color);
+            color: var(--${gm.id}-hint-text-highlight-color);
             text-decoration: underline;
           }
 
@@ -6170,7 +6174,7 @@
             cursor: pointer;
           }
           #${gm.id} .gm-batchAddManager .gm-comment button:not([disabled]):hover {
-            background-color: var(--${gm.id}-background-hightlight-color);
+            background-color: var(--${gm.id}-background-highlight-color);
           }
           #${gm.id} .gm-batchAddManager .gm-comment input {
             width: 3em;
@@ -6192,15 +6196,25 @@
             border-radius: 4px;
             overflow-y: scroll;
           }
-          #${gm.id} .gm-batchAddManager .gm-items label {
+          #${gm.id} .gm-batchAddManager .gm-items .gm-item {
             display: block;
             padding: 0.2em 1em;
           }
-          #${gm.id} .gm-batchAddManager .gm-items label:hover {
-            background-color: var(--${gm.id}-background-hightlight-color);
+          #${gm.id} .gm-batchAddManager .gm-items .gm-item:hover {
+            background-color: var(--${gm.id}-background-highlight-color);
           }
-          #${gm.id} .gm-batchAddManager .gm-items label input {
+          #${gm.id} .gm-batchAddManager .gm-items .gm-item input {
             vertical-align: -0.15em;
+          }
+          #${gm.id} .gm-batchAddManager .gm-items .gm-item a {
+            margin-left: 0.5em;
+            color: var(--${gm.id}-hint-text-color);
+          }
+          #${gm.id} .gm-batchAddManager .gm-items .gm-item:hover a {
+            color: var(--${gm.id}-highlight-color);
+          }
+          #${gm.id} .gm-batchAddManager .gm-items .gm-item a:hover {
+            font-weight: bold;
           }
 
           #${gm.id} .gm-shadow {
