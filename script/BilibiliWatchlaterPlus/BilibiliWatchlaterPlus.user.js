@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.32.4.20230414
+// @version         4.32.5.20230418
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -1112,7 +1112,7 @@
             </div>`,
           })
           itemsHTML += getItemHTML('播放页面', {
-            desc: `打开「${gm.url.page_videoWatchlaterMode}」或「${gm.url.page_listWatchlaterMode}」页面时，自动切换至「${gm.url.page_videoNormalMode}」页面进行播放，但不影响「播放全部」等相关功能。`,
+            desc: `打开「${gm.url.page_listWatchlaterMode}」或「${gm.url.page_videoWatchlaterMode}」页面时，自动切换至「${gm.url.page_videoNormalMode}」页面进行播放，但不影响「播放全部」等相关功能。`,
             html: `<label>
               <span>从稍后再看模式强制切换到常规模式播放（重定向）</span>
               <input id="gm-redirect" type="checkbox">
@@ -1836,14 +1836,14 @@
             const display = target._hide ? 'none' : ''
             for (let i = 0; i < el.items.childElementCount; i++) {
               const item = el.items.children[i]
-              if (!item.querySelector('input').checked) {
+              if (!item.firstElementChild.checked) {
                 item.style.display = display
               }
             }
           })
           el.items.addEventListener('click', e => {
             if (e.target.type === 'checkbox' && !e.target.checked && el.uncheckedDisplay._hide) {
-              e.target.closest('.gm-item').style.display = 'none'
+              e.target.parentElement.style.display = 'none'
             }
           })
 
@@ -1932,7 +1932,7 @@
                       avSet.add(aid)
                       const uncheck = history?.has(aid)
                       const displayNone = uncheck && el.uncheckedDisplay._hide
-                      html = `<div class="gm-item" data-aid="${aid}" data-timestamp="${ts}"${fwSrcHint ? ` data-src-hint="${fwSrcHint}" ` : ''}${displayNone ? ' style="display:none"' : ''}><label><input type="checkbox"${uncheck ? '' : ' checked'}> <span>${author.label ? `[${author.label}]` : ''}[${author.name}] ${core.title}</span></label>${fwSrc ? `<a href="${fwSrc}" target="_blank">来源</a>` : ''}</div>` + html
+                      html = `<label class="gm-item" data-aid="${aid}" data-timestamp="${ts}"${fwSrcHint ? ` data-src-hint="${fwSrcHint}" ` : ''}${displayNone ? ' style="display:none"' : ''}><input type="checkbox"${uncheck ? '' : ' checked'}> <span>${author.label ? `[${author.label}]` : ''}[${author.name}] ${core.title}</span>${fwSrc ? `<a href="${fwSrc}" target="_blank">来源</a>` : ''}</label>` + html
                     }
                   }
                 }
@@ -1954,7 +1954,7 @@
 
               if (!error && !stopLoad) {
                 api.message.info('批量添加：稿件加载完成', 1800)
-                if (loadTime > 0 && el.items.querySelectorAll('label input:checked').length === 0) {
+                if (loadTime > 0 && el.items.querySelectorAll('.gm-item input:checked').length === 0) {
                   // 无有效新稿件时直接更新同步时间
                   setLastAddTime(loadTime)
                 }
@@ -2087,7 +2087,7 @@
               for (const check of checks) {
                 if (stopAdd) return api.message.info('批量添加：任务终止', 1800) // -> finally
                 if (available <= 0) return api.message.info('批量添加：稍后再看已满', 1800) // -> finally
-                const item = check.closest('.gm-item')
+                const item = check.parentElement
                 const success = await webpage.method.switchVideoWatchlaterStatus(item.dataset.aid)
                 if (!success) throw new Error('add request error')
                 lastAddTime = item.dataset.timestamp
@@ -3900,7 +3900,7 @@
                 }
                 if (valid) {
                   card.target = openLinkInCurrent ? '_self' : '_blank'
-                  card.href = gm.config.redirect ? `${gm.url.page_videoNormalMode}/${card.bvid}` : `${gm.url.page_videoWatchlaterMode}/${card.bvid}`
+                  card.href = gm.config.redirect ? `${gm.url.page_videoNormalMode}/${card.bvid}` : `${gm.url.page_listWatchlaterMode}?bvid=${card.bvid}`
                   if (gm.config.autoRemove !== Enums.autoRemove.absoluteNever) {
                     const excludes = '.gm-card-switcher, .gm-card-uploader, .gm-card-fixer, .gm-card-collector'
                     card._href = card.href
