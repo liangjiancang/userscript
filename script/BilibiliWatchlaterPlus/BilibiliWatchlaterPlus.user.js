@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.32.5.20230418
+// @version         4.33.0.20230419
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -253,6 +253,13 @@
    * @property {number} watchlaterListCacheValidPeriod 稍后再看列表数据本地缓存有效期（单位：秒）
    * @property {boolean} hideDisabledSubitems 设置页隐藏被禁用项的子项
    * @property {boolean} reloadAfterSetting 设置生效后刷新页面
+   * @property {string} importWl_regex 稍后再看列表导入：正则表达式
+   * @property {string} importWl_aid 稍后再看列表导入：捕获组/AID
+   * @property {string} importWl_bvid 稍后再看列表导入：捕获组/BVID
+   * @property {string} importWl_title 稍后再看列表导入：捕获组/标题
+   * @property {string} importWl_source 稍后再看列表导入：捕获组/来源
+   * @property {string} importWl_tsS 稍后再看列表导入：捕获组/时间节点（秒）
+   * @property {string} importWl_tsMs 稍后再看列表导入：捕获组/时间节点（毫秒）
    */
   /**
    * @typedef {{[config: string]: GMObject_configMap_item}} GMObject_configMap
@@ -261,7 +268,7 @@
    * @typedef GMObject_configMap_item
    * @property {*} default 默认值
    * @property {'string' | 'boolean' | 'int' | 'float'} [type] 数据类型
-   * @property {'checked' | 'value'} attr 对应 `DOM` 元素上的属性
+   * @property {'checked' | 'value' | 'none'} attr 对应 `DOM` 元素上的属性，`none` 表示无对应元素
    * @property {boolean} [manual] 配置保存时是否需要手动处理
    * @property {boolean} [needNotReload] 配置改变后是否不需要重新加载就能生效
    * @property {number} [min] 最小值
@@ -392,7 +399,7 @@
   const gm = {
     id: gmId,
     configVersion: GM_getValue('configVersion'),
-    configUpdate: 20221009,
+    configUpdate: 20230419,
     searchParams: new URL(location.href).searchParams,
     config: {},
     configMap: {
@@ -447,12 +454,20 @@
       watchlaterListCacheValidPeriod: { default: 15, type: 'int', attr: 'value', needNotReload: true, min: 8, max: 600, configVersion: 20210908 },
       hideDisabledSubitems: { default: true, attr: 'checked', configVersion: 20210505 },
       reloadAfterSetting: { default: true, attr: 'checked', needNotReload: true, configVersion: 20200715 },
+
+      importWl_regex: { default: 'bv[\\dA-Za-z]{10}', attr: 'none', configVersion: 20230419 },
+      importWl_aid: { default: -1, type: 'int', attr: 'none', configVersion: 20230419 },
+      importWl_bvid: { default: 0, type: 'int', attr: 'none', configVersion: 20230419 },
+      importWl_title: { default: -1, type: 'int', attr: 'none', configVersion: 20230419 },
+      importWl_source: { default: -1, type: 'int', attr: 'none', configVersion: 20230419 },
+      importWl_tsS: { default: -1, type: 'int', attr: 'none', configVersion: 20230419 },
+      importWl_tsMs: { default: -1, type: 'int', attr: 'none', configVersion: 20230419 },
     },
     infoMap: {
       clearRemoveHistoryData: {},
       watchlaterMediaList: { configVersion: 20210822 },
       exportWatchlaterList: { configVersion: 20221008 },
-      fixHeader: { configVersion: 20210810.1 },
+      importWatchlaterList: { configVersion: 20230419 },
     },
     runtime: {},
     configDocumentStart: ['redirect', 'menuScrollbarSetting', 'mainRunAt'],
@@ -473,7 +488,6 @@
       page_dynamic: 'https://t.bilibili.com',
       page_userSpace: uid => `https://space.bilibili.com/${uid}`,
       gm_changelog: 'https://gitee.com/liangjiancang/userscript/blob/master/script/BilibiliWatchlaterPlus/changelog.md',
-      external_fixHeader: 'https://greasyfork.org/zh-CN/scripts/430292',
     },
     regex: {
       // 只要第一个「#」后是「/list([/?#]|$)」即被视为列表页面
@@ -782,7 +796,7 @@
           }
 
           // 功能性更新后更新此处配置版本，通过时跳过功能性更新设置，否则转至 readConfig() 中处理
-          if (gm.configVersion >= 20221009) {
+          if (gm.configVersion >= 20230419) {
             gm.configVersion = gm.configUpdate
             GM_setValue('configVersion', gm.configVersion)
           }
@@ -1091,6 +1105,13 @@
               <span>导出稍后再看列表</span>
               <span id="gm-exportWatchlaterList" class="gm-info">设置</span>
             </div>`,
+          }, {
+            desc: '设置稍后再看列表导入方式。该功能入口在批量添加管理器中。',
+            html: `<div>
+              <span>导入稍后再看列表</span>
+              <span id="gm-importWatchlaterList" class="gm-info">设置</span>
+              <span id="gm-iwlInformation" class="gm-information" title>💬</span>
+            </div>`,
           })
           itemsHTML += getItemHTML('播放页面', {
             desc: '在播放页面中加入能将稿件快速添加或移除出稍后再看列表的按钮。',
@@ -1202,13 +1223,6 @@
             </div>`,
           })
           itemsHTML += getItemHTML('相关调整', {
-            desc: '安装固顶官方顶栏的用户样式（建议使用 Stylus 安装）。',
-            html: `<div>
-              <span>将顶栏固定在页面顶部</span>
-              <a id="gm-fixHeader" class="gm-info" href="${gm.url.external_fixHeader}" target="_blank">安装功能</a>
-            </div>`,
-          })
-          itemsHTML += getItemHTML('相关调整', {
             desc: '对顶栏各入口弹出面板中滚动条的样式进行设置。',
             html: `<div>
               <span>对于弹出面板中的滚动条</span>
@@ -1291,7 +1305,7 @@
               el.settingPage.dataset.type = 'updated'
               el.maintitle.innerHTML += '<br><span style="font-size:0.8em">(功能性更新设置)</span>'
               for (const [name, item] of Object.entries({ ...gm.configMap, ...gm.infoMap })) {
-                if (item.configVersion > gm.configVersion) {
+                if (el[name] && item.configVersion > gm.configVersion) {
                   const updated = el[name].closest('.gm-item, .gm-lineitem')
                   updated?.classList.add('gm-updated')
                 }
@@ -1328,9 +1342,7 @@
             </div>
           `, null, { width: '36em', position: { top: '80%' } })
           el.balatsInformation = gm.el.setting.querySelector('#gm-balatsInformation')
-          api.message.hoverInfo(el.balatsInformation, '若同步时间距离当前时间超过 48 小时，则不会执行自动加载。', null, { width: '28em', position: { top: '80%' } })
-          el.sdvInformation = gm.el.setting.querySelector('#gm-sdvInformation')
-          api.message.hoverInfo(el.sdvInformation, '激活后在搜索框上右键点击保存默认值，中键点击清空默认值。', null, { width: '28em', position: { top: '80%' } })
+          api.message.hoverInfo(el.balatsInformation, '若同步时间距离当前时间超过 48 小时，则不会执行自动加载。')
           el.fwsInformation = gm.el.setting.querySelector('#gm-fwsInformation')
           api.message.hoverInfo(el.fwsInformation, `
             <div style="text-indent:2em;line-height:1.6em">
@@ -1338,6 +1350,10 @@
               <p>第三项「所有页面」，会用一套固定的逻辑对脚本能匹配到的所有非特殊页面尝试进行信息填充。脚本本身没有匹配所有B站页面，如果有需要，请在脚本管理器（如 Tampermonkey）中为脚本设置额外的页面匹配规则。由于B站各页面的设计不是很规范，某些页面中稿件卡片的设计可能跟其他地方不一致，所以不保证必定能填充成功。</p>
             </div>
           `, null, { width: '36em', position: { top: '80%' } })
+          el.sdvInformation = gm.el.setting.querySelector('#gm-sdvInformation')
+          api.message.hoverInfo(el.sdvInformation, '激活后在搜索框上右键点击保存默认值，中键点击清空默认值。')
+          el.iwlInformation = gm.el.setting.querySelector('#gm-iwlInformation')
+          api.message.hoverInfo(el.iwlInformation, '该功能入口在批量添加管理器中。')
           el.mraInformation = gm.el.setting.querySelector('#gm-mraInformation')
           api.message.hoverInfo(el.mraInformation, `
             <div style="line-height:1.6em">
@@ -1447,6 +1463,7 @@
               api.message.info('已保存稍后再看收藏夹设置')
             }
           })
+          el.importWatchlaterList.addEventListener('click', () => this.setImportWatchlaterList())
           el.exportWatchlaterList.addEventListener('click', () => this.setExportWatchlaterList())
           if (type > 0) {
             if (type === 2) {
@@ -1465,7 +1482,7 @@
         const onSave = () => {
           // 通用处理
           for (const [name, item] of Object.entries(gm.configMap)) {
-            if (!item.manual) {
+            if (!item.manual && item.attr !== 'none') {
               const change = saveConfig(name, item.attr)
               if (!item.needNotReload) {
                 needReload ||= change
@@ -1538,11 +1555,13 @@
         const onOpen = () => {
           for (const [name, item] of Object.entries(gm.configMap)) {
             const { attr } = item
-            el[name][attr] = gm.config[name]
+            if (attr !== 'none') {
+              el[name][attr] = gm.config[name]
+            }
           }
           for (const name of Object.keys(gm.configMap)) {
             // 需要等所有配置读取完成后再进行选项初始化
-            el[name].init?.()
+            el[name]?.init?.()
           }
           el.clearRemoveHistoryData.textContent = gm.config.removeHistory ? `清空数据(${gm.data.removeHistoryData().size}条)` : '清空数据(0条)'
         }
@@ -1743,20 +1762,21 @@
             <div class="gm-batchAddManager-page gm-modal">
               <div class="gm-title">批量添加管理器</div>
               <div class="gm-comment">
-                <div>请执行以下步骤以将投稿批量添加到稍后再看（可以跳过部分步骤）。执行过程中可以关闭对话框，但不能关闭页面；也不建议将当前页面置于后台，否则浏览器可能会暂缓甚至暂停任务执行。</div>
+                <div>执行以下步骤以将投稿批量添加到稍后再看。执行过程中可以关闭对话框，但不能关闭页面；也不建议将当前页面置于后台，否则浏览器可能会暂缓甚至暂停任务执行。</div>
                 <div>脚本会优先添加投稿时间较早的投稿，达到稍后再看容量上限 100 时终止执行。注意，该功能会在短时间内向后台发起大量请求，滥用可能会导致一段时间内无法正常访问B站，你可以增加平均请求间隔以降低触发拦截机制的概率。</div>
-                <div>第一步：加载最近 <input is="laster2800-input-number" id="gm-batch-1a" value="24" digits="Infinity"> <select id="gm-batch-1b" style="border:none;margin: 0 -4px">
+                <div>① 加载最近 <input is="laster2800-input-number" id="gm-batch-1a" value="24" digits="Infinity"> <select id="gm-batch-1b" style="border:none;margin: 0 -4px">
                   <option value="${3600 * 24}">天</option>
                   <option value="3600" selected>小时</option>
                   <option value="60">分钟</option>
                 </select> 以内发布且不存在于稍后再看的视频投稿<button id="gm-batch-1c">执行</button><button id="gm-batch-1d" disabled>终止</button></div>
-                <div>第二步：缩小时间范围到 <input is="laster2800-input-number" id="gm-batch-2a" digits="Infinity"> <select id="gm-batch-2b" style="border:none;margin: 0 -4px">
+                <div style="text-indent:1.4em">或者从文件导入稍后再看列表<button id="gm-batch-1e"><input type="file" multiple style="display:none"><span>文件</span></button></div>
+                <div>② 缩小时间范围到 <input is="laster2800-input-number" id="gm-batch-2a" digits="Infinity"> <select id="gm-batch-2b" style="border:none;margin: 0 -4px">
                   <option value="${3600 * 24}">天</option>
                   <option value="3600" selected>小时</option>
                   <option value="60">分钟</option>
                 </select> 以内；可使用上下方向键（配合 Alt/Shift/Ctrl）调整数值大小<button id="gm-batch-2c" disabled hidden>执行</button></div>
-                <div>第三步：筛选 <input id="gm-batch-3a" type="text" style="width:10em">，过滤 <input id="gm-batch-3b" type="text" style="width:10em">；支持通配符 ( ? * )，使用 | 分隔关键词<button id="gm-batch-3c" disabled hidden>执行</button></div>
-                <div>第四步：将选定稿件添加到稍后再看（平均请求间隔：<input is="laster2800-input-number" id="gm-batch-4a" value="${gm.const.batchAddRequestInterval}" min="250">ms）<button id="gm-batch-4b" disabled>执行</button><button id="gm-batch-4c" disabled>终止</button></div>
+                <div>② 筛选 <input id="gm-batch-3a" type="text" style="width:10em">，过滤 <input id="gm-batch-3b" type="text" style="width:10em">；支持通配符 ( ? * )，使用 | 分隔关键词<button id="gm-batch-3c" disabled hidden>执行</button></div>
+                <div>③ 将选定稿件添加到稍后再看（平均请求间隔：<input is="laster2800-input-number" id="gm-batch-4a" value="${gm.const.batchAddRequestInterval}" min="250">ms）<button id="gm-batch-4b" disabled>执行</button><button id="gm-batch-4c" disabled>终止</button></div>
               </div>
               <div class="gm-items"></div>
               <div class="gm-bottom">
@@ -1768,7 +1788,7 @@
             </div>
             <div class="gm-shadow"></div>
           `
-          const ids = ['1a', '1b', '1c', '1d', '2a', '2b', '2c', '3a', '3b', '3c', '4a', '4b', '4c']
+          const ids = ['1a', '1b', '1c', '1d', '1e', '2a', '2b', '2c', '3a', '3b', '3c', '4a', '4b', '4c']
           for (const id of ids) {
             el[`id${id}`] = gm.el.batchAddManager.querySelector(`#gm-batch-${id}`)
           }
@@ -1864,8 +1884,9 @@
           let executing = false
           let loadTime = 0
 
-          // 加载投稿
           let stopLoad = false
+          let readers = []
+          // 加载投稿
           el.id1c.addEventListener('click', async () => {
             if (executing) return
             let error = false
@@ -1880,6 +1901,7 @@
               el.id1c.disabled = true
               el.id1c.textContent = '执行中'
               el.id1d.disabled = false
+              el.id1e.disabled = true
               el.id4b.disabled = true
               el.id2a.defaultValue = el.id2a.max = v1a
               el.id2b.syncVal = el.id1b.value
@@ -1944,7 +1966,7 @@
             } catch (e) {
               error = true
               loadTime = 0
-              api.message.alert('执行失败')
+              api.message.alert('批量添加：执行失败')
               api.logger.error(e)
             } finally {
               const hintEls = el.items.querySelectorAll('[data-src-hint]')
@@ -1964,6 +1986,7 @@
               el.id1c.disabled = false
               el.id1c.textContent = '重新执行'
               el.id1d.disabled = true
+              el.id1e.disabled = false
               el.id4b.disabled = false
               el.id4b.textContent = '执行'
               // 更新第二步的时间范围
@@ -1976,14 +1999,120 @@
               el.id3c.dispatchEvent(new Event('click'))
             }
           })
-          el.id1d.addEventListener('click', () => {
-            stopLoad = true
-          })
           el.id1a.addEventListener('keyup', e => {
             if (e.key === 'Enter') {
               const target = el[executing ? 'id1d' : 'id1c']
               if (!target.disabled) {
                 target.dispatchEvent(new Event('click'))
+              }
+            }
+          })
+          // 稍后再看列表导入
+          async function importWatchlaterList(content, avSet) {
+            const gr = new RegExp(gm.config.importWl_regex, 'gi')
+            const r = new RegExp(gm.config.importWl_regex, 'i')
+            const strs = content.match(gr)
+            let html = ''
+            for (const str of strs) {
+              const m = r.exec(str)
+              let aid = m?.[gm.config.importWl_aid]
+              if (!aid) {
+                try {
+                  aid = webpage.method.bvTool.bv2av(m?.[gm.config.importWl_bvid])
+                } catch { /* BV 号有问题，忽略 */ }
+              }
+              if (aid && !await webpage.method.getVideoWatchlaterStatusByAid(aid, false, true)) { // 完全跳过存在于稍后再看的稿件
+                if (avSet.has(aid)) continue
+                avSet.add(aid)
+                const uncheck = history?.has(aid)
+                const displayNone = uncheck && el.uncheckedDisplay._hide
+                const title = m?.[gm.config.importWl_title]
+                const source = m?.[gm.config.importWl_source]
+                let tsS = m?.[gm.config.importWl_tsS]
+                if (!tsS) {
+                  const tsMs = m?.[gm.config.importWl_tsS]
+                  if (tsMs) {
+                    tsS = Math.round(Number.parseInt(tsMs) / 1000)
+                  }
+                }
+                html += `<label class="gm-item" data-aid="${aid}" data-timestamp="${tsS ?? ''}" data-search-str="${source ?? ''} ${title ?? ''}"${displayNone ? ' style="display:none"' : ''}><input type="checkbox"${uncheck ? '' : ' checked'}> <span>${source ? `[${source}] ` : ''}${title ?? `AV${aid}`}</span></label>`
+              }
+            }
+            el.items.insertAdjacentHTML('afterbegin', html)
+          }
+          const f = el.id1e.firstElementChild
+          el.id1e.addEventListener('click', () => f.click())
+          f.addEventListener('change', async () => {
+            if (executing) return
+            let error = false
+            try {
+              executing = true
+              el.id1b.disabled = true
+              el.id1c.disabled = true
+              el.id1d.disabled = false
+              el.id1e.disabled = true
+              el.id1e.children[1].textContent = '文件导入中'
+              el.id4b.disabled = true
+              el.id2a.value = el.id2a.defaultValue = el.id2a.max = ''
+              el.items.textContent = ''
+              const ps = []
+              const avSet = new Set()
+              for (const file of f.files) {
+                ps.push(new Promise((resolve, reject) => {
+                  const reader = new FileReader()
+                  reader.addEventListener('load', async () => {
+                    try {
+                      await importWatchlaterList(reader.result, avSet)
+                      resolve()
+                    } catch (e) {
+                      api.message.alert(`文件「${file.name}」读取失败，终止从稍后再看列表文件导入。`)
+                      reject(e)
+                    }
+                  })
+                  reader.addEventListener('abort', () => resolve(''))
+                  reader.addEventListener('error', e => {
+                    api.message.alert(`文件「${file.name}」读取失败，终止从稍后再看列表文件导入。`)
+                    reject(e)
+                  })
+                  reader.readAsText(file)
+                  readers.push(reader)
+                }))
+              }
+              await Promise.all(ps)
+            } catch (e) {
+              error = true
+              api.logger.error(e)
+              if (readers.length > 0) {
+                for (const r of readers) {
+                  r.abort()
+                }
+              }
+            } finally {
+              if (stopLoad) {
+                api.message.info('批量添加：任务终止', 1800)
+              } else if (!error) {
+                api.message.info('批量添加：稍后再看列表导入成功', 1800)
+              }
+              readers = []
+              executing = false
+              stopLoad = false
+              el.id1b.disabled = false
+              el.id1c.disabled = false
+              el.id1d.disabled = true
+              el.id1e.disabled = false
+              el.id1e.children[1].textContent = '文件'
+              el.id4b.disabled = false
+              // 自动执行第三步
+              el.id3c.dispatchEvent(new Event('click'))
+              f.value = '' // 重置控件，否则重新选择相同文件不会触发 change 事件；置空行为不会触发 change 事件
+            }
+          })
+          // 终止加载 / 导入
+          el.id1d.addEventListener('click', () => {
+            stopLoad = true
+            if (readers.length > 0) {
+              for (const r of readers) {
+                r.abort()
               }
             }
           })
@@ -2011,7 +2140,7 @@
                 }
               }
             } catch (e) {
-              api.message.alert('执行失败')
+              api.message.alert('批量添加：执行失败')
               api.logger.error(e)
             } finally {
               executing = false
@@ -2047,15 +2176,15 @@
               const v3b = getRegex(el.id3b.value)
               for (let i = 0; i < el.items.childElementCount; i++) {
                 const item = el.items.children[i]
-                const tc = item.textContent
-                if ((v3a && !v3a.test(tc)) || v3b?.test(tc)) {
+                const ss = item.dataset.searchStr ?? item.textContent
+                if ((v3a && !v3a.test(ss)) || v3b?.test(ss)) {
                   item.classList.add('gm-filtered-regex')
                 } else {
                   item.classList.remove('gm-filtered-regex')
                 }
               }
             } catch (e) {
-              api.message.alert('执行失败')
+              api.message.alert('批量添加：执行失败')
               api.logger.error(e)
             } finally {
               executing = false
@@ -2081,6 +2210,7 @@
               el.id4b.textContent = '执行中'
               el.id4c.disabled = false
               el.id1c.disabled = true
+              el.id1e.disabled = true
 
               let available = 100 - (await gm.data.watchlaterListData()).length
               const checks = el.items.querySelectorAll('.gm-item:not([class*=gm-filtered-]) input:checked')
@@ -2102,7 +2232,7 @@
               lastAddTime = loadTime
               api.message.info('批量添加：已将所有选定稿件添加到稍后再看', 1800)
             } catch (e) {
-              api.message.alert('执行失败：可能是因为目标稿件不可用或稍后再看不支持该稿件类型（如互动视频），请尝试取消勾选当前列表中第一个选定的稿件后重新执行')
+              api.message.alert('批量添加：执行失败。可能是因为目标稿件不可用或稍后再看不支持该稿件类型（如互动视频），请尝试取消勾选当前列表中第一个选定的稿件后重新执行。')
               api.logger.error(e)
             } finally {
               if (lastAddTime) {
@@ -2119,6 +2249,7 @@
               el.id4b.textContent = '重新执行'
               el.id4c.disabled = true
               el.id1c.disabled = false
+              el.id1e.disabled = false
               gm.runtime.reloadWatchlaterListData = true
               window.dispatchEvent(new CustomEvent('reloadWatchlaterListData'))
 
@@ -2571,7 +2702,7 @@
             )
           }
           if (导出至文件) {
-            const filename = 导出文件名 ? eval('`' + 导出文件名 + '`') : `'稍后再看列表.${Date.now()}.txt`
+            const filename = 导出文件名 ? eval('`' + 导出文件名 + '`') : `稍后再看列表.${Date.now()}.txt`
             const file = new Blob([content], { type: 'text/plain' })
             const a = document.createElement('a')
             a.href = URL.createObjectURL(file)
@@ -2596,6 +2727,76 @@
           this.setExportWatchlaterList()
         }
       }
+    }
+
+    /**
+     * 设置稍后再看列表导入方式
+     */
+    setImportWatchlaterList() {
+      const msg = `<div class="gm-import-wl-container">
+        <div>
+          <div>设置稍后再看列表导入方式。默认简单读取所有形如 <code>BV###</code> 的字符串。</div>
+          <div>若有进一步的需求，请提前设计好稍后再看列表文件的格式，然后使用正则表达式（不区分大小写）指定每个稿件对应的文本，然后指定稿件 ID、稿件标题、来源（建议：上传者名称）、时间节点等信息对应的捕获组。</div>
+          <div>可填写 <code>-1</code> 禁用某项信息，但 AID / BVID 至少填写一个（冲突时优先使用「AV 号」）。时间节点被用于执行时间过滤，根据用户需要可设定为稿件发布时间或文件导出时间等，冲突时优先使用「时间节点（秒）」。</div>
+        </div>
+        <div class="gm-group-container">
+          <div>正则表达式：</div>
+          <input class="gm-interactive" type="text" id="gm-import-wl-regex">
+        </div>
+        <div class="gm-group-container">
+          <div>捕获组：</div>
+          <div class="gm-capturing-group">
+            <div>
+              <div>AV 号</div>
+              <input class="gm-interactive" is="laster2800-input-number" id="gm-import-wl-aid" min="-1">
+            </div>
+            <div>
+              <div>BV 号</div>
+              <input class="gm-interactive" is="laster2800-input-number" id="gm-import-wl-bvid" min="-1">
+            </div>
+            <div>
+              <div>标题</div>
+              <input class="gm-interactive" is="laster2800-input-number" id="gm-import-wl-title" min="-1">
+            </div>
+            <div>
+              <div>来源</div>
+              <input class="gm-interactive" is="laster2800-input-number" id="gm-import-wl-source" min="-1">
+            </div>
+            <div>
+              <div>时间节点（秒）</div>
+              <input class="gm-interactive" is="laster2800-input-number" id="gm-import-wl-ts-s" min="-1">
+            </div>
+            <div>
+              <div>时间节点（毫秒）</div>
+              <input class="gm-interactive" is="laster2800-input-number" id="gm-import-wl-ts-ms" min="-1">
+            </div>
+          </div>
+        </div>
+      </div>`
+      const btnText = ['重置', '确定', '取消']
+      const dialog = api.message.dialog(msg, { html: true, buttons: btnText })
+      const [regex, aid, bvid, title, source, tsS, tsMs, reset, confirm, cancel] = dialog.interactives
+      const config = { regex, aid, bvid, title, source, tsS, tsMs }
+      reset.addEventListener('click', () => {
+        for (const [n, el] of Object.entries(config)) {
+          el.value = gm.configMap[`importWl_${n}`].default
+        }
+      })
+      confirm.addEventListener('click', () => {
+        dialog.close()
+        for (const [n, el] of Object.entries(config)) {
+          const k = `importWl_${n}`
+          const v = gm.configMap[k]?.type === 'int' ? Number.parseInt(el.value) : el.value
+          gm.config[k] = v
+          GM_setValue(k, v)
+        }
+        api.message.info('已保存稍后再看列表导入设置')
+      })
+      cancel.addEventListener('click', () => dialog.close())
+      for (const [n, el] of Object.entries(config)) {
+        el.value = gm.config[`importWl_${n}`]
+      }
+      dialog.open()
     }
 
     /**
@@ -6167,7 +6368,7 @@
 
           #${gm.id} .gm-batchAddManager .gm-batchAddManager-page {
             width: 70em;
-            height: 56em;
+            height: 60em;
           }
           #${gm.id} .gm-batchAddManager .gm-comment {
             margin: 1.4em 2.5em 0.5em;
@@ -6195,7 +6396,7 @@
           }
           #${gm.id} .gm-batchAddManager .gm-items {
             width: calc(100% - 2.5em * 2);
-            height: 24em;
+            height: 25.5em;
             padding: 0.4em 0;
             margin: 0 2.5em;
             font-size: 1.1em;
@@ -6303,6 +6504,37 @@
           #${gm.id} .gm-entrypopup .gm-search input[type=text] {
             border: none;
             width: 18em;
+          }
+
+          .${gm.id}-dialog .gm-import-wl-container {
+            font-size: 0.8em;
+          }
+          .${gm.id}-dialog .gm-import-wl-container code {
+            font-family: Consolas, Courier New, monospace;
+          }
+          .${gm.id}-dialog .gm-import-wl-container .gm-group-container {
+            margin: 0.5em 0;
+          }
+          .${gm.id}-dialog .gm-import-wl-container .gm-interactive {
+            margin-top: 0;
+            border-width: 0 0 1px 0;
+            font-family: Consolas, Courier New, monospace;
+          }
+          .${gm.id}-dialog .gm-import-wl-container #gm-import-wl-regex {
+            width: calc(100% - 4em);
+            margin: 0 2em;
+          }
+          .${gm.id}-dialog .gm-import-wl-container .gm-capturing-group {
+            display: flex;
+            padding-left: 2em;
+          }
+          .${gm.id}-dialog .gm-import-wl-container .gm-capturing-group > div {
+            text-align: center;
+            margin-right: 1em;
+          }
+          .${gm.id}-dialog .gm-import-wl-container .gm-capturing-group .gm-interactive {
+            width: 3.6em;
+            text-align: center;
           }
 
           .gm-search input[type=text] {

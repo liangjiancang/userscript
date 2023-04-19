@@ -2,6 +2,12 @@
 
 本日志只记录用户友好的更新说明，影响不大的问题修复与修改不作记录，具体修改见 [提交记录](https://gitee.com/liangjiancang/userscript/commits/master/script/BilibiliWatchlaterPlus)。
 
+## V4.33
+
+1. 列表导入：功能实现。该功能入口在批量添加管理器中，支持从文件中以自定义方式加载稿件。[172949#comment-384966](https://greasyfork.org/zh-CN/scripts/395456/discussions/172949#comment-384966)
+2. 代码：`config` / `configMap` 机制不再要求在「用户设置」中有对应选项。
+3. 外部功能：由于B站新版页面顶栏已原生固定，移除 [B站顶栏固顶](https://greasyfork.org/zh-CN/scripts/430292) 入口。
+
 ## V4.32
 
 1. 批量添加：关注者转发的稿件增加「来源」说明（点击跳转到转发的动态）。
@@ -194,8 +200,8 @@
 4. 脚本：优化稿件的稍后再看状态判断逻辑。
 5. 脚本：更新兼容性说明。
 6. 顶栏入口：增加快捷功能「打开批量添加管理器」。
-7. 弹出菜单：修复列表滚动跟随项目位置变化的问题。[#97715-229246](https://greasyfork.org/zh-CN/scripts/395456/discussions/97715#comment-229246)
-8. 列表页面：修复页面滚动跟随项目位置变化的问题。[#97715-229246](https://greasyfork.org/zh-CN/scripts/395456/discussions/97715#comment-229246)
+7. 弹出菜单：修复列表滚动跟随项目位置变化的问题。[97715#comment-229246](https://greasyfork.org/zh-CN/scripts/395456/discussions/97715#comment-229246)
+8. 列表页面：修复页面滚动跟随项目位置变化的问题。[97715#comment-229246](https://greasyfork.org/zh-CN/scripts/395456/discussions/97715#comment-229246)
 9. 移除记录：优化记录项目生成流程。
 10. 填充缺失状态：优化处理流程。
 11. UI：优化文本。
