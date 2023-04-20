@@ -5,8 +5,10 @@
 ## V4.33
 
 1. 列表导入：功能实现。该功能入口在批量添加管理器中，支持从文件中以自定义方式加载稿件。[172949#comment-384966](https://greasyfork.org/zh-CN/scripts/395456/discussions/172949#comment-384966)
-2. 代码：`config` / `configMap` 机制不再要求在「用户设置」中有对应选项。
-3. 外部功能：由于B站新版页面顶栏已原生固定，移除 [B站顶栏固顶](https://greasyfork.org/zh-CN/scripts/430292) 入口。
+2. 批量添加：支持从收藏夹导入稿件。[172949#comment-385635](https://greasyfork.org/zh-CN/scripts/395456/discussions/172949#comment-385635)
+3. 批量添加：增加「选中全部」「取消全部」按钮。
+4. 代码：`config` / `configMap` 机制不再要求在「用户设置」中有对应选项。
+5. 外部功能：由于B站新版页面顶栏已原生固定，移除 [B站顶栏固顶](https://greasyfork.org/zh-CN/scripts/430292) 入口。
 
 ## V4.32
 

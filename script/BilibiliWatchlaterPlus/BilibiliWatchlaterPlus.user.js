@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.33.1.20230420
+// @version         4.33.2.20230420
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -353,6 +353,7 @@
    * @property {string} api_clearWatchlater 清空稍后再看，要求 POST 一个含 `csrf` 的表单
    * @property {string} api_listFav 列出所有收藏夹
    * @property {string} api_dealFav 将稿件添加/移除至收藏夹
+   * @property {string} api_favResourceList 获取稍加内容明细列表
    * @property {string} api_dynamicList 动态列表
    * @property {string} page_watchlaterList 列表页面
    * @property {string} page_videoNormalMode 常规播放页
@@ -478,6 +479,7 @@
       api_removeFromWatchlater: 'https://api.bilibili.com/x/v2/history/toview/del',
       api_clearWatchlater: 'https://api.bilibili.com/x/v2/history/toview/clear',
       api_listFav: 'https://api.bilibili.com/x/v3/fav/folder/created/list-all',
+      api_favResourceList: 'https://api.bilibili.com/x/v3/fav/resource/list',
       api_dealFav: 'https://api.bilibili.com/x/v3/fav/resource/deal',
       api_dynamicList: 'https://api.bilibili.com/x/polymer/web-dynamic/v1/feed/all',
       page_watchlaterList: 'https://www.bilibili.com/watchlater/#/list',
@@ -1456,7 +1458,7 @@
             const uid = webpage.method.getDedeUserID()
             const mlid = await api.message.prompt(`
               <p>指定使用收藏功能时，将稿件从稍后再看移动至哪个收藏夹。</p>
-              <p>下方应填入目标收藏夹 ID，置空时使用默认收藏夹。收藏夹页面网址为「https://space.bilibili.com/\${uid}/favlist?fid=\${mlid}」，mlid 即收藏夹 ID。</p>
+              <p>下方应填入目标收藏夹 ID，置空时使用默认收藏夹。收藏夹页面网址为 <code>https://space.bilibili.com/\${uid}/favlist?fid=\${mlid}</code>，<code>mlid</code> 即收藏夹 ID。</p>
             `, GM_getValue(`watchlaterMediaList_${uid}`) ?? undefined, { html: true })
             if (mlid != null) {
               GM_setValue(`watchlaterMediaList_${uid}`, mlid)
@@ -1769,18 +1771,20 @@
                   <option value="3600" selected>小时</option>
                   <option value="60">分钟</option>
                 </select> 以内发布且不存在于稍后再看的视频投稿<button id="gm-batch-1c">执行</button><button id="gm-batch-1d" disabled>终止</button></div>
-                <div style="text-indent:1.4em">或者从文件导入稍后再看列表<button id="gm-batch-1e"><input type="file" multiple style="display:none"><span>文件</span></button></div>
+                <div style="text-indent:1.4em">或者从以下位置导入稿件：<button id="gm-batch-1e" style="margin-left:0.4em" title="右键点击可进行导入设置"><input type="file" multiple style="display:none"><span>文件</span></button><button id="gm-batch-1f">收藏夹</button></div>
                 <div>② 缩小时间范围到 <input is="laster2800-input-number" id="gm-batch-2a" digits="Infinity"> <select id="gm-batch-2b" style="border:none;margin: 0 -4px">
                   <option value="${3600 * 24}">天</option>
                   <option value="3600" selected>小时</option>
                   <option value="60">分钟</option>
                 </select> 以内；可使用上下方向键（配合 Alt/Shift/Ctrl）调整数值大小<button id="gm-batch-2c" disabled hidden>执行</button></div>
-                <div>② 筛选 <input id="gm-batch-3a" type="text" style="width:10em">，过滤 <input id="gm-batch-3b" type="text" style="width:10em">；支持通配符 ( ? * )，使用 | 分隔关键词<button id="gm-batch-3c" disabled hidden>执行</button></div>
-                <div>③ 将选定稿件添加到稍后再看（平均请求间隔：<input is="laster2800-input-number" id="gm-batch-4a" value="${gm.const.batchAddRequestInterval}" min="250">ms）<button id="gm-batch-4b" disabled>执行</button><button id="gm-batch-4c" disabled>终止</button></div>
+                <div>③ 筛选 <input id="gm-batch-3a" type="text" style="width:10em">，过滤 <input id="gm-batch-3b" type="text" style="width:10em">；支持通配符 ( ? * )，使用 | 分隔关键词<button id="gm-batch-3c" disabled hidden>执行</button></div>
+                <div>④ 将选定稿件添加到稍后再看（平均请求间隔：<input is="laster2800-input-number" id="gm-batch-4a" value="${gm.const.batchAddRequestInterval}" min="250">ms）<button id="gm-batch-4b" disabled>执行</button><button id="gm-batch-4c" disabled>终止</button></div>
               </div>
               <div class="gm-items"></div>
               <div class="gm-bottom">
                 <button id="gm-last-add-time">时间同步</button>
+                <button id="gm-select-all">选中全部</button>
+                <button id="gm-deselect-all">取消全部</button>
                 <button id="gm-unchecked-display"></button>
                 <button id="gm-save-batch-params">保存参数</button>
                 <button id="gm-reset-batch-params">重置参数</button>
@@ -1788,11 +1792,13 @@
             </div>
             <div class="gm-shadow"></div>
           `
-          const ids = ['1a', '1b', '1c', '1d', '1e', '2a', '2b', '2c', '3a', '3b', '3c', '4a', '4b', '4c']
+          const ids = ['1a', '1b', '1c', '1d', '1e', '1f', '2a', '2b', '2c', '3a', '3b', '3c', '4a', '4b', '4c']
           for (const id of ids) {
             el[`id${id}`] = gm.el.batchAddManager.querySelector(`#gm-batch-${id}`)
           }
           el.items = gm.el.batchAddManager.querySelector('.gm-items')
+          el.selectAll = gm.el.batchAddManager.querySelector('#gm-select-all')
+          el.deselectAll = gm.el.batchAddManager.querySelector('#gm-deselect-all')
           el.lastAddTime = gm.el.batchAddManager.querySelector('#gm-last-add-time')
           el.uncheckedDisplay = gm.el.batchAddManager.querySelector('#gm-unchecked-display')
           el.saveParams = gm.el.batchAddManager.querySelector('#gm-save-batch-params')
@@ -1841,6 +1847,35 @@
           })
           // 避免不同页面中脚本实例互相影响而产生的同步时间错误
           GM_addValueChangeListener('batchLastAddTime', (name, oldVal, newVal, remote) => remote && setLastAddTime(newVal))
+
+          // 选中全部
+          el.selectAll.addEventListener('click', () => {
+            const hide = el.uncheckedDisplay._hide
+            for (let i = 0; i < el.items.childElementCount; i++) {
+              const item = el.items.children[i]
+              const cb = item.firstElementChild
+              if (!cb.checked) {
+                cb.checked = true
+                if (hide) {
+                  item.style.display = ''
+                }
+              }
+            }
+          })
+          // 取消全部
+          el.deselectAll.addEventListener('click', () => {
+            const hide = el.uncheckedDisplay._hide
+            for (let i = 0; i < el.items.childElementCount; i++) {
+              const item = el.items.children[i]
+              const cb = item.firstElementChild
+              if (cb.checked) {
+                cb.checked = false
+                if (hide) {
+                  item.style.display = 'none'
+                }
+              }
+            }
+          })
 
           // 非选显示
           const setUncheckedDisplayText = () => {
@@ -1902,6 +1937,7 @@
               el.id1c.textContent = '执行中'
               el.id1d.disabled = false
               el.id1e.disabled = true
+              el.id1f.disabled = true
               el.id4b.disabled = true
               el.id2a.defaultValue = el.id2a.max = v1a
               el.id2b.syncVal = el.id1b.value
@@ -1923,7 +1959,7 @@
                   url: `${gm.url.api_dynamicList}?${data.toString()}`,
                 }, { check: r => r.code === 0 })
                 const { items, has_more } = resp.data
-                if (!has_more || !items || items.length === 0) return // -> finally
+                if (!items || items.length === 0) return // -> finally
                 offset = resp.data.offset // data.offset 是字符串类型，不会丢失精度；无需 +1 额外偏移
                 let html = ''
                 for (let item of items) {
@@ -1959,6 +1995,7 @@
                   }
                 }
                 el.items.insertAdjacentHTML('afterbegin', html)
+                if (!has_more) return // -> finally
                 await new Promise(resolve => setTimeout(resolve, 250 * (Math.random() * 0.5 + 0.75))) // 切线程，顺便给请求留点间隔
               }
               // 执行到这里只有一个原因：stopLoad 导致任务终止
@@ -1987,6 +2024,7 @@
               el.id1c.textContent = '重新执行'
               el.id1d.disabled = true
               el.id1e.disabled = false
+              el.id1f.disabled = false
               el.id4b.disabled = false
               el.id4b.textContent = '执行'
               // 更新第二步的时间范围
@@ -2042,6 +2080,10 @@
           }
           const f = el.id1e.firstElementChild
           el.id1e.addEventListener('click', () => f.click())
+          el.id1e.addEventListener('contextmenu', e => {
+            this.setImportWatchlaterList()
+            e.preventDefault()
+          })
           f.addEventListener('change', async () => {
             if (executing) return
             let error = false
@@ -2052,6 +2094,7 @@
               el.id1d.disabled = false
               el.id1e.disabled = true
               el.id1e.children[1].textContent = '文件导入中'
+              el.id1f.disabled = true
               el.id4b.disabled = true
               el.id2a.value = el.id2a.defaultValue = el.id2a.max = ''
               el.items.textContent = ''
@@ -2101,10 +2144,96 @@
               el.id1d.disabled = true
               el.id1e.disabled = false
               el.id1e.children[1].textContent = '文件'
+              el.id1f.disabled = false
               el.id4b.disabled = false
               // 自动执行第三步
               el.id3c.dispatchEvent(new Event('click'))
               f.value = '' // 重置控件，否则重新选择相同文件不会触发 change 事件；置空行为不会触发 change 事件
+            }
+          })
+          // 收藏夹导入
+          el.id1f.addEventListener('click', async () => {
+            let favExecuted = false
+            if (executing) return
+            try {
+              executing = true
+              el.id1b.disabled = true
+              el.id1c.disabled = true
+              el.id1d.disabled = false
+              el.id1e.disabled = true
+              el.id1f.disabled = true
+              el.id1f.textContent = '收藏夹导入中'
+              el.id4b.disabled = true
+              el.id2a.value = el.id2a.defaultValue = el.id2a.max = ''
+              el.items.textContent = ''
+              let mlid = await api.message.prompt('<p style="word-break:break-all">指定需导入的收藏夹。下方应填入目标收藏夹 ID，置空时使用稍后再看收藏夹。收藏夹页面网址为 <code>https://space.bilibili.com/${uid}/favlist?fid=${mlid}</code>，<code>mlid</code> 即收藏夹 ID。</p>', null, { html: true })
+              if (mlid == null) return
+              if (mlid.trim() === '') {
+                const uid = webpage.method.getDedeUserID()
+                mlid = GM_getValue(`watchlaterMediaList_${uid}`)
+                if (!mlid) {
+                  api.message.info('没有设置稍后再看收藏夹')
+                  return
+                }
+              }
+              let error = false
+              try {
+                favExecuted = true
+                let page = 1
+                const avSet = new Set()
+                // eslint-disable-next-line no-unmodified-loop-condition
+                while (!stopLoad) {
+                  const data = new URLSearchParams()
+                  data.append('media_id', mlid)
+                  data.append('ps', '20') // 每页数，最大 20
+                  data.append('pn', page++)
+                  const resp = await api.web.request({
+                    url: `${gm.url.api_favResourceList}?${data.toString()}`,
+                  }, { check: r => r.code === 0 })
+                  const { medias, info, has_more } = resp.data
+                  if (!medias || medias.length === 0) return // -> finally
+                  const source = info.title
+                  let html = ''
+                  for (const item of medias) {
+                    const aid = String(item.id)
+                    if (!await webpage.method.getVideoWatchlaterStatusByAid(aid, false, true)) { // 完全跳过存在于稍后再看的稿件
+                      if (avSet.has(aid)) continue
+                      avSet.add(aid)
+                      const uncheck = history?.has(aid)
+                      const displayNone = uncheck && el.uncheckedDisplay._hide
+                      html += `<label class="gm-item" data-aid="${aid}" data-timestamp="${item.pubtime}"${displayNone ? ' style="display:none"' : ''}><input type="checkbox"${uncheck ? '' : ' checked'}> <span>[${source}][${item.upper.name}] ${item.title}</span></label>`
+                    }
+                  }
+                  el.items.insertAdjacentHTML('afterbegin', html)
+                  if (!has_more) return // -> finally
+                  await new Promise(resolve => setTimeout(resolve, 250 * (Math.random() * 0.5 + 0.75))) // 切线程，顺便给请求留点间隔
+                }
+                // 执行到这里只有一个原因：stopLoad 导致任务终止
+                api.message.info('批量添加：任务终止', 1800)
+              } catch (e) {
+                error = true
+                api.message.alert('批量添加：执行失败')
+                api.logger.error(e)
+              } finally {
+                if (!error && !stopLoad) {
+                  api.message.info('批量添加：稿件加载完成', 1800)
+                }
+
+              }
+            } finally {
+              executing = false
+              stopLoad = false
+              el.id1b.disabled = false
+              el.id1c.disabled = false
+              el.id1d.disabled = true
+              el.id1e.disabled = false
+              el.id1f.disabled = false
+              el.id1f.textContent = '收藏夹'
+              el.id4b.disabled = false
+              if (favExecuted) {
+                // 自动执行第三步
+                el.id3c.dispatchEvent(new Event('click'))
+              }
             }
           })
           // 终止加载 / 导入
@@ -2211,6 +2340,7 @@
               el.id4c.disabled = false
               el.id1c.disabled = true
               el.id1e.disabled = true
+              el.id1f.disabled = true
 
               let available = 100 - (await gm.data.watchlaterListData()).length
               const checks = el.items.querySelectorAll('.gm-item:not([class*=gm-filtered-]) input:checked')
@@ -2250,6 +2380,7 @@
               el.id4c.disabled = true
               el.id1c.disabled = false
               el.id1e.disabled = false
+              el.id1f.disabled = false
               gm.runtime.reloadWatchlaterListData = true
               window.dispatchEvent(new CustomEvent('reloadWatchlaterListData'))
 
@@ -2970,7 +3101,7 @@
 
       /**
        * 根据 `aid` 获取稿件的稍后再看状态
-       * @param {string} aid 稿件 `aid`
+       * @param {string | number} aid 稿件 `aid`
        * @param {boolean} [reload] 是否重新加载
        * @param {boolean} [pageCache] 是否禁用页面缓存
        * @param {boolean} [localCache=true] 是否使用本地缓存
@@ -2978,7 +3109,7 @@
        */
       async getVideoWatchlaterStatusByAid(aid, reload, pageCache, localCache = true) {
         const map = await this.getWatchlaterDataMap(item => String(item.aid), 'aid', reload, pageCache, localCache)
-        return map.has(aid)
+        return map.has(String(aid))
       },
 
       /**
@@ -6506,11 +6637,11 @@
             width: 18em;
           }
 
+          .${gm.id}-dialog code {
+            font-family: Consolas, Courier New, monospace;
+          }
           .${gm.id}-dialog .gm-import-wl-container {
             font-size: 0.8em;
-          }
-          .${gm.id}-dialog .gm-import-wl-container code {
-            font-family: Consolas, Courier New, monospace;
           }
           .${gm.id}-dialog .gm-import-wl-container .gm-group-container {
             margin: 0.5em 0;
