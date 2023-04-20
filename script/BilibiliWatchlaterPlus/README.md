@@ -8,6 +8,32 @@
 
 ![用户设置](https://gitee.com/liangjiancang/userscript/raw/master/script/BilibiliWatchlaterPlus/screenshot/用户设置-p)
 
+## Q&A
+
+1. 在批量添加管理器中，从文件导入稿件只显示 `aid`，如何才能显示完整信息？
+
+    应根据自己需要调整「导出稍后再看列表」和「导入稍后再看列表」设置。这里提供一套简单的配置方案：
+
+    导出设置：
+
+    ```js
+    导出至剪贴板 = 否
+    导出至新页面 = 否
+    导出至文件 = 是
+    导出文件名 = '稍后再看列表.${Date.now()}.txt'
+    相邻稿件换行 = 是
+    稿件导出模板 = 'bvid:${ITEM.bvid},title:${ITEM.title},src:${ITEM.owner.name},ts:${ITEM.pubdate}'
+    ```
+
+    导入设置：
+
+    ```text
+    正则表达式
+        bvid:(.*),title:(.*),src:(.*),ts:(.*)
+    捕获组
+        -1  1  2  3  4  -1
+    ```
+
 ## 补充说明
 
 * 脚本基于 Microsoft Edge 浏览器和 Tampermonkey 脚本管理器开发，不支持 Greasemonkey。要求 Edge / Chrome / Chromium 内核版本不小于 93，Firefox 版本不小于 92。
