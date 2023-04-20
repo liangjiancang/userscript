@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.33.2.20230420
+// @version         4.33.3.20230420
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -353,7 +353,7 @@
    * @property {string} api_clearWatchlater 清空稍后再看，要求 POST 一个含 `csrf` 的表单
    * @property {string} api_listFav 列出所有收藏夹
    * @property {string} api_dealFav 将稿件添加/移除至收藏夹
-   * @property {string} api_favResourceList 获取稍加内容明细列表
+   * @property {string} api_favResourceList 获取收藏夹内容明细列表
    * @property {string} api_dynamicList 动态列表
    * @property {string} page_watchlaterList 列表页面
    * @property {string} page_videoNormalMode 常规播放页
@@ -1765,7 +1765,7 @@
               <div class="gm-title">批量添加管理器</div>
               <div class="gm-comment">
                 <div>执行以下步骤以将投稿批量添加到稍后再看。执行过程中可以关闭对话框，但不能关闭页面；也不建议将当前页面置于后台，否则浏览器可能会暂缓甚至暂停任务执行。</div>
-                <div>脚本会优先添加投稿时间较早的投稿，达到稍后再看容量上限 100 时终止执行。注意，该功能会在短时间内向后台发起大量请求，滥用可能会导致一段时间内无法正常访问B站，你可以增加平均请求间隔以降低触发拦截机制的概率。</div>
+                <div>常规模式下脚本优先添加投稿时间较早的投稿，达到稍后再看容量上限 100 时终止执行。注意，该功能会在短时间内向后台发起大量请求，滥用可能会导致一段时间内无法正常访问B站，你可以增加平均请求间隔以降低触发拦截机制的概率。</div>
                 <div>① 加载最近 <input is="laster2800-input-number" id="gm-batch-1a" value="24" digits="Infinity"> <select id="gm-batch-1b" style="border:none;margin: 0 -4px">
                   <option value="${3600 * 24}">天</option>
                   <option value="3600" selected>小时</option>
@@ -2073,7 +2073,7 @@
                     tsS = Math.round(Number.parseInt(tsMs) / 1000)
                   }
                 }
-                html += `<label class="gm-item" data-aid="${aid}" data-timestamp="${tsS ?? ''}" data-search-str="${source ?? ''} ${title ?? ''}"${displayNone ? ' style="display:none"' : ''}><input type="checkbox"${uncheck ? '' : ' checked'}> <span>${source ? `[${source}] ` : ''}${title ?? `AV${aid}`}</span></label>`
+                html = `<label class="gm-item" data-aid="${aid}" data-timestamp="${tsS ?? ''}" data-search-str="${source ?? ''} ${title ?? ''}"${displayNone ? ' style="display:none"' : ''}><input type="checkbox"${uncheck ? '' : ' checked'}> <span>${source ? `[${source}] ` : ''}${title ?? `AV${aid}`}</span></label>` + html
               }
             }
             el.items.insertAdjacentHTML('afterbegin', html)
@@ -2159,14 +2159,16 @@
               executing = true
               el.id1b.disabled = true
               el.id1c.disabled = true
-              el.id1d.disabled = false
               el.id1e.disabled = true
               el.id1f.disabled = true
               el.id1f.textContent = '收藏夹导入中'
               el.id4b.disabled = true
               el.id2a.value = el.id2a.defaultValue = el.id2a.max = ''
               el.items.textContent = ''
-              let mlid = await api.message.prompt('<p style="word-break:break-all">指定需导入的收藏夹。下方应填入目标收藏夹 ID，置空时使用稍后再看收藏夹。收藏夹页面网址为 <code>https://space.bilibili.com/${uid}/favlist?fid=${mlid}</code>，<code>mlid</code> 即收藏夹 ID。</p>', null, { html: true })
+              let mlid = await api.message.prompt(`
+                <p>指定需导入的收藏夹。下方应填入目标收藏夹 ID，可使用英文逗号「<code>,</code>」分隔多个收藏夹。置空时使用稍后再看收藏夹。</p>
+                <p style="word-break:break-all">收藏夹页面网址为 <code>https://space.bilibili.com/\${uid}/favlist?fid=\${mlid}</code>，<code>mlid</code> 即收藏夹 ID。</p>
+              `, null, { html: true })
               if (mlid == null) return
               if (mlid.trim() === '') {
                 const uid = webpage.method.getDedeUserID()
@@ -2179,37 +2181,43 @@
               let error = false
               try {
                 favExecuted = true
-                let page = 1
+                el.id1d.disabled = false
                 const avSet = new Set()
-                // eslint-disable-next-line no-unmodified-loop-condition
-                while (!stopLoad) {
-                  const data = new URLSearchParams()
-                  data.append('media_id', mlid)
-                  data.append('ps', '20') // 每页数，最大 20
-                  data.append('pn', page++)
-                  const resp = await api.web.request({
-                    url: `${gm.url.api_favResourceList}?${data.toString()}`,
-                  }, { check: r => r.code === 0 })
-                  const { medias, info, has_more } = resp.data
-                  if (!medias || medias.length === 0) return // -> finally
-                  const source = info.title
-                  let html = ''
-                  for (const item of medias) {
-                    const aid = String(item.id)
-                    if (!await webpage.method.getVideoWatchlaterStatusByAid(aid, false, true)) { // 完全跳过存在于稍后再看的稿件
-                      if (avSet.has(aid)) continue
-                      avSet.add(aid)
-                      const uncheck = history?.has(aid)
-                      const displayNone = uncheck && el.uncheckedDisplay._hide
-                      html += `<label class="gm-item" data-aid="${aid}" data-timestamp="${item.pubtime}"${displayNone ? ' style="display:none"' : ''}><input type="checkbox"${uncheck ? '' : ' checked'}> <span>[${source}][${item.upper.name}] ${item.title}</span></label>`
+                const favIds = mlid.split(',')
+                // eslint-disable-next-line no-unreachable-loop
+                id1fFavLoop: for (const favId of favIds) {
+                  let page = 1
+                  // eslint-disable-next-line no-unmodified-loop-condition
+                  while (!stopLoad) {
+                    const data = new URLSearchParams()
+                    data.append('media_id', favId)
+                    data.append('ps', '20') // 每页数，最大 20
+                    data.append('pn', page++)
+                    const resp = await api.web.request({
+                      url: `${gm.url.api_favResourceList}?${data.toString()}`,
+                    }, { check: r => r.code === 0 })
+                    const { medias, info, has_more } = resp.data
+                    if (!medias || medias.length === 0) continue id1fFavLoop
+                    const source = info.title
+                    let html = ''
+                    for (const item of medias) {
+                      const aid = String(item.id)
+                      if (!await webpage.method.getVideoWatchlaterStatusByAid(aid, false, true)) { // 完全跳过存在于稍后再看的稿件
+                        if (avSet.has(aid)) continue
+                        avSet.add(aid)
+                        const uncheck = history?.has(aid)
+                        const displayNone = uncheck && el.uncheckedDisplay._hide
+                        html = `<label class="gm-item" data-aid="${aid}" data-timestamp="${item.pubtime}"${displayNone ? ' style="display:none"' : ''}><input type="checkbox"${uncheck ? '' : ' checked'}> <span>[${source}][${item.upper.name}] ${item.title}</span></label>` + html
+                      }
                     }
+                    el.items.insertAdjacentHTML('afterbegin', html)
+                    if (!has_more) continue id1fFavLoop
+                    await new Promise(resolve => setTimeout(resolve, 250 * (Math.random() * 0.5 + 0.75))) // 切线程，顺便给请求留点间隔
                   }
-                  el.items.insertAdjacentHTML('afterbegin', html)
-                  if (!has_more) return // -> finally
-                  await new Promise(resolve => setTimeout(resolve, 250 * (Math.random() * 0.5 + 0.75))) // 切线程，顺便给请求留点间隔
+                  // 执行到这里只有一个原因：stopLoad 导致任务终止
+                  api.message.info('批量添加：任务终止', 1800)
+                  break
                 }
-                // 执行到这里只有一个原因：stopLoad 导致任务终止
-                api.message.info('批量添加：任务终止', 1800)
               } catch (e) {
                 error = true
                 api.message.alert('批量添加：执行失败')
