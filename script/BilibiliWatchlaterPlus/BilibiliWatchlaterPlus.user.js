@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.33.3.20230420
+// @version         4.33.4.20230422
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -229,6 +229,7 @@
    * @property {number} removeHistorySearchTimes 历史回溯深度
    * @property {boolean} batchAddLoadForward 批量添加：加载关注者转发的稿件
    * @property {boolean} batchAddLoadAfterTimeSync 批量添加：执行时间同步后是否自动加载稿件
+   * @property {string} batchAddManagerSnapshotPrefix 批量添加：文件快照前缀
    * @property {fillWatchlaterStatus} fillWatchlaterStatus 填充稍后再看状态
    * @property {boolean} searchDefaultValue 激活搜索框默认值功能
    * @property {autoSort} autoSort 自动排序
@@ -400,7 +401,7 @@
   const gm = {
     id: gmId,
     configVersion: GM_getValue('configVersion'),
-    configUpdate: 20230419,
+    configUpdate: 20230422,
     searchParams: new URL(location.href).searchParams,
     config: {},
     configMap: {
@@ -431,6 +432,7 @@
       removeHistorySearchTimes: { default: 100, type: 'int', attr: 'value', manual: true, needNotReload: true, min: 1, max: 500, configVersion: 20210819 },
       batchAddLoadForward: { default: true, attr: 'checked', configVersion: 20220607, needNotReload: true },
       batchAddLoadAfterTimeSync: { default: true, attr: 'checked', configVersion: 20220513, needNotReload: true },
+      batchAddManagerSnapshotPrefix: { default: 'bwpBAM-snapshot', attr: 'value', configVersion: 20230422, needNotReload: true },
       fillWatchlaterStatus: { default: Enums.fillWatchlaterStatus.dynamic, attr: 'value', configVersion: 20200819 },
       searchDefaultValue: { default: true, attr: 'checked', configVersion: 20220606 },
       autoSort: { default: Enums.autoSort.auto, attr: 'value', configVersion: 20220115 },
@@ -798,7 +800,7 @@
           }
 
           // 功能性更新后更新此处配置版本，通过时跳过功能性更新设置，否则转至 readConfig() 中处理
-          if (gm.configVersion >= 20230419) {
+          if (gm.configVersion >= 20230422) {
             gm.configVersion = gm.configUpdate
             GM_setValue('configVersion', gm.configVersion)
           }
@@ -1052,6 +1054,12 @@
               <span>执行时间同步后是否自动加载稿件</span>
               <span id="gm-balatsInformation" class="gm-information" title>💬</span>
               <input id="gm-batchAddLoadAfterTimeSync" type="checkbox">
+            </label>`,
+          }, {
+            desc: '设置批量添加管理器快照文件名称前缀。',
+            html: `<label>
+              <span>文件快照前缀：</span>
+              <input id="gm-batchAddManagerSnapshotPrefix" type="text">
             </label>`,
           })
           itemsHTML += getItemHTML('全局功能', {
@@ -1562,7 +1570,7 @@
             }
           }
           for (const name of Object.keys(gm.configMap)) {
-            // 需要等所有配置读取完成后再进行选项初始化
+            // 需要等所有配置读取完成后再进行初始化
             el[name]?.init?.()
           }
           el.clearRemoveHistoryData.textContent = gm.config.removeHistory ? `清空数据(${gm.data.removeHistoryData().size}条)` : '清空数据(0条)'
@@ -1771,7 +1779,7 @@
                   <option value="3600" selected>小时</option>
                   <option value="60">分钟</option>
                 </select> 以内发布且不存在于稍后再看的视频投稿<button id="gm-batch-1c">执行</button><button id="gm-batch-1d" disabled>终止</button></div>
-                <div style="text-indent:1.4em">或者从以下位置导入稿件：<button id="gm-batch-1e" style="margin-left:0.4em" title="右键点击可进行导入设置"><input type="file" multiple style="display:none"><span>文件</span></button><button id="gm-batch-1f">收藏夹</button></div>
+                <div style="text-indent:1.4em">或者从以下位置导入稿件：<button id="gm-batch-1e" style="margin-left:0.4em" title="右键点击可进行导入设置"><input type="file" multiple><span>文件</span></button><button id="gm-batch-1f">收藏夹</button></div>
                 <div>② 缩小时间范围到 <input is="laster2800-input-number" id="gm-batch-2a" digits="Infinity"> <select id="gm-batch-2b" style="border:none;margin: 0 -4px">
                   <option value="${3600 * 24}">天</option>
                   <option value="3600" selected>小时</option>
@@ -1781,14 +1789,16 @@
                 <div>④ 将选定稿件添加到稍后再看（平均请求间隔：<input is="laster2800-input-number" id="gm-batch-4a" value="${gm.const.batchAddRequestInterval}" min="250">ms）<button id="gm-batch-4b" disabled>执行</button><button id="gm-batch-4c" disabled>终止</button></div>
               </div>
               <div class="gm-items"></div>
-              <div class="gm-bottom">
+              <div class="gm-bottom"><div>
                 <button id="gm-last-add-time">时间同步</button>
+                <button id="gm-unchecked-display"></button>
                 <button id="gm-select-all">选中全部</button>
                 <button id="gm-deselect-all">取消全部</button>
-                <button id="gm-unchecked-display"></button>
+                <button id="gm-save-snapshot">保存快照</button>
+                <button id="gm-load-snapshot"><input type="file"><span>读取快照</span></button>
                 <button id="gm-save-batch-params">保存参数</button>
                 <button id="gm-reset-batch-params">重置参数</button>
-              </div>
+              </div></div>
             </div>
             <div class="gm-shadow"></div>
           `
@@ -1797,19 +1807,57 @@
             el[`id${id}`] = gm.el.batchAddManager.querySelector(`#gm-batch-${id}`)
           }
           el.items = gm.el.batchAddManager.querySelector('.gm-items')
-          el.selectAll = gm.el.batchAddManager.querySelector('#gm-select-all')
-          el.deselectAll = gm.el.batchAddManager.querySelector('#gm-deselect-all')
+          el.bottom = gm.el.batchAddManager.querySelector('.gm-bottom')
           el.lastAddTime = gm.el.batchAddManager.querySelector('#gm-last-add-time')
           el.uncheckedDisplay = gm.el.batchAddManager.querySelector('#gm-unchecked-display')
+          el.selectAll = gm.el.batchAddManager.querySelector('#gm-select-all')
+          el.deselectAll = gm.el.batchAddManager.querySelector('#gm-deselect-all')
+          el.saveSnapshot = gm.el.batchAddManager.querySelector('#gm-save-snapshot')
+          el.loadSnapshot = gm.el.batchAddManager.querySelector('#gm-load-snapshot')
           el.saveParams = gm.el.batchAddManager.querySelector('#gm-save-batch-params')
           el.resetParams = gm.el.batchAddManager.querySelector('#gm-reset-batch-params')
           el.shadow = gm.el.batchAddManager.querySelector('.gm-shadow')
 
           el.saveParams.paramIds = ['1a', '1b', '3a', '3b', '4a']
           const batchParams = GM_getValue('batchParams')
-          if (batchParams) {
+          setBatchParamsToManager(batchParams)
+        }
+
+        let busy = false
+        const setBusy = status => {
+          busy = status
+          el.id1b.disabled = status
+          el.id1c.disabled = status
+          el.id1e.disabled = status
+          el.id1f.disabled = status
+          el.id4b.disabled = status
+          if (status) {
+            el.bottom.setAttribute('disabled', '')
+            el.bottom.firstElementChild.style.pointerEvents = 'none'
+          } else {
+            el.bottom.removeAttribute('disabled')
+            el.bottom.firstElementChild.style.pointerEvents = ''
+          }
+        }
+
+        /**
+         * 从批量添加管理器获取参数
+         * @returns {Object} 参数
+         */
+        const getBatchParamsFromManager = () => {
+          const params = {}
+          for (const id of el.saveParams.paramIds) {
+            params[`id${id}`] = el[`id${id}`].value
+          }
+          return params
+        }
+        /**
+         * 将参数设置到批量添加管理器
+         */
+        const setBatchParamsToManager = params => {
+          if (params) {
             for (const id of el.saveParams.paramIds) {
-              el[`id${id}`].value = batchParams[`id${id}`]
+              el[`id${id}`].value = params[`id${id}`]
             }
           }
         }
@@ -1830,7 +1878,7 @@
           }
           setLastAddTime(GM_getValue('batchLastAddTime'), false)
           el.lastAddTime.addEventListener('click', () => {
-            if (executing) return api.message.info('执行中，无法同步')
+            if (busy) return api.message.info('执行中，无法同步')
             const target = el.lastAddTime
             if (target.val == null) return
             const secInterval = (Date.now() - target.val) / 1000
@@ -1847,35 +1895,6 @@
           })
           // 避免不同页面中脚本实例互相影响而产生的同步时间错误
           GM_addValueChangeListener('batchLastAddTime', (name, oldVal, newVal, remote) => remote && setLastAddTime(newVal))
-
-          // 选中全部
-          el.selectAll.addEventListener('click', () => {
-            const hide = el.uncheckedDisplay._hide
-            for (let i = 0; i < el.items.childElementCount; i++) {
-              const item = el.items.children[i]
-              const cb = item.firstElementChild
-              if (!cb.checked) {
-                cb.checked = true
-                if (hide) {
-                  item.style.display = ''
-                }
-              }
-            }
-          })
-          // 取消全部
-          el.deselectAll.addEventListener('click', () => {
-            const hide = el.uncheckedDisplay._hide
-            for (let i = 0; i < el.items.childElementCount; i++) {
-              const item = el.items.children[i]
-              const cb = item.firstElementChild
-              if (cb.checked) {
-                cb.checked = false
-                if (hide) {
-                  item.style.display = 'none'
-                }
-              }
-            }
-          })
 
           // 非选显示
           const setUncheckedDisplayText = () => {
@@ -1902,13 +1921,83 @@
             }
           })
 
+          // 选中全部
+          el.selectAll.addEventListener('click', () => {
+            const hide = el.uncheckedDisplay._hide
+            for (let i = 0; i < el.items.childElementCount; i++) {
+              const item = el.items.children[i]
+              const cb = item.firstElementChild
+              if (!cb.checked && !cb.disabled) {
+                cb.checked = true
+                if (hide) {
+                  item.style.display = ''
+                }
+              }
+            }
+          })
+          // 取消全部
+          el.deselectAll.addEventListener('click', () => {
+            const hide = el.uncheckedDisplay._hide
+            for (let i = 0; i < el.items.childElementCount; i++) {
+              const item = el.items.children[i]
+              const cb = item.firstElementChild
+              if (cb.checked) {
+                cb.checked = false
+                if (hide) {
+                  item.style.display = 'none'
+                }
+              }
+            }
+          })
+
+          // 快照
+          el.saveSnapshot.addEventListener('click', () => {
+            const snapshot = {
+              params: getBatchParamsFromManager(),
+              items: el.items.innerHTML,
+            }
+            const filename = `${gm.config.batchAddManagerSnapshotPrefix}.${webpage.method.getTimeString(null, '', '', '-')}.json`
+            const file = new Blob([JSON.stringify(snapshot)], { type: 'text/plain' })
+            const a = document.createElement('a')
+            a.href = URL.createObjectURL(file)
+            a.download = filename
+            a.click()
+            api.message.info('保存成功', 1800)
+          })
+          const loadSnapshotF = el.loadSnapshot.firstElementChild
+          el.loadSnapshot.addEventListener('click', () => loadSnapshotF.click())
+          loadSnapshotF.addEventListener('change', async () => {
+            if (busy) return
+            try {
+              setBusy(true)
+              const file = loadSnapshotF.files[0]
+              if (file) {
+                const content = await new Promise((resolve, reject) => {
+                  const reader = new FileReader()
+                  reader.addEventListener('load', () => resolve(reader.result))
+                  reader.addEventListener('error', e => {
+                    api.message.alert(`快照 <code>${file.name}</code> 读取失败。`, { html: true })
+                    reject(e)
+                  })
+                  reader.readAsText(file)
+                })
+                const snapshot = JSON.parse(content)
+                setBatchParamsToManager(snapshot.params)
+                el.items.innerHTML = snapshot.items
+                initItemHints()
+                el.id2a.value = el.id2a.defaultValue = el.id2a.max = ''
+                api.message.info('读取成功', 1800)
+              }
+            } catch (e) {
+              api.logger.error(e)
+            } finally {
+              setBusy(false)
+            }
+          })
+
           // 参数
           el.saveParams.addEventListener('click', () => {
-            const batchParams = {}
-            for (const id of el.saveParams.paramIds) {
-              batchParams[`id${id}`] = el[`id${id}`].value
-            }
-            GM_setValue('batchParams', batchParams)
+            GM_setValue('batchParams', getBatchParamsFromManager())
             api.message.info('保存成功，重新加载页面后当前参数会被自动加载', 1800)
           })
           el.resetParams.addEventListener('click', () => {
@@ -1916,29 +2005,23 @@
             api.message.info('重置成功，重新加载页面后参数将加载默认值', 1800)
           })
 
-          let executing = false
           let loadTime = 0
-
           let stopLoad = false
           let readers = []
           // 加载投稿
           el.id1c.addEventListener('click', async () => {
-            if (executing) return
+            if (busy) return
             let error = false
             try {
-              executing = true
+              setBusy(true)
               let page = 1
               let offset = -1
               const tzo = new Date().getTimezoneOffset()
               const v1a = Number.parseFloat(el.id1a.value)
               if (Number.isNaN(v1a)) throw new TypeError('v1a is NaN')
               el.id1a.value = v1a
-              el.id1c.disabled = true
               el.id1c.textContent = '执行中'
               el.id1d.disabled = false
-              el.id1e.disabled = true
-              el.id1f.disabled = true
-              el.id4b.disabled = true
               el.id2a.defaultValue = el.id2a.max = v1a
               el.id2b.syncVal = el.id1b.value
               el.items.textContent = ''
@@ -2006,11 +2089,6 @@
               api.message.alert('批量添加：执行失败')
               api.logger.error(e)
             } finally {
-              const hintEls = el.items.querySelectorAll('[data-src-hint]')
-              for (const el of hintEls) {
-                api.message.hoverInfo(el, `转发者：${el.dataset.srcHint}`)
-              }
-
               if (!error && !stopLoad) {
                 api.message.info('批量添加：稿件加载完成', 1800)
                 if (loadTime > 0 && el.items.querySelectorAll('.gm-item input:checked').length === 0) {
@@ -2018,14 +2096,11 @@
                   setLastAddTime(loadTime)
                 }
               }
-              executing = false
+              initItemHints()
+              setBusy(false)
               stopLoad = false
-              el.id1c.disabled = false
               el.id1c.textContent = '重新执行'
               el.id1d.disabled = true
-              el.id1e.disabled = false
-              el.id1f.disabled = false
-              el.id4b.disabled = false
               el.id4b.textContent = '执行'
               // 更新第二步的时间范围
               if (el.id2a.defaultValue && el.id2b.syncVal) {
@@ -2039,7 +2114,7 @@
           })
           el.id1a.addEventListener('keyup', e => {
             if (e.key === 'Enter') {
-              const target = el[executing ? 'id1d' : 'id1c']
+              const target = el[busy ? 'id1d' : 'id1c']
               if (!target.disabled) {
                 target.dispatchEvent(new Event('click'))
               }
@@ -2059,11 +2134,13 @@
                   aid = webpage.method.bvTool.bv2av(m?.[gm.config.importWl_bvid])
                 } catch { /* BV 号有问题，忽略 */ }
               }
-              if (aid && !await webpage.method.getVideoWatchlaterStatusByAid(aid, false, true)) { // 完全跳过存在于稍后再看的稿件
+              if (aid) {
                 if (avSet.has(aid)) continue
                 avSet.add(aid)
-                const uncheck = history?.has(aid)
+                const exist = await webpage.method.getVideoWatchlaterStatusByAid(aid, false, true) // 不跳过已存在稿件，仅作提示
+                const uncheck = history?.has(aid) || exist
                 const displayNone = uncheck && el.uncheckedDisplay._hide
+                const disabledStr = exist ? ' disabled' : ''
                 const title = m?.[gm.config.importWl_title]
                 const source = m?.[gm.config.importWl_source]
                 let tsS = m?.[gm.config.importWl_tsS]
@@ -2073,34 +2150,29 @@
                     tsS = Math.round(Number.parseInt(tsMs) / 1000)
                   }
                 }
-                html = `<label class="gm-item" data-aid="${aid}" data-timestamp="${tsS ?? ''}" data-search-str="${source ?? ''} ${title ?? ''}"${displayNone ? ' style="display:none"' : ''}><input type="checkbox"${uncheck ? '' : ' checked'}> <span>${source ? `[${source}] ` : ''}${title ?? `AV${aid}`}</span></label>` + html
+                html = `<label class="gm-item" data-aid="${aid}" data-timestamp="${tsS ?? ''}" data-search-str="${source ?? ''} ${title ?? ''}"${displayNone ? ' style="display:none"' : ''}${disabledStr}><input type="checkbox"${uncheck ? '' : ' checked'}${disabledStr}> <span>${source ? `[${source}] ` : ''}${title ?? `AV${aid}`}</span></label>` + html
               }
             }
             el.items.insertAdjacentHTML('afterbegin', html)
           }
-          const f = el.id1e.firstElementChild
-          el.id1e.addEventListener('click', () => f.click())
+          const id1eF = el.id1e.firstElementChild
+          el.id1e.addEventListener('click', () => id1eF.click())
           el.id1e.addEventListener('contextmenu', e => {
             this.setImportWatchlaterList()
             e.preventDefault()
           })
-          f.addEventListener('change', async () => {
-            if (executing) return
+          id1eF.addEventListener('change', async () => {
+            if (busy) return
             let error = false
             try {
-              executing = true
-              el.id1b.disabled = true
-              el.id1c.disabled = true
+              setBusy(true)
               el.id1d.disabled = false
-              el.id1e.disabled = true
               el.id1e.children[1].textContent = '文件导入中'
-              el.id1f.disabled = true
-              el.id4b.disabled = true
               el.id2a.value = el.id2a.defaultValue = el.id2a.max = ''
               el.items.textContent = ''
               const ps = []
               const avSet = new Set()
-              for (const file of f.files) {
+              for (const file of id1eF.files) {
                 ps.push(new Promise((resolve, reject) => {
                   const reader = new FileReader()
                   reader.addEventListener('load', async () => {
@@ -2108,13 +2180,13 @@
                       await importWatchlaterList(reader.result, avSet)
                       resolve()
                     } catch (e) {
-                      api.message.alert(`文件「${file.name}」读取失败，终止从稍后再看列表文件导入。`)
+                      api.message.alert(`文件 <code>${file.name}</code> 读取失败，终止导入。`, { html: true })
                       reject(e)
                     }
                   })
                   reader.addEventListener('abort', () => resolve(''))
                   reader.addEventListener('error', e => {
-                    api.message.alert(`文件「${file.name}」读取失败，终止从稍后再看列表文件导入。`)
+                    api.message.alert(`文件 <code>${file.name}</code> 读取失败，终止导入。`, { html: true })
                     reject(e)
                   })
                   reader.readAsText(file)
@@ -2137,32 +2209,23 @@
                 api.message.info('批量添加：稍后再看列表导入成功', 1800)
               }
               readers = []
-              executing = false
+              setBusy(false)
               stopLoad = false
-              el.id1b.disabled = false
-              el.id1c.disabled = false
               el.id1d.disabled = true
-              el.id1e.disabled = false
               el.id1e.children[1].textContent = '文件'
-              el.id1f.disabled = false
-              el.id4b.disabled = false
               // 自动执行第三步
               el.id3c.dispatchEvent(new Event('click'))
-              f.value = '' // 重置控件，否则重新选择相同文件不会触发 change 事件；置空行为不会触发 change 事件
+              id1eF.value = '' // 重置控件，否则重新选择相同文件不会触发 change 事件；置空行为不会触发 change 事件
             }
           })
           // 收藏夹导入
           el.id1f.addEventListener('click', async () => {
             let favExecuted = false
-            if (executing) return
+            if (busy) return
             try {
-              executing = true
-              el.id1b.disabled = true
-              el.id1c.disabled = true
-              el.id1e.disabled = true
-              el.id1f.disabled = true
+              setBusy(true)
+              el.id1d.disabled = true
               el.id1f.textContent = '收藏夹导入中'
-              el.id4b.disabled = true
               el.id2a.value = el.id2a.defaultValue = el.id2a.max = ''
               el.items.textContent = ''
               let mlid = await api.message.prompt(`
@@ -2202,13 +2265,13 @@
                     let html = ''
                     for (const item of medias) {
                       const aid = String(item.id)
-                      if (!await webpage.method.getVideoWatchlaterStatusByAid(aid, false, true)) { // 完全跳过存在于稍后再看的稿件
-                        if (avSet.has(aid)) continue
-                        avSet.add(aid)
-                        const uncheck = history?.has(aid)
-                        const displayNone = uncheck && el.uncheckedDisplay._hide
-                        html = `<label class="gm-item" data-aid="${aid}" data-timestamp="${item.pubtime}"${displayNone ? ' style="display:none"' : ''}><input type="checkbox"${uncheck ? '' : ' checked'}> <span>[${source}][${item.upper.name}] ${item.title}</span></label>` + html
-                      }
+                      if (avSet.has(aid)) continue
+                      avSet.add(aid)
+                      const exist = await webpage.method.getVideoWatchlaterStatusByAid(aid, false, true) // 不跳过已存在稿件，仅作提示
+                      const uncheck = history?.has(aid) || exist
+                      const displayNone = uncheck && el.uncheckedDisplay._hide
+                      const disabledStr = exist ? ' disabled' : ''
+                      html = `<label class="gm-item" data-aid="${aid}" data-timestamp="${item.pubtime}"${displayNone ? ' style="display:none"' : ''}${disabledStr}><input type="checkbox"${uncheck ? '' : ' checked'}${disabledStr}> <span>[${source}][${item.upper.name}] ${item.title}</span></label>` + html
                     }
                     el.items.insertAdjacentHTML('afterbegin', html)
                     if (!has_more) continue id1fFavLoop
@@ -2229,15 +2292,10 @@
 
               }
             } finally {
-              executing = false
+              setBusy(false)
               stopLoad = false
-              el.id1b.disabled = false
-              el.id1c.disabled = false
               el.id1d.disabled = true
-              el.id1e.disabled = false
-              el.id1f.disabled = false
               el.id1f.textContent = '收藏夹'
-              el.id4b.disabled = false
               if (favExecuted) {
                 // 自动执行第三步
                 el.id3c.dispatchEvent(new Event('click'))
@@ -2256,9 +2314,9 @@
 
           // 时间过滤
           function filterTime() {
-            if (executing) return
+            if (busy) return
             try {
-              executing = true
+              busy = true
               const v2a = Number.parseFloat(el.id2a.value)
               if (Number.isNaN(v2a)) {
                 for (let i = 0; i < el.items.childElementCount; i++) {
@@ -2280,7 +2338,7 @@
               api.message.alert('批量添加：执行失败')
               api.logger.error(e)
             } finally {
-              executing = false
+              busy = false
             }
           }
           const throttledFilterTime = api.base.throttle(filterTime, gm.const.inputThrottleWait)
@@ -2291,7 +2349,7 @@
 
           // 正则过滤
           function filterRegex() {
-            if (executing) return
+            if (busy) return
             try {
               const getRegex = str => {
                 let result = null
@@ -2306,7 +2364,7 @@
                 }
                 return result
               }
-              executing = true
+              busy = true
               el.id3a.value = el.id3a.value.trimStart()
               el.id3b.value = el.id3b.value.trimStart()
               const v3a = getRegex(el.id3a.value)
@@ -2324,7 +2382,7 @@
               api.message.alert('批量添加：执行失败')
               api.logger.error(e)
             } finally {
-              executing = false
+              busy = false
             }
           }
           const throttledFilterRegex = api.base.throttle(filterRegex, gm.const.inputThrottleWait)
@@ -2335,21 +2393,16 @@
           // 添加到稍后再看
           let stopAdd = false
           el.id4b.addEventListener('click', async () => {
-            if (executing) return
+            if (busy) return
             let added = false
             let lastAddTime = 0
             try {
-              executing = true
+              setBusy(true)
               let v4a = Number.parseFloat(el.id4a.value)
               v4a = Number.isNaN(v4a) ? gm.const.batchAddRequestInterval : Math.max(v4a, 250)
               el.id4a.value = v4a
-              el.id4b.disabled = true
               el.id4b.textContent = '执行中'
               el.id4c.disabled = false
-              el.id1c.disabled = true
-              el.id1e.disabled = true
-              el.id1f.disabled = true
-
               let available = 100 - (await gm.data.watchlaterListData()).length
               const checks = el.items.querySelectorAll('.gm-item:not([class*=gm-filtered-]) input:checked')
               for (const check of checks) {
@@ -2381,14 +2434,10 @@
                   setLastAddTime(lastAddTime)
                 }
               }
-              executing = false
+              setBusy(false)
               stopAdd = false
-              el.id4b.disabled = false
               el.id4b.textContent = '重新执行'
               el.id4c.disabled = true
-              el.id1c.disabled = false
-              el.id1e.disabled = false
-              el.id1f.disabled = false
               gm.runtime.reloadWatchlaterListData = true
               window.dispatchEvent(new CustomEvent('reloadWatchlaterListData'))
 
@@ -2402,7 +2451,7 @@
           })
           el.id4a.addEventListener('keyup', e => {
             if (e.key === 'Enter') {
-              const target = el[executing ? 'id4c' : 'id4b']
+              const target = el[busy ? 'id4c' : 'id4b']
               if (!target.disabled) {
                 target.dispatchEvent(new Event('click'))
               }
@@ -2427,6 +2476,16 @@
           }
           syncTimeUnit(el.id1b, el.id1a)
           syncTimeUnit(el.id2b, el.id2a)
+        }
+
+        /**
+         * 初始化项目鼠标悬浮提示
+         */
+        const initItemHints = () => {
+          const hintEls = el.items.querySelectorAll('[data-src-hint]')
+          for (const el of hintEls) {
+            api.message.hoverInfo(el, `转发者：${el.dataset.srcHint}`)
+          }
         }
       }
     }
@@ -2876,7 +2935,7 @@
         <div>
           <div>设置稍后再看列表导入方式。默认简单读取所有形如 <code>BV###</code> 的字符串。</div>
           <div>若有进一步的需求，请提前设计好稍后再看列表文件的格式，使用正则表达式（不区分大小写）指定每个稿件对应的文本，然后指定稿件 ID、稿件标题、来源（建议：上传者名称）、时间节点等信息对应的捕获组。</div>
-          <div>可填写 <code>-1</code> 禁用某项信息，但 <code>aid / bvid</code> 至少填写一个（冲突时优先使用「AV 号」）。时间节点被用于执行时间过滤，根据用户需要可设定为稿件发布时间或文件导出时间等，冲突时优先使用「时间节点（秒）」。</div>
+          <div>可填写 <code>-1</code> 禁用某项信息，但 <code>aid / bvid</code> 至少填写一个（冲突时优先使用「AV 号」）。时间节点在批量添加管理器中被用于步骤 ②（缩小时间范围），根据用户需要可设定为稿件发布时间或文件导出时间等，冲突时优先使用「时间节点（秒）」。</div>
         </div>
         <div class="gm-group-container">
           <div>正则表达式：</div>
@@ -3348,6 +3407,30 @@
         if (removed && location.href !== url.href) {
           history.replaceState({}, null, url.href)
         }
+      },
+
+      /**
+       * 获取格式化时间字符串
+       * @param {number} [ts] Unix 时间戳
+       * @param {string} [dd='-'] 年月日分隔符
+       * @param {string} [tt=':'] 时分秒分隔符
+       * @param {string} [td=' '] 日期/时间分隔符
+       * @returns {string} 格式化时间字符串
+       */
+      getTimeString(ts, dd = '-', tt = ':', dt = ' ') {
+        const pad = n => n.toString().padStart(2, '0')
+        const date = ts ? new Date(ts) : new Date()
+        return (
+          [
+            date.getFullYear(),
+            pad(date.getMonth() + 1),
+            pad(date.getDay()),
+          ].join(dd) + dt + [
+            pad(date.getHours()),
+            pad(date.getMinutes()),
+            pad(date.getSeconds()),
+          ].join(tt)
+        )
       },
 
       /**
@@ -6300,6 +6383,10 @@
             margin-top: 0.2em;
             margin-left: auto;
           }
+          #${gm.id} .gm-setting input[type=text] {
+            border-width: 0 0 1px 0;
+            width: 20em;
+          }
           #${gm.id} .gm-setting input[is=laster2800-input-number] {
             border-width: 0 0 1px 0;
             width: 3.4em;
@@ -6563,6 +6650,10 @@
           #${gm.id} .gm-batchAddManager .gm-items .gm-item a:hover {
             font-weight: bold;
           }
+          #${gm.id} .gm-batchAddManager .gm-bottom button {
+            margin: 0 0.4em;
+            padding: 0.3em 0.7em;
+          }
 
           #${gm.id} .gm-shadow {
             background-color: var(--${gm.id}-shadow-color);
@@ -6590,6 +6681,9 @@
             border-radius: 0;
             color: var(--${gm.id}-text-color);
             background-color: var(--${gm.id}-background-color);
+          }
+          #${gm.id} button input[type=file] {
+            display: none;
           }
 
           #${gm.id} [disabled],
