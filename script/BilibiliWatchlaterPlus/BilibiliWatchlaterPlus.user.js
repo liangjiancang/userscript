@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.33.5.20230422
+// @version         4.33.6.20230422
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -1796,8 +1796,8 @@
                 <button id="gm-deselect-all">取消全部</button>
                 <button id="gm-save-snapshot">保存快照</button>
                 <button id="gm-load-snapshot"><input type="file"><span>读取快照</span></button>
-                <button id="gm-save-batch-params">保存参数</button>
-                <button id="gm-reset-batch-params">重置参数</button>
+                <button id="gm-save-batch-params" title="右键点击以重置参数，刷新页面后生效">保存参数</button>
+                <button id="gm-load-batch-params">读取参数</button>
               </div></div>
             </div>
             <div class="gm-shadow"></div>
@@ -1815,7 +1815,7 @@
           el.saveSnapshot = gm.el.batchAddManager.querySelector('#gm-save-snapshot')
           el.loadSnapshot = gm.el.batchAddManager.querySelector('#gm-load-snapshot')
           el.saveParams = gm.el.batchAddManager.querySelector('#gm-save-batch-params')
-          el.resetParams = gm.el.batchAddManager.querySelector('#gm-reset-batch-params')
+          el.loadParams = gm.el.batchAddManager.querySelector('#gm-load-batch-params')
           el.shadow = gm.el.batchAddManager.querySelector('.gm-shadow')
 
           el.saveParams.paramIds = ['1a', '1b', '3a', '3b', '4a']
@@ -2001,11 +2001,22 @@
           // 参数
           el.saveParams.addEventListener('click', () => {
             GM_setValue('batchParams', getBatchParamsFromManager())
-            api.message.info('保存成功，重新加载页面后当前参数会被自动加载', 1800)
+            api.message.info('保存成功')
           })
-          el.resetParams.addEventListener('click', () => {
+          el.saveParams.addEventListener('contextmenu', e => {
+            e.preventDefault()
             GM_deleteValue('batchParams')
-            api.message.info('重置成功，重新加载页面后参数将加载默认值', 1800)
+            api.message.info('重置成功，刷新页面后生效', 1800)
+          })
+          el.loadParams.addEventListener('click', () => {
+            const params = GM_getValue('batchParams')
+            if (params) {
+              setBatchParamsToManager(params)
+              el.id3c.dispatchEvent(new Event('click')) // 自动执行第三步
+              api.message.info('读取成功')
+            } else {
+              api.message.info('未读取到参数')
+            }
           })
 
           let loadTime = 0

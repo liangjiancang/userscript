@@ -6,12 +6,13 @@
 
 1. 列表导入：功能实现。该功能入口在批量添加管理器中，支持从文件中以自定义方式加载稿件。[172949#comment-384966](https://greasyfork.org/zh-CN/scripts/395456/discussions/172949#comment-384966)
 2. 批量添加：支持从收藏夹导入稿件。[172949#comment-385635](https://greasyfork.org/zh-CN/scripts/395456/discussions/172949#comment-385635)
-3. 批量添加：支持以文件快照形式存取批量添加管理器状态。相应地，添加「文件快照前缀」配置项。
-4. 批量添加：增加「选中全部」「取消全部」按钮。
-5. 批量添加：执行任务过程中禁用底部按钮。
-6. 代码：`config` / `configMap` 机制不再要求在「用户设置」中有对应配置项。
-7. 约定：「选项」->「配置项」。
-8. 外部功能：由于B站新版页面顶栏已原生固定，移除 [B站顶栏固顶](https://greasyfork.org/zh-CN/scripts/430292) 入口。
+3. 批量添加：支持以文件快照形式存取批量添加管理器状态。相应地，添加「文件快照前缀」配置项。[172949#comment-386173](https://greasyfork.org/zh-CN/scripts/395456/discussions/172949#comment-386173)
+4. 批量添加：增加「选中全部」「取消全部」按钮。[172949#comment-385635](https://greasyfork.org/zh-CN/scripts/395456/discussions/172949#comment-385635)
+5. 批量添加：「重置参数」按钮改为「读取参数」，并支持右键点击「保存参数」按钮执行参数重置。[172949#comment-386211](https://greasyfork.org/zh-CN/scripts/395456/discussions/172949#comment-386211)
+6. 批量添加：执行任务过程中禁用底部按钮。
+7. 代码：`config` / `configMap` 机制不再要求在「用户设置」中有对应配置项。
+8. 约定：「选项」->「配置项」。
+9. 外部功能：由于B站新版页面顶栏已原生固定，移除 [B站顶栏固顶](https://greasyfork.org/zh-CN/scripts/430292) 入口。
 
 ## V4.32
 
