@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.33.6.20230422
+// @version         4.33.7.20230422
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -1796,7 +1796,7 @@
                 <button id="gm-deselect-all">取消全部</button>
                 <button id="gm-save-snapshot">保存快照</button>
                 <button id="gm-load-snapshot"><input type="file"><span>读取快照</span></button>
-                <button id="gm-save-batch-params" title="右键点击以重置参数，刷新页面后生效">保存参数</button>
+                <button id="gm-save-batch-params" title="已保存参数会在加载页面后自动读取。\n右键点击以重置参数，刷新页面后生效。">保存参数</button>
                 <button id="gm-load-batch-params">读取参数</button>
               </div></div>
             </div>
