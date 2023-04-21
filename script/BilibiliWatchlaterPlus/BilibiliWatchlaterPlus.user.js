@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.33.7.20230422
+// @version         4.33.8.20230422
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -228,6 +228,7 @@
    * @property {boolean} removeHistoryTimestamp 使用时间戳优化移除记录
    * @property {number} removeHistorySearchTimes 历史回溯深度
    * @property {boolean} batchAddLoadForward 批量添加：加载关注者转发的稿件
+   * @property {boolean} batchAddUsingFavTime 批量添加：从收藏夹导入时使用「收藏时间」作为时间节点
    * @property {boolean} batchAddLoadAfterTimeSync 批量添加：执行时间同步后是否自动加载稿件
    * @property {string} batchAddManagerSnapshotPrefix 批量添加：文件快照前缀
    * @property {fillWatchlaterStatus} fillWatchlaterStatus 填充稍后再看状态
@@ -401,7 +402,7 @@
   const gm = {
     id: gmId,
     configVersion: GM_getValue('configVersion'),
-    configUpdate: 20230422,
+    configUpdate: 20230422.1,
     searchParams: new URL(location.href).searchParams,
     config: {},
     configMap: {
@@ -431,6 +432,7 @@
       removeHistoryTimestamp: { default: true, attr: 'checked', needNotReload: true, configVersion: 20210703 },
       removeHistorySearchTimes: { default: 100, type: 'int', attr: 'value', manual: true, needNotReload: true, min: 1, max: 500, configVersion: 20210819 },
       batchAddLoadForward: { default: true, attr: 'checked', configVersion: 20220607, needNotReload: true },
+      batchAddUsingFavTime: { default: true, attr: 'checked', configVersion: 20230422.1, needNotReload: true },
       batchAddLoadAfterTimeSync: { default: true, attr: 'checked', configVersion: 20220513, needNotReload: true },
       batchAddManagerSnapshotPrefix: { default: 'bwpBAM-snapshot', attr: 'value', configVersion: 20230422, needNotReload: true },
       fillWatchlaterStatus: { default: Enums.fillWatchlaterStatus.dynamic, attr: 'value', configVersion: 20200819 },
@@ -800,7 +802,7 @@
           }
 
           // 功能性更新后更新此处配置版本，通过时跳过功能性更新设置，否则转至 readConfig() 中处理
-          if (gm.configVersion >= 20230422) {
+          if (gm.configVersion >= 20230422.1) {
             gm.configVersion = gm.configUpdate
             GM_setValue('configVersion', gm.configVersion)
           }
@@ -1047,6 +1049,12 @@
             html: `<label>
               <span>加载关注者转发的稿件</span>
               <input id="gm-batchAddLoadForward" type="checkbox">
+            </label>`,
+          }, {
+            desc: '在批量添加管理器中，从收藏夹导入时使用「收藏时间」而非「稿件发布时间」作为时间节点。\n时间节点被用于在步骤 ② 中判断稿件是否超出设定的时间范围。',
+            html: `<label>
+              <span>从收藏夹导入时使用「收藏时间」作为时间节点</span>
+              <input id="gm-batchAddUsingFavTime" type="checkbox">
             </label>`,
           }, {
             desc: '在批量添加管理器中，执行时间同步后，是否自动执行稿件加载步骤？',
@@ -2285,7 +2293,7 @@
                       const uncheck = history?.has(aid) || exist
                       const displayNone = uncheck && el.uncheckedDisplay._hide
                       const disabledStr = exist ? ' disabled' : ''
-                      html = `<label class="gm-item" data-aid="${aid}" data-timestamp="${item.pubtime}"${displayNone ? ' style="display:none"' : ''}${disabledStr}><input type="checkbox"${uncheck ? '' : ' checked'}${disabledStr}> <span>[${source}][${item.upper.name}] ${item.title}</span></label>` + html
+                      html = `<label class="gm-item" data-aid="${aid}" data-timestamp="${gm.config.batchAddUsingFavTime ? item.fav_time : item.pubtime}"${displayNone ? ' style="display:none"' : ''}${disabledStr}><input type="checkbox"${uncheck ? '' : ' checked'}${disabledStr}> <span>[${source}][${item.upper.name}] ${item.title}</span></label>` + html
                     }
                     el.items.insertAdjacentHTML('afterbegin', html)
                     if (!has_more) continue id1fFavLoop
@@ -2949,7 +2957,7 @@
         <div>
           <div>设置稍后再看列表导入方式。默认简单读取所有形如 <code>BV###</code> 的字符串。</div>
           <div>若有进一步的需求，请提前设计好稍后再看列表文件的格式，使用正则表达式（不区分大小写）指定每个稿件对应的文本，然后指定稿件 ID、稿件标题、来源（建议：上传者名称）、时间节点等信息对应的捕获组。</div>
-          <div>可填写 <code>-1</code> 禁用某项信息，但 <code>aid / bvid</code> 至少填写一个（冲突时优先使用「AV 号」）。时间节点在批量添加管理器中被用于步骤 ②（缩小时间范围），根据用户需要可设定为稿件发布时间或文件导出时间等，冲突时优先使用「时间节点（秒）」。</div>
+          <div>可填写 <code>-1</code> 禁用某项信息，但 <code>aid / bvid</code> 至少填写一个（冲突时优先使用「AV 号」）。时间节点在批量添加管理器中被用于在步骤 ② 中判断稿件是否超出设定的时间范围，根据用户需要可设定为稿件发布时间或文件导出时间等，冲突时优先使用「时间节点（秒）」。</div>
         </div>
         <div class="gm-group-container">
           <div>正则表达式：</div>
