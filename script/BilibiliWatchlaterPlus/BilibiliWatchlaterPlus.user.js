@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.33.4.20230422
+// @version         4.33.5.20230422
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -1824,6 +1824,10 @@
         }
 
         let busy = false
+        /**
+         * 设置 BUSY 状态
+         * @param {boolean} status BUSY 状态
+         */
         const setBusy = status => {
           busy = status
           el.id1b.disabled = status
@@ -1968,17 +1972,14 @@
           el.loadSnapshot.addEventListener('click', () => loadSnapshotF.click())
           loadSnapshotF.addEventListener('change', async () => {
             if (busy) return
+            const file = loadSnapshotF.files[0]
             try {
               setBusy(true)
-              const file = loadSnapshotF.files[0]
               if (file) {
                 const content = await new Promise((resolve, reject) => {
                   const reader = new FileReader()
                   reader.addEventListener('load', () => resolve(reader.result))
-                  reader.addEventListener('error', e => {
-                    api.message.alert(`快照 <code>${file.name}</code> 读取失败。`, { html: true })
-                    reject(e)
-                  })
+                  reader.addEventListener('error', e => reject(e))
                   reader.readAsText(file)
                 })
                 const snapshot = JSON.parse(content)
@@ -1990,8 +1991,10 @@
               }
             } catch (e) {
               api.logger.error(e)
+              api.message.alert(`快照 <code>${file.name}</code> 读取失败。`, { html: true })
             } finally {
               setBusy(false)
+              loadSnapshotF.value = '' // 重置控件，否则重新选择相同文件不会触发 change 事件；置空行为不会触发 change 事件
             }
           })
 
