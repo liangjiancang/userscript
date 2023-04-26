@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.33.8.20230422
+// @version         4.33.9.20230426
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -1885,7 +1885,7 @@
           const setLastAddTime = (time = null, writeBack = true) => {
             writeBack && GM_setValue('batchLastAddTime', time)
             el.lastAddTime.val = time
-            el.lastAddTime.title = `将一个合适的时间点同步到加载步骤中，以便与上次批量添加操作无缝对接。\n若上一次执行加载步骤时，没有找到新稿件，同步「加载完成时间」。\n若上一次执行添加步骤成功，同步「加载完成时间」；否则（失败或中断），同步「最后一个添加成功的稿件的投稿时间」。${time ? `\n当前同步时间：${new Date(time).toLocaleString()}` : ''}`
+            el.lastAddTime.title = `将一个合适的时间点同步到加载步骤中，以便与上次批量添加操作无缝对接。该功能仅对于常规加载方式生效。\n若上一次执行加载步骤完成，且没有找到新稿件，同步「加载时间」。\n若上一次执行添加步骤完成且加载步骤完成，同步「加载时间」；否则（添加/执行步骤失败/终止），同步「最后一个添加成功的稿件的投稿时间」。${time ? `\n当前同步时间：${new Date(time).toLocaleString()}` : ''}`
             el.lastAddTime.disabled = !time
           }
           setLastAddTime(GM_getValue('batchLastAddTime'), false)
@@ -2027,6 +2027,7 @@
             }
           })
 
+          let loadType = null
           let loadTime = 0
           let stopLoad = false
           let readers = []
@@ -2047,6 +2048,7 @@
               el.id2a.defaultValue = el.id2a.max = v1a
               el.id2b.syncVal = el.id1b.value
               el.items.textContent = ''
+              loadType = 'FEED'
               loadTime = Date.now() // 提前记录 loadTime，这样衔接时绝对不会遗漏动态
               const end = loadTime - v1a * el.id1b.value * 1000
               const avSet = new Set()
@@ -2107,7 +2109,6 @@
               api.message.info('批量添加：任务终止', 1800)
             } catch (e) {
               error = true
-              loadTime = 0
               api.message.alert('批量添加：执行失败')
               api.logger.error(e)
             } finally {
@@ -2117,6 +2118,9 @@
                   // 无有效新稿件时直接更新同步时间
                   setLastAddTime(loadTime)
                 }
+              }
+              if (error || stopLoad) {
+                loadTime = 0
               }
               initItemHints()
               setBusy(false)
@@ -2192,6 +2196,8 @@
               el.id1e.children[1].textContent = '文件导入中'
               el.id2a.value = el.id2a.defaultValue = el.id2a.max = ''
               el.items.textContent = ''
+              loadType = 'FILE'
+              loadTime = 0
               const ps = []
               const avSet = new Set()
               for (const file of id1eF.files) {
@@ -2250,6 +2256,8 @@
               el.id1f.textContent = '收藏夹导入中'
               el.id2a.value = el.id2a.defaultValue = el.id2a.max = ''
               el.items.textContent = ''
+              loadType = 'FAV'
+              loadTime = 0
               let mlid = await api.message.prompt(`
                 <p>指定需导入的收藏夹。下方应填入目标收藏夹 ID，可使用英文逗号「<code>,</code>」分隔多个收藏夹。置空时使用稍后再看收藏夹。</p>
                 <p style="word-break:break-all">收藏夹页面网址为 <code>https://space.bilibili.com/\${uid}/favlist?fid=\${mlid}</code>，<code>mlid</code> 即收藏夹 ID。</p>
@@ -2259,8 +2267,7 @@
                 const uid = webpage.method.getDedeUserID()
                 mlid = GM_getValue(`watchlaterMediaList_${uid}`)
                 if (!mlid) {
-                  api.message.info('没有设置稍后再看收藏夹')
-                  return
+                  mlid = await webpage.method.getDefaultMediaListId(uid)
                 }
               }
               let error = false
@@ -2442,14 +2449,16 @@
                 added = true
                 await new Promise(resolve => setTimeout(resolve, v4a * (Math.random() * 0.5 + 0.75)))
               }
-              lastAddTime = loadTime
+              if (loadTime > 0) {
+                lastAddTime = loadTime
+              }
               api.message.info('批量添加：已将所有选定稿件添加到稍后再看', 1800)
             } catch (e) {
               api.message.alert('批量添加：执行失败。可能是因为目标稿件不可用或稍后再看不支持该稿件类型（如互动视频），请尝试取消勾选当前列表中第一个选定的稿件后重新执行。')
               api.logger.error(e)
             } finally {
-              if (lastAddTime) {
-                if (lastAddTime !== loadTime) {
+              if (lastAddTime && loadType === 'FEED') {
+                if (typeof lastAddTime !== 'number') {
                   lastAddTime = Number.parseInt(lastAddTime) * 1000
                 }
                 if (lastAddTime > 0) {
@@ -3440,7 +3449,7 @@
        * @returns {string} 格式化时间字符串
        */
       getTimeString(ts, dd = '-', tt = ':', dt = ' ') {
-        const pad = n => n.toString().padStart(2, '0')
+        const pad = n => String(n).padStart(2, '0')
         const date = ts ? new Date(ts) : new Date()
         return (
           [
@@ -3456,35 +3465,16 @@
       },
 
       /**
-       * 将秒格式的时间转换为字符串形式
-       * @param {number} sTime 秒格式的时间
+       * 将秒格式的时间转换为 (HH:)mm:ss 字符串形式
+       * @param {number} s 秒格式的时间
        * @returns {string} 字符串形式
        */
-      getSTimeString(sTime) {
-        let iH = 0
-        let iM = Math.floor(sTime / 60)
-        if (iM >= 60) {
-          iH = Math.floor(iM / 60)
-          iM %= 60
-        }
-        const iS = sTime % 60
-
-        let sH = ''
-        if (iH > 0) {
-          sH = String(iH)
-          if (sH.length < 2) {
-            sH = '0' + sH
-          }
-        }
-        let sM = String(iM)
-        if (sM.length < 2) {
-          sM = '0' + sM
-        }
-        let sS = String(iS)
-        if (sS.length < 2) {
-          sS = '0' + sS
-        }
-        return `${sH ? sH + ':' : ''}${sM}:${sS}`
+      getSecondTimeString(s) {
+        const pad = n => String(n).padStart(2, '0')
+        const iH = Math.floor(s / 3600)
+        const iM = Math.floor(s / 60) % 60
+        const iS = s % 60
+        return `${iH > 0 ? `${pad(iH)}:` : ''}${pad(iM)}:${pad(iS)}`
       },
 
       /**
@@ -4227,7 +4217,7 @@
                 } else {
                   card.uploader = item.owner.name
                   const multiP = item.videos > 1
-                  const duration = _self.method.getSTimeString(item.duration)
+                  const duration = _self.method.getSecondTimeString(item.duration)
                   const durationP = multiP ? `${item.videos}P` : duration
                   if (item.progress < 0) {
                     item.progress = card.duration
@@ -4236,7 +4226,7 @@
                   card.progress = (multiP && played) ? card.duration : item.progress
                   let progress = ''
                   if (played) {
-                    progress = multiP ? '已观看' : _self.method.getSTimeString(item.progress)
+                    progress = multiP ? '已观看' : _self.method.getSecondTimeString(item.progress)
                   }
                   card.className = `gm-entry-list-item${multiP ? ' gm-card-multiP' : ''}`
                   card.innerHTML = `
@@ -5533,7 +5523,7 @@
             progress.className = 'looked'
             state.prepend(progress)
           }
-          progress.textContent = item.multiP ? '已观看' : _self.method.getSTimeString(item.progress)
+          progress.textContent = item.multiP ? '已观看' : _self.method.getSecondTimeString(item.progress)
         }
       }
 
