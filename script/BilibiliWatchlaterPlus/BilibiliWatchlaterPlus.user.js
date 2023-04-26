@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.33.9.20230426
+// @version         4.33.10.20230426
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -1885,7 +1885,7 @@
           const setLastAddTime = (time = null, writeBack = true) => {
             writeBack && GM_setValue('batchLastAddTime', time)
             el.lastAddTime.val = time
-            el.lastAddTime.title = `将一个合适的时间点同步到加载步骤中，以便与上次批量添加操作无缝对接。该功能仅对于常规加载方式生效。\n若上一次执行加载步骤完成，且没有找到新稿件，同步「加载时间」。\n若上一次执行添加步骤完成且加载步骤完成，同步「加载时间」；否则（添加/执行步骤失败/终止），同步「最后一个添加成功的稿件的投稿时间」。${time ? `\n当前同步时间：${new Date(time).toLocaleString()}` : ''}`
+            el.lastAddTime.title = `将一个合适的时间点同步到加载步骤中，以便与上次批量添加操作无缝对接。该功能仅对于常规加载方式生效。\n执行加载步骤：若完成且没有找到新稿件，同步「加载时间」。\n执行添加步骤：若完成且加载步骤完成，同步「加载时间」；否则同步「最后一个添加成功的稿件的投稿时间」。${time ? `\n当前同步时间：${new Date(time).toLocaleString()}` : ''}`
             el.lastAddTime.disabled = !time
           }
           setLastAddTime(GM_getValue('batchLastAddTime'), false)
