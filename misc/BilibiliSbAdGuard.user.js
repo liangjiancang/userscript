@@ -1,7 +1,7 @@
 /* eslint-disable strict */
 // ==UserScript==
 // @name            B站顽固广告清除
-// @version         1.0.1.20230314
+// @version         1.1.0.20230429
 // @namespace       laster2800
 // @author          Laster2800
 // @description     清除B站那些无法通过 AdGuard 等扩展移除的广告（普通广告不处理）
@@ -18,6 +18,6 @@
 // ==/UserScript==
 
 /* global UserscriptAPI */
-const selector = 'a[href*="cm.bilibili.com"][data-target-url]:not([data-target-url*=".bili"])'
+const selector = 'a[href*="cm.bilibili.com"][data-target-url]'
 const callback = identity => { identity.closest('.bili-video-card').parentElement.style.display = 'none' }
 new UserscriptAPI().wait.executeAfterElementLoaded({ selector, callback, multiple: true, repeat: true, timeout: 0 })
