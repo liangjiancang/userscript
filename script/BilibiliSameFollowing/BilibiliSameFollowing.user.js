@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站共同关注快速查看
-// @version         1.13.2.20230314
+// @version         1.13.3.20230503
 // @namespace       laster2800
 // @author          Laster2800
 // @description     快速查看与特定用户的共同关注（视频播放页、动态页、用户空间、直播间）
@@ -601,6 +601,10 @@
         }
         .${gm.id}.live-same-followings .gm-pre {
           font-weight: bold;
+        }
+
+        .z-aside-area {
+          z-index: 11;
         }
       `)
     }
