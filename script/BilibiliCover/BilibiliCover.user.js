@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站封面获取
-// @version         5.10.2.20230509
+// @version         5.10.3.20230510
 // @namespace       laster2800
 // @author          Laster2800
 // @description     获取B站各播放页及直播间封面，支持手动及实时预览等多种模式，支持点击下载、封面预览、快速复制，可高度自定义
@@ -812,7 +812,7 @@
 
     async initVideo() {
       const app = await api.wait.$('#app')
-      const atr = await api.wait.$('#arc_toolbar_report, #playlistToolbar') // 无论如何都卡一下时间
+      const atr = await api.wait.$('#arc_toolbar_report') // 无论如何都卡一下时间
       await api.wait.waitForConditionPassed({
         condition: () => app.__vue__,
       })
@@ -821,19 +821,29 @@
       if (gm.runtime.layer === 'legacy') {
         cover = document.createElement('a')
         cover.textContent = '获取封面'
-        cover.className = `${gm.id}-video-cover-btn video-toolbar-right-item`
+        cover.className = `${gm.id}-video-cover-btn`
         if (gm.runtime.preview) {
           cover.style.cursor = 'none'
         }
 
         const gm395456 = atr.querySelector('[id|=gm395456]') // 确保与其他脚本配合时组件排列顺序不会乱
-        if (gm395456) {
-          gm395456.after(cover)
-        } else {
-          const right = await api.wait.$('.toolbar-right, .video-toolbar-right', atr)
-          right.prepend(cover)
+        const right = atr.querySelector('.toolbar-right, .video-toolbar-right')
+        if (right) {
+          cover.classList.add('video-toolbar-right-item')
+          if (gm395456) {
+            gm395456.after(cover)
+          } else {
+            right.prepend(cover)
+          }
+        } else { // 旧版
+          cover.dataset.toolbarVersion = 'old'
+          cover.classList.add('appeal-text')
+          if (gm395456) {
+            gm395456.before(cover)
+          } else {
+            atr.append(cover)
+          }
         }
-
         this.method.disableContextMenu(cover)
       } else {
         cover = await this.method.createRealtimeCover()
@@ -1042,6 +1052,10 @@
       api.base.addStyle(`
         .${gm.id}-video-cover-btn {
           margin-right: 24px;
+        }
+        .${gm.id}-video-cover-btn[data-toolbar-version=old] {
+          user-select: none;
+          margin-right: 20px;
         }
 
         .${gm.id}-bangumi-cover-btn {

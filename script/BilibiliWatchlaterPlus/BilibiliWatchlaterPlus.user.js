@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.33.13.20230509
+// @version         4.33.14.20230510
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -4797,21 +4797,27 @@
       let bus = {}
 
       const app = await api.wait.$('#app')
-      const atr = await api.wait.$('#arc_toolbar_report, #playlistToolbar', app)
+      const atr = await api.wait.$('#arc_toolbar_report', app)
       const original = await api.wait.$('.van-watchlater', atr)
       api.wait.waitForConditionPassed({
         condition: () => app.__vue__,
       }).then(async () => {
         const btn = document.createElement('label')
         btn.id = `${gm.id}-video-btn`
-        btn.className = 'video-toolbar-right-item'
         const cb = btn.appendChild(document.createElement('input'))
         cb.type = 'checkbox'
         const text = btn.appendChild(document.createElement('span'))
         text.textContent = '稍后再看'
         cb.addEventListener('click', () => processSwitch())
-        const right = await api.wait.$('.toolbar-right, .video-toolbar-right', atr)
-        right.prepend(btn)
+        const right = atr.querySelector('.toolbar-right, .video-toolbar-right')
+        if (right) {
+          btn.className = 'video-toolbar-right-item'
+          right.prepend(btn)
+        } else { // 旧版
+          btn.dataset.toolbarVersion = 'old'
+          btn.className = 'appeal-text'
+          atr.append(btn)
+        }
 
         let aid = this.method.getAid()
         if (!aid) {
@@ -6698,6 +6704,12 @@
 
           #${gm.id}-video-btn {
             margin-right: 24px;
+          }
+          #${gm.id}-video-btn[data-toolbar-version=old] {
+            display: flex;
+            align-items: center;
+            user-select: none;
+            margin-right: 20px;
           }
           #${gm.id}-video-btn input[type=checkbox] {
             margin-right: 2px;
