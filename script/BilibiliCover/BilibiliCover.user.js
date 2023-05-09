@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站封面获取
-// @version         5.10.1.20230314
+// @version         5.10.2.20230509
 // @namespace       laster2800
 // @author          Laster2800
 // @description     获取B站各播放页及直播间封面，支持手动及实时预览等多种模式，支持点击下载、封面预览、快速复制，可高度自定义
@@ -821,28 +821,17 @@
       if (gm.runtime.layer === 'legacy') {
         cover = document.createElement('a')
         cover.textContent = '获取封面'
-        cover.className = `${gm.id}-video-cover-btn`
+        cover.className = `${gm.id}-video-cover-btn video-toolbar-right-item`
         if (gm.runtime.preview) {
           cover.style.cursor = 'none'
         }
 
-        const version = (atr.classList.contains('video-toolbar-v1') || atr.id === 'playlistToolbar') ? '2022' : 'old'
-        cover.dataset.toolbarVersion = version
         const gm395456 = atr.querySelector('[id|=gm395456]') // 确保与其他脚本配合时组件排列顺序不会乱
-        if (version === '2022') {
-          if (gm395456) {
-            gm395456.after(cover)
-          } else {
-            const right = await api.wait.$('.toolbar-right, .video-toolbar-right', atr)
-            right.prepend(cover)
-          }
+        if (gm395456) {
+          gm395456.after(cover)
         } else {
-          cover.className = 'appeal-text'
-          if (gm395456) {
-            gm395456.before(cover)
-          } else {
-            atr.append(cover)
-          }
+          const right = await api.wait.$('.toolbar-right, .video-toolbar-right', atr)
+          right.prepend(cover)
         }
 
         this.method.disableContextMenu(cover)
@@ -1052,15 +1041,7 @@
     addStyle() {
       api.base.addStyle(`
         .${gm.id}-video-cover-btn {
-          cursor: pointer;
-          user-select: none;
-        }
-        .${gm.id}-video-cover-btn[data-toolbar-version="2022"] {
-          margin-right: 18px;
-          color: unset;
-        }
-        .${gm.id}-video-cover-btn[data-toolbar-version="2022"]:hover {
-          color: var(--brand_blue); /* 官方提供的 CSS 变量 */
+          margin-right: 24px;
         }
 
         .${gm.id}-bangumi-cover-btn {

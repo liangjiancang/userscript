@@ -11,9 +11,10 @@
 5. 批量添加：增加「选中全部」「取消全部」按钮。[172949#comment-385635](https://greasyfork.org/zh-CN/scripts/395456/discussions/172949#comment-385635)
 6. 批量添加：「重置参数」按钮改为「读取参数」，并支持右键点击「保存参数」按钮执行参数重置。[172949#comment-386211](https://greasyfork.org/zh-CN/scripts/395456/discussions/172949#comment-386211)
 7. 批量添加：执行任务过程中禁用底部按钮。
-8. 代码：`config` / `configMap` 机制不再要求在「用户设置」中有对应配置项。
-9. 约定：「选项」->「配置项」。
-10. 外部功能：由于B站新版页面顶栏已原生固定，移除 [B站顶栏固顶](https://greasyfork.org/zh-CN/scripts/430292) 入口。
+8. 快速切换：适配B站新版播放页修改。
+9. 代码：`config` / `configMap` 机制不再要求在「用户设置」中有对应配置项。
+10. 约定：「选项」->「配置项」。
+11. 外部功能：由于B站新版页面顶栏已原生固定，移除 [B站顶栏固顶](https://greasyfork.org/zh-CN/scripts/430292) 入口。
 
 ## V4.32
 

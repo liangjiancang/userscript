@@ -11,6 +11,7 @@
 1. 外部：`UserScriptAPIWeb` 更新至 V1.3。（此项更新变更了兼容性要求）
 2. 代码：`unicorn/prefer-string-replace-all`。
 3. 脚本：更新兼容性说明。
+4. 视频：适配B站新版播放页修改。
 
 ## V5.9
 
