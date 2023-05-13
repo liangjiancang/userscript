@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.33.14.20230510
+// @version         4.33.15.20230513
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -4797,7 +4797,7 @@
       let bus = {}
 
       const app = await api.wait.$('#app')
-      const atr = await api.wait.$('#arc_toolbar_report', app)
+      const atr = await api.wait.$('#arc_toolbar_report, #playlistToolbar', app)
       const original = await api.wait.$('.van-watchlater', atr)
       api.wait.waitForConditionPassed({
         condition: () => app.__vue__,

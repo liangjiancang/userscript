@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站封面获取
-// @version         5.10.3.20230510
+// @version         5.10.4.20230513
 // @namespace       laster2800
 // @author          Laster2800
 // @description     获取B站各播放页及直播间封面，支持手动及实时预览等多种模式，支持点击下载、封面预览、快速复制，可高度自定义
@@ -812,7 +812,7 @@
 
     async initVideo() {
       const app = await api.wait.$('#app')
-      const atr = await api.wait.$('#arc_toolbar_report') // 无论如何都卡一下时间
+      const atr = await api.wait.$('#arc_toolbar_report, #playlistToolbar') // 无论如何都卡一下时间
       await api.wait.waitForConditionPassed({
         condition: () => app.__vue__,
       })
