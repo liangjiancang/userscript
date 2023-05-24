@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.33.15.20230513
+// @version         4.33.16.20230525
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -5011,8 +5011,13 @@
         if (gm.config.listSearch && gm.config.searchDefaultValue) {
           const sdv = GM_getValue('searchDefaultValue_value')
           if (typeof sdv === 'string') {
-            search = document.querySelector('#gm-list-search > input')
+            const searchBox = document.querySelector('#gm-list-search')
+            search = searchBox.firstElementChild
             search.value = sdv
+            if (sdv.length > 0) {
+              searchBox.classList.add('gm-active')
+              searchBox.querySelector('.gm-search-clear').style.visibility = 'visible'
+            }
           }
         }
         const success = await this.reloadWatchlaterListPage()
