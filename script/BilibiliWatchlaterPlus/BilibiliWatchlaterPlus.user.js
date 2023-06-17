@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.33.17.20230618
+// @version         4.33.18.20230618
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -3983,7 +3983,9 @@
                     list.scrollTop = 0
                   }
                 }
-                el.popupTotal.textContent = `${cnt[0]}${cnt[1] > 0 ? `/${cnt[0] + cnt[1]}` : ''}`
+                const current = cnt[0]
+                const all = lists[0].total
+                el.popupTotal.textContent = current === all ? String(current) : `${current}/${all}`
                 el.entryListEmpty.style.display = cnt[0] ? '' : 'unset'
               }, gm.const.inputThrottleWait))
               el.searchClear.addEventListener('click', () => {
