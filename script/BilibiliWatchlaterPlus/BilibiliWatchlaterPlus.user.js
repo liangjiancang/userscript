@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.33.16.20230525
+// @version         4.33.17.20230618
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -5781,12 +5781,13 @@
       const container = await api.wait.$('.watch-later-list')
       const listBox = await api.wait.$('.list-box', container)
       const elTotal = await api.wait.$('header .t em')
-      const all = listBox.querySelectorAll('.av-item:not(.gm-filtered)').length
-      const total = all - listBox.querySelectorAll('.gm-removed:not(.gm-filtered)').length
-      elTotal.textContent = `（${total}/${all}）`
+      const all = listBox.querySelectorAll('.av-item').length
+      const displayed = listBox.querySelectorAll('.av-item:not(.gm-filtered)').length
+      const current = displayed - listBox.querySelectorAll('.gm-removed:not(.gm-filtered)').length
+      elTotal.textContent = `（${current}/${displayed}${all === displayed ? '' : `/${all}`}）`
 
       const empty = container.querySelector('.abnormal-item')
-      if (all > 0) {
+      if (displayed > 0) {
         if (empty) {
           empty.style.display = 'none'
         }
