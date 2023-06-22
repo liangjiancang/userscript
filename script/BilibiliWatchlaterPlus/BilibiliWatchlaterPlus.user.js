@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.33.18.20230618
+// @version         4.33.19.20230622
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -2454,7 +2454,7 @@
               }
               api.message.info('批量添加：已将所有选定稿件添加到稍后再看', 1800)
             } catch (e) {
-              api.message.alert('批量添加：执行失败。可能是因为目标稿件不可用或稍后再看不支持该稿件类型（如互动视频），请尝试取消勾选当前列表中第一个选定的稿件后重新执行。')
+              api.message.alert('批量添加：执行失败。常见原因是已经达到稍后再看容量上限，请先检查是否为该原因造成。否则可能是因为目标稿件不可用或稍后再看不支持该稿件类型（如互动视频），可尝试取消勾选当前列表中第一个选定的稿件后重新执行。')
               api.logger.error(e)
             } finally {
               if (lastAddTime && loadType === 'FEED') {
