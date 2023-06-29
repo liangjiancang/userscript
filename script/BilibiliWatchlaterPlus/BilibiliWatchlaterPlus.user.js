@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.33.19.20230622
+// @version         4.33.20.20230629
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -4806,6 +4806,7 @@
       }).then(async () => {
         const btn = document.createElement('label')
         btn.id = `${gm.id}-video-btn`
+        btn.title = '点击切换稍后再看状态。当稿件在稍后再看中时，右键点击可切换其固定状态。'
         const cb = btn.appendChild(document.createElement('input'))
         cb.type = 'checkbox'
         const text = btn.appendChild(document.createElement('span'))
@@ -4820,6 +4821,26 @@
           btn.className = 'appeal-text'
           atr.append(btn)
         }
+
+        Reflect.defineProperty(btn, 'gmFixed', {
+          get() { return this.classList.contains('gm-fixed-hint') },
+          set(val) {
+            if (val) {
+              if (!this.gmFixed) btn.classList.add('gm-fixed-hint')
+            } else {
+              if (this.gmFixed) btn.classList.remove('gm-fixed-hint')
+            }
+          },
+        })
+        btn.addEventListener('contextmenu', e => {
+          e.preventDefault()
+          if (btn.added) {
+            const fixed = !btn.gmFixed
+            btn.gmFixed = fixed
+            gm.data.fixedItem(this.method.getBvid(), fixed)
+            api.message.info(`${fixed ? '' : '取消'}固定稿件成功`)
+          }
+        })
 
         let aid = this.method.getAid()
         if (!aid) {
@@ -4847,6 +4868,7 @@
           const status = removed ? false : await this.method.getVideoWatchlaterStatusByAid(bus.aid, !reloaded)
           btn.added = status
           cb.checked = status
+          btn.gmFixed = gm.data.fixedItem(this.method.getBvid())
         })
       })
 
@@ -4861,6 +4883,7 @@
         }
         if (gm.data.fixedItem(_self.method.getBvid())) {
           setStatus(true)
+          bus.btn.gmFixed = true
         } else {
           const alwaysAutoRemove = gm.config.autoRemove === Enums.autoRemove.always
           const spRemove = gm.searchParams.get(`${gm.id}_remove`) === 'true'
@@ -4885,6 +4908,10 @@
           btn.added = !btn.added
           cb.checked = btn.added
           api.message.info(`${note}成功`)
+          if (!btn.added && btn.classList.contains('gm-fixed-hint')) {
+            gm.data.fixedItem(_self.method.getBvid(), false)
+            btn.gmFixed = false
+          }
         } else {
           cb.checked = btn.added
           api.message.info(`${note}失败${!btn.added ? '，可能是因为稍后再看不支持该稿件类型（如互动视频）' : ''}`)
@@ -6888,6 +6915,9 @@
 
           .gm-fixed {
             border: 2px dashed var(--${gm.id}-light-hint-text-color) !important;
+          }
+          .gm-fixed-hint {
+            font-weight: bold !important;
           }
         `)
       } else {
