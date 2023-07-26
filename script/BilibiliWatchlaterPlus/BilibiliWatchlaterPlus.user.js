@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.33.20.20230629
+// @version         4.33.21.20230726
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -2148,8 +2148,9 @@
           })
           // 稍后再看列表导入
           async function importWatchlaterList(content, avSet) {
+            const innerRegex = gm.config.importWl_regex.replaceAll(/\(\?<?(=|!)[^)]*\)/g, '') // 内嵌组移除前视/后视断言
+            const r = new RegExp(innerRegex, 'i')
             const gr = new RegExp(gm.config.importWl_regex, 'gi')
-            const r = new RegExp(gm.config.importWl_regex, 'i')
             const strs = content.match(gr)
             let html = ''
             for (const str of strs) {
