@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.33.22.20230728
+// @version         4.34.0.20231127
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -245,6 +245,7 @@
    * @property {boolean} listSortControl 列表页面排序控制器
    * @property {boolean} listAutoRemoveControl 列表页面自动移除控制器
    * @property {boolean} listExportWatchlaterListButton 列表页面列表导出按钮
+   * @property {boolean} listBatchTransferButton 列表页面批量转移按钮
    * @property {boolean} listBatchAddManagerButton 列表页面批量添加管理器按钮
    * @property {boolean} removeButton_playAll 移除「全部播放」按钮
    * @property {boolean} removeButton_removeAll 移除「一键清空」按钮
@@ -320,7 +321,7 @@
    * @property {number} [duration] 稿件时长
    * @property {number} [pubdate] 稿件发布时间
    * @property {number} [videos] 稿件分P数
-   * @see {@link https://github.com/SocialSisterYi/bilibili-API-collect/blob/master/history%26toview/toview.md#获取稍后再看视频列表 获取稍后再看视频列表}
+   * @see {@link https://github.com/SocialSisterYi/bilibili-API-collect/blob/master/docs/history&toview/toview.md#获取稍后再看视频列表 获取稍后再看视频列表}
    */
   /**
    * @typedef {[bvid: string, title: string, lastModified: number]} GMObject_data_item
@@ -402,7 +403,7 @@
   const gm = {
     id: gmId,
     configVersion: GM_getValue('configVersion'),
-    configUpdate: 20230422.1,
+    configUpdate: 20231127,
     searchParams: new URL(location.href).searchParams,
     config: {},
     configMap: {
@@ -449,6 +450,7 @@
       listSortControl: { default: true, attr: 'checked', configVersion: 20210810 },
       listAutoRemoveControl: { default: true, attr: 'checked', configVersion: 20210908 },
       listExportWatchlaterListButton: { default: true, attr: 'checked', configVersion: 20221008 },
+      listBatchTransferButton: { default: true, attr: 'checked', configVersion: 20231127 },
       listBatchAddManagerButton: { default: true, attr: 'checked', configVersion: 20210908 },
       removeButton_playAll: { default: false, attr: 'checked', configVersion: 20221008 },
       removeButton_removeAll: { default: false, attr: 'checked', configVersion: 20200722 },
@@ -470,7 +472,7 @@
     },
     infoMap: {
       clearRemoveHistoryData: {},
-      watchlaterMediaList: { configVersion: 20210822 },
+      watchlaterMediaList: { configVersion: 20231127 },
       exportWatchlaterList: { configVersion: 20221008 },
       importWatchlaterList: { configVersion: 20230419 },
     },
@@ -739,20 +741,21 @@
           }
         },
         fixedItem: (id, op) => {
-          const items = GM_getValue('fixedItems') ?? []
+          const uid = webpage.method.getDedeUserID()
+          const items = GM_getValue(`fixedItems_${uid}`) ?? []
           const idx = items.indexOf(id)
           const fixed = idx >= 0
           if (op == null) return fixed
           if (op) {
             if (!fixed) {
               items.push(id)
-              GM_setValue('fixedItems', items)
+              GM_setValue(`fixedItems_${uid}`, items)
             }
             return true
           } else {
             if (fixed) {
               items.splice(idx, 1)
-              GM_setValue('fixedItems', items)
+              GM_setValue(`fixedItems_${uid}`, items)
             }
             return false
           }
@@ -771,15 +774,10 @@
      * 版本更新处理
      */
     updateVersion() {
-      if (gm.configVersion >= 20211013) { // 4.23.12.20211013
+      if (gm.configVersion >= 20220115) { // 4.24.4.20220115
         if (gm.configVersion < gm.configUpdate) {
           // 必须按从旧到新的顺序写
           // 内部不能使用 gm.configUpdate，必须手写更新后的配置版本号！
-
-          // 4.24.1.20220104
-          if (gm.configVersion < 20220104) {
-            GM_deleteValue('hideWatchlaterInCollect')
-          }
 
           // 4.24.4.20220115
           if (gm.configVersion < 20220115) {
@@ -801,8 +799,18 @@
             }
           }
 
+          // 4.34.0.20231127
+          if (gm.configVersion < 20231127) {
+            const items = GM_getValue('fixedItems')
+            if (items) {
+              const uid = webpage.method.getDedeUserID()
+              GM_setValue(`fixedItems_${uid}`, items)
+              GM_deleteValue('fixedItems')
+            }
+          }
+
           // 功能性更新后更新此处配置版本，通过时跳过功能性更新设置，否则转至 readConfig() 中处理
-          if (gm.configVersion >= 20230422.1) {
+          if (gm.configVersion >= 20231127) {
             gm.configVersion = gm.configUpdate
             GM_setValue('configVersion', gm.configVersion)
           }
@@ -1111,7 +1119,7 @@
             </div>`,
           })
           itemsHTML += getItemHTML('全局功能', {
-            desc: '指定使用收藏功能时，将稿件从稍后再看移动至哪个收藏夹。',
+            desc: '指定使用批量转移及收藏功能时，将稿件从稍后再看移动至哪个收藏夹。',
             html: `<div>
               <span>稍后再看收藏夹</span>
               <span id="gm-watchlaterMediaList" class="gm-info">设置</span>
@@ -1205,6 +1213,9 @@
                 </label>
                 <label class="gm-lineitem">
                   <span>列表导出按钮</span><input id="gm-listExportWatchlaterListButton" type="checkbox">
+                </label>
+                <label class="gm-lineitem">
+                  <span>批量转移按钮</span><input id="gm-listBatchTransferButton" type="checkbox">
                 </label>
                 <label class="gm-lineitem">
                   <span>批量添加管理器按钮</span><input id="gm-listBatchAddManagerButton" type="checkbox">
@@ -2763,7 +2774,8 @@
     async clearFixedItems() {
       const result = await api.message.confirm('是否要取消所有固定项？')
       if (result) {
-        GM_setValue('fixedItems', [])
+        const uid = webpage.method.getDedeUserID()
+        GM_setValue(`fixedItems_${uid}`, [])
         for (const item of document.querySelectorAll('.gm-fixed')) {
           item.classList?.remove('gm-fixed')
         }
@@ -3526,7 +3538,7 @@
        * 获取稿件 `state` 说明
        * @param {number} state 稿件状态
        * @returns {string} 说明
-       * @see {@link https://github.com/SocialSisterYi/bilibili-API-collect/blob/master/video/attribute_data.md#state字段值稿件状态 state字段值(稿件状态)}
+       * @see {@link https://github.com/SocialSisterYi/bilibili-API-collect/blob/master/docs/video/attribute_data.md#state字段值稿件状态 state字段值(稿件状态)}
        */
       getItemStateDesc(state) {
         return ({
@@ -4195,7 +4207,8 @@
             const simplePopup = gm.config.headerMenu === Enums.headerMenu.enableSimple
             let serial = 0
             if (data.length > 0) {
-              const fixedItems = GM_getValue('fixedItems') ?? []
+              const uid = _self.method.getDedeUserID()
+              const fixedItems = GM_getValue(`fixedItems_${uid}`) ?? []
               const openLinkInCurrent = gm.config.openHeaderMenuLink === Enums.openHeaderMenuLink.openInCurrent
               const { autoRemoveControl } = el.entryFn
               for (const item of data) {
@@ -4998,6 +5011,13 @@
       if (gm.config.removeButton_removeWatched) {
         r_con.children[2].style.display = 'none'
       }
+      // 加入「批量转移」
+      if (gm.config.listBatchTransferButton) {
+        const batchTransferButton = r_con.appendChild(document.createElement('div'))
+        batchTransferButton.textContent = '批量转移'
+        batchTransferButton.className = 's-btn'
+        batchTransferButton.addEventListener('click', () => webpage.batchTransfer())
+      }
       // 加入「批量添加」
       if (gm.config.listBatchAddManagerButton) {
         const batchButton = r_con.appendChild(document.createElement('div'))
@@ -5309,7 +5329,8 @@
      */
     async processWatchlaterListPage(byReload) {
       const _self = this
-      const fixedItems = GM_getValue('fixedItems') ?? []
+      const uid = this.method.getDedeUserID()
+      const fixedItems = GM_getValue(`fixedItems_${uid}`) ?? []
       const sortable = gm.config.autoSort !== Enums.autoSort.default || gm.config.listSortControl
       let autoRemoveControl = null
       if (gm.config.autoRemove !== Enums.autoRemove.absoluteNever) {
@@ -5909,6 +5930,59 @@
           btn.addEventListener('click', () => script.openBatchAddManager())
           bar.append(btn)
         })
+      }
+    }
+
+    /**
+     * 批量转移
+     */
+    async batchTransfer() {
+      const _self = this
+      const result = await api.message.confirm('是否将以下（筛选出来的）稍后再看稿件批量转移至指定收藏夹？<br>注意：该操作耗时较长，且较容易触发B站拦截机制，请勿频繁使用，后果自负！！！', { html: true })
+      if (result) {
+        if (gm.runtime.autoReloadListTid != null) { // 暂停自动刷新
+          clearTimeout(gm.runtime.autoReloadListTid)
+        }
+        const container = await api.wait.$('.watch-later-list')
+        const listBox = await api.wait.$('.list-box', container)
+        const chosenItems = listBox.querySelectorAll('.av-item:not(.gm-filtered):not(.gm-removed):not(.gm-fixed)')
+        if (chosenItems.length > 0) {
+          let errorCnt = 0
+          const interval = 2500
+          const spendTimeSec = interval * chosenItems.length / 1000
+          const endTime = this.method.getTimeString(Date.now() + interval * chosenItems.length)
+          await api.message.alert(`点击「确定」以开始批量转移。本次转移至少需要花费 ${spendTimeSec} 秒，至少在 ${endTime} 后才能完成。开始后请停留在该页面保证转移正常执行，期间不要执行其他操作，否则可能会引起转移错误。<br>注意：该功能较容易触发B站拦截机制，有可能会引起B站某些功能在一段时间内无法正常使用，如果出现这种情况等一段时间便会恢复，但接下来一段时间内不要再使用该功能！`, { html: true }) // 时间提醒
+          const uid = this.method.getDedeUserID()
+          let mlid = GM_getValue(`watchlaterMediaList_${uid}`)
+          if (!mlid) {
+            mlid = await this.method.getDefaultMediaListId(uid)
+          }
+          for (const item of chosenItems) {
+            const success = await this.method.addToFav(item.aid, mlid)
+            if (success) {
+              const s = switchOffStatus(item)
+              if (!s) errorCnt += 1
+            } else if (++errorCnt > 8) {
+              await api.message.alert('批量转移过程中已出现大量错误，终止执行。B站可能会出现某些功能在一段时间内无法正常使用的情况，等一段时间便会恢复，但接下来一段时间内不要再使用该功能！')
+              break
+            }
+            await new Promise(resolve => setTimeout(resolve, interval * (Math.random() * 0.5 + 0.75)))
+          }
+          await api.message.alert(`批量转移完成${errorCnt > 0 ? `，期间共出现 ${errorCnt} 个错误` : ''}。点击「确定」后将刷新页面。`)
+          location.reload() // 无论执行出错与否，刷新页面
+        }
+      }
+
+      async function switchOffStatus(item) {
+        item.classList.add('gm-removed') // 先改 UI
+        const success = await _self.method.switchVideoWatchlaterStatus(item.aid, false)
+        if (success) {
+          item.added = false
+        } else {
+          item.classList.remove('gm-removed')
+        }
+        item.querySelector('.gm-list-item-switcher').checked = item.added
+        return success
       }
     }
 
