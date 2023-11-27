@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.34.0.20231127
+// @version         4.34.1.20231128
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -5938,7 +5938,7 @@
      */
     async batchTransfer() {
       const _self = this
-      const result = await api.message.confirm('是否将以下（筛选出来的）稍后再看稿件批量转移至指定收藏夹？<br>注意：该操作耗时较长，且较容易触发B站拦截机制，请勿频繁使用，后果自负！！！', { html: true })
+      let result = await api.message.confirm('是否将以下（筛选出来的）稍后再看稿件批量转移至指定收藏夹？<br>注意：该操作耗时较长，且较容易触发B站拦截机制，请勿频繁使用，后果自负！！！', { html: true })
       if (result) {
         if (gm.runtime.autoReloadListTid != null) { // 暂停自动刷新
           clearTimeout(gm.runtime.autoReloadListTid)
@@ -5951,7 +5951,11 @@
           const interval = 2500
           const spendTimeSec = interval * chosenItems.length / 1000
           const endTime = this.method.getTimeString(Date.now() + interval * chosenItems.length)
-          await api.message.alert(`点击「确定」以开始批量转移。本次转移至少需要花费 ${spendTimeSec} 秒，至少在 ${endTime} 后才能完成。开始后请停留在该页面保证转移正常执行，期间不要执行其他操作，否则可能会引起转移错误。<br>注意：该功能较容易触发B站拦截机制，有可能会引起B站某些功能在一段时间内无法正常使用，如果出现这种情况等一段时间便会恢复，但接下来一段时间内不要再使用该功能！`, { html: true }) // 时间提醒
+          result = await api.message.confirm(`请再次点击「确定」以开始批量转移，点击「取消」以终止操作。本次转移至少需要花费 ${spendTimeSec} 秒，至少在 ${endTime} 后才能完成。开始后请停留在该页面保证转移正常执行，期间不要执行其他操作，否则可能会引起转移错误。<br>注意：该功能较容易触发B站拦截机制，有可能会引起B站某些功能在一段时间内无法正常使用，如果出现这种情况等一段时间便会恢复，但接下来一段时间内不要再使用该功能！`, { html: true }) // 时间提醒
+          if (!result) {
+            location.reload()
+            return
+          }
           const uid = this.method.getDedeUserID()
           let mlid = GM_getValue(`watchlaterMediaList_${uid}`)
           if (!mlid) {
