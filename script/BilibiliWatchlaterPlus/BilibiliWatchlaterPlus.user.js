@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.34.2.20231128
+// @version         4.34.3.20231128
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -1791,8 +1791,8 @@
             <div class="gm-batchAddManager-page gm-modal">
               <div class="gm-title">批量添加管理器</div>
               <div class="gm-comment">
-                <div>执行以下步骤以将投稿批量添加到稍后再看。执行过程中可以关闭对话框，但不能关闭页面；也不建议将当前页面置于后台，否则浏览器可能会暂缓甚至暂停任务执行。</div>
-                <div>常规模式下脚本优先添加投稿时间较早的投稿。注意，该功能会在短时间内向后台发起大量请求，滥用可能会导致一段时间内无法正常访问B站，可增加平均请求间隔以降低触发拦截机制的概率。</div>
+                <div>执行以下步骤以将投稿批量添加到稍后再看，常规模式下脚本优先添加投稿时间较早的投稿。执行过程中可以关闭对话框，但不能关闭页面；也不建议将当前页面置于后台，否则浏览器可能会暂缓甚至暂停任务执行。</div>
+                <div>注意：该功能会在短时间内向后台发起大量请求，滥用可能会导致一段时间内无法正常访问B站！可增加平均请求间隔以降低触发拦截机制的概率。</div>
                 <div>① 加载最近 <input is="laster2800-input-number" id="gm-batch-1a" value="24" digits="Infinity"> <select id="gm-batch-1b" style="border:none;margin: 0 -4px">
                   <option value="${3600 * 24}">天</option>
                   <option value="3600" selected>小时</option>
