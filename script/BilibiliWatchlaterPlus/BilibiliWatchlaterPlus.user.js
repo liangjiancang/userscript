@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.34.3.20231128
+// @version         4.34.4.20240128
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -3993,9 +3993,7 @@
                     list.scrollTop = 0
                   }
                 }
-                const current = cnt[0]
-                const all = lists[0].total
-                el.popupTotal.textContent = current === all ? String(current) : `${current}/${all}`
+                el.popupTotal.textContent = String(cnt[0])
                 el.entryListEmpty.style.display = cnt[0] ? '' : 'unset'
               }, gm.const.inputThrottleWait))
               el.searchClear.addEventListener('click', () => {
@@ -4441,7 +4439,7 @@
               el.entryRemovedList.style.display = ''
             }
 
-            el.popupTotal.textContent = `${el.entryList.total}${el.entryRemovedList.total > 0 ? `/${el.entryList.total + el.entryRemovedList.total}` : ''}`
+            el.popupTotal.textContent = String(el.entryList.total)
             if (gm.config.removeHistory && gm.config.removeHistorySavePoint === Enums.removeHistorySavePoint.listAndMenu) {
               _self.method.updateRemoveHistoryData()
             }
@@ -6163,7 +6161,7 @@
           }
           #${gm.id} .gm-entrypopup .gm-popup-total {
             position: absolute;
-            line-height: 2.6em;
+            line-height: 2.8em;
             right: 1.3em;
             top: 0;
             font-size: 1.2em;
@@ -6853,7 +6851,7 @@
           }
           #${gm.id} .gm-entrypopup .gm-search input[type=text] {
             border: none;
-            width: 18em;
+            width: 18.5em;
           }
 
           .${gm.id}-dialog code {
