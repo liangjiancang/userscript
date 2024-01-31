@@ -2,6 +2,10 @@
 
 本日志只记录用户友好的更新说明，影响不大的问题修复与修改不作记录，具体修改见 [提交记录](https://gitee.com/liangjiancang/userscript/commits/master/script/BilibiliWatchlaterPlus)。
 
+## V4.35
+
+1. 脚本：目前B站已引入大于 `2 ** 30` 的 AV 号，对 `aid` 与 `bvid` 互转工具类进行升级以进行适配。
+
 ## V4.34
 
 1. 批量转移：功能实现。该功能入口在稍后再看列表页面，可将（筛选出来的）稍后再看稿件批量转移至指定收藏夹。

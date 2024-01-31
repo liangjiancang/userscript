@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.34.4.20240128
+// @version         4.35.0.20240131
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -3133,7 +3133,7 @@
       /**
        * av/bv 互转工具类
        *
-       * 保证 av < 2 ** 27 时正确，同时应该在 av < 2 ** 30 时正确。
+       * 原始算法保证 av < 2 ** 27 时正确，同时应该在 av < 2 ** 30 时正确。2024 年 1 月底，B站引入大于 2 ** 30 的 AV 号，暂时只需略微修改，在这种情况时加 / 减 2 ** 31 即可。
        *
        * 结合 `xor` 与 `add` 可推断出，运算过程中不会出现超过 `2 ** 34 - 1` 的数值，远不会触及到 `Number.MAX_SAFE_INTEGER === 2 ** 53 - 1`，故无须引入 BigInt 进行计算。
        * @see {@link https://www.zhihu.com/question/381784377/answer/1099438784 如何看待 2020 年 3 月 23 日哔哩哔哩将稿件的「av 号」变更为「BV 号」？ - 知乎 - mcfx 的回答}
@@ -3155,11 +3155,18 @@
             for (let i = 0; i < sl; i++) {
               r += tr[x[s[i]]] * tl ** i
             }
-            return String((r - add) ^ xor)
+            r = (r - add) ^ xor
+            if (r < 0) {
+              r += 2 ** 31
+            }
+            return String(r)
           }
 
           function enc(x) {
             x = Number.parseInt(x)
+            if (x > 2 ** 30) {
+              x -= 2 ** 31
+            }
             x = (x ^ xor) + add
             const r = [...'BV1  4 1 7  ']
             for (let i = 0; i < sl; i++) {
