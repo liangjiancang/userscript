@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站共同关注快速查看
-// @version         1.13.4.20240211
+// @version         1.13.5.20240211
 // @namespace       laster2800
 // @author          Laster2800
 // @description     快速查看与特定用户的共同关注（视频播放页、动态页、用户空间、直播间）
@@ -518,7 +518,7 @@
       container.style.maxWidth = frame ? '264px' : '300px'
       api.base.addStyle(`
         .danmaku-menu .none-select > * {
-          padding: 4px 10px;
+          padding: 4px 10px !important;
         }
       `)
 
