@@ -6,8 +6,9 @@
 
 1. 脚本：支持「列表播放页」`www.bilibili.com/list/*`。[164021](https://greasyfork.org/zh-CN/scripts/395575/discussions/164021)
 2. 共同关注：修复直播间点击弹幕弹出的信息卡片被有可能被播放器遮挡的问题。
-3. 代码：`object-shorthand` `unicorn/prefer-string-replace-all`。
-4. 外部：`UserScriptAPIWeb` 更新至 V1.3。
+3. UI：适配B站样式变化。
+4. 代码：`object-shorthand` `unicorn/prefer-string-replace-all`。
+5. 外部：`UserScriptAPIWeb` 更新至 V1.3。
 
 ## V1.12
 

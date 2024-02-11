@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站共同关注快速查看
-// @version         1.13.3.20230503
+// @version         1.13.4.20240211
 // @namespace       laster2800
 // @author          Laster2800
 // @description     快速查看与特定用户的共同关注（视频播放页、动态页、用户空间、直播间）
@@ -514,7 +514,13 @@
       const frame = self !== top
       const container = await api.wait.$('.danmaku-menu')
       const usernameEl = await api.wait.$('.username', container)
+      container.style.width = 'auto'
       container.style.maxWidth = frame ? '264px' : '300px'
+      api.base.addStyle(`
+        .danmaku-menu .none-select > * {
+          padding: 4px 10px;
+        }
+      `)
 
       const ob = new MutationObserver(() => {
         const uid = container.__vue__.info?.uid
@@ -570,9 +576,13 @@
           text-decoration: underline;
         }
 
+        .bili-user-profile .${gm.id}.card-same-followings {
+          font-size: 1em;
+        }
         .${gm.id}.card-same-followings {
           color: #99a2aa;
           padding: 1em 0 0;
+          font-size: 0.8em;
         }
         .${gm.id}.card-same-followings .gm-pre {
           position: absolute;
@@ -593,11 +603,14 @@
           padding-right: 1em;
         }
 
+        .${gm.id}.live-same-followings {
+          margin: 1em;
+        }
         .${gm.id}.live-same-followings > * {
           display: block;
         }
-        .${gm.id}.live-same-followings > :first-child { /* 不要直接加到容器上，避免为空时出现间隔 */
-          margin-top: 1em;
+        .${gm.id}.live-same-followings > :first-child {
+          margin-bottom: 0.5em;
         }
         .${gm.id}.live-same-followings .gm-pre {
           font-weight: bold;
