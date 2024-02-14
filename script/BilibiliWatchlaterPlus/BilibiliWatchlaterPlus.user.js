@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.35.0.20240131
+// @version         4.35.1.20240214
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -4014,7 +4014,7 @@
                     api.message.info('已清空搜索框默认值')
                     e.preventDefault()
                   } else if (e.button === 2) {
-                    GM_setValue('searchDefaultValue_value', el.search.value)
+                    GM_setValue('searchDefaultValue_value', el.search.value.trim())
                     api.message.info('已保存搜索框默认值')
                     e.preventDefault()
                   }
@@ -4460,8 +4460,8 @@
 
             if (gm.config.searchDefaultValue) {
               const sdv = GM_getValue('searchDefaultValue_value')
-              if (typeof sdv === 'string') {
-                el.search.value = sdv
+              if (typeof sdv === 'string' && sdv) {
+                el.search.value = `${sdv} `
               }
             }
             if (el.search.value.length > 0) {
@@ -5062,10 +5062,10 @@
         let search = null
         if (gm.config.listSearch && gm.config.searchDefaultValue) {
           const sdv = GM_getValue('searchDefaultValue_value')
-          if (typeof sdv === 'string') {
+          if (typeof sdv === 'string' && sdv) {
             const searchBox = document.querySelector('#gm-list-search')
             search = searchBox.firstElementChild
-            search.value = sdv
+            search.value = `${sdv} `
             if (sdv.length > 0) {
               searchBox.classList.add('gm-active')
               searchBox.querySelector('.gm-search-clear').style.visibility = 'visible'
@@ -5141,7 +5141,7 @@
               api.message.info('已清空搜索框默认值')
               e.preventDefault()
             } else if (e.button === 2) {
-              GM_setValue('searchDefaultValue_value', search.value)
+              GM_setValue('searchDefaultValue_value', search.value.trim())
               api.message.info('已保存搜索框默认值')
               e.preventDefault()
             }
@@ -5149,8 +5149,8 @@
           search.addEventListener('contextmenu', e => e.preventDefault())
 
           const sdv = GM_getValue('searchDefaultValue_value')
-          if (sdv) {
-            search.value = sdv
+          if (typeof sdv === 'string' && sdv) {
+            search.value = `${sdv} `
             searchBox.classList.add('gm-active')
             searchClear.style.visibility = 'visible'
           }
