@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.35.2.20240220
+// @version         4.35.3.20240222
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -3636,10 +3636,16 @@
           collect.before(watchlater)
           processClickEvent(watchlater)
           processPopup(watchlater)
-          // 「收藏」下藏着一个没有作用的「稍后再看」，会影响到顶栏的布局，隐藏之
-          const favDown = collect.querySelector('.header-favorite-container__down')
-          if (favDown) {
-            favDown.style.display = 'none'
+
+          // 修复顶栏各项目间距在浏览器缩放倍率较大时不正确的问题
+          try {
+            // 「消息」间距优化
+            anchor.parentElement.querySelector('.right-entry--message.right-entry__outside').classList.remove('right-entry__outside')
+            // 「收藏」间距优化
+            collect.querySelector('.header-favorite-container').style.minWidth = 'unset'
+            collect.querySelector('.header-favorite-container__down').style.display = 'none' // 「收藏」下藏着一个没有作用的「稍后再看」，会影响到顶栏的布局
+          } catch (e) {
+            api.logger.error(e)
           }
         }
       }
