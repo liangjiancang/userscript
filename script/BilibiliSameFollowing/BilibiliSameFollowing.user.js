@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站共同关注快速查看
-// @version         1.13.5.20240211
+// @version         1.13.6.20240225
 // @namespace       laster2800
 // @author          Laster2800
 // @description     快速查看与特定用户的共同关注（视频播放页、动态页、用户空间、直播间）
@@ -576,18 +576,14 @@
           text-decoration: underline;
         }
 
-        .bili-user-profile .${gm.id}.card-same-followings {
-          font-size: 1em;
-        }
         .${gm.id}.card-same-followings {
           color: #99a2aa;
           padding: 1em 0 0;
-          font-size: 0.8em;
+          font-size: 12px;
         }
         .${gm.id}.card-same-followings .gm-pre {
           position: absolute;
           margin-left: -5em;
-          font-weight: bold;
           line-height: unset;
         }
 
