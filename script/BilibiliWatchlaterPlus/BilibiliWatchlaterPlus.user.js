@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.35.3.20240222
+// @version         4.35.4.20240227
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -5307,14 +5307,6 @@
           `)
           p1 = '-3.5em'
           p2 = '6em'
-        } else {
-          const header = await api.wait.$('#internationalHeader .mini-header')
-          const style = window.getComputedStyle(header)
-          const isGm430292Fixed = style.position === 'fixed' && style.backgroundImage.startsWith('linear-gradient')
-          if (isGm430292Fixed) { // https://greasyfork.org/zh-CN/scripts/430292
-            p1 = '-3.1em'
-            p2 = '5.6em'
-          }
         }
 
         api.base.addStyle(`
