@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.36.2.20240523
+// @version         4.36.3.20240523
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -613,21 +613,22 @@
       if (gm.config.appendCookies !== '') {
         api.options.web.preproc = async details => {
           if (new URL(details.url).host === 'api.bilibili.com') {
-            let ac = null
-            if (gm.config.appendCookies === 'SESSDATA') {
-              try {
-                ac = `SESSDATA=${(await GM.cookie.list({ name: 'SESSDATA' }))[0].value}`
-              } catch (e) {
-                api.message.alert('当前脚本管理器不支持 <code>GM.cookie</code> API。若要使用自动追加 <code>SESSDATA</code> Cookie 功能必须使用支持该 API 的脚本管理器（如 Tampermonkey BETA 版本）。', { html: true })
-                throw e
+            if (!gm.runtime.appendCookies) {
+              if (gm.config.appendCookies === 'SESSDATA') {
+                try {
+                  gm.runtime.appendCookies = `SESSDATA=${(await GM.cookie.list({ name: 'SESSDATA' }))[0].value}`
+                } catch (e) {
+                  api.message.alert('当前脚本管理器不支持 <code>GM.cookie</code> API。若要使用自动追加 <code>SESSDATA</code> Cookie 功能必须使用支持该 API 的脚本管理器（如 Tampermonkey BETA 版本）。', { html: true })
+                  throw e
+                }
+              } else {
+                gm.runtime.appendCookies = gm.config.appendCookies
               }
-            } else {
-              ac = gm.config.appendCookies
             }
             if (details.cookie && details.cookie.trim() !== '') {
-              details.cookie = `${ac};${details.cookie}`
+              details.cookie = `${gm.runtime.appendCookies};${details.cookie}`
             } else {
-              details.cookie = ac
+              details.cookie = gm.runtime.appendCookies
             }
           }
         }
