@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.35.4.20240227
+// @version         4.36.0.20240522
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -18,13 +18,13 @@
 // @exclude         *://t.bilibili.com/h5/*
 // @exclude         *://www.bilibili.com/correspond/*
 // @exclude         *://www.bilibili.com/page-proxy/*
-// @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=1161014
-// @require         https://greasyfork.org/scripts/431998-userscriptapidom/code/UserscriptAPIDom.js?version=1161016
-// @require         https://greasyfork.org/scripts/432000-userscriptapimessage/code/UserscriptAPIMessage.js?version=1095149
-// @require         https://greasyfork.org/scripts/432002-userscriptapiwait/code/UserscriptAPIWait.js?version=1161015
-// @require         https://greasyfork.org/scripts/432003-userscriptapiweb/code/UserscriptAPIWeb.js?version=1160007
-// @require         https://greasyfork.org/scripts/432936-pushqueue/code/PushQueue.js?version=1161000
-// @require         https://greasyfork.org/scripts/432807-inputnumber/code/InputNumber.js?version=1160998
+// @require         https://update.greasyfork.org/scripts/409641/1161014/UserscriptAPI.js
+// @require         https://update.greasyfork.org/scripts/431998/1161016/UserscriptAPIDom.js
+// @require         https://update.greasyfork.org/scripts/432000/1095149/UserscriptAPIMessage.js
+// @require         https://update.greasyfork.org/scripts/432002/1161015/UserscriptAPIWait.js
+// @require         https://update.greasyfork.org/scripts/432003/1381253/UserscriptAPIWeb.js
+// @require         https://update.greasyfork.org/scripts/432936/1161000/PushQueue.js
+// @require         https://update.greasyfork.org/scripts/432807/1160998/InputNumber.js
 // @grant           GM_registerMenuCommand
 // @grant           GM_notification
 // @grant           GM_xmlhttpRequest
@@ -33,6 +33,7 @@
 // @grant           GM_deleteValue
 // @grant           GM_listValues
 // @grant           GM_addValueChangeListener
+// @grant           GM.cookie
 // @connect         api.bilibili.com
 // @run-at          document-start
 // @compatible      edge 版本不小于 93
@@ -253,8 +254,9 @@
    * @property {boolean} headerCompatible 兼容第三方顶栏
    * @property {menuScrollbarSetting} menuScrollbarSetting 弹出面板的滚动条设置
    * @property {mainRunAt} mainRunAt 主要逻辑运行时期
-   * @property {number} watchlaterListCacheValidPeriod 稍后再看列表数据本地缓存有效期（单位：秒）
    * @property {boolean} hideDisabledSubitems 设置页隐藏被禁用项的子项
+   * @property {number} watchlaterListCacheValidPeriod 稍后再看列表数据本地缓存有效期（单位：秒）
+   * @property {string} appendCookies 追加 Cookie（主要用于修复极个别用户 HttpOnly Cookie 没有被请求携带的问题）
    * @property {boolean} reloadAfterSetting 设置生效后刷新页面
    * @property {string} importWl_regex 稍后再看列表导入：正则表达式
    * @property {string} importWl_aid 稍后再看列表导入：捕获组/AID
@@ -403,7 +405,7 @@
   const gm = {
     id: gmId,
     configVersion: GM_getValue('configVersion'),
-    configUpdate: 20231127,
+    configUpdate: 20240522,
     searchParams: new URL(location.href).searchParams,
     config: {},
     configMap: {
@@ -429,9 +431,9 @@
       removeHistorySavePoint: { default: Enums.removeHistorySavePoint.listAndMenu, attr: 'value', configVersion: 20210628 },
       removeHistorySavePeriod: { default: 60, type: 'int', attr: 'value', max: 600, needNotReload: true, configVersion: 20210908 },
       removeHistoryFuzzyCompare: { default: 1, type: 'int', attr: 'value', max: 5, needNotReload: true, configVersion: 20210722 },
-      removeHistorySaves: { default: 100, type: 'int', attr: 'value', manual: true, needNotReload: true, min: 10, max: 500, configVersion: 20210808 },
+      removeHistorySaves: { default: 500, type: 'int', attr: 'value', manual: true, needNotReload: true, min: 10, max: 1500, configVersion: 20240522 },
       removeHistoryTimestamp: { default: true, attr: 'checked', needNotReload: true, configVersion: 20210703 },
-      removeHistorySearchTimes: { default: 100, type: 'int', attr: 'value', manual: true, needNotReload: true, min: 1, max: 500, configVersion: 20210819 },
+      removeHistorySearchTimes: { default: 500, type: 'int', attr: 'value', manual: true, needNotReload: true, min: 1, max: 1500, configVersion: 20240522 },
       batchAddLoadForward: { default: true, attr: 'checked', configVersion: 20220607, needNotReload: true },
       batchAddUsingFavTime: { default: true, attr: 'checked', configVersion: 20230422.1, needNotReload: true },
       batchAddLoadAfterTimeSync: { default: true, attr: 'checked', configVersion: 20220513, needNotReload: true },
@@ -459,6 +461,7 @@
       menuScrollbarSetting: { default: Enums.menuScrollbarSetting.beautify, attr: 'value', configVersion: 20210808.1 },
       mainRunAt: { default: Enums.mainRunAt.DOMContentLoaded, attr: 'value', needNotReload: true, configVersion: 20210726 },
       watchlaterListCacheValidPeriod: { default: 15, type: 'int', attr: 'value', needNotReload: true, min: 8, max: 600, configVersion: 20210908 },
+      appendCookies: { default: '', type: 'string', attr: 'value', configVersion: 20240522 },
       hideDisabledSubitems: { default: true, attr: 'checked', configVersion: 20210505 },
       reloadAfterSetting: { default: true, attr: 'checked', needNotReload: true, configVersion: 20200715 },
 
@@ -477,10 +480,10 @@
       importWatchlaterList: { configVersion: 20230419 },
     },
     runtime: {},
-    configDocumentStart: ['redirect', 'menuScrollbarSetting', 'mainRunAt'],
+    configDocumentStart: ['redirect', 'menuScrollbarSetting', 'mainRunAt', 'appendCookies'],
     data: {},
     url: {
-      api_queryWatchlaterList: 'https://api.bilibili.com/x/v2/history/toview/web',
+      api_queryWatchlaterList: 'https://api.bilibili.com/x/v2/history/toview',
       api_addToWatchlater: 'https://api.bilibili.com/x/v2/history/toview/add',
       api_removeFromWatchlater: 'https://api.bilibili.com/x/v2/history/toview/del',
       api_clearWatchlater: 'https://api.bilibili.com/x/v2/history/toview/clear',
@@ -603,6 +606,30 @@
       if (gm.configVersion > 0) {
         for (const name of gm.configDocumentStart) {
           gm.config[name] = this.method.getConfig(name, gm.configMap[name].default)
+        }
+      }
+
+      // 追加 Cookie
+      if (gm.config.appendCookies !== '') {
+        api.options.web.preproc = async details => {
+          if (new URL(details.url).host === 'api.bilibili.com') {
+            let ac = null
+            if (gm.config.appendCookies === 'SESSDATA') {
+              try {
+                ac = `SESSDATA=${(await GM.cookie.list({ name: 'SESSDATA' }))[0].value}`
+              } catch (e) {
+                api.message.alert('当前脚本管理器不支持 <code>GM.cookie</code> API。若要使用自动追加 <code>SESSDATA</code> Cookie 功能必须使用支持该 API 的脚本管理器（如 Tampermonkey BETA 版本）。', { html: true })
+                throw e
+              }
+            } else {
+              ac = gm.config.appendCookies
+            }
+            if (details.cookie && details.cookie.trim() !== '') {
+              details.cookie = `${ac};${details.cookie}`
+            } else {
+              details.cookie = ac
+            }
+          }
         }
       }
     }
@@ -774,16 +801,10 @@
      * 版本更新处理
      */
     updateVersion() {
-      if (gm.configVersion >= 20220115) { // 4.24.4.20220115
+      if (gm.configVersion >= 20220513) { // 4.26.13.20220513 最旧保留版本
         if (gm.configVersion < gm.configUpdate) {
           // 必须按从旧到新的顺序写
           // 内部不能使用 gm.configUpdate，必须手写更新后的配置版本号！
-
-          // 4.24.4.20220115
-          if (gm.configVersion < 20220115) {
-            GM_deleteValue('watchlaterListCacheTime')
-            GM_deleteValue('watchlaterListCache')
-          }
 
           // 4.26.13.20220513
           if (gm.configVersion < 20220513) {
@@ -809,8 +830,14 @@
             }
           }
 
+          // 4.36.0.20240522
+          if (gm.configVersion < 20240522) {
+            GM_deleteValue('removeHistorySaves')
+            GM_deleteValue('removeHistorySearchTimes')
+          }
+
           // 功能性更新后更新此处配置版本，通过时跳过功能性更新设置，否则转至 readConfig() 中处理
-          if (gm.configVersion >= 20231127) {
+          if (gm.configVersion >= 20240522) {
             gm.configVersion = gm.configUpdate
             GM_setValue('configVersion', gm.configVersion)
           }
@@ -1281,6 +1308,15 @@
               <input is="laster2800-input-number" id="gm-watchlaterListCacheValidPeriod" value="${gm.configMap.watchlaterListCacheValidPeriod.default}" min="${gm.configMap.watchlaterListCacheValidPeriod.min}" max="${gm.configMap.watchlaterListCacheValidPeriod.max}">
             </div>`,
           })
+          itemsHTML += getItemHTML('脚本设置', {
+            desc: '追加 Cookie（仅针对 api.bilibili.com）。主要用于修复极个别用户 HttpOnly Cookie 没有被请求携带的问题，也可用于随意追加或改写 Cookie 以达到更多目的，正常情况下没有必要也不要使用！',
+            html: `<div>
+              <span>追加 Cookie：</span>
+              <input id="gm-appendCookies" type="text" value="${gm.configMap.appendCookies.default}" style="font-family:var(--${gm.id}-code-font-family)">
+              <span id="gm-acInformation" class="gm-information" title>💬</span>
+              <span id="gm-acWarning" class="gm-warning gm-trailing" title>⚠</span>
+            </div>`,
+          })
           itemsHTML += getItemHTML('用户设置', {
             desc: '一般情况下，是否在用户设置中隐藏被禁用项的子项？',
             html: `<label>
@@ -1361,7 +1397,7 @@
           el.rhsInformation = gm.el.setting.querySelector('#gm-rhsInformation')
           api.message.hoverInfo(el.rhsInformation, `
             <div style="line-height:1.6em">
-              即使突破限制将该项设置为最大限制值的两倍，保存与读取对页面加载的影响仍可忽略不计（毫秒级），最坏情况下生成移除记录的耗时也能被控制在 1 秒以内。但仍不建议取太大的值，原因是移除记录本质上是一种误删后的挽回手段，非常近期的历史足以达到效果。
+              取值过小时，非常久远的稿件可能无法被跟踪；取值过大则不必要，原因是移除记录本质上是一种误删后的挽回手段，不必真正涵盖到所有历史。建议设置为自己日常稍后再看稿件数量的两到五倍。
             </div>
           `, null, { width: '36em', position: { top: '80%' } })
           el.rhtInformation = gm.el.setting.querySelector('#gm-rhtInformation')
@@ -1403,11 +1439,21 @@
               在有效期内使用本地缓存代替网络请求——除非是须确保数据正确性的场合。有效期过大会导致各种诡异现象，取值最好能匹配自身的B站使用习惯。
             </div>
           `, null, { width: '36em', flagSize: '2em' })
+          el.acInformation = gm.el.setting.querySelector('#gm-acInformation')
+          api.message.hoverInfo(el.acInformation, `
+            <div style="line-height:1.6em">
+              <p>如果出现脚本无法使用的情况，响应中出现「账号未登录」信息，极有可能是 HttpOnly Cookie 没有被请求携带导致的。该现象出现原因不明，无法复现。</p>
+              <p>将该项设置为 <code>SESSDATA</code>，脚本将在发送给 <code>api.bilibili.com</code> 的请求中追加 <code>SESSDATA</code> Cookie 以解决该问题，但该功能需要脚本管理器支持 <code>GM.cookie</code> API（建议使用 Tampermonkey BETA 版本）。或者手动设置 <code>SESSDATA</code>，格式为 <code>SESSDATA=A1B2C3D4E5</code> （注意 <code>SESSDATA</code> 需定期更新以避免过期）。</p>
+              <p>当然该设置项可以随意追加或改写 Cookie 以达到更多目的，格式为 <code>a=1;b=2;c=3</code> 。</p>
+            </div>
+          `, null, { width: '36em', flagSize: '2em' })
 
           el.hcWarning = gm.el.setting.querySelector('#gm-hcWarning')
           api.message.hoverInfo(el.hcWarning, '无须兼容第三方顶栏时务必选择「无」，否则脚本无法正常工作！', '⚠')
           el.rhWarning = gm.el.setting.querySelector('#gm-rhWarning')
           api.message.hoverInfo(el.rhWarning, '关闭移除记录，或将稍后再看历史数据保存次数设置为比原来小的值，都会造成对内部过期历史数据的清理！', '⚠')
+          el.acWarning = gm.el.setting.querySelector('#gm-acWarning')
+          api.message.hoverInfo(el.acWarning, '如果不理解在干什么，请将该项留空！', '⚠')
 
           el.headerButtonOpL.innerHTML = el.headerButtonOpR.innerHTML = el.headerButtonOpM.innerHTML = `
             <option value="${Enums.headerButtonOp.openListInCurrent}">在当前页面打开列表页面</option>
@@ -1461,6 +1507,12 @@
           el.removeHistory.addEventListener('change', el.removeHistory.init)
           el.removeHistorySaves.addEventListener('input', setRhWaring)
           el.removeHistorySaves.addEventListener('blur', setRhWaring)
+          el.appendCookies.init = () => setAcWarning()
+          el.appendCookies.addEventListener('input', el.appendCookies.init)
+          el.appendCookies.addEventListener('change', () => {
+            el.appendCookies.value = el.appendCookies.value.trim()
+            el.appendCookies.init()
+          })
         }
 
         /**
@@ -1718,6 +1770,24 @@
             if (warn) {
               api.dom.fade(true, el.hcWarning)
               el.hcWarning.show = true
+            }
+          }
+        }
+
+        /**
+         * 设置 appendCookies 警告项
+         */
+        const setAcWarning = () => {
+          const warn = el.appendCookies.value !== ''
+          if (el.acWarning.show) {
+            if (!warn) {
+              api.dom.fade(false, el.acWarning)
+              el.acWarning.show = false
+            }
+          } else {
+            if (warn) {
+              api.dom.fade(true, el.acWarning)
+              el.acWarning.show = true
             }
           }
         }
@@ -3355,7 +3425,6 @@
                     // 若 current 长度不够，那么加进去也白搭
                     GM_deleteValue('removeHistoryFuzzyCompareReference')
                   }
-
                 }
 
                 const data = gm.data.removeHistoryData()
@@ -6106,6 +6175,7 @@
             --${gm.id}-box-shadow: #00000033 0px 3px 6px;
             --${gm.id}-opacity-fade-transition: opacity ${gm.const.fadeTime}ms ease-in-out;
             --${gm.id}-opacity-fade-quick-transition: opacity ${gm.const.fadeTime}ms cubic-bezier(0.68, -0.55, 0.27, 1.55);
+            --${gm.id}-code-font-family: Consolas, 微软雅黑, 'Courier New', monospace;
           }
 
           #${gm.id} {
