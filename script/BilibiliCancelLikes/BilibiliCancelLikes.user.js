@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站点赞批量取消
-// @version         1.2.10.20230314
+// @version         1.2.11.20240522
 // @namespace       laster2800
 // @author          Laster2800
 // @description     取消对于某个UP主的所有点赞
@@ -10,11 +10,11 @@
 // @license         LGPL-3.0
 // @noframes
 // @include         *://space.bilibili.com/*
-// @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=1161014
-// @require         https://greasyfork.org/scripts/431998-userscriptapidom/code/UserscriptAPIDom.js?version=1161016
-// @require         https://greasyfork.org/scripts/432000-userscriptapimessage/code/UserscriptAPIMessage.js?version=1095149
-// @require         https://greasyfork.org/scripts/432002-userscriptapiwait/code/UserscriptAPIWait.js?version=1161015
-// @require         https://greasyfork.org/scripts/432003-userscriptapiweb/code/UserscriptAPIWeb.js?version=1160007
+// @require         https://update.greasyfork.org/scripts/409641/1161014/UserscriptAPI.js
+// @require         https://update.greasyfork.org/scripts/431998/1161016/UserscriptAPIDom.js
+// @require         https://update.greasyfork.org/scripts/432000/1095149/UserscriptAPIMessage.js
+// @require         https://update.greasyfork.org/scripts/432002/1161015/UserscriptAPIWait.js
+// @require         https://update.greasyfork.org/scripts/432003/1381253/UserscriptAPIWeb.js
 // @grant           GM_xmlhttpRequest
 // @grant           GM_registerMenuCommand
 // @connect         api.bilibili.com

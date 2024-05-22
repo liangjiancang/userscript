@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站封面获取
-// @version         5.10.4.20230513
+// @version         5.10.5.20240522
 // @namespace       laster2800
 // @author          Laster2800
 // @description     获取B站各播放页及直播间封面，支持手动及实时预览等多种模式，支持点击下载、封面预览、快速复制，可高度自定义
@@ -15,11 +15,11 @@
 // @include         *://www.bilibili.com/medialist/play/watchlater/*
 // @include         *://www.bilibili.com/medialist/play/ml*
 // @include         /https?:\/\/live\.bilibili\.com\/(blanc\/)?\d+([/?]|$)/
-// @require         https://greasyfork.org/scripts/409641-userscriptapi/code/UserscriptAPI.js?version=1161014
-// @require         https://greasyfork.org/scripts/431998-userscriptapidom/code/UserscriptAPIDom.js?version=1161016
-// @require         https://greasyfork.org/scripts/432000-userscriptapimessage/code/UserscriptAPIMessage.js?version=1095149
-// @require         https://greasyfork.org/scripts/432002-userscriptapiwait/code/UserscriptAPIWait.js?version=1161015
-// @require         https://greasyfork.org/scripts/432003-userscriptapiweb/code/UserscriptAPIWeb.js?version=1160007
+// @require         https://update.greasyfork.org/scripts/409641/1161014/UserscriptAPI.js
+// @require         https://update.greasyfork.org/scripts/431998/1161016/UserscriptAPIDom.js
+// @require         https://update.greasyfork.org/scripts/432000/1095149/UserscriptAPIMessage.js
+// @require         https://update.greasyfork.org/scripts/432002/1161015/UserscriptAPIWait.js
+// @require         https://update.greasyfork.org/scripts/432003/1381253/UserscriptAPIWeb.js
 // @grant           GM_download
 // @grant           GM_notification
 // @grant           GM_xmlhttpRequest
