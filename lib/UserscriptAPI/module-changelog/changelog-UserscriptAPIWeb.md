@@ -1,5 +1,9 @@
 # UserscriptAPIWeb 更新日志
 
+## V1.4
+
+1. 模块：支持请求预处理 `preproc`。通过 `api.options.web.preproc = (xhr: GM_XHR) => void` 进行设置。
+
 ## V1.3
 
 1. 代码：`unicorn/prefer-at`。（此项更新变更了兼容性要求）
