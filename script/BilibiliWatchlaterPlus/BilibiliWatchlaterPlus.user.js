@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.36.1.20240523
+// @version         4.36.2.20240523
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -1309,7 +1309,7 @@
             </div>`,
           })
           itemsHTML += getItemHTML('脚本设置', {
-            desc: '追加 Cookie（仅针对 api.bilibili.com）。主要用于修复极个别用户 HttpOnly Cookie 没有被请求携带的问题，也可用于随意追加或改写 Cookie 以达到更多目的，正常情况下没有必要也不要使用！',
+            desc: '追加 Cookie（仅针对 api.bilibili.com）。主要用于修复极个别用户 HttpOnly Cookie 没有被请求携带的问题，也可用于随意追加或覆盖 Cookie 以达到更多目的，正常情况下没有必要也不要使用！',
             html: `<div>
               <span>追加 Cookie：</span>
               <input id="gm-appendCookies" type="text" value="${gm.configMap.appendCookies.default}" style="font-family:var(--${gm.id}-code-font-family)">
@@ -1442,9 +1442,10 @@
           el.acInformation = gm.el.setting.querySelector('#gm-acInformation')
           api.message.hoverInfo(el.acInformation, `
             <div style="line-height:1.6em">
+              <p>该功能主要用于修复极个别用户 HttpOnly Cookie 没有被请求携带的问题，正常情况下没有必要也不要使用！</p>
               <p>如果出现脚本无法使用的情况，响应中出现「账号未登录」信息，极有可能是 HttpOnly Cookie 没有被请求携带导致的。该现象出现原因不明，无法复现。</p>
               <p>将该项设置为 <code>SESSDATA</code>，脚本将在发送给 <code>api.bilibili.com</code> 的请求中追加 <code>SESSDATA</code> Cookie 以解决该问题，但该功能需要脚本管理器支持 <code>GM.cookie</code> API（建议使用 Tampermonkey BETA 版本）。或者手动设置 <code>SESSDATA</code>，格式为 <code>SESSDATA=A1B2C3D4E5</code> （注意 <code>SESSDATA</code> 需定期更新以避免过期）。</p>
-              <p>当然该设置项可以随意追加或改写 Cookie 以达到更多目的，格式为 <code>a=1;b=2;c=3;d=4</code> 。</p>
+              <p>当然也可以随意追加或覆盖 Cookie 以达到更多目的，格式为 <code>a=1;b=2;c=3;d=4</code> 。</p>
             </div>
           `, null, { width: '36em', flagSize: '2em' })
 

@@ -4,7 +4,7 @@
 
 ## V4.36
 
-1. 追加 Cookie：功能实现。主要用于修复极个别用户 HttpOnly Cookie 没有被请求携带的问题，该现象出现原因不明，无法复现。当然该功能可以用于随意追加或改写 Cookie 以达到更多目的。[395456#comment-244481](https://greasyfork.org/zh-CN/scripts/395456/discussions/244481)
+1. 追加 Cookie：功能实现。主要用于修复极个别用户 HttpOnly Cookie 没有被请求携带的问题，该现象出现原因不明，无法复现。当然该功能可以用于随意追加或覆盖 Cookie 以达到更多目的。[395456#comment-244481](https://greasyfork.org/zh-CN/scripts/395456/discussions/244481)
 2. 移除记录：放开稍后再看历史数据保存数限制，增大「不重复数据记录保存数」默认值，以在使用上适配B站稍后再看容量限制的开放。
 3. 外部：`UserScriptAPIWeb` 更新至 V1.4。
 
