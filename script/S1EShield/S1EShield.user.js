@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            S1战斗力屏蔽
-// @version         3.9.6.20240522
+// @version         3.10.0.20240524
 // @namespace       laster2800
 // @author          Laster2800
 // @description     屏蔽S1的战斗力系统，眼不见为净
@@ -123,8 +123,8 @@
         padding-right: 1em;
       }
       /* 帖子列表中，加分或减分帖子后的大拇指标志 */
-      ${enabledSelector} img[alt=agree],
-      ${enabledSelector} img[alt=disagree] {
+      ${enabledSelector} .fico-thumbup,
+      ${enabledSelector} .fico-thumbdown {
         display: none;
       }
     `)
