@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.36.3.20240523
+// @version         4.36.4.20240608
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -3141,7 +3141,7 @@
           api.logger.info('ITEM 内容结构如下：')
           api.logger.info(data[0])
         }
-        input.value = `// 不需要的配置直接删除行即可，缺省配置会使用默认值\n// 使用 \${} 引用变量，配合单引号 '' 或双引号 "" 使用（而非反引号 \`\`）\n// - \${INDEX}: 稿件在列表中的位置（从 1 开始）\n// - \${ITEMS}: 稿件项目数组\n// -  \${ITEM}: 稿件项目\n${ref}\n导出至剪贴板 = 否\n导出至新页面 = 否\n导出至文件 = 是\n导出文件名 = '稍后再看列表.\${Date.now()}.txt' // 注意文件名是否合法\n相邻稿件换行 = 是\n\n前置内容 = '稍后再看列表@\${new Date().toLocaleString()}\\n'\n后置内容 = '\\n--------------- 共 \${ITEMS.length} 个稿件 ---------------'\n稿件导出模板 = '[\${INDEX}] www.bilibili.com/video/\${ITEM.bvid}'`
+        input.value = `// 右键点击稍后再看列表页面的「导出列表」按钮可快速打开此设置框\n\n// 不需要的配置直接删除行即可，缺省配置会使用默认值\n// 使用 \${} 引用变量，配合单引号 '' 或双引号 "" 使用（而非反引号 \`\`）\n// - \${INDEX}: 稿件在列表中的位置（从 1 开始）\n// - \${ITEMS}: 稿件项目数组\n// -  \${ITEM}: 稿件项目\n${ref}\n导出至剪贴板 = 否\n导出至新页面 = 否\n导出至文件 = 是\n导出文件名 = '稍后再看列表.\${Date.now()}.txt' // 注意文件名是否合法\n相邻稿件换行 = 是\n\n前置内容 = '稍后再看列表@\${new Date().toLocaleString()}\\n'\n后置内容 = '\\n--------------- 共 \${ITEMS.length} 个稿件 ---------------'\n稿件导出模板 = '[\${INDEX}] www.bilibili.com/video/\${ITEM.bvid}'\n\n// 可在此处通过 JavaScript 代码进行导出前的准备操作\n// 示例：按稿件硬币数进行排序，随后按此顺序导出（取消注释以使用）\n// ITEMS.sort((a, b) => a.stat.coin - b.stat.coin) // 实际编写时建议增加异常处理`
       })
       reset.addEventListener('click', () => {
         input.value = gm.const.exportWatchlaterList_default
