@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站封面获取
-// @version         5.10.5.20240522
+// @version         5.10.6.20240629
 // @namespace       laster2800
 // @author          Laster2800
 // @description     获取B站各播放页及直播间封面，支持手动及实时预览等多种模式，支持点击下载、封面预览、快速复制，可高度自定义
@@ -640,20 +640,24 @@
           onMouseleave()
         })
 
-        // 根据宽高比设置不同样式
-        preview.addEventListener('load', () => {
-          if (preview.width > preview.height) {
-            if (preview.naturalWidth < window.innerWidth) {
-              preview.style.width = `${preview.naturalWidth * 1.5}px`
+        // 当图像太小时，放大以避免预览效果不佳
+        const enlarge = () => {
+          const widthCap = window.innerWidth * 0.65
+          const heightCap = window.innerHeight * 0.8
+          if (preview.naturalWidth / preview.naturalHeight > widthCap / heightCap) {
+            if (preview.naturalWidth < widthCap) {
+              preview.style.width = `${preview.naturalWidth * 1.5}px` // 限制图像放大倍率为 150%
             }
             preview.style.height = ''
           } else {
-            if (preview.naturalHeight < window.innerHeight) {
+            if (preview.naturalHeight < heightCap) {
               preview.style.height = `${preview.naturalHeight * 1.5}px`
             }
             preview.style.width = ''
           }
-        })
+        }
+        preview.addEventListener('load', enlarge)
+        window.addEventListener('resize', api.base.throttle(enlarge))
 
         return preview
       },
