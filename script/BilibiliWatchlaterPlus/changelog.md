@@ -2,6 +2,10 @@
 
 本日志只记录用户友好的更新说明，影响不大的问题修复与修改不作记录，具体修改见 [提交记录](https://gitee.com/liangjiancang/userscript/commits/master/script/BilibiliWatchlaterPlus)。
 
+## V4.37
+
+1. 脚本：升级 `bvTool` 至群众最新研究成果。目前应该能完美匹配B站内部的 AV/BV 互转算法。
+
 ## V4.36
 
 1. 追加 Cookie：功能实现。主要用于修复极个别用户 HttpOnly Cookie 没有被请求携带的问题，该现象出现原因不明，无法复现。当然该功能可以用于随意追加或覆盖 Cookie 以达到更多目的。[395456#comment-244481](https://greasyfork.org/zh-CN/scripts/395456/discussions/244481)

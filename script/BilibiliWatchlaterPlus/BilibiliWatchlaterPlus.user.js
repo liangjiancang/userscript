@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.36.4.20240608
+// @version         4.37.0.20240705
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -3205,46 +3205,40 @@
       /**
        * av/bv 互转工具类
        *
-       * 原始算法保证 av < 2 ** 27 时正确，同时应该在 av < 2 ** 30 时正确。2024 年 1 月底，B站引入大于 2 ** 30 的 AV 号，暂时只需略微修改，在这种情况时加 / 减 2 ** 31 即可。
-       *
-       * 结合 `xor` 与 `add` 可推断出，运算过程中不会出现超过 `2 ** 34 - 1` 的数值，远不会触及到 `Number.MAX_SAFE_INTEGER === 2 ** 53 - 1`，故无须引入 BigInt 进行计算。
-       * @see {@link https://www.zhihu.com/question/381784377/answer/1099438784 如何看待 2020 年 3 月 23 日哔哩哔哩将稿件的「av 号」变更为「BV 号」？ - 知乎 - mcfx 的回答}
+       * 转换算法最初由知乎用户 {@link https://www.zhihu.com/people/-._.- mcfx} 破解：{@link https://www.zhihu.com/question/381784377/answer/1099438784 如何看待 2020 年 3 月 23 日哔哩哔哩将稿件的「av 号」变更为「BV 号」？ - 知乎 - mcfx 的回答}，但只支持 av < 2 ** 30 的情况。更完善的算法来自B站上的某个 JavaScript 文件，另 GitHub 上也有一份员工泄露版——但不管怎么说，目前版本应该就是B站实际使用版本，AV 最大值为 2 ** 51。
+       * @see {@link https://github.com/SocialSisterYi/bilibili-API-collect/blob/master/docs/misc/bvid_desc.md SocialSisterYi/bilibili-API-collect · bvid说明}
        */
       bvTool: new class BvTool {
         constructor() {
-          const table = 'fZodR9XQDSUm21yCkr6zBqiveYah8bt4xsWpHnJE7jL5VG3guMTKNPAwcF'
-          const tr = Object.fromEntries([...table].map((c, i) => [c, i]))
-          const s = [11, 10, 3, 8, 4, 6]
-          const xor = 177451812
-          const add = 8728348608
-          const tl = table.length
-          const sl = s.length
-          this.bv2av = dec
-          this.av2bv = enc
+          const XOR_CODE = 23442827791579n
+          const MASK_CODE = 2251799813685247n
+          const MAX_AID = 1n << 51n
+          const BASE = 58n
+          const data = 'FcwAPNKTMug3GV5Lj7EJnHpWsx4tb8haYeviqBz6rkCy12mUSDQX9RdoZf'
+          this.av2bv = av2bv
+          this.bv2av = bv2av
 
-          function dec(x) {
-            let r = 0
-            for (let i = 0; i < sl; i++) {
-              r += tr[x[s[i]]] * tl ** i
+          function av2bv(aid) {
+            const bytes = ['B', 'V', '1', '0', '0', '0', '0', '0', '0', '0', '0', '0']
+            let bvIndex = bytes.length - 1
+            let tmp = (MAX_AID | BigInt(aid)) ^ XOR_CODE
+            while (tmp > 0) {
+              bytes[bvIndex] = data[Number(tmp % BigInt(BASE))]
+              tmp /= BASE
+              bvIndex -= 1
             }
-            r = (r - add) ^ xor
-            if (r < 0) {
-              r += 2 ** 31
-            }
-            return String(r)
+            [bytes[3], bytes[9]] = [bytes[9], bytes[3]];
+            [bytes[4], bytes[7]] = [bytes[7], bytes[4]]
+            return bytes.join('')
           }
 
-          function enc(x) {
-            x = Number.parseInt(x)
-            if (x > 2 ** 30) {
-              x -= 2 ** 31
-            }
-            x = (x ^ xor) + add
-            const r = [...'BV1  4 1 7  ']
-            for (let i = 0; i < sl; i++) {
-              r[s[i]] = table[Math.floor(x / tl ** i) % tl]
-            }
-            return r.join('')
+          function bv2av(bvid) {
+            const bvidArr = [...bvid];
+            [bvidArr[3], bvidArr[9]] = [bvidArr[9], bvidArr[3]];
+            [bvidArr[4], bvidArr[7]] = [bvidArr[7], bvidArr[4]]
+            bvidArr.splice(0, 3)
+            const tmp = bvidArr.reduce((pre, bvidChar) => pre * BASE + BigInt(data.indexOf(bvidChar)), 0n)
+            return Number((tmp & MASK_CODE) ^ XOR_CODE)
           }
         }
       }(),
@@ -3712,9 +3706,6 @@
           try {
             // 「消息」间距优化
             anchor.parentElement.querySelector('.right-entry--message.right-entry__outside').classList.remove('right-entry__outside')
-            // 「收藏」间距优化
-            collect.querySelector('.header-favorite-container').style.minWidth = 'unset'
-            collect.querySelector('.header-favorite-container__down').style.display = 'none' // 「收藏」下藏着一个没有作用的「稍后再看」，会影响到顶栏的布局
           } catch (e) {
             api.logger.error(e)
           }
