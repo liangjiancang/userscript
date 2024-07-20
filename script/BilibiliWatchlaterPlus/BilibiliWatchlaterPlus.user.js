@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.37.0.20240705
+// @version         4.37.1.20240720
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -3238,7 +3238,7 @@
             [bvidArr[4], bvidArr[7]] = [bvidArr[7], bvidArr[4]]
             bvidArr.splice(0, 3)
             const tmp = bvidArr.reduce((pre, bvidChar) => pre * BASE + BigInt(data.indexOf(bvidChar)), 0n)
-            return Number((tmp & MASK_CODE) ^ XOR_CODE)
+            return String((tmp & MASK_CODE) ^ XOR_CODE)
           }
         }
       }(),
@@ -4648,72 +4648,54 @@
       }
       if (api.base.urlMatch(gm.regex.page_dynamicMenu)) { // 必须在动态页之前匹配
         fillWatchlaterStatus_dynamicMenu() // 旧版动态面板
-      } else {
-        if (api.base.urlMatch(gm.regex.page_dynamic)) {
-          if (location.pathname === '/') { // 仅动态主页
-            api.wait.$('.bili-dyn-list').then(async () => {
-              api.wait.executeAfterElementLoaded({
-                selector: '.bili-dyn-list-tabs__item:not(#gm-batch-manager-btn)',
-                base: await api.wait.$('.bili-dyn-list-tabs__list'),
-                multiple: true,
-                callback: tab => {
-                  tab.addEventListener('click', refillDynamicWatchlaterStatus)
-                },
-              })
-              fillWatchlaterStatus_dynamic()
-            })
-          }
-        } else if (api.base.urlMatch(gm.regex.page_userSpace)) {
-          // 虽然长得跟动态主页一样，但这里用的是老代码，不过估计拖个半年又会改成跟动态主页一样吧……
-          // 用户空间中也有动态，但用户未必切换到动态子页，故需长时间等待
-          api.wait.waitForElementLoaded({
-            selector: '.feed-card',
-            timeout: 0,
-          }).then(async () => {
-            await initMap()
+        return
+      }
+      if (api.base.urlMatch(gm.regex.page_dynamic)) {
+        if (location.pathname === '/') { // 仅动态主页
+          api.wait.$('.bili-dyn-list').then(async () => {
             api.wait.executeAfterElementLoaded({
-              selector: '.video-container',
-              base: await api.wait.$('.feed-card'),
+              selector: '.bili-dyn-list-tabs__item:not(#gm-batch-manager-btn)',
+              base: await api.wait.$('.bili-dyn-list-tabs__list'),
               multiple: true,
-              repeat: true,
-              timeout: 0,
-              callback: video => {
-                const vue = video.__vue__
-                if (vue) {
-                  const aid = String(vue.aid)
-                  if (map.has(aid)) {
-                    vue.seeLaterStatus = 1
-                  }
-                }
+              callback: tab => {
+                tab.addEventListener('click', refillDynamicWatchlaterStatus)
               },
             })
+            fillWatchlaterStatus_dynamic()
           })
+        }
+      } else if (api.base.urlMatch(gm.regex.page_userSpace)) {
+        api.wait.$('.bili-dyn-list').then(() => {
+          api.wait.$('#navigator .n-btn.n-dynamic').then(btn => {
+            btn.addEventListener('click', refillDynamicWatchlaterStatus)
+          })
+          fillWatchlaterStatus_dynamic()
+        })
 
-          if (gm.config.fillWatchlaterStatus === Enums.fillWatchlaterStatus.anypage) {
-            fillWatchlaterStatus_main()
-          }
-        } else {
-          // 两部分 URL 刚好不会冲突，放到 else 中即可
-          switch (gm.config.fillWatchlaterStatus) {
-            case Enums.fillWatchlaterStatus.dynamicAndVideo: {
-              if (api.base.urlMatch([gm.regex.page_videoNormalMode, gm.regex.page_videoWatchlaterMode, gm.regex.page_listMode])) {
-                fillWatchlaterStatus_main()
-              }
-              break
-            }
-            case Enums.fillWatchlaterStatus.anypage: {
+        if (gm.config.fillWatchlaterStatus === Enums.fillWatchlaterStatus.anypage) {
+          fillWatchlaterStatus_main()
+        }
+      } else {
+        // 两部分 URL 刚好不会冲突，放到 else 中即可
+        switch (gm.config.fillWatchlaterStatus) {
+          case Enums.fillWatchlaterStatus.dynamicAndVideo: {
+            if (api.base.urlMatch([gm.regex.page_videoNormalMode, gm.regex.page_videoWatchlaterMode, gm.regex.page_listMode])) {
               fillWatchlaterStatus_main()
-              break
             }
-            default: {
-              break
-            }
+            break
+          }
+          case Enums.fillWatchlaterStatus.anypage: {
+            fillWatchlaterStatus_main()
+            break
+          }
+          default: {
+            break
           }
         }
-        fillWatchlaterStatus_dynamicPopup()
-
-        window.addEventListener('reloadWatchlaterListData', api.base.debounce(refillDynamicWatchlaterStatus, 2000))
       }
+      fillWatchlaterStatus_dynamicPopup()
+
+      window.addEventListener('reloadWatchlaterListData', api.base.debounce(refillDynamicWatchlaterStatus, 2000))
 
       /**
        * 填充动态页稍后再看状态
@@ -4751,16 +4733,19 @@
 
       /**
        * 填充动态面板稍后再看状态
+       *
+       * 注意：这里只是简单修改显示效果，内部状态没有被修改。因此当用户第一次点击稍后再看控件，控件会继续显示「✓」状态，
+       *    且此时内部状态真正被修改为「稍后再看」状态。
        */
       async function fillWatchlaterStatus_dynamicPopup() {
         await initMap()
         api.wait.executeAfterElementLoaded({
-          selector: '.dynamic-video-item',
+          selector: '.dynamic-panel-popover .header-dynamic-list-item',
           multiple: true,
           repeat: true,
           timeout: 0,
           callback: async item => {
-            const aid = webpage.method.getAid(item.href)
+            const aid = webpage.method.getAid(item.parentElement.href)
             if (map.has(aid)) {
               // 官方的实现太复杂，这里改一下显示效果算了
               const svg = await api.wait.$('.watch-later svg', item)
@@ -4852,13 +4837,28 @@
 
       /**
        * 重新填充与动态相关的稍后再看状态
+       *
+       * 注意：实际应用中，并没有严格在所有需要更新状态的地方都调用该方法，否则太繁杂了。比如在动态主页点击视频卡片切换稍后再看
+       *     状态，理论上应该更新动态面板，但并没有这么做。
        */
       async function refillDynamicWatchlaterStatus() {
         map = await _self.method.getWatchlaterDataMap(item => String(item.aid), 'aid', true)
 
         // 更新动态主页稍后再看状态
-        if (api.base.urlMatch(gm.regex.page_dynamic)) {
-          // map 更新期间，ob 偷跑可能会将错误的数据写入，重新遍历并修正之
+        if (api.base.urlMatch([gm.regex.page_dynamic, gm.regex.page_userSpace])) {
+          // 对动态主页：map 更新期间，ob 偷跑可能会将错误的数据写入，重新遍历并修正之
+          // 对空间动态：切换 Tab 会导致「空间动态」被销毁，在其生成时要重新执行逻辑
+          if (api.base.urlMatch([gm.regex.page_userSpace])) {
+            // 确保真的已经重新生成了
+            const firstVideo = await api.wait.$('.bili-dyn-list .bili-dyn-card-video')
+            await api.wait.waitForConditionPassed({
+              condition: () => {
+                // 最开始会获得一个 vue 对象，但那个 vue 对象上没有东西且会被替换，因此要将这一过程放在条件判断中而不能拆分
+                const vue = firstVideo.__vue__
+                return vue && vue.data.aid && vue.mark
+              },
+            })
+          }
           const feed = document.querySelector('.bili-dyn-list') // 更新已有项状态，同步找就行了
           if (feed) {
             for (const video of feed.querySelectorAll('.bili-dyn-card-video')) {
@@ -4872,8 +4872,9 @@
         }
 
         // 更新顶栏动态面板稍后再看状态
-        for (const item of document.querySelectorAll('.dynamic-video-item')) {
-          const aid = webpage.method.getAid(item.href)
+        for (const item of document.querySelectorAll('.dynamic-panel-popover .header-dynamic-list-item')) {
+          const aid = webpage.method.getAid(item.parentElement.href)
+          if (aid == null) continue
           const svg = await api.wait.$('.watch-later svg', item)
           svg.innerHTML = map.has(aid) ? '<path d="M176.725 56.608c1.507 1.508 2.44 3.591 2.44 5.892s-.932 4.384-2.44 5.892l-92.883 92.892c-2.262 2.264-5.388 3.664-8.842 3.664s-6.579-1.4-8.842-3.664l-51.217-51.225a8.333 8.333 0 1 1 11.781-11.785l48.277 48.277 89.942-89.942c1.508-1.507 3.591-2.44 5.892-2.44s4.384.932 5.892 2.44z" fill="currentColor"></path>' : '<path d="M17.5 100c0-45.563 36.937-82.5 82.501-82.5 44.504 0 80.778 35.238 82.442 79.334l-7.138-7.137a7.5 7.5 0 0 0-10.607 10.606l20.001 20a7.5 7.5 0 0 0 10.607 0l20.002-20a7.5 7.5 0 0 0-10.607-10.606l-7.245 7.245c-1.616-52.432-44.63-94.441-97.455-94.441-53.848 0-97.501 43.652-97.501 97.5s43.653 97.5 97.501 97.5c32.719 0 61.673-16.123 79.346-40.825a7.5 7.5 0 0 0-12.199-8.728c-14.978 20.934-39.472 34.553-67.147 34.553-45.564 0-82.501-36.937-82.501-82.5zm109.888-12.922c9.215 5.743 9.215 20.101 0 25.843l-29.62 18.46c-9.215 5.742-20.734-1.436-20.734-12.922V81.541c0-11.486 11.519-18.664 20.734-12.921l29.62 18.459z" fill="currentColor"></path>'
         }
