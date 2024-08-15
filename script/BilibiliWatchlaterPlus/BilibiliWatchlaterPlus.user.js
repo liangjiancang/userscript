@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.37.2.20240816
+// @version         4.37.3.20240816
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -1987,7 +1987,14 @@
           // 后台打开稿件已由浏览器自行完成，这里要追加取消勾选行为
           el.items.addEventListener('mousedown', e => {
             if (e.target.matches(itemLinkSelector) && e.button === 1) {
-              e.target.previousElementSibling.checked = false
+              const cb = e.target.previousElementSibling
+              if (cb.checked) {
+                if (el.uncheckedDisplay._hide) {
+                  setTimeout(() => cb.click(), 300) // 要稍加延迟，否则浏览器会来不及触发中键点击链接的逻辑
+                } else {
+                  cb.checked = false
+                }
+              }
             }
           })
 
