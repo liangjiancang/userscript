@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.37.1.20240720
+// @version         4.37.2.20240816
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -1879,7 +1879,7 @@
                 <div>③ 筛选 <input id="gm-batch-3a" type="text" style="width:10em">，过滤 <input id="gm-batch-3b" type="text" style="width:10em">；支持通配符 ( ? * )，使用 | 分隔关键词<button id="gm-batch-3c" disabled hidden>执行</button></div>
                 <div>④ 将选定稿件添加到稍后再看（平均请求间隔：<input is="laster2800-input-number" id="gm-batch-4a" value="${gm.const.batchAddRequestInterval}" min="250">ms）<button id="gm-batch-4b" disabled>执行</button><button id="gm-batch-4c" disabled>终止</button></div>
               </div>
-              <div class="gm-items"></div>
+              <div class="gm-items" title="鼠标左键：切换勾选状态\n鼠标右键：打开稿件\n鼠标中键：后台打开稿件并取消勾选状态"></div>
               <div class="gm-bottom"><div>
                 <button id="gm-last-add-time">时间同步</button>
                 <button id="gm-unchecked-display"></button>
@@ -1963,6 +1963,33 @@
         const processItem = () => {
           gm.el.batchAddManager.fadeInDisplay = 'flex'
           el.shadow.addEventListener('click', () => this.closePanelItem('batchAddManager'))
+
+          // 处理鼠标与加载出来的稿件项目的交互
+          const itemLinkSelector = '.gm-item input + a'
+          // 鼠标左键：切换勾选状态
+          // 阻止左键触发链接点击行为，并还原点击标签内元素切换复选框状态的行为
+          el.items.addEventListener('click', e => {
+            if (e.target.matches(itemLinkSelector)) {
+              e.preventDefault()
+              e.target.previousElementSibling.click()
+            }
+          }, true)
+          // 鼠标右键：打开稿件
+          el.items.addEventListener('contextmenu', e => {
+            if (e.target.matches(itemLinkSelector)) {
+              e.preventDefault()
+              if (e.target.href.length > 0) {
+                window.open(e.target.href)
+              }
+            }
+          })
+          // 鼠标中键：后台打开稿件并取消勾选状态
+          // 后台打开稿件已由浏览器自行完成，这里要追加取消勾选行为
+          el.items.addEventListener('mousedown', e => {
+            if (e.target.matches(itemLinkSelector) && e.button === 1) {
+              e.target.previousElementSibling.checked = false
+            }
+          })
 
           // 时间同步
           const setLastAddTime = (time = null, writeBack = true) => {
@@ -2180,7 +2207,9 @@
                       avSet.add(aid)
                       const uncheck = history?.has(aid)
                       const displayNone = uncheck && el.uncheckedDisplay._hide
-                      html = `<label class="gm-item" data-aid="${aid}" data-timestamp="${ts}"${fwSrcHint ? ` data-src-hint="${fwSrcHint}" ` : ''}${displayNone ? ' style="display:none"' : ''}><input type="checkbox"${uncheck ? '' : ' checked'}> <span>${author.label ? `[${author.label}]` : ''}[${author.name}] ${core.title}</span>${fwSrc ? `<a href="${fwSrc}" target="_blank">来源</a>` : ''}</label>` + html
+                      const bvid = webpage.method.bvTool.av2bv(aid)
+                      const hrefStr = bvid ? ` href=${gm.url.page_videoNormalMode}/${bvid}` : ''
+                      html = `<label class="gm-item" data-aid="${aid}" data-timestamp="${ts}"${fwSrcHint ? ` data-src-hint="${fwSrcHint}" ` : ''}${displayNone ? ' style="display:none"' : ''}><input type="checkbox"${uncheck ? '' : ' checked'}> <a${hrefStr}>${author.label ? `[${author.label}]` : ''}[${author.name}] ${core.title}</a>${fwSrc ? `<a href="${fwSrc}" target="_blank">来源</a>` : ''}</label>` + html
                     }
                   }
                 }
@@ -2260,7 +2289,9 @@
                     tsS = Math.round(Number.parseInt(tsMs) / 1000)
                   }
                 }
-                html = `<label class="gm-item" data-aid="${aid}" data-timestamp="${tsS ?? ''}" data-search-str="${source ?? ''} ${title ?? ''}"${displayNone ? ' style="display:none"' : ''}${disabledStr}><input type="checkbox"${uncheck ? '' : ' checked'}${disabledStr}> <span>${source ? `[${source}] ` : ''}${title ?? `AV${aid}`}</span></label>` + html
+                const bvid = webpage.method.bvTool.av2bv(aid)
+                const hrefStr = bvid ? ` href=${gm.url.page_videoNormalMode}/${bvid}` : ''
+                html = `<label class="gm-item" data-aid="${aid}" data-timestamp="${tsS ?? ''}" data-search-str="${source ?? ''} ${title ?? ''}"${displayNone ? ' style="display:none"' : ''}${disabledStr}><input type="checkbox"${uncheck ? '' : ' checked'}${disabledStr}> <a${hrefStr}>${source ? `[${source}] ` : ''}${title ?? `AV${aid}`}</a></label>` + html
               }
             }
             el.items.insertAdjacentHTML('afterbegin', html)
@@ -2384,7 +2415,9 @@
                       const uncheck = history?.has(aid) || exist
                       const displayNone = uncheck && el.uncheckedDisplay._hide
                       const disabledStr = exist ? ' disabled' : ''
-                      html = `<label class="gm-item" data-aid="${aid}" data-timestamp="${gm.config.batchAddUsingFavTime ? item.fav_time : item.pubtime}"${displayNone ? ' style="display:none"' : ''}${disabledStr}><input type="checkbox"${uncheck ? '' : ' checked'}${disabledStr}> <span>[${source}][${item.upper.name}] ${item.title}</span></label>` + html
+                      const bvid = webpage.method.bvTool.av2bv(aid)
+                      const hrefStr = bvid ? ` href=${gm.url.page_videoNormalMode}/${bvid}` : ''
+                      html = `<label class="gm-item" data-aid="${aid}" data-timestamp="${gm.config.batchAddUsingFavTime ? item.fav_time : item.pubtime}"${displayNone ? ' style="display:none"' : ''}${disabledStr}><input type="checkbox"${uncheck ? '' : ' checked'}${disabledStr}> <a${hrefStr}>[${source}][${item.upper.name}] ${item.title}</a></label>` + html
                     }
                     el.items.insertAdjacentHTML('afterbegin', html)
                     if (!has_more) continue id1fFavLoop
@@ -3219,26 +3252,34 @@
           this.bv2av = bv2av
 
           function av2bv(aid) {
-            const bytes = ['B', 'V', '1', '0', '0', '0', '0', '0', '0', '0', '0', '0']
-            let bvIndex = bytes.length - 1
-            let tmp = (MAX_AID | BigInt(aid)) ^ XOR_CODE
-            while (tmp > 0) {
-              bytes[bvIndex] = data[Number(tmp % BigInt(BASE))]
-              tmp /= BASE
-              bvIndex -= 1
+            try {
+              const bytes = ['B', 'V', '1', '0', '0', '0', '0', '0', '0', '0', '0', '0']
+              let bvIndex = bytes.length - 1
+              let tmp = (MAX_AID | BigInt(aid)) ^ XOR_CODE
+              while (tmp > 0) {
+                bytes[bvIndex] = data[Number(tmp % BigInt(BASE))]
+                tmp /= BASE
+                bvIndex -= 1
+              }
+              [bytes[3], bytes[9]] = [bytes[9], bytes[3]];
+              [bytes[4], bytes[7]] = [bytes[7], bytes[4]]
+              return bytes.join('')
+            } catch {
+              return null
             }
-            [bytes[3], bytes[9]] = [bytes[9], bytes[3]];
-            [bytes[4], bytes[7]] = [bytes[7], bytes[4]]
-            return bytes.join('')
           }
 
           function bv2av(bvid) {
-            const bvidArr = [...bvid];
-            [bvidArr[3], bvidArr[9]] = [bvidArr[9], bvidArr[3]];
-            [bvidArr[4], bvidArr[7]] = [bvidArr[7], bvidArr[4]]
-            bvidArr.splice(0, 3)
-            const tmp = bvidArr.reduce((pre, bvidChar) => pre * BASE + BigInt(data.indexOf(bvidChar)), 0n)
-            return String((tmp & MASK_CODE) ^ XOR_CODE)
+            try {
+              const bvidArr = [...bvid];
+              [bvidArr[3], bvidArr[9]] = [bvidArr[9], bvidArr[3]];
+              [bvidArr[4], bvidArr[7]] = [bvidArr[7], bvidArr[4]]
+              bvidArr.splice(0, 3)
+              const tmp = bvidArr.reduce((pre, bvidChar) => pre * BASE + BigInt(data.indexOf(bvidChar)), 0n)
+              return String((tmp & MASK_CODE) ^ XOR_CODE)
+            } catch {
+              return null
+            }
           }
         }
       }(),
@@ -6831,6 +6872,15 @@
           }
           #${gm.id} .gm-batchAddManager .gm-items .gm-item input {
             vertical-align: -0.15em;
+          }
+          #${gm.id} .gm-batchAddManager .gm-items .gm-item input + a,
+          #${gm.id} .gm-batchAddManager .gm-items .gm-item input + a:hover,
+          #${gm.id} .gm-batchAddManager .gm-items .gm-item input + a:link,
+          #${gm.id} .gm-batchAddManager .gm-items .gm-item input + a:visited,
+          #${gm.id} .gm-batchAddManager .gm-items .gm-item input + a:active {
+            text-decoration: inherit;
+            color:inherit;
+            font-weight: inherit;
           }
           #${gm.id} .gm-batchAddManager .gm-items .gm-item a {
             margin-left: 0.5em;
