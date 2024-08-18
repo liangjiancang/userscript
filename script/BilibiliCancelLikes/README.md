@@ -2,7 +2,7 @@
 
 相关脚本：**[B站稍后再看功能增强](https://greasyfork.org/zh-CN/scripts/395456)**、**[B站封面获取](https://greasyfork.org/zh-CN/scripts/395575)**、**[B站共同关注快速查看](https://greasyfork.org/zh-CN/scripts/428453)**
 
-其他脚本：**[[DEBUG] 信息显式化](https://greasyfork.org/zh-CN/scripts/429521)**、**[S1战斗力屏蔽](https://greasyfork.org/zh-CN/scripts/394407)**，以及 **[杂项](https://greasyfork.org/zh-CN/scripts?language=all&set=470770)**
+其他脚本：**[[DEBUG] 信息显式化](https://greasyfork.org/zh-CN/scripts/429521)**，以及 **[杂项](https://greasyfork.org/zh-CN/scripts?language=all&set=470770)**
 
 忽然反感以前非常喜欢的某个UP主是一个常见现象，一想到之前给他点了这么多赞就觉得很不爽。手动把这些点赞一一取消非常麻烦，而且你会发现有一些明明点赞过的视频显示没有点赞，且点赞按钮无法正常工作——该脚本旨在解决这一困惑。求好评，求收藏💔。点击查看 [更新日志](https://gitee.com/liangjiancang/userscript/blob/master/script/BilibiliCancelLikes/changelog.md)。
 
