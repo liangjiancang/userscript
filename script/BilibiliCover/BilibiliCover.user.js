@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站封面获取
-// @version         5.10.6.20240629
+// @version         5.10.7.20240827
 // @namespace       laster2800
 // @author          Laster2800
 // @description     获取B站各播放页及直播间封面，支持手动及实时预览等多种模式，支持点击下载、封面预览、快速复制，可高度自定义
@@ -15,7 +15,7 @@
 // @include         *://www.bilibili.com/medialist/play/watchlater/*
 // @include         *://www.bilibili.com/medialist/play/ml*
 // @include         /https?:\/\/live\.bilibili\.com\/(blanc\/)?\d+([/?]|$)/
-// @require         https://update.greasyfork.org/scripts/409641/1161014/UserscriptAPI.js
+// @require         https://update.greasyfork.org/scripts/409641/1435266/UserscriptAPI.js
 // @require         https://update.greasyfork.org/scripts/431998/1161016/UserscriptAPIDom.js
 // @require         https://update.greasyfork.org/scripts/432000/1095149/UserscriptAPIMessage.js
 // @require         https://update.greasyfork.org/scripts/432002/1161015/UserscriptAPIWait.js

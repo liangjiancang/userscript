@@ -13,6 +13,7 @@
 3. 代码：`unicorn/prefer-string-replace-all`。
 4. 脚本：更新兼容性说明。
 5. 视频：适配B站新版各播放页面修改。
+6. 外部：`UserScriptAPIBase` 更新至 V1.3。
 
 ## V5.9
 

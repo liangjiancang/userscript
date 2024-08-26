@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.37.3.20240816
+// @version         4.37.4.20240827
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -18,7 +18,7 @@
 // @exclude         *://t.bilibili.com/h5/*
 // @exclude         *://www.bilibili.com/correspond/*
 // @exclude         *://www.bilibili.com/page-proxy/*
-// @require         https://update.greasyfork.org/scripts/409641/1161014/UserscriptAPI.js
+// @require         https://update.greasyfork.org/scripts/409641/1435266/UserscriptAPI.js
 // @require         https://update.greasyfork.org/scripts/431998/1161016/UserscriptAPIDom.js
 // @require         https://update.greasyfork.org/scripts/432000/1095149/UserscriptAPIMessage.js
 // @require         https://update.greasyfork.org/scripts/432002/1161015/UserscriptAPIWait.js

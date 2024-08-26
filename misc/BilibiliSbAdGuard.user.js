@@ -1,7 +1,7 @@
 /* eslint-disable strict */
 // ==UserScript==
 // @name            B站顽固广告清除
-// @version         1.1.1.20240522
+// @version         1.1.2.20240827
 // @namespace       laster2800
 // @author          Laster2800
 // @description     清除B站那些无法通过 AdGuard 等扩展移除的广告（普通广告不处理）
@@ -11,7 +11,7 @@
 // @license         LGPL-3.0
 // @noframes
 // @include         *://search.bilibili.com/*
-// @require         https://update.greasyfork.org/scripts/409641/1161014/UserscriptAPI.js
+// @require         https://update.greasyfork.org/scripts/409641/1435266/UserscriptAPI.js
 // @require         https://update.greasyfork.org/scripts/432002/1161015/UserscriptAPIWait.js
 // @grant           none
 // @run-at          document-start
