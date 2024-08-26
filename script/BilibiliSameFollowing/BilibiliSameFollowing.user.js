@@ -476,7 +476,6 @@
         user: '#avatar',
         info: '#content',
       })
-      debugger
       webpage.addStyle(bup.shadowRoot)
     }
 
