@@ -1,5 +1,13 @@
 # [B站点赞批量取消](https://greasyfork.org/zh-CN/scripts/445754)
 
+## @Deprecated
+
+由于核心接口 `api.bilibili.com/x/space/arc/search` 被禁用，需要改为使用 Wbi 签名鉴权的 `api.bilibili.com/x/space/wbi/arc/search`，多少有点小题大做了。暂时封存起来，看以后有没有缘再改吧。
+
+参考：[WBI 签名](https://github.com/SocialSisterYi/bilibili-API-collect/blob/master/docs/misc/sign/wbi.md)
+
+---
+
 相关脚本：**[B站稍后再看功能增强](https://greasyfork.org/zh-CN/scripts/395456)**、**[B站封面获取](https://greasyfork.org/zh-CN/scripts/395575)**、**[B站共同关注快速查看](https://greasyfork.org/zh-CN/scripts/428453)**
 
 其他脚本：**[[DEBUG] 信息显式化](https://greasyfork.org/zh-CN/scripts/429521)**，以及 **[杂项](https://greasyfork.org/zh-CN/scripts?language=all&set=470770)**

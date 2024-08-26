@@ -1,6 +1,6 @@
 // ==UserScript==
-// @name            B站点赞批量取消
-// @version         1.2.11.20240522
+// @name            B站点赞批量取消@Deprecated
+// @version         1.2.12@Deprecated.20240826
 // @namespace       laster2800
 // @author          Laster2800
 // @description     取消对于某个UP主的所有点赞
