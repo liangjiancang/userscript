@@ -1,5 +1,9 @@
 # UserscriptAPIBase 更新日志
 
+## V1.3
+
+1. `addStyle()`：`doc` 参数支持 `DocumentFragment`。
+
 ## V1.2
 
 1. `initUrlchangeEvent()`：完善涉及捕获冒泡、执行顺序等细节的处理，并支持事件处理器属性 `window.onurlchange`，使其达到原生事件的标准。
