@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站共同关注快速查看
-// @version         1.13.7.20240522
+// @version         1.14.0.20240827
 // @namespace       laster2800
 // @author          Laster2800
 // @description     快速查看与特定用户的共同关注（视频播放页、动态页、用户空间、直播间）
@@ -16,7 +16,7 @@
 // @exclude         *://www.bilibili.com/correspond/*
 // @exclude         *://www.bilibili.com/page-proxy/*
 // @exclude         *://t.bilibili.com/*/*
-// @require         https://update.greasyfork.org/scripts/409641/1161014/UserscriptAPI.js
+// @require         https://update.greasyfork.org/scripts/409641/1435266/UserscriptAPI.js
 // @require         https://update.greasyfork.org/scripts/432002/1161015/UserscriptAPIWait.js
 // @require         https://update.greasyfork.org/scripts/432003/1381253/UserscriptAPIWeb.js
 // @grant           GM_notification
@@ -256,7 +256,7 @@
     /**
      * 卡片处理逻辑
      * @param {Object} options 选项
-     * @param {string} [options.container] 卡片父元素选择器，缺省时取 `document.body`
+     * @param {string | { querySelector: Function }} [options.container] 卡片父元素（选择器），缺省时取 `document.body`
      * @param {string} options.card 卡片元素选择器
      * @param {string} options.user 用户元素选择器
      * @param {string} options.info 信息元素选择器
@@ -266,7 +266,12 @@
      */
     async cardLogic(options) {
       options = { lazy: true, ancestor: false, ...options }
-      const container = options.container ? await api.wait.$(options.container) : (document.body ?? await api.wait.$('body'))
+      let container = null
+      if (options?.container?.querySelector instanceof Function) {
+        container = options.container
+      } else {
+        container = options.container ? await api.wait.$(options.container) : (document.body ?? await api.wait.$('body'))
+      }
       api.wait.executeAfterElementLoaded({
         selector: options.card,
         base: container,
@@ -461,6 +466,21 @@
     }
 
     /**
+     * 初始化 <bili-user-profile> 处理
+     */
+    async initBiliUserProfile() {
+      const bup = await api.wait.$('bili-user-profile')
+      webpage.cardLogic({
+        container: bup.shadowRoot,
+        card: '#view',
+        user: '#avatar',
+        info: '#content',
+      })
+      debugger
+      webpage.addStyle(bup.shadowRoot)
+    }
+
+    /**
      * 初始化动态页
      *
      * 针对 (左方「正在直播」 + 动态所有者 + 被转发动态所有者) 的用户卡片。
@@ -541,7 +561,7 @@
       ob.observe(usernameEl, { childList: true, subtree: true })
     }
 
-    addStyle() {
+    addStyle(doc = document) {
       api.base.addStyle(`
         .${gm.id} > * {
           display: inline-block;
@@ -615,7 +635,7 @@
         .z-aside-area {
           z-index: 11;
         }
-      `)
+      `, doc)
     }
   }
 
@@ -637,7 +657,7 @@
       info: '.info',
       lazy: false,
     })
-    // 新版用户卡片
+    // 2022 版用户卡片
     webpage.cardLogic({
       card: '.user-card',
       user: '.card-user-name',
@@ -645,6 +665,8 @@
       before: '.card-btn-warp',
       lazy: false,
     })
+    // 2024 下半年版用户卡片
+    webpage.initBiliUserProfile()
 
     if (api.base.urlMatch([gm.regex.page_videoNormalMode, gm.regex.page_listMode])) {
       // 常规播放页中的UP主头像

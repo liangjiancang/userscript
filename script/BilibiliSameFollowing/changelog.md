@@ -2,6 +2,11 @@
 
 本日志只记录用户友好的更新说明，影响不大的问题修复与修改不作记录，具体修改见 [提交记录](https://gitee.com/liangjiancang/userscript/commits/master/script/BilibiliSameFollowing)。
 
+## V1.14
+
+1. 共同关注：适配B站2024年下半年引入的 `<bili-user-profile>` 用户卡片（该卡片可能会在未来成为主流方式）。
+2. 外部：`UserScriptAPIBase` 更新至 V1.3。
+
 ## V1.13
 
 1. 脚本：支持「列表播放页」`www.bilibili.com/list/*`。[164021](https://greasyfork.org/zh-CN/scripts/395575/discussions/164021)
