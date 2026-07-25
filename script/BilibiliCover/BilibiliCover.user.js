@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站封面获取
-// @version         5.10.7.20240827
+// @version         5.11.0.20260726
 // @namespace       laster2800
 // @author          Laster2800
 // @description     获取B站各播放页及直播间封面，支持手动及实时预览等多种模式，支持点击下载、封面预览、快速复制，可高度自定义
@@ -56,7 +56,7 @@
   const gm = {
     id: gmId,
     configVersion: GM_getValue('configVersion'),
-    configUpdate: 20210815,
+    configUpdate: 20260726,
     config: {},
     configMap: {
       mode: { default: -1, name: '视频/番剧：工作模式' },
@@ -67,7 +67,6 @@
       download: { default: true, name: '全局：点击下载', checkItem: true },
       preview: { default: true, name: '视频/番剧：封面预览', checkItem: true },
       previewLive: { default: true, name: '直播间：封面预览', checkItem: true },
-      bangumiSeries: { default: false, name: '番剧：获取系列封面而非分集封面', checkItem: true },
       switchQuickCopy: { default: false, name: '全局：交换「右键」与「Ctrl+右键」功能', checkItem: true, needNotReload: true },
       disableContextMenu: { default: true, name: '全局：在预览图上禁用右键菜单', checkItem: true },
     },
@@ -244,6 +243,11 @@
           // 5.2.0.20210813
           if (gm.configVersion < 20210813) {
             GM_deleteValue('preview')
+          }
+
+          // 5.11.0.20260726
+          if (gm.configVersion < 20260726) {
+            GM_deleteValue('bangumiSeries')
           }
 
           // 功能性更新后更新此处配置版本
@@ -435,36 +439,6 @@
           window.open(url)
         }
         api.web.download({ url, name, onerror, ontimeout })
-      },
-
-      /**
-       * 从 URL 获取视频 ID
-       * @param {string} [url=location.href] 提取视频 ID 的源字符串
-       * @returns {{id: string, type: 'aid' | 'bvid'}} `{id, type}`
-       */
-      getVid(url = location.href) {
-        let m = null
-        if ((m = /(\/|bvid=)bv([\da-z]+)([#&/?]|$)/i.exec(url))) {
-          return { id: 'BV' + m[2], type: 'bvid' }
-        } else if ((m = /(\/(av)?|aid=)(\d+)([#&/?]|$)/i.exec(url))) { // 兼容 BV 号被第三方修改为 AV 号的情况
-          return { id: m[3], type: 'aid' }
-        }
-        return null
-      },
-
-      /**
-       * 从 URL 获取番剧 ID
-       * @param {string} [url=location.href] 提取视频 ID 的源字符串
-       * @returns {{id: string, type: 'ssid' | 'epid'}} `{id, type}`
-       */
-      getBgmid(url = location.href) {
-        let m = null
-        if ((m = /\/(ss\d+)([#/?]|$)/.exec(url))) {
-          return { id: m[1], type: 'ssid' }
-        } else if ((m = /\/(ep\d+)([#/?]|$)/.exec(url))) {
-          return { id: m[1], type: 'epid' }
-        }
-        return null
       },
 
       /**
@@ -855,72 +829,22 @@
       const preview = gm.runtime.preview && this.method.createPreview(cover)
       this.method.setHintText(cover, gm.const.hintText)
 
-      if (api.base.urlMatch(gm.regex.page_videoNormalMode)) {
-        api.wait.executeAfterElementLoaded({
-          selector: 'meta[itemprop=image]',
-          base: document.head,
-          subtree: false,
-          repeat: true,
-          timeout: 0,
-          onError: e => {
-            this.method.setCover(cover, preview, null)
-            api.logger.error(e)
-          },
-          callback: meta => this.method.setCover(cover, preview, meta.content),
-        })
-      } else {
-        if (gm.runtime.layer === 'legacy') {
-          this.method.proxyCoverInteraction(cover, async event => {
-            try {
-              const vid = this.method.getVid()
-              if (cover._coverId === vid.id) return false
-              // 在异步等待前拦截，避免逻辑倒置
-              event.stopPropagation()
-              const url = await getCover(vid)
-              this.method.setCover(cover, preview, url)
-            } catch (e) {
-              event.stopPropagation()
-              this.method.setCover(cover, preview, null)
-              api.logger.error(e)
-            }
-            return true
-          })
-        } else {
-          const main = async () => {
-            try {
-              const vid = this.method.getVid()
-              if (cover._coverId === vid.id) return
-              const url = await getCover(vid)
-              this.method.setCover(cover, preview, url)
-            } catch (e) {
-              this.method.setCover(cover, preview, null)
-              api.logger.error(e)
-            }
-          }
-
-          setTimeout(main)
-          window.addEventListener('urlchange', main)
-        }
-
-        const getCover = async (vid = this.method.getVid()) => {
-          if (cover._coverId !== vid.id) {
-            const resp = await api.web.request({
-              url: gm.url.api_videoInfo(vid.id, vid.type),
-            }, { check: r => r.code === 0 })
-            cover._coverUrl = resp.data.pic ?? ''
-            cover._coverId = vid.id
-          }
-          return cover._coverUrl
-        }
-      }
+      api.wait.executeAfterElementLoaded({
+        selector: 'meta[property="og:image"]',
+        base: document.head,
+        subtree: false,
+        repeat: true,
+        timeout: 0,
+        onError: e => {
+          this.method.setCover(cover, preview, null)
+          api.logger.error(e)
+        },
+        callback: meta => this.method.setCover(cover, preview, meta.content),
+      })
     }
 
     async initBangumi() {
-      const app = await api.wait.$('#app')
-      const tm = await api.wait.$('#toolbar_module') // 无论如何都卡一下时间
-      await api.wait.waitForConditionPassed({
-        condition: () => app.__vue__,
-      })
+      const wtt = await api.wait.$('#watch_together_tab') // 无论如何都卡一下时间
 
       let cover = null
       if (gm.runtime.layer === 'legacy') {
@@ -930,7 +854,7 @@
         if (gm.runtime.preview) {
           cover.style.cursor = 'none'
         }
-        tm.append(cover)
+        wtt.append(cover)
         this.method.disableContextMenu(cover)
       } else {
         cover = await this.method.createRealtimeCover()
@@ -938,62 +862,22 @@
       const preview = gm.runtime.preview && this.method.createPreview(cover)
       this.method.setHintText(cover, gm.const.hintText)
 
-      if (gm.config.bangumiSeries) {
-        const setCover = img => this.method.setCover(cover, preview, img.src.replace(/@[^@]*$/, ''))
-        api.wait.$('.media-cover img').then(img => {
-          setCover(img)
-          const ob = new MutationObserver(() => setCover(img))
-          ob.observe(img, { attributeFilter: ['src'] })
-        }).catch(e => {
+      api.wait.executeAfterElementLoaded({
+        selector: 'meta[property="og:image"]',
+        base: document.head,
+        subtree: false,
+        repeat: true,
+        timeout: 0,
+        onError: e => {
           this.method.setCover(cover, preview, null)
           api.logger.error(e)
-        })
-      } else {
-        if (gm.runtime.layer === 'legacy') {
-          this.method.proxyCoverInteraction(cover, event => {
-            try {
-              const bgmid = this.method.getBgmid()
-              if (cover._coverId === bgmid.id) return false
-              const url = getCover(bgmid)
-              this.method.setCover(cover, preview, url)
-            } catch (e) {
-              this.method.setCover(cover, preview, null)
-              api.logger.error(e)
-            }
-            event.stopPropagation()
-            return true
-          })
-        } else {
-          const main = () => {
-            try {
-              const bgmid = this.method.getBgmid()
-              if (cover._coverId === bgmid.id) return
-              const url = getCover(bgmid)
-              this.method.setCover(cover, preview, url)
-            } catch (e) {
-              this.method.setCover(cover, preview, null)
-              api.logger.error(e)
-            }
-          }
-
-          setTimeout(main)
-          window.addEventListener('urlchange', main)
-        }
-
-        const getParams = () => unsafeWindow.getPlayerExtraParams?.()
-        const getCover = (bgmid = this.method.getBgmid()) => {
-          if (cover._coverId !== bgmid.id) {
-            const params = getParams()
-            cover._coverUrl = params.epCover
-            cover._coverId = bgmid.id
-          }
-          return cover._coverUrl
-        }
-      }
+        },
+        callback: meta => this.method.setCover(cover, preview, meta.content),
+      })
     }
 
     async initLive() {
-      const container = await api.wait.$('#head-info-vm .right-ctnr, #head-info-vm .upper-right-ctnr')
+      const container = await api.wait.$('#head-info-vm .right-section, #head-info-vm .right-ctnr, #head-info-vm .upper-right-ctnr')
       // 这里再获取 hiVm，提前获取到的 hiVm 有可能会被替换成新的
       const hiVm = container.closest('#head-info-vm')
       await api.wait.waitForConditionPassed({
@@ -1063,12 +947,8 @@
         }
 
         .${gm.id}-bangumi-cover-btn {
-          float: right;
+          margin-left: 3em;
           cursor: pointer;
-          font-size: 12px;
-          margin-right: 16px;
-          line-height: 36px;
-          color: #505050;
           user-select: none;
         }
         .${gm.id}-bangumi-cover-btn:hover {
