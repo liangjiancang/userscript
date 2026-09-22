@@ -3741,7 +3741,7 @@
           collect.before(watchlater)
           processClickEvent(watchlater)
           processPopup(watchlater)
-        } else { // 2022 版顶栏
+        } else {
           if (anchor.parentElement.classList.contains('header-avatar-wrap')) { // 2026 版顶栏
             gm.runtime.headerType = '2026'
             const collect = anchor.parentElement.parentElement.children[4]
@@ -3751,7 +3751,7 @@
             collect.before(watchlater)
             processClickEvent(watchlater)
             processPopup(watchlater)
-          } else {
+          } else { // 2022 版顶栏
             gm.runtime.headerType = '2022'
             const collect = anchor.parentElement.children[4]
             const watchlater = document.createElement('li')
