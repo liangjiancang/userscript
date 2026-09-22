@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            B站稍后再看功能增强
-// @version         4.37.4.20240827
+// @version         4.38.0.20260922
 // @namespace       laster2800
 // @author          Laster2800
 // @description     与稍后再看功能相关，一切你能想到和想不到的功能
@@ -289,7 +289,7 @@
    */
   /**
    * @typedef GMObject_runtime
-   * @property {'old' | '2022' | '3rd-party'} headerType 顶栏版本
+   * @property {'old' | '2022' | '2026' | '3rd-party'} headerType 顶栏版本
    * @property {boolean} reloadWatchlaterListData 刷新稍后再看列表数据
    * @property {boolean} loadingWatchlaterListData 正在加载稍后再看列表数据
    * @property {*} watchlaterListDataError 稍后再看列表数据加载过程错误（无错误为 `null`）；发现错误时 `gm.data.watchlaterListData()` 将获取到旧列表数据
@@ -3693,6 +3693,7 @@
      * 顶栏中加入稍后再看入口
      */
     async addHeaderButton() {
+      debugger
       const _self = this
       if (gm.config.headerCompatible === Enums.headerCompatible.bilibiliEvolved) {
         api.wait.$('.custom-navbar [data-name=watchlater]').then(el => {
@@ -3740,22 +3741,33 @@
           collect.before(watchlater)
           processClickEvent(watchlater)
           processPopup(watchlater)
-        } else { // 新版顶栏
-          gm.runtime.headerType = '2022'
-          const collect = anchor.parentElement.children[4]
-          const watchlater = document.createElement('li')
-          watchlater.className = 'v-popover-wrap'
-          watchlater.innerHTML = '<a class="right-entry__outside" style="cursor:pointer"><svg width="20" height="21" viewBox="0 0 20 21" fill="none" xmlns="http://www.w3.org/2000/svg" class="right-entry-icon"><path d="M3.7 3.7l13.9 6.8-13.9 6.8V3.7z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"></path></svg><span class="right-entry-text">稍后再看</span></a>'
-          collect.before(watchlater)
-          processClickEvent(watchlater)
-          processPopup(watchlater)
+        } else { // 2022 版顶栏
+          if (anchor.parentElement.classList.contains('header-avatar-wrap')) { // 2026 版顶栏
+            gm.runtime.headerType = '2026'
+            const collect = anchor.parentElement.parentElement.children[4]
+            const watchlater = document.createElement('div')
+            watchlater.className = 'right-entry__item v-popover-wrap'
+            watchlater.innerHTML = '<a class="right-entry__item-trigger" style="cursor:pointer"><svg width="20" height="21" viewBox="0 0 20 21" fill="none" xmlns="http://www.w3.org/2000/svg" class="trigger-icon"><path d="M3.7 3.7l13.9 6.8-13.9 6.8V3.7z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"></path></svg><span class="right-entry-text">稍后再看</span></a>'
+            collect.before(watchlater)
+            processClickEvent(watchlater)
+            processPopup(watchlater)
+          } else {
+            gm.runtime.headerType = '2022'
+            const collect = anchor.parentElement.children[4]
+            const watchlater = document.createElement('li')
+            watchlater.className = 'v-popover-wrap'
+            watchlater.innerHTML = '<a class="right-entry__outside" style="cursor:pointer"><svg width="20" height="21" viewBox="0 0 20 21" fill="none" xmlns="http://www.w3.org/2000/svg" class="right-entry-icon"><path d="M3.7 3.7l13.9 6.8-13.9 6.8V3.7z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"></path></svg><span class="right-entry-text">稍后再看</span></a>'
+            collect.before(watchlater)
+            processClickEvent(watchlater)
+            processPopup(watchlater)
 
-          // 修复顶栏各项目间距在浏览器缩放倍率较大时不正确的问题
-          try {
-            // 「消息」间距优化
-            anchor.parentElement.querySelector('.right-entry--message.right-entry__outside').classList.remove('right-entry__outside')
-          } catch (e) {
-            api.logger.error(e)
+            // 修复顶栏各项目间距在浏览器缩放倍率较大时不正确的问题
+            try {
+              // 「消息」间距优化
+              anchor.parentElement.querySelector('.right-entry--message.right-entry__outside').classList.remove('right-entry__outside')
+            } catch (e) {
+              api.logger.error(e)
+            }
           }
         }
       }
